@@ -8,10 +8,17 @@
             <li @if ($pageSlug == 'dashboard') class="active " @endif>
                 <a href="{{ route('home') }}">
                     <i class="tim-icons icon-chart-pie-36"></i>
-                    <p>{{ __('Dashboard') }}</p>
+                    <p>{{ __('Coin Reports (1m)') }}</p>
                 </a>
             </li>
-            <li>
+            <li @if ($pageSlug == 'dashboard-2') class="active " @endif>
+                <a href="{{ route('home') }}">
+                    <i class="tim-icons icon-chart-pie-36"></i>
+                    <p>{{ __('Coin Reports (15m)') }}</p>
+                </a>
+            </li>
+
+            {{-- <li>
                 <a data-toggle="collapse" href="#laravel-examples" aria-expanded="true">
                     <i class="fab fa-laravel" ></i>
                     <span class="nav-link-text" >{{ __('Laravel Examples') }}</span>
@@ -76,7 +83,7 @@
                     <i class="tim-icons icon-spaceship"></i>
                     <p>{{ __('Upgrade to PRO') }}</p>
                 </a>
-            </li>
+            </li> --}}
         </ul>
     </div>
 </div>

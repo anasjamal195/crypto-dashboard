@@ -1,0 +1,161 @@
+<?php
+
+namespace App\Services;
+
+use DateTime;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class CoinReportService
+{
+    /**
+     * Updates the coin report data by fetching the latest from the Binance API.
+     * 
+     * @param string $interval The time interval for candlestick data.
+     * @param int $limit The number of candlesticks to retrieve.
+     * @param float $rsiThreshold RSI threshold for buy triggers.
+     * @param int $obvCandles The number of candles to consider for OBV calculation.
+     * @param float $obvLimit OBV threshold percentage.
+     * @param int $stochDLimit Stochastic D threshold.
+     * @param float $targetProfit The target profit percentage to sell.
+     * @param int $maxChange Maximum price change percentage for filtering stable coins.
+     * @param int $minChange Minimum price change percentage for filtering stable coins.
+     * @param int $stableCoinLimit Number of stable coins to fetch.
+     */
+    public static function updateCoinReport(
+        $interval = '1m',
+        $limit = 1000,
+        $rsiThreshold = 18,
+        $obvCandles = 15,
+        $obvLimit = 50,
+        $stochDLimit = 3,
+        $targetProfit = 0.4,
+        $minChange = -5,
+        $maxChange = 5,
+        $stableCoinLimit = 100
+    ) {
+
+        $coins = BinanceApiService::getStableCoins($minChange, $maxChange, $stableCoinLimit);
+        foreach ($coins as $coin) {
+            try {
+                $symbol = $coin['symbol'];
+                $data = BinanceApiService::getCandleStickDataNew($symbol, $interval, $limit);
+                $trades = self::processCandles($symbol, $interval, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit);
+                // Insert trades into the database
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->delete();
+                DB::table('coin_reports')->insert($trades);
+                Log::info("Updated coin report for $symbol at interval $interval.");
+            } catch (\Exception $e) {
+                // dd($e);
+                Log::error("Failed to update coin reports: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Processes candlestick data to determine trade opportunities based on technical indicators.
+     *
+     * @param array $data Array of candlestick data.
+     * @param float $rsiThreshold RSI threshold for determining buy signals.
+     * @param int $obvCandles Number of candles to use for OBV high calculation.
+     * @param float $obvLimit OBV limit for buy signal.
+     * @param int $stochDLimit Stochastic D limit for buy signal.
+     * @param float $targetProfit Target profit percentage for sell signal.
+     * @return array Processed trade data.
+     */
+    protected static function processCandles($symbol, $interval, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit)
+    {
+        $buy_price = 0;
+        $buy_triggers = [];
+        $priceLock = $data[0]['close'];
+        $priceLockIndex = 0;
+        $skipIndex = 0;
+        $counter = 0;
+        $currentTrade = [];
+        $trades = [];
+        $lockedPriceBuy = 0;
+        $lowestPrice = 0;
+        foreach ($data as $index => &$candle) {
+
+            $candle['timestamp'] = $candle['timestamp'] / 1000;
+            $date = new \DateTime("@{$candle['timestamp']}");
+            $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
+            $candle['timestamp'] =  $date->format('d-m-Y H:i:s');
+
+            if ($buy_price == 0) {
+                if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
+
+                    if ($index > $obvCandles) {
+                        $previousHighObv = 0;
+                        for ($i = $index - $obvCandles; $i <= $index; $i++) {
+                            if ($data[$i]['obv'] > $previousHighObv) {
+                                $previousHighObv = $data[$i]['obv'];
+                            }
+                        }
+
+
+                        $previousStochHigh = 0;
+                        for ($i = $index - 5; $i <= $index; $i++) {
+                            if ($data[$i]['stoch_d'] > $previousStochHigh) {
+                                $previousStochHigh = $data[$i]['stoch_d'];
+                            }
+                        }
+                        // $stochCondition =   ($candle['stoch_d'] <= ($previousStochHigh * (1 - $stochDLimit / 100)));
+                        $stochCondition =   ($candle['stoch_d'] <=  $stochDLimit);
+                        $obvCondition = ($candle['obv'] <= ($previousHighObv * (1 - $obvLimit / 100)));
+                        // $obvCondition = true;
+                        // $wrCondition  = ($candle['wr'] <= $wrLimit);
+                        $wrCondition  = true;
+                        // $stochDiff = abs($candle['stoch_d'] - $candle['stoch_k']) < 0.5;
+
+                        if ($obvCondition && $stochCondition && $wrCondition) {
+                            $candle['should_buy'] = true;
+                            $candle['previousObvHigh'] = $previousHighObv;
+                            $candle['previousObvHighReduced'] = $previousHighObv * (1 - $obvLimit / 100);
+                            $buy_price = $candle['close'];
+                            $buy_triggers[] = $candle;
+                            $currentTrade['buyingCandle'] = json_encode($candle);
+                            $lowestPrice = $buy_price;
+                        }
+                    }
+                }
+            } else {
+                if ($lowestPrice > $candle['low'])
+                    $lowestPrice = $candle['low'];
+                if ($candle['high'] >= $buy_price * (1 + $targetProfit / 100)) {
+                    $candle['should_sell'] = true;
+                    $buy_triggers[] = $candle;
+                    $currentTrade['sellingCandle'] = json_encode($candle);
+                    $currentTrade['buyingPrice'] = $buy_price;
+                    $currentTrade['sellingPrice'] = $candle['high'];
+                    $currentTrade['symbol'] = $symbol;
+                    $currentTrade['interval'] = $interval;
+                    $currentTrade['profit'] = round(($candle['high'] - $buy_price) / $buy_price * 100, 2);
+                    $currentTrade['lowestPrice'] = $lowestPrice;
+                    $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
+                    $lowestPrice = 0;
+                    $buyingTimestamp = DateTime::createFromFormat('d-m-Y H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
+                    $sellingTimestamp = DateTime::createFromFormat('d-m-Y H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
+
+                    $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
+
+                    $trades[] = $currentTrade;
+                    $currentTrade = [];
+                    $buy_price = 0;
+                }
+            }
+        }
+
+
+        // For shifting indexes
+        $data_new = [];
+        foreach ($data as $d) {
+            $data_new[] = $d;
+        }
+        // dd($data_new);
+        $data = $data_new;
+
+        return $trades;
+    }
+}
