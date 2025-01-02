@@ -10,7 +10,8 @@
         "laravel-frontend-presets/black-dashboard": "^1.0",
         "laravel/framework": "^11.31",
         "laravel/tinker": "^2.9",
-        "laravel/ui": "^4.6"
+        "laravel/ui": "^4.6",
+        "plesk/ext-laravel-integration": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
