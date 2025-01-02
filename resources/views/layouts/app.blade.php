@@ -112,7 +112,7 @@
     <!--  Notifications Plugin    -->
     <script src="{{ asset('black') }}/js/plugins/bootstrap-notify.js"></script>
 
-    <script src="{{ asset('black') }}/js/black-dashboard.min.js?v=1.0.0"></script>
+    <script src="{{ asset('black') }}/js/black-dashboard.js"></script>
     <script src="{{ asset('black') }}/js/theme.js"></script>
 
     @stack('js')

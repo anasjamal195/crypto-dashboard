@@ -22,7 +22,7 @@ class MainWorker implements ShouldQueue
      * Create a new job instance.
      */
     public function __construct() {
-        
+
     }
 
     /**
@@ -30,6 +30,6 @@ class MainWorker implements ShouldQueue
      */
     public function handle(): void
     {
-        CoinReportService::updateCoinReport('1m', 1000, 28, 15, 50, 3, 0.4, -5, 5, 10);
+        CoinReportService::updateCoinReport('1m', 1000, 18, 15, 50, 3, 0.4, -5, 5, 100);
     }
 }

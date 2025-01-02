@@ -11,12 +11,12 @@
                     <p>{{ __('Coin Reports (1m)') }}</p>
                 </a>
             </li>
-            <li @if ($pageSlug == 'dashboard-2') class="active " @endif>
+            {{-- <li @if ($pageSlug == 'dashboard-2') class="active " @endif>
                 <a href="{{ route('home') }}">
                     <i class="tim-icons icon-chart-pie-36"></i>
                     <p>{{ __('Coin Reports (15m)') }}</p>
                 </a>
-            </li>
+            </li> --}}
 
             {{-- <li>
                 <a data-toggle="collapse" href="#laravel-examples" aria-expanded="true">

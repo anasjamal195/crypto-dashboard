@@ -40,7 +40,7 @@ class CoinReportService
         foreach ($coins as $coin) {
             try {
                 $symbol = $coin['symbol'];
-                $data = BinanceApiService::getCandleStickDataNew($symbol, $interval, $limit);
+                $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit);
                 $trades = self::processCandles($symbol, $interval, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit);
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->delete();
@@ -50,6 +50,7 @@ class CoinReportService
                 // dd($e);
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
+            usleep(100000); // 100ms Sleep after each iteration
         }
     }
 

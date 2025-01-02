@@ -62,7 +62,7 @@ class BinanceApiService
      * @return array
      * @throws \Exception If the API request fails.
      */
-    public static function getCandleStickDataNew($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $trade_type = 'future')
+    public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $trade_type = 'future')
     {
         // Choose the base URL based on the trade type
         $base_url = $trade_type === 'future' ?
