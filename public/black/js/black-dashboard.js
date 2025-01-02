@@ -58,32 +58,19 @@ var isScrolling = false;
         suppressScrollX: true,
       });
     }
-    const psContainer = document.querySelector('.main-panel'); // Replace with your Perfect Scrollbar container
-
-    let scrollTimeout;
-    // Listen for the `scroll` event
-    psContainer.addEventListener('ps-scroll-y', () => {
-      isScrolling = true;
-
-      // Clear the timeout if already running
-      clearTimeout(scrollTimeout);
-
-      // Set a timeout to reset `isScrolling` after the scroll stops
-      scrollTimeout = setTimeout(() => {
-        isScrolling = false;
-      }, 150); // Adjust the timeout duration based on when you consider the scrolling "stopped"
+    document.addEventListener('keydown', function (event) {
+      if (event.ctrlKey) { // Check if the Ctrl key is pressed
+        ps.settings.wheelSpeed = 0
+       
+      }
     });
 
-    // Debugging: Check scrolling status
-    setInterval(() => {
-      if (isScrolling) {
-        window.candlestickChart.options.plugins.zoom.zoom.wheel.enabled = false;
-        window.candlestickChart.update();
-      } else {
-        window.candlestickChart.options.plugins.zoom.zoom.wheel.enabled = true;
-        window.candlestickChart.update();
+    document.addEventListener('keyup', function (event) {
+      if (event.key === 'Control') { // Check if the released key is Ctrl
+        ps.settings.wheelSpeed = 2
       }
-    }, 500); // Logs the scrolling status every 500ms
+    });
+
     if ($('.sidebar .sidebar-wrapper').length != 0) {
 
       var ps1 = new PerfectScrollbar('.sidebar .sidebar-wrapper');

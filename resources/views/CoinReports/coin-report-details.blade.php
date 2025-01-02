@@ -95,10 +95,10 @@
                                                             <hr>
                                                             <strong>Other Indicators:</strong>
                                                             <ul>
-                                                                <li>SAR: {{ round($buyCandle['sar'],3) }}</li>
-                                                                <li>DIF: {{ round($buyCandle['dif'],3) }}</li>
-                                                                <li>DEA: {{ round($buyCandle['dea'],3) }}</li>
-                                                                <li>OBV: {{ round($buyCandle['obv'],3) }}</li>
+                                                                <li>SAR: {{ round($buyCandle['sar'], 3) }}</li>
+                                                                <li>DIF: {{ round($buyCandle['dif'], 3) }}</li>
+                                                                <li>DEA: {{ round($buyCandle['dea'], 3) }}</li>
+                                                                <li>OBV: {{ round($buyCandle['obv'], 3) }}</li>
                                                             </ul>
                                                         </div>
                                                     </div>
@@ -119,21 +119,22 @@
                                                         <h5 class="text-danger">Selling Details:</h5>
                                                         <div>
                                                             <strong>RSI:</strong> {{ round($sellCandle['rsi6']) }}<br>
-                                                            <strong>StochRSI:</strong> {{ round($sellCandle['stoch_rsi']) }}<br>
+                                                            <strong>StochRSI:</strong>
+                                                            {{ round($sellCandle['stoch_rsi']) }}<br>
                                                             <strong>Moving Averages:</strong>
                                                             <ul>
-                                                                <li>MA7: {{round( $sellCandle['ma7'],4) }}</li>
-                                                                <li>MA14: {{ round($sellCandle['ma14'],4) }}</li>
-                                                                <li>MA25: {{ round($sellCandle['ma25'],4) }}</li>
-                                                                <li>MA99: {{ round($sellCandle['ma99'],4) }}</li>
+                                                                <li>MA7: {{ round($sellCandle['ma7'], 4) }}</li>
+                                                                <li>MA14: {{ round($sellCandle['ma14'], 4) }}</li>
+                                                                <li>MA25: {{ round($sellCandle['ma25'], 4) }}</li>
+                                                                <li>MA99: {{ round($sellCandle['ma99'], 4) }}</li>
                                                             </ul>
                                                             <hr>
                                                             <strong>Other Indicators:</strong>
                                                             <ul>
-                                                                <li>SAR: {{ round($sellCandle['sar'],3) }}</li>
-                                                                <li>DIF: {{ round($sellCandle['dif'],3) }}</li>
-                                                                <li>DEA: {{ round($sellCandle['dea'],3) }}</li>
-                                                                <li>OBV: {{ round($sellCandle['obv'],3) }}</li>
+                                                                <li>SAR: {{ round($sellCandle['sar'], 3) }}</li>
+                                                                <li>DIF: {{ round($sellCandle['dif'], 3) }}</li>
+                                                                <li>DEA: {{ round($sellCandle['dea'], 3) }}</li>
+                                                                <li>OBV: {{ round($sellCandle['obv'], 3) }}</li>
                                                             </ul>
                                                         </div>
                                                     </div>
@@ -256,6 +257,9 @@
                                         enabled: true,
                                         speed: 0.1,
                                         threshold: 10,
+                                        modifierKey: 'ctrl'
+
+
 
                                     },
                                     mode: 'x'
@@ -289,29 +293,6 @@
                         chart.options.scales.x.max = timestamps[maxIndex];
                         chart.update();
                     }
-                }
-                const chartElement = document.getElementById('candlestickChart');
-
-
-                // Add event listener for mouse enter
-                chartElement.addEventListener('mouseenter', function() {
-                    if (!isScrolling) {
-                        ps.settings.wheelSpeed = 0
-                        console.log("scrolling Stopped")
-                    }
-
-                });
-                // Add event listener for mouse leave
-                chartElement.addEventListener('mouseleave', function() {
-                    if (!isScrolling) {
-                        ps.settings.wheelSpeed = 2
-
-                    }
-
-                });
-                if (!isScrolling) {
-                    ps.settings.wheelSpeed = 2
-
                 }
             });
         </script>
