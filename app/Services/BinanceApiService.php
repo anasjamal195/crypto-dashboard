@@ -62,10 +62,10 @@ class BinanceApiService
      * @return array
      * @throws \Exception If the API request fails.
      */
-    public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $trade_type = 'future')
+    public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT')
     {
         // Choose the base URL based on the trade type
-        $base_url = $trade_type === 'future' ?
+        $base_url = $market === 'FUTURE' ?
             config('binance.api.future_base_url') . config('binance.endpoints.klines') :
             config('binance.api.base_url') . config('binance.endpoints.klines');
 
@@ -80,6 +80,7 @@ class BinanceApiService
             $params['startTime'] = $timestamp;
         }
 
+        
         // Make the HTTP request using Laravel's Http facade with SSL verification disabled conditionally
         $response = Http::withOptions(['verify' => !app()->environment('local')])->get($base_url, $params);
 
@@ -88,10 +89,10 @@ class BinanceApiService
             throw new \Exception("Failed to fetch data from Binance: {$response->body()}");
         }
 
-        return self::processData($response->json());
+        return self::processData($response->json(),$market);
     }
 
-    protected static function processData($data)
+    protected static function processData($data,$market='SPOT')
     {
         $KDJ = self::calculateKDJ($data);
 
@@ -354,6 +355,7 @@ class BinanceApiService
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp' => $timestamp,
+                'market' => $market,
                 'binance_timestamp' => $timestamp,
                 'open' => $open,
                 'high' => $high,

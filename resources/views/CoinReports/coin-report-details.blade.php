@@ -49,13 +49,14 @@
                                         @php
                                             $buyCandle = json_decode(json_encode($trade->buyingCandle), true);
                                             $sellCandle = json_decode(json_encode($trade->sellingCandle), true);
+                                            $buyingAverages = json_decode($trade->buyingAverages, true);
                                             $buyTriggers[] = $buyCandle['binance_timestamp'];
                                             $sellTriggers[] = $sellCandle['binance_timestamp'];
                                         @endphp
                                         <tr>
                                             <td>{{ $trade->id }}</td>
                                             <td>{{ number_format($trade->buyingPrice, 4) }}</td>
-                                            <td>{{ number_format($trade->lowestPrice, 2) }}
+                                            <td>{{ number_format($trade->lowestPrice, 4) }}
                                                 ({{ number_format($trade->lowestPricePercentage, 2) }}%)
                                             </td>
                                             <td>{{ number_format($trade->sellingPrice, 4) }}</td>
@@ -78,18 +79,61 @@
                                                         <h5 class="text-success">Buying Details:</h5>
                                                         <div>
                                                             <strong>RSI:</strong> {{ round($buyCandle['rsi6']) }}
-                                                            (Threshold: ≤ 18)<br>
+                                                            <br>
                                                             <strong>StochRSI:</strong> {{ round($buyCandle['stoch_rsi']) }}
-                                                            (Limit: ≤ 3)<br>
+                                                            <br>
                                                             {{-- <strong>OBV:</strong> Highest in last 15 candles, Limit: 50%<br> --}}
                                                             <strong>Moving Averages:</strong>
                                                             <ul>
-                                                                <li>MA7: {{ round($buyCandle['ma7'], 4) }} ( Less than MA25
-                                                                    )</li>
+                                                                <li>MA7: {{ round($buyCandle['ma7'], 4) }} </li>
                                                                 <li>MA14: {{ round($buyCandle['ma14'], 4) }} </li>
-                                                                <li>MA25: {{ round($buyCandle['ma25'], 4) }} ( Less than
-                                                                    MA99 )</li>
+                                                                <li>MA25: {{ round($buyCandle['ma25'], 4) }} </li>
                                                                 <li>MA99: {{ round($buyCandle['ma99'], 4) }}</li>
+                                                            </ul>
+                                                            <strong>OBV:</strong>
+                                                            <ul>
+                                                                <li>OBV: {{ round($buyCandle['obv'], 4) }}</li>
+                                                                <li>Highest OBV:
+                                                                    {{ round($buyCandle['previousObvHigh'], 4) }}</li>
+                                                                <li>Obv Candlesticks: 15</li>
+                                                                @php
+                                                                    if ($buyCandle['previousObvHigh'] == 0) {
+                                                                        if ($buyCandle['obv'] < 0) {
+                                                                            // Define the percentage decrease as 100% or some other logic based on application needs
+                                                                            $percentageDecrease = 100; // Example: Define a full decrease if previous is zero and current is negative
+                                                                        } else {
+                                                                            // If the previous is zero and the current is zero or positive, you might decide differently
+                                                                            $percentageDecrease =
+                                                                                $buyCandle['obv'] == 0
+                                                                                    ? 0
+                                                                                    : 'Not Calculable';
+                                                                        }
+                                                                    } else {
+                                                                        $percentageDecrease =
+                                                                            (($buyCandle['previousObvHigh'] -
+                                                                                $buyCandle['obv']) /
+                                                                                $buyCandle['previousObvHigh']) *
+                                                                            100;
+                                                                        if (
+                                                                            $buyCandle['obv'] >
+                                                                            $buyCandle['previousObvHigh']
+                                                                        ) {
+                                                                            $percentageDecrease = -abs(
+                                                                                $percentageDecrease,
+                                                                            ); // Indicates an increase
+                                                                        } else {
+                                                                            $percentageDecrease = abs(
+                                                                                $percentageDecrease,
+                                                                            ); // Confirms a decrease
+                                                                        }
+                                                                    }
+
+                                                                @endphp
+                                                                <li>Percentage Diff:
+                                                                    {{ round($percentageDecrease, 2) }}
+                                                                </li>
+
+
                                                             </ul>
 
                                                             <hr>
@@ -109,9 +153,18 @@
                                                             <strong>Max (24h) Change:</strong> 5%<br>
                                                             <strong>Quantity:</strong> 100<br>
                                                         </div>
-                                                        <h5 class="text-info">Profit Details:</h5>
+                                                        <br>
+
+                                                        <h5 class="text-primary">Profit Details:</h5>
                                                         <div>
-                                                            <strong>Minimum Target Profit:</strong> 0.4%<br>
+                                                            <strong>Minimum Target Profit:</strong> 0.4%
+                                                        </div>
+                                                        <br>
+                                                        <h5 class="text-warning">Buying Averages:</h5>
+                                                        <div>
+                                                            <strong>RSI Average:</strong> {{round($buyingAverages['rsi6'] ,4)}}<br>
+                                                            <strong>Stoch Average:</strong> {{round($buyingAverages['stoch_d'],4) }}<br>
+                                                            <strong>Obv Limit:</strong> {{ $buyingAverages['previousObvHigh'] != 0 ? abs(round((($buyingAverages['previousObvHigh'] - $buyingAverages['obv']) / $buyingAverages['previousObvHigh']) * 100,2)) : 100; }}<br>
                                                         </div>
 
                                                     </div>

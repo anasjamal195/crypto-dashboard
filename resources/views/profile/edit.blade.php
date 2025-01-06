@@ -25,6 +25,18 @@
                                 <input type="email" name="email" class="form-control{{ $errors->has('email') ? ' is-invalid' : '' }}" placeholder="{{ __('Email address') }}" value="{{ old('email', auth()->user()->email) }}">
                                 @include('alerts.feedback', ['field' => 'email'])
                             </div>
+                              {{-- Binance API settings --}}
+                        <div class="form-group{{ $errors->has('api_key') ? ' has-danger' : '' }}">
+                            <label>{{ __('Binance API Key') }}</label>
+                            <input type="text" name="api_key" class="form-control{{ $errors->has('api_key') ? ' is-invalid' : '' }}" placeholder="{{ __('Enter Binance API Key') }}" value="{{ auth()->user()->api_key }}">
+                            @include('alerts.feedback', ['field' => 'api_key'])
+                        </div>
+
+                        <div class="form-group{{ $errors->has('api_secret') ? ' has-danger' : '' }}">
+                            <label>{{ __('Binance API Secret') }}</label>
+                            <input type="text" name="api_secret" class="form-control{{ $errors->has('api_secret') ? ' is-invalid' : '' }}" placeholder="{{ __('Enter Binance API Secret') }}" value="{{ auth()->user()->api_secret }}">
+                            @include('alerts.feedback', ['field' => 'api_secret'])
+                        </div>
                     </div>
                     <div class="card-footer">
                         <button type="submit" class="btn btn-fill btn-primary">{{ __('Save') }}</button>
@@ -58,6 +70,8 @@
                             <label>{{ __('Confirm New Password') }}</label>
                             <input type="password" name="password_confirmation" class="form-control" placeholder="{{ __('Confirm New Password') }}" value="" required>
                         </div>
+
+                      
                     </div>
                     <div class="card-footer">
                         <button type="submit" class="btn btn-fill btn-primary">{{ __('Change password') }}</button>

@@ -11,6 +11,24 @@
                     <p>{{ __('Coin Reports (1m)') }}</p>
                 </a>
             </li>
+            <li @if ($pageSlug == 'MarketTrends') class="active " @endif>
+                <a href="{{ route('marketTrends') }}">
+                    <i class="tim-icons icon-chart-pie-36"></i>
+                    <p>{{ __('Market Trends') }}</p>
+                </a>
+            </li>
+            <li @if ($pageSlug == 'averageCandlesticks') class="active " @endif>
+                <a href="{{ route('candle.averages', 'SPOT') }}">
+                    <i class="tim-icons icon-chart-pie-36"></i>
+                    <p>{{ __('Ideal Indicators (SPOT)') }}</p>
+                </a>
+            </li>
+            <li @if ($pageSlug == 'averageCandlesticks') class="active " @endif>
+                <a href="{{ route('candle.averages', 'FUTURE') }}">
+                    <i class="tim-icons icon-chart-pie-36"></i>
+                    <p>{{ __('Ideal Indicators (FUTURE)') }}</p>
+                </a>
+            </li>
             {{-- <li @if ($pageSlug == 'dashboard-2') class="active " @endif>
                 <a href="{{ route('home') }}">
                     <i class="tim-icons icon-chart-pie-36"></i>

@@ -16,6 +16,8 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 
 Route::get('/home', 'App\Http\Controllers\HomeController@index')->name('home')->middleware('auth');
 Route::get('/coin-report-details', 'App\Http\Controllers\BinanceController@getCoinReportDetails')->name('coinReportDetails')->middleware('auth');
+Route::get('/market-trends', 'App\Http\Controllers\BinanceController@showTrends')->name('marketTrends');
+Route::get('/candle-averages/{market}', 'App\Http\Controllers\BinanceController@showAverages')->name('candle.averages');
 
 Route::group(['middleware' => 'auth'], function () {
 		Route::get('icons', ['as' => 'pages.icons', 'uses' => 'App\Http\Controllers\PageController@icons']);

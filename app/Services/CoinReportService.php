@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\CommonHelpers;
 use DateTime;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -26,32 +27,38 @@ class CoinReportService
     public static function updateCoinReport(
         $interval = '1m',
         $limit = 1000,
-        $rsiThreshold = 18,
-        $obvCandles = 15,
-        $obvLimit = 50,
-        $stochDLimit = 3,
-        $targetProfit = 0.4,
-        $minChange = -5,
-        $maxChange = 5,
-        $stableCoinLimit = 100
+        $market = 'FUTURE'
     ) {
 
-        $coins = BinanceApiService::getStableCoins($minChange, $maxChange, $stableCoinLimit);
+        $tradesTotal = [];
+        $coins = DB::table('coins')->where('market', $market)->get();
+        
         foreach ($coins as $coin) {
+            $averages = CommonHelpers::getIndicatorAverages($coin->symbol, $interval, $market);
+            $obvCandles = 15;
+            $obvLimit = $averages['previousObvHigh'] != 0 ? abs((($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100) : 100;
+            $rsiThreshold = $averages['rsi6'];
+            $stochDLimit = $averages['stoch_d'];
+            $targetProfit = 0.4;
+
             try {
-                $symbol = $coin['symbol'];
-                $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit);
-                $trades = self::processCandles($symbol, $interval, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit);
+                $symbol = $coin->symbol;
+                $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit,null,$market);
+                
+                $trades = self::processCandles($symbol, $interval, $market, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit,$averages);
+                
                 // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->delete();
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->delete();
                 DB::table('coin_reports')->insert($trades);
+                $tradesTotal[$symbol] = $trades;
+                
                 Log::info("Updated coin report for $symbol at interval $interval.");
             } catch (\Exception $e) {
-                // dd($e);
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
             usleep(100000); // 100ms Sleep after each iteration
         }
+        return $tradesTotal;
     }
 
     /**
@@ -65,7 +72,7 @@ class CoinReportService
      * @param float $targetProfit Target profit percentage for sell signal.
      * @return array Processed trade data.
      */
-    protected static function processCandles($symbol, $interval, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit)
+    protected static function processCandles($symbol, $interval, $market, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit,$averages)
     {
         $buy_price = 0;
         $buy_triggers = [];
@@ -88,15 +95,14 @@ class CoinReportService
                 if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
 
                     if ($index > $obvCandles) {
-                        $previousHighObv = 0;
+                        $previousHighObv = $candle['obv'];
                         for ($i = $index - $obvCandles; $i <= $index; $i++) {
                             if ($data[$i]['obv'] > $previousHighObv) {
                                 $previousHighObv = $data[$i]['obv'];
                             }
                         }
 
-
-                        $previousStochHigh = 0;
+                        $previousStochHigh = $candle['stoch_d'];
                         for ($i = $index - 5; $i <= $index; $i++) {
                             if ($data[$i]['stoch_d'] > $previousStochHigh) {
                                 $previousStochHigh = $data[$i]['stoch_d'];
@@ -117,6 +123,7 @@ class CoinReportService
                             $buy_price = $candle['close'];
                             $buy_triggers[] = $candle;
                             $currentTrade['buyingCandle'] = json_encode($candle);
+                            $currentTrade['buyingAverages'] = json_encode($averages);
                             $lowestPrice = $buy_price;
                         }
                     }
@@ -129,6 +136,7 @@ class CoinReportService
                     $buy_triggers[] = $candle;
                     $currentTrade['sellingCandle'] = json_encode($candle);
                     $currentTrade['buyingPrice'] = $buy_price;
+                    $currentTrade['market'] = $market;
                     $currentTrade['sellingPrice'] = $candle['high'];
                     $currentTrade['symbol'] = $symbol;
                     $currentTrade['interval'] = $interval;
@@ -156,7 +164,7 @@ class CoinReportService
         }
         // dd($data_new);
         $data = $data_new;
-
+        
         return $trades;
     }
 }

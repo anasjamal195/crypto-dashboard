@@ -5,9 +5,13 @@ namespace App\Console\Commands;
 use App\Jobs\AutoTraderFuture;
 use App\Jobs\AutoTraderSpot;
 use App\Jobs\CoinReportWorker;
+use App\Jobs\CoinWorkers\FutureCoinDumper;
+use App\Jobs\CoinWorkers\SpotCoinDumper;
 use App\Jobs\IndicatorCandleDumper;
 use App\Jobs\MarketTrendAnalyzer;
+use App\Jobs\MarketTrendWorkers\SpotTrendWorker;
 use App\Jobs\ReportWorkers\MainWorker;
+use App\Jobs\TradeWorker\SpotIdealTradeWorker;
 use Illuminate\Console\Command;
 
 class DispatchJobs extends Command
@@ -31,6 +35,11 @@ class DispatchJobs extends Command
      */
     public function handle()
     {
-        MainWorker::dispatch()->onQueue('coinReportQueue');
+        // Spot Trade Workers
+        // SpotCoinDumper::dispatch()->onQueue('spotCoinDumper');
+        // SpotTrendWorker::dispatch()->onQueue('spotTrendWorker');
+        // SpotIdealTradeWorker::dispatch()->onQueue('spotIdealTradeWorker');
+        SpotIdealTradeWorker::dispatch()->onQueue('spotCoinReportWorker');
+
     }
 }

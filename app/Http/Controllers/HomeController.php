@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\CommonHelpers;
+use App\Jobs\TradeWorker\IdealTradeWorker;
 use App\Services\BinanceApiService;
 use App\Services\CoinReportService;
+use App\Services\IdealTradeService;
+use App\Services\MarketTrendService;
 use DateTime;
 use Illuminate\Support\Facades\DB;
 
@@ -26,6 +30,7 @@ class HomeController extends Controller
      */
     public function index()
     {
+        // dd(CoinReportService::updateCoinReport('1m',1000,'SPOT'));
         // Fetch all unique symbols from the database
         $tradeData = DB::table('coin_reports')
             ->select(

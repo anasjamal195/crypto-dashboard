@@ -18,8 +18,10 @@ class CreateCoinReportsTable extends Migration
             $table->id(); // Automatically creates an UNSIGNED BIGINT equivalent column.
             $table->string('symbol', 10)->nullable();
             $table->string('interval', 10)->nullable();
+            $table->string('market', 10)->nullable();
             $table->json('buyingCandle')->nullable();
             $table->json('sellingCandle')->nullable();
+            $table->json('buyingAverages')->nullable();
             $table->decimal('buyingPrice', 10, 4)->nullable();
             $table->decimal('sellingPrice', 10, 4)->nullable();
             $table->double('lowestPrice')->nullable();
