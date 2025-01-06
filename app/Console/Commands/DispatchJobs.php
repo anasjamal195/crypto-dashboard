@@ -9,8 +9,12 @@ use App\Jobs\CoinWorkers\FutureCoinDumper;
 use App\Jobs\CoinWorkers\SpotCoinDumper;
 use App\Jobs\IndicatorCandleDumper;
 use App\Jobs\MarketTrendAnalyzer;
+use App\Jobs\MarketTrendWorkers\FutureTrendWorker;
 use App\Jobs\MarketTrendWorkers\SpotTrendWorker;
+use App\Jobs\ReportWorkers\FutureReportWorker;
 use App\Jobs\ReportWorkers\MainWorker;
+use App\Jobs\ReportWorkers\SpotReportWorker;
+use App\Jobs\TradeWorker\FutureIdealTradeWorker;
 use App\Jobs\TradeWorker\SpotIdealTradeWorker;
 use Illuminate\Console\Command;
 
@@ -36,10 +40,15 @@ class DispatchJobs extends Command
     public function handle()
     {
         // Spot Trade Workers
-        // SpotCoinDumper::dispatch()->onQueue('spotCoinDumper');
-        // SpotTrendWorker::dispatch()->onQueue('spotTrendWorker');
-        // SpotIdealTradeWorker::dispatch()->onQueue('spotIdealTradeWorker');
-        SpotIdealTradeWorker::dispatch()->onQueue('spotCoinReportWorker');
+        SpotCoinDumper::dispatch()->onQueue('spotCoinDumper');
+        SpotTrendWorker::dispatch()->onQueue('spotTrendWorker');
+        SpotIdealTradeWorker::dispatch()->onQueue('spotIdealTradeWorker');
+        SpotReportWorker::dispatch()->onQueue('spotCoinReportWorker');
 
+        // Future Trade Workers
+        FutureCoinDumper::dispatch()->onQueue('futureCoinDumper');
+        FutureTrendWorker::dispatch()->onQueue('futureTrendWorker');
+        FutureIdealTradeWorker::dispatch()->onQueue('futureIdealTradeWorker');
+        FutureReportWorker::dispatch()->onQueue('futureCoinReportWorker');
     }
 }
