@@ -1,5 +1,8 @@
 @extends('layouts.app')
-
+@php
+    $totalProfit = 0;
+    $totalTrades = 0;
+@endphp
 @section('content')
 <div class="container-fluid">
     <div class="row">
@@ -15,7 +18,7 @@
                             <thead class="text-primary">
                                 <tr>
                                     <th>Symbol</th>
-                                    <th>Total Entries</th>
+                                    <th>Total Trades</th>
                                     <th>Total Profit (%)</th>
                                     <th>Average Profit (%)</th>
                                     <th>Average Duration (min)</th>
@@ -29,6 +32,10 @@
                             </thead>
                             <tbody>
                                 @foreach ($tradeData as $trade)
+                                @php
+                                    $totalProfit += number_format($trade->total_profit, 2);
+                                    $totalTrades += $trade->total_entries;
+                                @endphp
                                 <tr>
                                     <td>{{ $trade->symbol }}</td>
                                     <td>{{ $trade->total_entries }}</td>
@@ -47,6 +54,19 @@
                                     </td>
                                 </tr>
                                 @endforeach
+                                <tr>
+                                    <td><strong>Grand Total:</strong></td>
+                                    <td>{{ $totalTrades }}</td>
+                                    <td>{{ $totalProfit }}</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
