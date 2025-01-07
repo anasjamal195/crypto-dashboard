@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Http;
 
 class BinanceApiService
@@ -23,33 +24,64 @@ class BinanceApiService
 
     public static function getStableCoins($minChange, $maxChange, $limit = 0)
     {
-        $url = config('binance.api.base_url') . config('binance.endpoints.ticker_24hr');
 
-        $response = self::getHttpClient()->get($url);
+        $url = config('binance.cmcApi.base_url') . config('binance.cmcApi.latest_coins');
 
-        if (!$response->successful()) {
-            return [
-                'error' => 'Failed to fetch data from Binance',
-                'details' => $response->body()
-            ];
+        // $url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest';
+        $parameters = [
+            'start' => '1',
+            'limit' => strval($limit),
+            'convert' => 'USD'
+        ];
+
+        $headers = [
+            'Accepts: application/json',
+            'X-CMC_PRO_API_KEY: ' . config('binance.cmcApi.api_key')
+        ];
+        $qs = http_build_query($parameters); // query string encode the parameters
+        $request = "{$url}?{$qs}"; // create the request URL
+
+
+        $curl = curl_init(); // Get cURL resource
+        // Set cURL options
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $request,            // set the request URL
+            CURLOPT_HTTPHEADER => $headers,     // set the headers 
+            CURLOPT_RETURNTRANSFER => 1,         // ask for raw response instead of bool
+            CURLOPT_SSL_VERIFYPEER => false      // disable SSL certificate verification
+        ));
+
+        $response = curl_exec($curl); // Send the request, save the response
+        $response = json_decode($response, true);
+        curl_close($curl); // Close request
+
+        $binanceUSDT = self::fetchBinanceUSDTPairs();
+        $allowedPairs = [];
+        foreach ($response['data'] as $coin) {
+            if (in_array($coin['symbol'], $binanceUSDT)) {
+                $allowedPairs[] = $coin['symbol'];
+            }
         }
-
-        $tickers = $response->json();
-
-        $filtered = array_filter($tickers, function ($ticker) use ($minChange, $maxChange) {
-            return substr($ticker['symbol'], -4) === "USDT" &&
-                floatval($ticker['priceChangePercent']) >= $minChange &&
-                floatval($ticker['priceChangePercent']) <= $maxChange;
-        });
-
-        if ($limit) {
-            $filtered = array_slice($filtered, 0, $limit);
-        }
-
-        return $filtered;
+        return array_filter(array_map(function ($value) {
+            if ($value != 'USDT')
+                return ['symbol' => $value . 'USDT'];
+        }, $allowedPairs));
     }
 
+    public static function fetchBinanceUSDTPairs()
+    {
+        $url = config('binance.api.base_url') . config('binance.endpoints.exchange_info');
 
+        $binanceResponse = self::getHttpClient()->get($url);
+        $data = $binanceResponse->json();
+        $usdtPairs = [];
+        foreach ($data['symbols'] as $symbol) {
+            if ($symbol['status'] === 'TRADING' && strpos($symbol['symbol'], 'USDT') !== false) {
+                $usdtPairs[] = $symbol['baseAsset'];
+            }
+        }
+        return $usdtPairs;
+    }
 
     /**
      * Get candlestick data for a given symbol and interval from Binance API using static method.
@@ -80,7 +112,7 @@ class BinanceApiService
             $params['startTime'] = $timestamp;
         }
 
-        
+
         // Make the HTTP request using Laravel's Http facade with SSL verification disabled conditionally
         $response = Http::withOptions(['verify' => !app()->environment('local')])->get($base_url, $params);
 
@@ -89,10 +121,10 @@ class BinanceApiService
             throw new \Exception("Failed to fetch data from Binance: {$response->body()}");
         }
 
-        return self::processData($response->json(),$market);
+        return self::processData($response->json(), $market);
     }
 
-    protected static function processData($data,$market='SPOT')
+    protected static function processData($data, $market = 'SPOT')
     {
         $KDJ = self::calculateKDJ($data);
 
@@ -353,11 +385,11 @@ class BinanceApiService
             }
 
             $previousObvHigh = 0;
-            if($index > 15){
-            $previousObvHigh = $candlesticks[$index - 15]['obv'];
+            if ($index > 15) {
+                $previousObvHigh = $candlesticks[$index - 15]['obv'];
 
-                for($i = $index - 15;$i < $index;$i++){
-                    if($previousObvHigh < $candlesticks[$i]['obv']){
+                for ($i = $index - 15; $i < $index; $i++) {
+                    if ($previousObvHigh < $candlesticks[$i]['obv']) {
                         $previousObvHigh = $candlesticks[$i]['obv'];
                     }
                 }
