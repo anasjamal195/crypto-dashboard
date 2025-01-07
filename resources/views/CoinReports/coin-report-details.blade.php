@@ -127,6 +127,7 @@
                                         <th>Ideal Buying Time</th>
                                         <th>Selling Time</th>
                                         <th>Profit (%)</th>
+                                        <th>Nearby Trades</th>
                                         <th>Duration (mins)</th>
                                     </tr>
                                 </thead>
@@ -160,6 +161,23 @@
                                             $lowestTriggers[] = $data[$lowestIndex]['binance_timestamp'];
                                             $lowestCandle = $data[$lowestIndex];
 
+                                            $timestamp = $buyCandle['timestamp'];
+
+                                            // Parse the timestamp using Carbon
+                                            $carbonTimestamp = Carbon\Carbon::parse($timestamp);
+
+                                            // Calculate 5 minutes before and after the timestamp
+                                            $fiveMinutesBefore = $carbonTimestamp->copy()->subMinutes(5);
+
+                                            $fiveMinutesAfter = $carbonTimestamp->copy()->addMinutes(5);
+                                            // dd($fiveMinutesBefore->format('Y-m-d H:i:s'),$timestamp,$fiveMinutesAfter->format('Y-m-d H:i:s'));
+
+                                            $nearbyTrades = DB::table('coin_reports')
+                                                ->whereBetween('buyingCandle->timestamp', [
+                                                    $fiveMinutesBefore->format('Y-m-d H:i:s'),
+                                                    $fiveMinutesAfter->format('Y-m-d H:i:s'),
+                                                ])
+                                                ->get();
                                         @endphp
                                         <tr>
                                             <td>{{ $trade->id }}</td>
@@ -175,6 +193,7 @@
                                             <td>{{ \Carbon\Carbon::parse($sellCandle['timestamp'])->format('h:i A') }}
                                             </td>
                                             <td>{{ number_format($trade->profit, 2) }}%</td>
+                                            <td>{{ $nearbyTrades->count() }}</td>
                                             <td>{{ $trade->duration }}</td>
                                             <td>
                                                 <button class="btn btn-info btn-sm"
@@ -419,27 +438,6 @@
                                                 </div>
                                                 <div class="row mx-auto">
 
-                                                    @php
-
-                                                        $timestamp = $buyCandle['timestamp'];
-
-                                                        // Parse the timestamp using Carbon
-                                                        $carbonTimestamp = Carbon\Carbon::parse($timestamp);
-
-                                                        // Calculate 5 minutes before and after the timestamp
-                                                        $fiveMinutesBefore = $carbonTimestamp->copy()->subMinutes(5);
-
-                                                        $fiveMinutesAfter = $carbonTimestamp->copy()->addMinutes(5);
-                                                        // dd($fiveMinutesBefore->format('Y-m-d H:i:s'),$timestamp,$fiveMinutesAfter->format('Y-m-d H:i:s'));
-
-                                                        $nearbyTrades = DB::table('coin_reports')
-                                                            ->whereBetween('buyingCandle->timestamp', [
-                                                                $fiveMinutesBefore->format('Y-m-d H:i:s'),
-                                                                $fiveMinutesAfter->format('Y-m-d H:i:s'),
-                                                            ])
-                                                            ->get();
-
-                                                    @endphp
                                                     <h5 class="text-danger">Nearby Trades (± 5 mins):</h5>
 
                                                     <table class="table">
