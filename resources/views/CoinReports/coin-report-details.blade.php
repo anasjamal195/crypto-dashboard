@@ -123,7 +123,7 @@
                                         <th>Lowest Price (USDT)</th>
                                         <th>Selling Price (USDT)</th>
                                         <th>Buying Time</th>
-                                        <th>Buying Buying Time</th>
+                                        <th>Ideal Buying Time</th>
                                         <th>Selling Time</th>
                                         <th>Profit (%)</th>
                                         <th>Duration (mins)</th>
