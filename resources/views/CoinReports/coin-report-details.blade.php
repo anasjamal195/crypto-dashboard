@@ -272,7 +272,7 @@
                                                         </div>
                                                     </div>
                                                     <div class="col-md-3">
-                                                        <h5 class="text-info">Ideal Buying Candle Details:</h5>
+                                                        <h5 class="text-warning">Ideal Buying Candle Details:</h5>
                                                         <div>
                                                             <strong>RSI:</strong>
                                                             {{ round($lowestCandle['rsi6']) }}
