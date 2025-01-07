@@ -174,6 +174,9 @@
 
                                             $nearbyTrades = DB::table('coin_reports')
                                                 ->where('symbol', '!=', $trade->symbol)
+                                                ->where('market',  $market)
+                                                ->where('interval',  $interval)
+
                                                 ->whereBetween('buyingCandle->timestamp', [
                                                     $fiveMinutesBefore->format('Y-m-d H:i:s'),
                                                     $fiveMinutesAfter->format('Y-m-d H:i:s'),
