@@ -58,7 +58,7 @@ class BinanceController extends Controller
             $candle['timestamp'] = $candle['timestamp'] / 1000;
             $date = new \DateTime("@{$candle['timestamp']}");
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
-            $candle['timestamp'] =  $date->format('d-m-Y H:i:s');
+            $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
         }
 
 

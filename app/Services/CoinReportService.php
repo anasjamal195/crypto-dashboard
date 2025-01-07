@@ -32,7 +32,7 @@ class CoinReportService
 
         $tradesTotal = [];
         $coins = DB::table('coins')->where('market', $market)->get();
-        
+
         foreach ($coins as $coin) {
             $averages = CommonHelpers::getIndicatorAverages($coin->symbol, $interval, $market);
             $obvCandles = 15;
@@ -43,15 +43,15 @@ class CoinReportService
 
             try {
                 $symbol = $coin->symbol;
-                $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit,null,$market);
-                
-                $trades = self::processCandles($symbol, $interval, $market, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit,$averages);
-                
+                $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, $market);
+
+                $trades = self::processCandles($symbol, $interval, $market, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit, $averages);
+
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->delete();
                 DB::table('coin_reports')->insert($trades);
                 $tradesTotal[$symbol] = $trades;
-                
+
                 Log::info("Updated coin report for $symbol at interval $interval.");
             } catch (\Exception $e) {
                 Log::error("Failed to update coin reports: " . $e->getMessage());
@@ -72,7 +72,7 @@ class CoinReportService
      * @param float $targetProfit Target profit percentage for sell signal.
      * @return array Processed trade data.
      */
-    protected static function processCandles($symbol, $interval, $market, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit,$averages)
+    protected static function processCandles($symbol, $interval, $market, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit, $averages)
     {
         $buy_price = 0;
         $buy_triggers = [];
@@ -89,7 +89,7 @@ class CoinReportService
             $candle['timestamp'] = $candle['timestamp'] / 1000;
             $date = new \DateTime("@{$candle['timestamp']}");
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
-            $candle['timestamp'] =  $date->format('d-m-Y H:i:s');
+            $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
 
             if ($buy_price == 0) {
                 if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
@@ -144,8 +144,8 @@ class CoinReportService
                     $currentTrade['lowestPrice'] = $lowestPrice;
                     $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
                     $lowestPrice = 0;
-                    $buyingTimestamp = DateTime::createFromFormat('d-m-Y H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
-                    $sellingTimestamp = DateTime::createFromFormat('d-m-Y H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
+                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
+                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
 
                     $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
 
@@ -164,7 +164,7 @@ class CoinReportService
         }
         // dd($data_new);
         $data = $data_new;
-        
+
         return $trades;
     }
 }

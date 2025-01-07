@@ -90,7 +90,8 @@
                         <p class="card-category">Visual representation of trade data</p>
                         <div>
                             <span class="badge badge-rounded " style="background-color:green;color:white">Buying</span>
-                            <span class="badge badge-rounded " style="background-color:orange;color:white">Ideal Buying</span>
+                            <span class="badge badge-rounded " style="background-color:orange;color:white">Ideal
+                                Buying</span>
                             <span class="badge badge-rounded " style="background-color:red;color:white">Buying</span>
                         </div>
                     </div>
@@ -415,6 +416,49 @@
                                                             </ul>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div class="row">
+
+                                                    @php
+
+                                                        $timestamp = $buyCandle['timestamp'];
+
+                                                        // Parse the timestamp using Carbon
+                                                        $carbonTimestamp = Carbon\Carbon::parse($timestamp);
+
+                                                        // Calculate 5 minutes before and after the timestamp
+                                                        $fiveMinutesBefore = $carbonTimestamp->copy()->subMinutes(5);
+                                                       
+                                                        $fiveMinutesAfter = $carbonTimestamp->copy()->addMinutes(5);
+                                                        dd($fiveMinutesBefore->format('Y-m-d H:i:s'),$timestamp,$fiveMinutesAfter->format('Y-m-d H:i:s'));
+
+                                                        $nearbyTrades = DB::table('coin_reports')
+                                                            ->whereBetween('buyingCandle->timestamp', [
+                                                                $fiveMinutesBefore->format('Y-m-d H:i:s'),
+                                                                $fiveMinutesAfter->format('Y-m-d H:i:s'),
+                                                            ])
+                                                            ->get();
+
+                                                        print_r($nearbyTrades);
+                                                    @endphp
+                                                    <table class="table">
+                                                        <thead class="text-primary">
+                                                            <tr>
+                                                                <th>Trade ID</th>
+                                                                <th>Buying Price (USDT)</th>
+                                                                <th>Lowest Price (USDT)</th>
+                                                                <th>Selling Price (USDT)</th>
+                                                                <th>Buying Time</th>
+                                                                <th>Ideal Buying Time</th>
+                                                                <th>Selling Time</th>
+                                                                <th>Profit (%)</th>
+                                                                <th>Duration (mins)</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+
+                                                        </tbody>
+                                                    </table>
                                                 </div>
 
 

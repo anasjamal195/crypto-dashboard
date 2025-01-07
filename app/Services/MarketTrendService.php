@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class MarketTrendService
 {
-    private static $timestampFormat = 'd-m-Y H:i:s';
+    private static $timestampFormat = 'Y-m-d H:i:s';
     private static $mysqlDateTimeFormat = 'Y-m-d H:i:s';
     private static $coins = ['BTCUSDT', 'ETHUSDT'];
     /**
