@@ -183,8 +183,8 @@
                                             </td>
                                         </tr>
                                         <tr id="details-{{ $trade->id }}" class="trade-details d-none">
-                                            <td colspan="9">
-                                                <div class="row">
+                                            <td colspan="10">
+                                                <div class="row mx-auto">
                                                     <div class="col-md-3">
                                                         <h5 class="text-success">Buying Details:</h5>
                                                         <div>
@@ -417,7 +417,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="row">
+                                                <div class="row mx-auto">
 
                                                     @php
 
@@ -428,9 +428,9 @@
 
                                                         // Calculate 5 minutes before and after the timestamp
                                                         $fiveMinutesBefore = $carbonTimestamp->copy()->subMinutes(5);
-                                                       
+
                                                         $fiveMinutesAfter = $carbonTimestamp->copy()->addMinutes(5);
-                                                        dd($fiveMinutesBefore->format('Y-m-d H:i:s'),$timestamp,$fiveMinutesAfter->format('Y-m-d H:i:s'));
+                                                        // dd($fiveMinutesBefore->format('Y-m-d H:i:s'),$timestamp,$fiveMinutesAfter->format('Y-m-d H:i:s'));
 
                                                         $nearbyTrades = DB::table('coin_reports')
                                                             ->whereBetween('buyingCandle->timestamp', [
@@ -439,24 +439,47 @@
                                                             ])
                                                             ->get();
 
-                                                        print_r($nearbyTrades);
                                                     @endphp
+                                                    <h5 class="text-danger">Nearby Trades (± 5 mins):</h5>
+
                                                     <table class="table">
                                                         <thead class="text-primary">
                                                             <tr>
                                                                 <th>Trade ID</th>
+                                                                <th>Symbol</th>
                                                                 <th>Buying Price (USDT)</th>
                                                                 <th>Lowest Price (USDT)</th>
                                                                 <th>Selling Price (USDT)</th>
                                                                 <th>Buying Time</th>
-                                                                <th>Ideal Buying Time</th>
                                                                 <th>Selling Time</th>
                                                                 <th>Profit (%)</th>
                                                                 <th>Duration (mins)</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
+                                                            @foreach ($nearbyTrades as $trade)
+                                                                <tr>
+                                                                    <td>{{ $trade->id }}</td>
+                                                                    <td>{{ $trade->symbol }}</td>
+                                                                    <td>{{ number_format($trade->buyingPrice, 4) }}</td>
+                                                                    <td>{{ number_format($trade->lowestPrice, 4) }}
+                                                                        ({{ number_format($trade->lowestPricePercentage, 2) }}%)
+                                                                    </td>
+                                                                    <td>{{ number_format($trade->sellingPrice, 4) }}</td>
+                                                                    <td>{{ \Carbon\Carbon::parse(json_decode($trade->buyingCandle, true)['timestamp'])->format('h:i A') }}
+                                                                    </td>
 
+                                                                    <td>{{ \Carbon\Carbon::parse(json_decode($trade->sellingCandle, true)['timestamp'])->format('h:i A') }}
+                                                                    </td>
+                                                                    <td>{{ number_format($trade->profit, 2) }}%</td>
+                                                                    <td>{{ $trade->duration }}</td>
+                                                                    <td>
+                                                                        <a class="btn btn-primary btn-sm"
+                                                                            href="{{ route('coinReportDetails', $market) . '?symbol=' . $trade->symbol . '&interval=' . $trade->interval }}">Show
+                                                                            Details</a>
+                                                                    </td>
+                                                                </tr>
+                                                            @endforeach
                                                         </tbody>
                                                     </table>
                                                 </div>
