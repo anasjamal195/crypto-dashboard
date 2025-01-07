@@ -3,6 +3,8 @@
 @php
     $buyTriggers = [];
     $sellTriggers = [];
+    $lowestTriggers = [];
+
 @endphp
 
 @section('content')
@@ -86,9 +88,15 @@
                     <div class="card-header card-header-primary">
                         <h4 class="card-title">Candlestick Chart</h4>
                         <p class="card-category">Visual representation of trade data</p>
+                        <div>
+                            <span class="badge badge-rounded " style="background-color:green;color:white">Buying</span>
+                            <span class="badge badge-rounded " style="background-color:orange;color:white">Ideal Buying</span>
+                            <span class="badge badge-rounded " style="background-color:red;color:white">Buying</span>
+                        </div>
                     </div>
 
                     <div class="card-body">
+
                         <canvas id="candlestickChart"></canvas>
                     </div>
                 </div>
@@ -115,6 +123,7 @@
                                         <th>Lowest Price (USDT)</th>
                                         <th>Selling Price (USDT)</th>
                                         <th>Buying Time</th>
+                                        <th>Buying Buying Time</th>
                                         <th>Selling Time</th>
                                         <th>Profit (%)</th>
                                         <th>Duration (mins)</th>
@@ -125,9 +134,31 @@
                                         @php
                                             $buyCandle = json_decode(json_encode($trade->buyingCandle), true);
                                             $sellCandle = json_decode(json_encode($trade->sellingCandle), true);
+
                                             $buyingAverages = json_decode($trade->buyingAverages, true);
                                             $buyTriggers[] = $buyCandle['binance_timestamp'];
                                             $sellTriggers[] = $sellCandle['binance_timestamp'];
+                                            $lowestIndex = -1;
+                                            $lowestPrice = $data[0]['close'];
+                                            foreach ($data as $index => $candle) {
+                                                if ($candle['binance_timestamp'] == $buyCandle['binance_timestamp']) {
+                                                    $lowestIndex = $index;
+                                                    $lowestPrice = $candle['close'];
+                                                }
+
+                                                if (
+                                                    $candle['binance_timestamp'] > $buyCandle['binance_timestamp'] &&
+                                                    $candle['binance_timestamp'] <= $sellCandle['binance_timestamp']
+                                                ) {
+                                                    if ($lowestPrice > $candle['close']) {
+                                                        $lowestPrice = $candle['close'];
+                                                        $lowestIndex = $index;
+                                                    }
+                                                }
+                                            }
+                                            $lowestTriggers[] = $data[$lowestIndex]['binance_timestamp'];
+                                            $lowestCandle = $data[$lowestIndex];
+
                                         @endphp
                                         <tr>
                                             <td>{{ $trade->id }}</td>
@@ -137,6 +168,8 @@
                                             </td>
                                             <td>{{ number_format($trade->sellingPrice, 4) }}</td>
                                             <td>{{ \Carbon\Carbon::parse($buyCandle['timestamp'])->format('h:i A') }}
+                                            </td>
+                                            <td>{{ \Carbon\Carbon::parse($lowestCandle['timestamp'])->format('h:i A') }}
                                             </td>
                                             <td>{{ \Carbon\Carbon::parse($sellCandle['timestamp'])->format('h:i A') }}
                                             </td>
@@ -151,7 +184,7 @@
                                         <tr id="details-{{ $trade->id }}" class="trade-details d-none">
                                             <td colspan="9">
                                                 <div class="row">
-                                                    <div class="col-md-4">
+                                                    <div class="col-md-3">
                                                         <h5 class="text-success">Buying Details:</h5>
                                                         <div>
                                                             <strong>RSI:</strong>
@@ -219,6 +252,16 @@
                                                             </ul>
 
                                                             <hr>
+                                                            <strong>KDJ:</strong>
+                                                            <ul>
+                                                                <li>K: {{ round($buyCandle['K'], 4) }}
+                                                                </li>
+                                                                <li>D: {{ round($buyCandle['D'], 4) }}
+                                                                </li>
+                                                                <li>J: {{ round($buyCandle['J'], 4) }}
+                                                                </li>
+                                                            </ul>
+                                                            <hr>
                                                             <strong>Other Indicators:</strong>
                                                             <ul>
                                                                 <li>SAR: {{ round($buyCandle['sar'], 3) }}</li>
@@ -228,7 +271,94 @@
                                                             </ul>
                                                         </div>
                                                     </div>
-                                                    <div class="col-md-4">
+                                                    <div class="col-md-3">
+                                                        <h5 class="text-info">Ideal Buying Candle Details:</h5>
+                                                        <div>
+                                                            <strong>RSI:</strong>
+                                                            {{ round($lowestCandle['rsi6']) }}
+                                                            <br>
+                                                            <strong>StochRSI:</strong>
+                                                            {{ round($lowestCandle['stoch_rsi']) }}
+                                                            <br>
+                                                            {{-- <strong>OBV:</strong> Highest in last 15 candles, Limit: 50%<br> --}}
+                                                            <strong>Moving Averages:</strong>
+                                                            <ul>
+                                                                <li>MA7: {{ round($lowestCandle['ma7'], 4) }}
+                                                                </li>
+                                                                <li>MA14: {{ round($lowestCandle['ma14'], 4) }}
+                                                                </li>
+                                                                <li>MA25: {{ round($lowestCandle['ma25'], 4) }}
+                                                                </li>
+                                                                <li>MA99: {{ round($lowestCandle['ma99'], 4) }}
+                                                                </li>
+                                                            </ul>
+                                                            <strong>OBV:</strong>
+                                                            <ul>
+                                                                <li>OBV: {{ round($lowestCandle['obv'], 4) }}</li>
+                                                                <li>Highest OBV:
+                                                                    {{ round($lowestCandle['previousObvHigh'], 4) }}
+                                                                </li>
+                                                                <li>Obv Candlesticks: 15</li>
+                                                                @php
+                                                                    if ($lowestCandle['previousObvHigh'] == 0) {
+                                                                        if ($lowestCandle['obv'] < 0) {
+                                                                            // Define the percentage decrease as 100% or some other logic based on application needs
+                                                                            $percentageDecrease = 100; // Example: Define a full decrease if previous is zero and current is negative
+                                                                        } else {
+                                                                            // If the previous is zero and the current is zero or positive, you might decide differently
+                                                                            $percentageDecrease =
+                                                                                $lowestCandle['obv'] == 0
+                                                                                    ? 0
+                                                                                    : 'Not Calculable';
+                                                                        }
+                                                                    } else {
+                                                                        $percentageDecrease =
+                                                                            (($lowestCandle['previousObvHigh'] -
+                                                                                $lowestCandle['obv']) /
+                                                                                $lowestCandle['previousObvHigh']) *
+                                                                            100;
+                                                                        if (
+                                                                            $lowestCandle['obv'] >
+                                                                            $lowestCandle['previousObvHigh']
+                                                                        ) {
+                                                                            $percentageDecrease = -abs(
+                                                                                $percentageDecrease,
+                                                                            ); // Indicates an increase
+                                                                        } else {
+                                                                            $percentageDecrease = abs(
+                                                                                $percentageDecrease,
+                                                                            ); // Confirms a decrease
+                                                                        }
+                                                                    }
+                                                                @endphp
+                                                                <li>Percentage Diff:
+                                                                    {{ round($percentageDecrease, 2) }}
+                                                                </li>
+
+
+                                                            </ul>
+
+                                                            <hr>
+                                                            <strong>KDJ:</strong>
+                                                            <ul>
+                                                                <li>K: {{ round($lowestCandle['K'], 4) }}
+                                                                </li>
+                                                                <li>D: {{ round($lowestCandle['D'], 4) }}
+                                                                </li>
+                                                                <li>J: {{ round($lowestCandle['J'], 4) }}
+                                                                </li>
+                                                            </ul>
+                                                            <hr>
+                                                            <strong>Other Indicators:</strong>
+                                                            <ul>
+                                                                <li>SAR: {{ round($lowestCandle['sar'], 3) }}</li>
+                                                                <li>DIF: {{ round($lowestCandle['dif'], 3) }}</li>
+                                                                <li>DEA: {{ round($lowestCandle['dea'], 3) }}</li>
+                                                                <li>OBV: {{ round($lowestCandle['obv'], 3) }}</li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
                                                         <h5 class="text-info">Coin Selection Conditions:</h5>
                                                         <div>
                                                             <strong>Min (24h) Change:</strong> -5%<br>
@@ -253,7 +383,7 @@
                                                         </div>
 
                                                     </div>
-                                                    <div class="col-md-4">
+                                                    <div class="col-md-3">
                                                         <h5 class="text-danger">Selling Details:</h5>
                                                         <div>
                                                             <strong>RSI:</strong>
@@ -319,6 +449,7 @@
                 const trades = @json($trades);
                 const buyTriggers = @json($buyTriggers);
                 const sellTriggers = @json($sellTriggers);
+                const lowestTriggers = @json($lowestTriggers);
 
                 // Extract timestamps and close prices
                 const timestamps = candlestickData.map(data => data.timestamp);
@@ -336,6 +467,12 @@
                     } else if (sellTriggers.includes(binanceTimestamp)) {
                         return {
                             backgroundColor: 'red', // Red for sell triggers
+                            borderColor: 'darkred', // Darker red border
+                            radius: 6 // Larger point radius
+                        };
+                    } else if (lowestTriggers.includes(binanceTimestamp)) {
+                        return {
+                            backgroundColor: 'orange', // Red for sell triggers
                             borderColor: 'darkred', // Darker red border
                             radius: 6 // Larger point radius
                         };

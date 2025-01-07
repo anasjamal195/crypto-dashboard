@@ -352,6 +352,16 @@ class BinanceApiService
                 $J = $KDJ[$index - 9]['J'];
             }
 
+            $previousObvHigh = 0;
+            if($index > 15){
+            $previousObvHigh = $candlesticks[$index - 15]['obv'];
+
+                for($i = $index - 15;$i < $index;$i++){
+                    if($previousObvHigh < $candlesticks[$i]['obv']){
+                        $previousObvHigh = $candlesticks[$i]['obv'];
+                    }
+                }
+            }
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp' => $timestamp,
@@ -382,6 +392,7 @@ class BinanceApiService
                 'K' => $K,
                 'D' => $D,
                 'J' => $J,
+                'previousObvHigh' => $previousObvHigh,
             ];
         }
 
