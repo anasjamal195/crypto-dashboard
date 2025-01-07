@@ -59,7 +59,7 @@ class SpotCoinDumper implements ShouldQueue
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
-            usleep(60000000);
+            usleep(600000000); // 10 mins delay
         }
     }
 }
