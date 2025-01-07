@@ -7,7 +7,79 @@
 
 @section('content')
     <div class="container-fluid mt-5">
-        <h2 class="mb-4 text-white">Trade Details for {{ $symbol }} - {{ $interval }}</h2>
+        <h2 class="mb-4 text-white">Trade Details for {{ $symbol }} - {{ $interval }} ({{ $market }})</h2>
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h4 class="text-white mb-3 ">Current Coin Averages:</h4>
+                <div class="row ">
+                    @php
+                        $averages = App\CommonHelpers::getIndicatorAverages($symbol, $interval, $market);
+                    @endphp
+                    <!-- RSI Average Card -->
+                    <div class="card text-white bg-primary mb-3 col-md-2 mx-3">
+                        <div class="card-header">RSI Average</div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ round($averages['rsi6'], 4) }}</h5>
+                        </div>
+                    </div>
+                    <!-- Stoch Average Card -->
+                    <div class="card text-white bg-success mb-3 col-md-2 mx-3">
+                        <div class="card-header">Stoch Average</div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ round($averages['stoch_d'], 4) }}</h5>
+                        </div>
+                    </div>
+                    <!-- Highest OBV Card -->
+                    <div class="card text-white bg-danger mb-3 col-md-2 mx-3">
+                        <div class="card-header">Highest Obv</div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ round($averages['previousObvHigh'], 4) }}</h5>
+                        </div>
+                    </div>
+                    <!-- OBV Card -->
+                    <div class="card text-white bg-warning mb-3 col-md-2 mx-3">
+                        <div class="card-header">Obv</div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ round($averages['obv'], 4) }}</h5>
+                        </div>
+                    </div>
+                    <!-- OBV Limit Card -->
+                    <div class="card text-white bg-info mb-3 col-md-2 mx-3">
+                        <div class="card-header">OBV Limit</div>
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                {{ $averages['previousObvHigh'] != 0 ? abs(round((($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100, 2)) : '100%' }}
+                            </h5>
+                        </div>
+                    </div>
+                    <!-- K Card -->
+                    <div class="card text-white bg-info mb-3 col-md-2 mx-3">
+                        <div class="card-header">K</div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ round($averages['K'], 4) }}</h5>
+                        </div>
+                    </div>
+
+                    <!-- D Card -->
+                    <div class="card text-white bg-warning mb-3 col-md-2 mx-3">
+                        <div class="card-header">D</div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ round($averages['D'], 4) }}</h5>
+                        </div>
+                    </div>
+
+                    <!-- J Card -->
+                    <div class="card text-white bg-success mb-3 col-md-2 mx-3">
+                        <div class="card-header">J</div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ round($averages['J'], 4) }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
@@ -15,6 +87,7 @@
                         <h4 class="card-title">Candlestick Chart</h4>
                         <p class="card-category">Visual representation of trade data</p>
                     </div>
+
                     <div class="card-body">
                         <canvas id="candlestickChart"></canvas>
                     </div>
@@ -29,7 +102,10 @@
                         <h4 class="card-title ">Trade Details</h4>
                         <p class="card-category"> Here is a subtitle for this table</p>
                     </div>
+
                     <div class="card-body">
+
+
                         <div class="table-responsive">
                             <table class="table">
                                 <thead class="text-primary">
@@ -78,23 +154,30 @@
                                                     <div class="col-md-4">
                                                         <h5 class="text-success">Buying Details:</h5>
                                                         <div>
-                                                            <strong>RSI:</strong> {{ round($buyCandle['rsi6']) }}
+                                                            <strong>RSI:</strong>
+                                                            {{ round($buyCandle['rsi6']) }}
                                                             <br>
-                                                            <strong>StochRSI:</strong> {{ round($buyCandle['stoch_rsi']) }}
+                                                            <strong>StochRSI:</strong>
+                                                            {{ round($buyCandle['stoch_rsi']) }}
                                                             <br>
                                                             {{-- <strong>OBV:</strong> Highest in last 15 candles, Limit: 50%<br> --}}
                                                             <strong>Moving Averages:</strong>
                                                             <ul>
-                                                                <li>MA7: {{ round($buyCandle['ma7'], 4) }} </li>
-                                                                <li>MA14: {{ round($buyCandle['ma14'], 4) }} </li>
-                                                                <li>MA25: {{ round($buyCandle['ma25'], 4) }} </li>
-                                                                <li>MA99: {{ round($buyCandle['ma99'], 4) }}</li>
+                                                                <li>MA7: {{ round($buyCandle['ma7'], 4) }}
+                                                                </li>
+                                                                <li>MA14: {{ round($buyCandle['ma14'], 4) }}
+                                                                </li>
+                                                                <li>MA25: {{ round($buyCandle['ma25'], 4) }}
+                                                                </li>
+                                                                <li>MA99: {{ round($buyCandle['ma99'], 4) }}
+                                                                </li>
                                                             </ul>
                                                             <strong>OBV:</strong>
                                                             <ul>
                                                                 <li>OBV: {{ round($buyCandle['obv'], 4) }}</li>
                                                                 <li>Highest OBV:
-                                                                    {{ round($buyCandle['previousObvHigh'], 4) }}</li>
+                                                                    {{ round($buyCandle['previousObvHigh'], 4) }}
+                                                                </li>
                                                                 <li>Obv Candlesticks: 15</li>
                                                                 @php
                                                                     if ($buyCandle['previousObvHigh'] == 0) {
@@ -127,7 +210,6 @@
                                                                             ); // Confirms a decrease
                                                                         }
                                                                     }
-
                                                                 @endphp
                                                                 <li>Percentage Diff:
                                                                     {{ round($percentageDecrease, 2) }}
@@ -162,32 +244,44 @@
                                                         <br>
                                                         <h5 class="text-warning">Buying Averages:</h5>
                                                         <div>
-                                                            <strong>RSI Average:</strong> {{round($buyingAverages['rsi6'] ,4)}}<br>
-                                                            <strong>Stoch Average:</strong> {{round($buyingAverages['stoch_d'],4) }}<br>
-                                                            <strong>Obv Limit:</strong> {{ $buyingAverages['previousObvHigh'] != 0 ? abs(round((($buyingAverages['previousObvHigh'] - $buyingAverages['obv']) / $buyingAverages['previousObvHigh']) * 100,2)) : 100; }}<br>
+                                                            <strong>RSI Average:</strong>
+                                                            {{ round($buyingAverages['rsi6'], 4) }}<br>
+                                                            <strong>Stoch Average:</strong>
+                                                            {{ round($buyingAverages['stoch_d'], 4) }}<br>
+                                                            <strong>Obv Limit:</strong>
+                                                            {{ $buyingAverages['previousObvHigh'] != 0 ? abs(round((($buyingAverages['previousObvHigh'] - $buyingAverages['obv']) / $buyingAverages['previousObvHigh']) * 100, 2)) : 100 }}<br>
                                                         </div>
 
                                                     </div>
                                                     <div class="col-md-4">
                                                         <h5 class="text-danger">Selling Details:</h5>
                                                         <div>
-                                                            <strong>RSI:</strong> {{ round($sellCandle['rsi6']) }}<br>
+                                                            <strong>RSI:</strong>
+                                                            {{ round($sellCandle['rsi6']) }}<br>
                                                             <strong>StochRSI:</strong>
                                                             {{ round($sellCandle['stoch_rsi']) }}<br>
                                                             <strong>Moving Averages:</strong>
                                                             <ul>
-                                                                <li>MA7: {{ round($sellCandle['ma7'], 4) }}</li>
-                                                                <li>MA14: {{ round($sellCandle['ma14'], 4) }}</li>
-                                                                <li>MA25: {{ round($sellCandle['ma25'], 4) }}</li>
-                                                                <li>MA99: {{ round($sellCandle['ma99'], 4) }}</li>
+                                                                <li>MA7: {{ round($sellCandle['ma7'], 4) }}
+                                                                </li>
+                                                                <li>MA14: {{ round($sellCandle['ma14'], 4) }}
+                                                                </li>
+                                                                <li>MA25: {{ round($sellCandle['ma25'], 4) }}
+                                                                </li>
+                                                                <li>MA99: {{ round($sellCandle['ma99'], 4) }}
+                                                                </li>
                                                             </ul>
                                                             <hr>
                                                             <strong>Other Indicators:</strong>
                                                             <ul>
-                                                                <li>SAR: {{ round($sellCandle['sar'], 3) }}</li>
-                                                                <li>DIF: {{ round($sellCandle['dif'], 3) }}</li>
-                                                                <li>DEA: {{ round($sellCandle['dea'], 3) }}</li>
-                                                                <li>OBV: {{ round($sellCandle['obv'], 3) }}</li>
+                                                                <li>SAR: {{ round($sellCandle['sar'], 3) }}
+                                                                </li>
+                                                                <li>DIF: {{ round($sellCandle['dif'], 3) }}
+                                                                </li>
+                                                                <li>DEA: {{ round($sellCandle['dea'], 3) }}
+                                                                </li>
+                                                                <li>OBV: {{ round($sellCandle['obv'], 3) }}
+                                                                </li>
                                                             </ul>
                                                         </div>
                                                     </div>
@@ -349,4 +443,5 @@
                 }
             });
         </script>
-    @endsection
+    </div>
+@endsection

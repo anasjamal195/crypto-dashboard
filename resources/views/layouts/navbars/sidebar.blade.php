@@ -1,107 +1,99 @@
-<div class="sidebar">
-    <div class="sidebar-wrapper">
-        <div class="logo">
-            <a href="#" class="simple-text logo-mini">{{ __('BD') }}</a>
-            <a href="#" class="simple-text logo-normal">{{ __('Black Dashboard') }}</a>
+
+    <style>
+        .nav .nav {
+            padding-left: 20px;
+            /* Adjust this value as needed */
+        }
+
+        .nav .collapse .nav-item {
+            padding-left: 15px;
+            /* Adjust this value to get the desired indentation */
+        }
+    </style>
+    <div class="sidebar" data="blue">
+        <div class="sidebar-wrapper">
+            <div class="logo">
+                <a href="#" class="simple-text logo-mini">{{ __('C') }}</a>
+                <a href="#" class="simple-text logo-normal">{{ __('Crypto Api Store') }}</a>
+            </div>
+            {{-- 1m-CandleSticks Parent Tab --}}
+            <ul class="nav">
+                <li class="{{ request()->is('1m-candlesticks/*') ? 'active' : '' }}">
+                    <a data-toggle="collapse" href="#candlesticksMenu" aria-expanded="true">
+                        <i class="tim-icons icon-bank"></i>
+                        <p>{{ __('1m-CandleSticks') }}
+                            <b class="caret"></b>
+                        </p>
+                    </a>
+                    <div class="collapse show" id="candlesticksMenu">
+                        <ul class="nav">
+                            {{-- SPOT Child Tab --}}
+                            <li
+                                class="{{ $pageSlug == 'CoinReportSPOT' || $pageSlug == 'MarketTrendsSPOT' || $pageSlug == 'averageCandlesticksSPOT' ? 'active' : '' }}">
+                                <a data-toggle="collapse" href="#spotMenu">
+                                    <i class="tim-icons icon-components"></i>
+                                    <p>{{ __('SPOT') }}
+                                        <b class="caret"></b>
+                                    </p>
+                                </a>
+                                <div class="collapse" id="spotMenu">
+                                    <ul class="nav">
+                                        <li @if ($pageSlug == 'CoinReportSPOT') class="active" @endif>
+                                            <a href="{{ route('coinReport', 'SPOT') . '?interval=1m' }}">
+                                                <i class="tim-icons icon-coins"></i>
+                                                <p>{{ __('Coin Reports') }}</p>
+                                            </a>
+                                        </li>
+                                        <li @if ($pageSlug == 'MarketTrendsSPOT') class="active" @endif>
+                                            <a href="{{ route('marketTrends', 'SPOT') . '?interval=1m' }}">
+                                                <i class="tim-icons icon-chart-bar-32"></i>
+                                                <p>{{ __('Market Trends') }}</p>
+                                            </a>
+                                        </li>
+                                        <li @if ($pageSlug == 'averageCandlesticksSPOT') class="active" @endif>
+                                            <a href="{{ route('candle.averages', 'SPOT').'?interval=1m' }}">
+                                                <i class="tim-icons icon-bell-55"></i>
+                                                <p>{{ __('Ideal Indicators') }}</p>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                            {{-- FUTURE Child Tab --}}
+                            <li
+                                class="{{ $pageSlug == 'CoinReportFUTURE' || $pageSlug == 'MarketTrendsFUTURE' || $pageSlug == 'averageCandlesticksFUTURE' ? 'active' : '' }}">
+                                <a data-toggle="collapse" href="#futureMenu">
+                                    <i class="tim-icons icon-spaceship"></i>
+                                    <p>{{ __('FUTURE') }}
+                                        <b class="caret"></b>
+                                    </p>
+                                </a>
+                                <div class="collapse" id="futureMenu">
+                                    <ul class="nav">
+                                        <li @if ($pageSlug == 'CoinReportFUTURE') class="active" @endif>
+                                            <a href="{{ route('coinReport', 'FUTURE') . '?interval=1m' }}">
+                                                <i class="tim-icons icon-coins"></i>
+                                                <p>{{ __('Coin Reports') }}</p>
+                                            </a>
+                                        </li>
+                                        <li @if ($pageSlug == 'MarketTrendsFUTURE') class="active" @endif>
+                                            <a href="{{ route('marketTrends', 'FUTURE') . '?interval=1m' }}">
+                                                <i class="tim-icons icon-chart-bar-32"></i>
+                                                <p>{{ __('Market Trends') }}</p>
+                                            </a>
+                                        </li>
+                                        <li @if ($pageSlug == 'averageCandlesticksFUTURE') class="active" @endif>
+                                            <a href="{{ route('candle.averages', 'FUTURE').'?interval=1m' }}">
+                                                <i class="tim-icons icon-bell-55"></i>
+                                                <p>{{ __('Ideal Indicators') }}</p>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+            </ul>
         </div>
-        <ul class="nav">
-            <li @if ($pageSlug == 'dashboard') class="active " @endif>
-                <a href="{{ route('home') }}">
-                    <i class="tim-icons icon-chart-pie-36"></i>
-                    <p>{{ __('Coin Reports (1m)') }}</p>
-                </a>
-            </li>
-            <li @if ($pageSlug == 'MarketTrends') class="active " @endif>
-                <a href="{{ route('marketTrends') }}">
-                    <i class="tim-icons icon-chart-pie-36"></i>
-                    <p>{{ __('Market Trends') }}</p>
-                </a>
-            </li>
-            <li @if ($pageSlug == 'averageCandlesticks') class="active " @endif>
-                <a href="{{ route('candle.averages', 'SPOT') }}">
-                    <i class="tim-icons icon-chart-pie-36"></i>
-                    <p>{{ __('Ideal Indicators (SPOT)') }}</p>
-                </a>
-            </li>
-            <li @if ($pageSlug == 'averageCandlesticks') class="active " @endif>
-                <a href="{{ route('candle.averages', 'FUTURE') }}">
-                    <i class="tim-icons icon-chart-pie-36"></i>
-                    <p>{{ __('Ideal Indicators (FUTURE)') }}</p>
-                </a>
-            </li>
-            {{-- <li @if ($pageSlug == 'dashboard-2') class="active " @endif>
-                <a href="{{ route('home') }}">
-                    <i class="tim-icons icon-chart-pie-36"></i>
-                    <p>{{ __('Coin Reports (15m)') }}</p>
-                </a>
-            </li> --}}
-
-            {{-- <li>
-                <a data-toggle="collapse" href="#laravel-examples" aria-expanded="true">
-                    <i class="fab fa-laravel" ></i>
-                    <span class="nav-link-text" >{{ __('Laravel Examples') }}</span>
-                    <b class="caret mt-1"></b>
-                </a>
-
-                <div class="collapse show" id="laravel-examples">
-                    <ul class="nav pl-4">
-                        <li @if ($pageSlug == 'profile') class="active " @endif>
-                            <a href="{{ route('profile.edit')  }}">
-                                <i class="tim-icons icon-single-02"></i>
-                                <p>{{ __('User Profile') }}</p>
-                            </a>
-                        </li>
-                        <li @if ($pageSlug == 'users') class="active " @endif>
-                            <a href="{{ route('user.index')  }}">
-                                <i class="tim-icons icon-bullet-list-67"></i>
-                                <p>{{ __('User Management') }}</p>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </li>
-            <li @if ($pageSlug == 'icons') class="active " @endif>
-                <a href="{{ route('pages.icons') }}">
-                    <i class="tim-icons icon-atom"></i>
-                    <p>{{ __('Icons') }}</p>
-                </a>
-            </li>
-            <li @if ($pageSlug == 'maps') class="active " @endif>
-                <a href="{{ route('pages.maps') }}">
-                    <i class="tim-icons icon-pin"></i>
-                    <p>{{ __('Maps') }}</p>
-                </a>
-            </li>
-            <li @if ($pageSlug == 'notifications') class="active " @endif>
-                <a href="{{ route('pages.notifications') }}">
-                    <i class="tim-icons icon-bell-55"></i>
-                    <p>{{ __('Notifications') }}</p>
-                </a>
-            </li>
-            <li @if ($pageSlug == 'tables') class="active " @endif>
-                <a href="{{ route('pages.tables') }}">
-                    <i class="tim-icons icon-puzzle-10"></i>
-                    <p>{{ __('Table List') }}</p>
-                </a>
-            </li>
-            <li @if ($pageSlug == 'typography') class="active " @endif>
-                <a href="{{ route('pages.typography') }}">
-                    <i class="tim-icons icon-align-center"></i>
-                    <p>{{ __('Typography') }}</p>
-                </a>
-            </li>
-            <li @if ($pageSlug == 'rtl') class="active " @endif>
-                <a href="{{ route('pages.rtl') }}">
-                    <i class="tim-icons icon-world"></i>
-                    <p>{{ __('RTL Support') }}</p>
-                </a>
-            </li>
-            <li class=" {{ $pageSlug == 'upgrade' ? 'active' : '' }} bg-info">
-                <a href="{{ route('pages.upgrade') }}">
-                    <i class="tim-icons icon-spaceship"></i>
-                    <p>{{ __('Upgrade to PRO') }}</p>
-                </a>
-            </li> --}}
-        </ul>
     </div>
-</div>
