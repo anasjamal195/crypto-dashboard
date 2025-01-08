@@ -30,6 +30,7 @@ class HomeController extends Controller
      */
     public function index()
     {
+        
         $pageSlug = 'Dashboard';
         return view('welcome', compact( 'pageSlug'));
     }

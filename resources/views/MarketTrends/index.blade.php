@@ -1,48 +1,214 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header card-header-primary">
-                    <h4 class="card-title ">Market Trends Report</h4>
-                    <p class="card-category">Here is a list of market trends for various symbols</p>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead class="text-primary">
-                                <tr>
-                                    <th>Symbol</th>
-                                    <th>Market</th>
-                                    <th>Interval</th>
-                                    <th>Signal</th>
-                                    <th>Trade Type</th>
-                                    <th>Last Updated</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($trends as $trend)
-                                <tr>
-                                    <td>{{ $trend->symbol }}</td>
-                                    <td>{{ $trend->market }}</td>
-                                    <td>{{ $trend->interval }}</td>
-                                    <td>
-                                        <span class="badge {{ $trend->signal === 'positive' ? 'badge-success' : 'badge-danger' }}">
-                                            {{ $trend->signal === 'positive' ? 'Green' : 'Red' }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $trend->tradeType }}</td>
-                                    <td>{{ \Carbon\Carbon::parse($trend->updated_at)->timezone('Asia/Karachi')->format('d M Y, h:i A') }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header card-header-primary">
+                        <h4 class="card-title ">Market Trends Report</h4>
+                        <p class="card-category">Here is a list of market trends for various symbols</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead class="text-primary">
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Market</th>
+                                        <th>Interval</th>
+                                        <th>Signal</th>
+                                        <th>Trade Type</th>
+                                        <th>Last Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($trends as $trend)
+                                        <tr>
+                                            <td>{{ $trend->symbol }}</td>
+                                            <td>{{ $trend->market }}</td>
+                                            <td>{{ $trend->interval }}</td>
+                                            <td>
+                                                <span
+                                                    class="badge {{ $trend->signal === 'positive' ? 'badge-success' : 'badge-danger' }}">
+                                                    {{ $trend->signal === 'positive' ? 'Green' : 'Red' }}
+                                                </span>
+                                            </td>
+                                            <td>{{ $trend->tradeType }}</td>
+                                            <td>{{ \Carbon\Carbon::parse($trend->updated_at)->timezone('Asia/Karachi')->format('d M Y, h:i A') }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" action="{{ url()->current() }}">
+                            <div class="form-group row">
+                                <label for="datetime" class="col-md-2 col-form-label text-md-right">Select Date and
+                                    Time:</label>
+                                <div class="col-md-4">
+                                    <input type="datetime-local" class="form-control" id="datetime" name="timestamp" value="{{request()->get('timestamp')}}"
+                                        required>
+                                        <input type="hidden" class="form-control" id="interval" name="interval" value="{{request()->get('interval')}}"
+                                        required>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <canvas id="candlestickChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+    <script>
+       
+        document.addEventListener("DOMContentLoaded", function() {
+            const historicalTrends = @json($historicalTrends);
+
+            // Extract timestamps and close prices
+            const timestamps = historicalTrends.BTCUSDT.map(data => data.timestamp);
+            const closePricesBTC = historicalTrends.BTCUSDT.map(data => data.close);
+            const closePricesETH = historicalTrends.ETHUSDT.map(data => data.close);
+
+            // Determine point colors and styles based on buy/sell triggers
+            const pointStylesBTC = historicalTrends.BTCUSDT.map((candle, index) => {
+                if (candle.marketTrend == 'green') {
+                    return {
+                        backgroundColor: 'rgba(46, 204, 113,0.7)', // Soft green for buy triggers
+                        borderColor: 'darkgreen', // Darker green border
+                        radius: 5 // Larger point radius for emphasis
+                    };
+                } else {
+                    return {
+                        backgroundColor: 'rgba(231, 76, 60,0.7)', // Soft red for other points
+                        borderColor: 'darkred', // Red border
+                        radius: 3 // Normal point radius
+                    };
+                }
+            });
+
+            const pointStylesETH = historicalTrends.ETHUSDT.map((candle, index) => {
+                if (candle.marketTrend == 'green') {
+                    return {
+                        backgroundColor: 'rgba(46, 204, 113,0.7)', // Soft green for buy triggers
+                        borderColor: 'darkgreen', // Darker green border
+                        radius: 5 // Larger point radius for emphasis
+                    };
+                } else {
+                    return {
+                        backgroundColor: 'rgba(231, 76, 60,0.7)', // Soft red for other points
+                        borderColor: 'darkred', // Red border
+                        radius: 3 // Normal point radius
+                    };
+                }
+            });
+
+            // Initialize Chart.js
+            const ctx = document.getElementById('candlestickChart').getContext('2d');
+            window.candlestickChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [{
+                            label: 'Close Prices BTC',
+                            data: closePricesBTC,
+                            borderColor: 'rgba(231, 76, 60,1.0)', // Red border color
+                            backgroundColor: 'rgba(255, 255, 0, 0.22)', // Transparent yellow background
+                            tension: 0.1,
+                            yAxisID: 'yBTC',
+                            pointBackgroundColor: pointStylesBTC.map(style => style.backgroundColor),
+                            pointBorderColor: pointStylesBTC.map(style => style.borderColor),
+                            pointRadius: pointStylesBTC.map(style => style.radius)
+                        },
+                        {
+                            label: 'Close Prices ETH',
+                            data: closePricesETH,
+                            borderColor: 'rgba(231, 76, 60,1.0)', // Red border color
+                            backgroundColor: 'rgba(255, 255, 0, 0.22)', // Transparent yellow background
+                            tension: 0.1,
+                            yAxisID: 'yETH',
+                            pointBackgroundColor: pointStylesETH.map(style => style.backgroundColor),
+                            pointBorderColor: pointStylesETH.map(style => style.borderColor),
+                            pointRadius: pointStylesETH.map(style => style.radius)
+                        }
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Timestamp',
+                            },
+                            ticks: {
+                                color: '#ccc', // Light grey color for ticks
+                                display: false,
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Close Value',
+                            },
+                            ticks: {
+                                color: '#ccc', // Light grey color for ticks
+                            }
+                        }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy'
+                            },
+                            zoom: {
+                                pinch: {
+                                    enabled: true
+                                },
+                                wheel: {
+                                    enabled: true,
+                                    speed: 0.1,
+                                    threshold: 10,
+                                    modifierKey: 'ctrl'
+                                },
+                                mode: 'x'
+                            }
+                        }
+                    }
+                }
+            });
+
+            window.showDetails = function(tradeId, button) {
+                const detailRow = document.getElementById('details-' + tradeId);
+                const isVisible = !detailRow.classList.contains('d-none');
+                document.querySelectorAll('.trade-details').forEach(el => el.classList.add(
+                    'd-none')); // Hide all
+                if (!isVisible) {
+                    detailRow.classList.remove('d-none');
+                    const trade = trades.find(t => t.id === tradeId);
+                    zoomChartToTrade(trade.buyingCandle.timestamp, trade.sellingCandle.timestamp,
+                        window.candlestickChart, timestamps);
+                }
+            };
+
+            function zoomChartToTrade(buyTimestamp, sellTimestamp, chart, timestamps) {
+                console.log(timestamps.findIndex(timestamp => timestamp === buyTimestamp))
+                const minIndex = timestamps.findIndex(timestamp => timestamp === buyTimestamp);
+                const maxIndex = timestamps.findIndex(timestamp => timestamp === sellTimestamp);
+
+                if (minIndex !== -1 && maxIndex !== -1) {
+                    chart.options.scales.x.min = timestamps[minIndex];
+                    chart.options.scales.x.max = timestamps[maxIndex];
+                    chart.update();
+                }
+            }
+        });
+    </script>
 @endsection

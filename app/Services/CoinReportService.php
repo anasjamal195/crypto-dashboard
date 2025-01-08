@@ -132,6 +132,7 @@ class CoinReportService
                 if ($lowestPrice > $candle['low'])
                     $lowestPrice = $candle['low'];
                 if ($candle['high'] >= $buy_price * (1 + $targetProfit / 100)) {
+                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol,$buy_price,CommonHelpers::getSettingsValue('future_coin_report_leverage',10),'long');
                     $candle['should_sell'] = true;
                     $buy_triggers[] = $candle;
                     $currentTrade['sellingCandle'] = json_encode($candle);
@@ -142,7 +143,9 @@ class CoinReportService
                     $currentTrade['interval'] = $interval;
                     $currentTrade['profit'] = round(($candle['high'] - $buy_price) / $buy_price * 100, 2);
                     $currentTrade['lowestPrice'] = $lowestPrice;
+                    $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
+
                     $lowestPrice = 0;
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);

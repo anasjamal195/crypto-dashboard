@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\BinanceApiService;
+use App\Services\MarketTrendService;
+use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -29,7 +31,7 @@ class BinanceController extends Controller
             ->orderBy('total_entries', 'DESC')
             ->get();
         $pageSlug = 'CoinReport' . $market;
-        return view('CoinReports.coin-report', compact('tradeData', 'pageSlug','market'));
+        return view('CoinReports.coin-report', compact('tradeData', 'pageSlug', 'market'));
     }
     public function getCoinReportDetails($market, Request $request)
     {
@@ -51,7 +53,7 @@ class BinanceController extends Controller
             });
 
         // Fetching Base Candle Data
-        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000,null,$market);
+        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, null, $market);
 
         foreach ($data as $index => &$candle) {
 
@@ -75,7 +77,19 @@ class BinanceController extends Controller
     public function showTrends($market, Request $request)
     {
         $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
-        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market]);
+        $historicalTrends = MarketTrendService::getHistoricalTrends($request->interval, $market);
+        // $timestamp = $request->timestamp;
+
+        // // Create a DateTime object
+        // if ($request->timestamp) {
+        //     $dateTime = new DateTime($request->timestamp);
+
+        //     // Get the UNIX timestamp and convert it to milliseconds
+        //     $timestamp = $dateTime->getTimestamp() * 1000;
+        // }
+        // dd($request->timestamp, $timestamp, $historicalTrends);
+
+        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends]);
     }
     public function showAverages($market, Request $request)
     {

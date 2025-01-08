@@ -99,7 +99,61 @@ class MarketTrendService
         }
         return true;
     }
+    public static function getHistoricalTrends(
+        $interval = '1m',
+        $market = 'SPOT',
+        $timestamp = null,
+    ) {
 
+        $marketTrendData = [];
+
+        foreach (self::$coins as $coin) {
+
+
+            try {
+                $symbol = $coin;
+
+                $limit = 1000;
+                $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
+                foreach ($data as $indexCandle => &$candle) {
+                    $candle['marketTrend'] = '';
+
+                    $candle['timestamp'] = $candle['timestamp'] / 1000;
+                    $date = new \DateTime("@{$candle['timestamp']}");
+                    $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
+                    $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
+                    if ($indexCandle < 15) {
+                        continue;
+                    }
+
+
+                    $previousThreshold = $candle['close'];
+
+                    // Calculating lowest price in previous 15 candles
+                    for ($i = $indexCandle - 15; $i <= $indexCandle; $i++) {
+                        if ($previousThreshold > $data[$i]['close']) {
+                            $previousThreshold = $data[$i]['close'];
+                        }
+                    }
+
+
+
+                    if ($candle['close'] < 1.006 * $previousThreshold) {
+                        // Red Signal
+                        $candle['marketTrend'] = 'red';
+                    } else {
+                        $candle['marketTrend'] = 'green';
+                    }
+                }
+
+                $marketTrendData[$coin] = $data;
+            } catch (\Throwable $th) {
+                Log::error('DataDumper: Error - ' . $th->getMessage());
+                Log::error($th->getTraceAsString());
+            }
+        }
+        return $marketTrendData;
+    }
     public static function istradeAllowed(
         $interval = '1m',
         $limit = 15,

@@ -57,7 +57,7 @@
                                 <tr>
                                     <td><strong>Grand Total:</strong></td>
                                     <td>{{ $totalTrades }}</td>
-                                    <td>{{ $totalProfit }}</td>
+                                    <td>{{ $totalProfit }} %</td>
                                     <td>&nbsp;</td>
                                     <td>&nbsp;</td>
                                     <td>&nbsp;</td>

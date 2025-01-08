@@ -9,6 +9,7 @@ return [
         'ticker_24hr' => '/ticker/24hr',
         'klines' => '/klines',
         'exchange_info' => '/exchangeInfo',
+        'margin' => '/margin'
         
     ],
     'settings' => [

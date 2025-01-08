@@ -4,6 +4,7 @@
     $buyTriggers = [];
     $sellTriggers = [];
     $lowestTriggers = [];
+    $liquidationTriggers = [];
 
 @endphp
 
@@ -121,6 +122,7 @@
                                     <tr>
                                         <th>Trade ID</th>
                                         <th>Buying Price (USDT)</th>
+                                        <th>Liquidation Price (USDT)</th>
                                         <th>Lowest Price (USDT)</th>
                                         <th>Selling Price (USDT)</th>
                                         <th>Buying Time</th>
@@ -136,7 +138,6 @@
                                         @php
                                             $buyCandle = json_decode(json_encode($trade->buyingCandle), true);
                                             $sellCandle = json_decode(json_encode($trade->sellingCandle), true);
-
                                             $buyingAverages = json_decode($trade->buyingAverages, true);
                                             $buyTriggers[] = $buyCandle['binance_timestamp'];
                                             $sellTriggers[] = $sellCandle['binance_timestamp'];
@@ -183,9 +184,10 @@
                                                 ])
                                                 ->get();
                                         @endphp
-                                        <tr>
+                                        <tr @if($trade->liquidationPrice > $lowestPrice) class="bg-danger" @endif>
                                             <td>{{ $trade->id }}</td>
                                             <td>{{ number_format($trade->buyingPrice, 4) }}</td>
+                                            <td>{{ number_format($trade->liquidationPrice, 4) }}</td>
                                             <td>{{ number_format($trade->lowestPrice, 4) }}
                                                 ({{ number_format($trade->lowestPricePercentage, 2) }}%)
                                             </td>

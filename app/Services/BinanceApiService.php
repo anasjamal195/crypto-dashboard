@@ -82,6 +82,51 @@ class BinanceApiService
         }
         return $usdtPairs;
     }
+    /**
+     * Fetch maintenance margin rate for a specific symbol from Binance.
+     *
+     * @param string $symbol The trading pair symbol, like 'BTCUSDT'.
+     * @return float|null Maintenance margin rate, or null if not found.
+     */
+    public static function getMaintenanceMarginRate($symbol)
+    {
+        $url = config('binance.api.future_base_url') . config('binance.endpoints.exchange_info');
+        $response = self::getHttpClient()->get($url);
+        if ($response->successful()) {
+            $data = $response->json();
+            foreach ($data['symbols'] as $item) {
+                if ($item['symbol'] === $symbol) {
+                   
+                    return $item['maintMarginPercent']; // Convert percentage to decimal
+                }
+            }
+        }
+
+        return null; // Return null if the symbol is not found or the API call fails
+    }
+
+    /**
+     * Calculate the liquidation price for a given entry price, leverage, and margin rate.
+     *
+     * @param float $entryPrice The price at which the trade is entered.
+     * @param float $leverage The leverage used for the trade.
+     * @param float $maintenanceMarginRate The maintenance margin rate.
+     * @return float
+     */
+    public static function calculateLiquidationPrice($symbol, $entryPrice, $leverage, $positionType = 'long')
+    {
+        $maintenanceMarginRate = self::getMaintenanceMarginRate($symbol) / 100; // As a decimal
+        $initialMargin = 1 / $leverage; // Initial margin as a fraction of leverage
+
+        if ($positionType === 'long') {
+            $liquidationPrice = $entryPrice * (1 - (1 / $leverage) + ($maintenanceMarginRate/$leverage));
+        } else {
+            $liquidationPrice = $entryPrice * (1 + (1 / $leverage) + ($maintenanceMarginRate/$leverage));
+        }
+
+        return $liquidationPrice;
+    }
+
 
     /**
      * Get candlestick data for a given symbol and interval from Binance API using static method.
@@ -111,6 +156,7 @@ class BinanceApiService
         if ($timestamp) {
             $params['startTime'] = $timestamp;
         }
+
 
 
         // Make the HTTP request using Laravel's Http facade with SSL verification disabled conditionally
