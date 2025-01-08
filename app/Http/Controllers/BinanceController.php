@@ -63,6 +63,16 @@ class BinanceController extends Controller
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
         }
 
+        $liquidatedCoins = DB::table('coin_reports')
+            ->select('symbol', 'interval', 'market')
+            ->distinct()
+            ->where('liquidationPrice', '>', 'lowestPrice')
+            ->get();
+
+        // Extracting unique symbols, intervals, and markets
+        $liquidatedSymbols = $liquidatedCoins->pluck('symbol')->unique();
+        $liquidatedIntervals = $liquidatedCoins->pluck('interval')->unique();
+        $liquidatedMarkets = $liquidatedCoins->pluck('market')->unique();
 
         return view('CoinReports.coin-report-details', [
             'pageSlug' => 'Report Details',
@@ -71,6 +81,9 @@ class BinanceController extends Controller
             'trades' => $trades,
             'market' => $market,
             'data' => $data,
+            'liquidatedSymbols' => $liquidatedSymbols,
+            'liquidatedIntervals' => $liquidatedIntervals,
+            'liquidatedMarkets' => $liquidatedMarkets
         ]);
     }
 
@@ -123,18 +136,9 @@ class BinanceController extends Controller
             ->groupBy('symbol', 'interval') // Include 'market' in the group by clause
             ->get();
 
-        $liquidatedCoins = DB::table('ideal_buying_candles')
-            ->select('symbol', 'interval', 'market')
-            ->distinct()
-            ->where('liquidationPrice', '>', 'lowestPrice')
-            ->get();
-
-        // Extracting unique symbols, intervals, and markets
-        $liquidatedSymbols = $liquidatedCoins->pluck('symbol')->unique();
-        $liquidatedIntervals = $liquidatedCoins->pluck('interval')->unique();
-        $liquidatedMarkets = $liquidatedCoins->pluck('market')->unique();
 
 
-        return view('IdealIndicators.index', ['averages' => $averages, 'pageSlug' => 'averageCandlesticks' . $market, 'liquidatedSymbols' => $liquidatedSymbols, 'liquidatedIntervals' => $liquidatedIntervals, 'liquidatedMarkets' => $liquidatedMarkets]);
+
+        return view('IdealIndicators.index', ['averages' => $averages, 'pageSlug' => 'averageCandlesticks' . $market]);
     }
 }
