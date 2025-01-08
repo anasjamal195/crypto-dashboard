@@ -38,9 +38,9 @@ class BinanceController extends Controller
             ->get();
 
         // Extracting unique symbols, intervals, and markets
-        $liquidatedSymbols = $liquidatedCoins->pluck('symbol')->unique();
-        $liquidatedIntervals = $liquidatedCoins->pluck('interval')->unique();
-        $liquidatedMarkets = $liquidatedCoins->pluck('market')->unique();
+        $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()),true);
+        $liquidatedIntervals =json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()),true);
+        $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()),true);
         return view('CoinReports.coin-report', compact('tradeData', 'pageSlug', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
@@ -82,7 +82,6 @@ class BinanceController extends Controller
             'trades' => $trades,
             'market' => $market,
             'data' => $data,
-
         ]);
     }
 
