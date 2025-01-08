@@ -184,7 +184,7 @@
                                                 ])
                                                 ->get();
                                         @endphp
-                                        <tr @if($trade->liquidationPrice > $lowestPrice) class="bg-danger" @endif>
+                                        <tr @if($trade->liquidationPrice > $trade->lowestPrice) class="bg-danger" @endif>
                                             <td>{{ $trade->id }}</td>
                                             <td>{{ number_format($trade->buyingPrice, 4) }}</td>
                                             <td>{{ number_format($trade->liquidationPrice, 4) }}</td>
