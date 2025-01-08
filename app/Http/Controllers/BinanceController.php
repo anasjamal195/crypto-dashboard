@@ -123,6 +123,18 @@ class BinanceController extends Controller
             ->groupBy('symbol', 'interval') // Include 'market' in the group by clause
             ->get();
 
-        return view('IdealIndicators.index', ['averages' => $averages, 'pageSlug' => 'averageCandlesticks' . $market]);
+        $liquidatedCoins = DB::table('ideal_buying_candles')
+            ->select('symbol', 'interval', 'market')
+            ->distinct()
+            ->where('liquidationPrice', '>', 'lowestPrice')
+            ->get();
+
+        // Extracting unique symbols, intervals, and markets
+        $liquidatedSymbols = $liquidatedCoins->pluck('symbol')->unique();
+        $liquidatedIntervals = $liquidatedCoins->pluck('interval')->unique();
+        $liquidatedMarkets = $liquidatedCoins->pluck('market')->unique();
+
+
+        return view('IdealIndicators.index', ['averages' => $averages, 'pageSlug' => 'averageCandlesticks' . $market, 'liquidatedSymbols' => $liquidatedSymbols, 'liquidatedIntervals' => $liquidatedIntervals, 'liquidatedMarkets' => $liquidatedMarkets]);
     }
 }
