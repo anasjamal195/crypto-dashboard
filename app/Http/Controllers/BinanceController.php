@@ -31,7 +31,17 @@ class BinanceController extends Controller
             ->orderBy('total_entries', 'DESC')
             ->get();
         $pageSlug = 'CoinReport' . $market;
-        return view('CoinReports.coin-report', compact('tradeData', 'pageSlug', 'market'));
+        $liquidatedCoins = DB::table('coin_reports')
+            ->select('symbol', 'interval', 'market')
+            ->distinct()
+            ->where('liquidationPrice', '>', 'lowestPrice')
+            ->get();
+
+        // Extracting unique symbols, intervals, and markets
+        $liquidatedSymbols = $liquidatedCoins->pluck('symbol')->unique();
+        $liquidatedIntervals = $liquidatedCoins->pluck('interval')->unique();
+        $liquidatedMarkets = $liquidatedCoins->pluck('market')->unique();
+        return view('CoinReports.coin-report', compact('tradeData', 'pageSlug', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {
@@ -63,16 +73,7 @@ class BinanceController extends Controller
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
         }
 
-        $liquidatedCoins = DB::table('coin_reports')
-            ->select('symbol', 'interval', 'market')
-            ->distinct()
-            ->where('liquidationPrice', '>', 'lowestPrice')
-            ->get();
 
-        // Extracting unique symbols, intervals, and markets
-        $liquidatedSymbols = $liquidatedCoins->pluck('symbol')->unique();
-        $liquidatedIntervals = $liquidatedCoins->pluck('interval')->unique();
-        $liquidatedMarkets = $liquidatedCoins->pluck('market')->unique();
 
         return view('CoinReports.coin-report-details', [
             'pageSlug' => 'Report Details',
@@ -81,9 +82,7 @@ class BinanceController extends Controller
             'trades' => $trades,
             'market' => $market,
             'data' => $data,
-            'liquidatedSymbols' => $liquidatedSymbols,
-            'liquidatedIntervals' => $liquidatedIntervals,
-            'liquidatedMarkets' => $liquidatedMarkets
+
         ]);
     }
 
