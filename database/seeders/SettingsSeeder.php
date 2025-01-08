@@ -91,6 +91,10 @@ class SettingsSeeder extends Seeder
                 'settings_key' => 'report_worker_limit_future',
                 'settings_value' => 1000
             ],
+            [
+                'settings_key' => 'future_coin_report_leverage',
+                'settings_value' => 10
+            ],
 
         ]);
     }
