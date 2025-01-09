@@ -391,22 +391,19 @@
                                                         <h5 class="text-warning">Buying Conditions:</h5>
                                                         <div>
                                                             <strong>RSI:</strong>
-                                                            Buying RSI ({{ round($buyingCandle['rsi6'], 4) }}) < Limit RSI
+                                                            Buying RSI ({{ round($buyCandle['rsi6'], 4) }}) < Limit RSI
                                                                 ({{ round($buyingAverages['rsi6'], 4) }}) <br>
                                                                 <strong>Stoch Condition:</strong>
-                                                                Buying Stoch ({{ round($buyingCandle['stoch_d'], 4) }}) <
+                                                                Buying Stoch ({{ round($buyCandle['stoch_d'], 4) }}) <
                                                                     Limit Stoch
                                                                     ({{ round($buyingAverages['stoch_rsi'], 4) }}) <strong>
                                                                     Obv Limit:</strong>
                                                                     Buying OBV Limit
-                                                                    ({{ $buyingCandle['previousObvHigh'] != 0 ? abs(round((($buyingCandle['previousObvHigh'] - $buyingCandle['obv']) / $buyingCandle['previousObvHigh']) * 100, 2)) : 100 }})
+                                                                    ({{ $buyCandle['previousObvHigh'] != 0 ? abs(round((($buyCandle['previousObvHigh'] - $buyCandle['obv']) / $buyCandle['previousObvHigh']) * 100, 2)) : 100 }})
                                                                     > Average OBV Limit
                                                                     ({{ $buyingAverages['previousObvHigh'] != 0 ? abs(round((($buyingAverages['previousObvHigh'] - $buyingAverages['obv']) / $buyingAverages['previousObvHigh']) * 100, 2)) : 100 }})
                                                                     <br>
                                                         </div>
-
-
-
 
                                                     </div>
                                                     <div class="col-md-3">
