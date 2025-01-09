@@ -390,20 +390,24 @@
 
                                                         <h5 class="text-warning">Buying Conditions:</h5>
                                                         <div>
-                                                            <strong>RSI:</strong>
-                                                            Buying RSI ({{ round($buyCandle['rsi6'], 4) }}) < Limit RSI
-                                                                ({{ round($buyingAverages['rsi6'], 4) }}) <br>
-                                                                <strong>Stoch Condition:</strong>
-                                                                Buying Stoch ({{ round($buyCandle['stoch_d'], 4) }}) <
-                                                                    Limit Stoch
-                                                                    ({{ round($buyingAverages['stoch_rsi'], 4) }}) <strong>
-                                                                    Obv Limit:</strong>
+                                                            <strong>RSI:</strong><br>
+                                                            Buying RSI
+                                                            (<strong>{{ round($buyCandle['rsi6'], 4) }}</strong>) < Limit
+                                                                RSI (<strong>
+                                                                {{ round($buyingAverages['rsi6'], 4) }}</strong>) <br><br>
+                                                                <strong>Stoch Condition:</strong><br>
+                                                                Buying Stoch
+                                                                (<strong>{{ round($buyCandle['stoch_d'], 4) }}</strong>) <
+                                                                    Limit Stoch (<strong>
+                                                                    {{ round($buyingAverages['stoch_rsi'], 4) }}</strong>)<br><br>
+                                                                    <strong>Obv Limit:</strong><br>
                                                                     Buying OBV Limit
-                                                                    ({{ $buyCandle['previousObvHigh'] != 0 ? abs(round((($buyCandle['previousObvHigh'] - $buyCandle['obv']) / $buyCandle['previousObvHigh']) * 100, 2)) : 100 }})
+                                                                    (<strong>{{ $buyCandle['previousObvHigh'] != 0 ? abs(round((($buyCandle['previousObvHigh'] - $buyCandle['obv']) / $buyCandle['previousObvHigh']) * 100, 2)) : 100 }}</strong>)
                                                                     > Average OBV Limit
-                                                                    ({{ $buyingAverages['previousObvHigh'] != 0 ? abs(round((($buyingAverages['previousObvHigh'] - $buyingAverages['obv']) / $buyingAverages['previousObvHigh']) * 100, 2)) : 100 }})
+                                                                    (<strong>{{ $buyingAverages['previousObvHigh'] != 0 ? abs(round((($buyingAverages['previousObvHigh'] - $buyingAverages['obv']) / $buyingAverages['previousObvHigh']) * 100, 2)) : 100 }}</strong>)
                                                                     <br>
                                                         </div>
+
 
                                                     </div>
                                                     <div class="col-md-3">
