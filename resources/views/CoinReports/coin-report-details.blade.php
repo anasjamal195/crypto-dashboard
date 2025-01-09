@@ -175,8 +175,8 @@
 
                                             $nearbyTrades = DB::table('coin_reports')
                                                 ->where('symbol', '!=', $trade->symbol)
-                                                ->where('market',  $market)
-                                                ->where('interval',  $interval)
+                                                ->where('market', $market)
+                                                ->where('interval', $interval)
 
                                                 ->whereBetween('buyingCandle->timestamp', [
                                                     $fiveMinutesBefore->format('Y-m-d H:i:s'),
@@ -184,7 +184,7 @@
                                                 ])
                                                 ->get();
                                         @endphp
-                                        <tr @if($trade->liquidationPrice >= $trade->lowestPrice) class="bg-danger" @endif>
+                                        <tr @if ($trade->liquidationPrice >= $trade->lowestPrice) class="bg-danger" @endif>
                                             <td>{{ $trade->id }}</td>
                                             <td>{{ number_format($trade->buyingPrice, 4) }}</td>
                                             <td>{{ number_format($trade->liquidationPrice, 4) }}</td>
@@ -385,28 +385,28 @@
                                                         </div>
                                                     </div>
                                                     <div class="col-md-3">
-                                                        <h5 class="text-info">Coin Selection Conditions:</h5>
-                                                        <div>
-                                                            <strong>Min (24h) Change:</strong> -5%<br>
-                                                            <strong>Max (24h) Change:</strong> 5%<br>
-                                                            <strong>Quantity:</strong> 100<br>
-                                                        </div>
-                                                        <br>
 
-                                                        <h5 class="text-primary">Profit Details:</h5>
+
+
+                                                        <h5 class="text-warning">Buying Conditions:</h5>
                                                         <div>
-                                                            <strong>Minimum Target Profit:</strong> 0.4%
+                                                            <strong>RSI:</strong>
+                                                            Buying RSI ({{ round($buyingCandle['rsi6'], 4) }}) < Limit RSI
+                                                                ({{ round($buyingAverages['rsi6'], 4) }}) <br>
+                                                                <strong>Stoch Condition:</strong>
+                                                                Buying Stoch ({{ round($buyingCandle['stoch_d'], 4) }}) <
+                                                                    Limit Stoch
+                                                                    ({{ round($buyingAverages['stoch_rsi'], 4) }}) <strong>
+                                                                    Obv Limit:</strong>
+                                                                    Buying OBV Limit
+                                                                    ({{ $buyingCandle['previousObvHigh'] != 0 ? abs(round((($buyingCandle['previousObvHigh'] - $buyingCandle['obv']) / $buyingCandle['previousObvHigh']) * 100, 2)) : 100 }})
+                                                                    > Average OBV Limit
+                                                                    ({{ $buyingAverages['previousObvHigh'] != 0 ? abs(round((($buyingAverages['previousObvHigh'] - $buyingAverages['obv']) / $buyingAverages['previousObvHigh']) * 100, 2)) : 100 }})
+                                                                    <br>
                                                         </div>
-                                                        <br>
-                                                        <h5 class="text-warning">Buying Averages:</h5>
-                                                        <div>
-                                                            <strong>RSI Average:</strong>
-                                                            {{ round($buyingAverages['rsi6'], 4) }}<br>
-                                                            <strong>Stoch Average:</strong>
-                                                            {{ round($buyingAverages['stoch_d'], 4) }}<br>
-                                                            <strong>Obv Limit:</strong>
-                                                            {{ $buyingAverages['previousObvHigh'] != 0 ? abs(round((($buyingAverages['previousObvHigh'] - $buyingAverages['obv']) / $buyingAverages['previousObvHigh']) * 100, 2)) : 100 }}<br>
-                                                        </div>
+
+
+
 
                                                     </div>
                                                     <div class="col-md-3">
