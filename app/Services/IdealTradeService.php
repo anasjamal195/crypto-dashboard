@@ -45,6 +45,115 @@ class IdealTradeService
 
     }
 
+    public static function getIdealBuyingCandles($data)
+    {
+        $requiredCandles = [];
+        $priceLock = $data[0]['close'];
+        $priceLockIndex = 0;
+        $skipIndex = 0;
+
+        foreach ($data as $index => $candle) {
+
+
+            if ($index < $skipIndex + 10 || $index < 20) {
+                continue;
+            } else {
+                $skipIndex == 0;
+            }
+            if ($priceLock > $candle['close']) {
+                $candle['should_buy'] = true;
+                $priceLock = $candle['close'];
+                $priceLockIndex = $index;
+            } else if ($index < $priceLockIndex + 30) {
+                if ($candle['close'] > $priceLock * 1.006) {
+                    $data[$priceLockIndex]['should_sell'] = true;
+
+                    $data[$priceLockIndex]['should_buy'] = false;
+
+                    $previousObvHigh = 0;
+                    for ($i = $priceLockIndex - 15; $i <= $priceLockIndex; $i++) {
+
+                        if ($data[$priceLockIndex]['obv'] > $previousObvHigh) {
+                            $previousObvHigh = $data[$i]['obv'];
+                        }
+                    }
+
+                    $candle['previousObvHigh'] = $previousObvHigh;
+                    $requiredCandles[] = $data[$priceLockIndex];
+                    $skipIndex = $index;
+                    $requiredCandles[] = $data[$priceLockIndex];
+                }
+            } else if ($index >= $priceLockIndex + 30) {
+                $priceLock = $candle['close'];
+            }
+        }
+
+        return $requiredCandles;
+    }
+    public static function getMedian($values)
+    {
+        sort($values); // Sort the array
+        $count = count($values);
+        $middle = floor($count / 2);
+
+        if ($count % 2) {
+            // Odd number of values
+            return $values[$middle];
+        } else {
+
+            // Even number of values, return the average of the middle values
+            return ($values[$middle - 1] + $values[$middle]) / 2;
+        }
+    }
+    public static function getTruncatedMean($values, $percentage = 10)
+    {
+        sort($values);
+        $count = count($values);
+        $howMany = floor($count * ($percentage / 100));
+
+        // Remove the top and bottom 10%
+        $trimmedValues = array_slice($values, $howMany, $count - 2 * $howMany);
+        $trimmedCount = count($trimmedValues);
+
+        return array_sum($trimmedValues) / $trimmedCount;
+    }
+
+    public static function getAverages($idealBuyingCandles)
+    {
+        // Initialize an array to hold our results
+        $results = [];
+
+        // List of keys to calculate averages and medians
+        $keys = ['ma7', 'ma14', 'ma25', 'ma99', 'rsi6', 'per', 'dif', 'dea', 'histogram', 'sar', 'stoch_rsi', 'obv', 'stoch_k', 'stoch_d', 'wr', 'K', 'D', 'J', 'previousObvHigh'];
+
+        // Loop over each key and calculate the average and median
+        foreach ($keys as $key) {
+            // Collect all values for the current key
+            $values = array_map(function ($candle) use ($key) {
+                return $candle[$key] ?? null; // Use null coalescing operator to handle missing keys
+            }, $idealBuyingCandles);
+
+            // Remove null values for accurate calculations
+            $filteredValues = array_filter($values, function ($value) {
+                return $value !== null;
+            });
+
+            // Calculate the average
+            $average = count($filteredValues) ? array_sum($filteredValues) / count($filteredValues) : null;
+
+            // Calculate the median
+            $median = self::getMedian($filteredValues);
+
+            // Store the results
+            $results[$key] = $median;
+        }
+
+        return $results;
+    }
+
+
+
+
     public static function processDataAndStore($data, $coin, $interval, $market)
     {
         $requiredCandles = [];

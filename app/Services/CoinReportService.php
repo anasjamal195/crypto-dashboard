@@ -30,22 +30,19 @@ class CoinReportService
         $market = 'FUTURE'
     ) {
 
+        $marketTrends = MarketTrendService::getHistoricalTrends($interval, $market);
         $tradesTotal = [];
         $coins = DB::table('coins')->where('market', $market)->get();
 
         foreach ($coins as $coin) {
-            $averages = CommonHelpers::getIndicatorAverages($coin->symbol, $interval, $market);
-            $obvCandles = 15;
-            $obvLimit = $averages['previousObvHigh'] != 0 ? abs((($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100) : 100;
-            $rsiThreshold = $averages['rsi6'];
-            $stochDLimit = $averages['stoch_d'];
+
             $targetProfit = 0.4;
 
             try {
                 $symbol = $coin->symbol;
                 $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, $market);
 
-                $trades = self::processCandles($symbol, $interval, $market, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit, $averages);
+                $trades = self::processCandles($symbol, $interval, $market, $data, $targetProfit, $marketTrends);
 
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->delete();
@@ -60,7 +57,28 @@ class CoinReportService
         }
         return $tradesTotal;
     }
+    public static function getCoinReport(
+        $symbol,
+        $interval = '1m',
+        $limit = 1000,
+        $market = 'FUTURE'
+    ) {
 
+        $marketTrends = MarketTrendService::getHistoricalTrends($interval, $market);
+        $tradesTotal = [];
+        $targetProfit = 0.4;
+        try {
+            $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, $market);
+            $trades = self::processCandles($symbol, $interval, $market, $data, $targetProfit, $marketTrends);
+            $tradesTotal[$symbol] = $trades;
+        } catch (\Exception $e) {
+            Log::error("Failed to update coin reports: " . $e->getMessage());
+            dd($e);
+        }
+        usleep(100000); // 100ms Sleep after each iteration
+
+        return $tradesTotal;
+    }
     /**
      * Processes candlestick data to determine trade opportunities based on technical indicators.
      *
@@ -72,7 +90,7 @@ class CoinReportService
      * @param float $targetProfit Target profit percentage for sell signal.
      * @return array Processed trade data.
      */
-    protected static function processCandles($symbol, $interval, $market, $data, $rsiThreshold, $obvCandles, $obvLimit, $stochDLimit, $targetProfit, $averages)
+    protected static function processCandles($symbol, $interval, $market, $data, $targetProfit, $marketTrends)
     {
         $buy_price = 0;
         $buy_triggers = [];
@@ -91,7 +109,20 @@ class CoinReportService
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
 
+            if ($index < 200) {
+                continue;
+            }
+            $obvCandles = 15;
+            // dd(($index +  $obvCandles) ,$index,$obvCandles);
+            $idealBuying = IdealTradeService::getIdealBuyingCandles(array_slice($data, $index  - 200, 200));
+            $averages = IdealTradeService::getAverages($idealBuying);
+
+            $rsiThreshold = $averages['rsi6'];
+            $stochDLimit = $averages['stoch_rsi'];
+            $obvLimit = (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100;
             if ($buy_price == 0) {
+
+
                 if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
 
                     if ($index > $obvCandles) {
@@ -132,7 +163,7 @@ class CoinReportService
                 if ($lowestPrice > $candle['low'])
                     $lowestPrice = $candle['low'];
                 if ($candle['high'] >= $buy_price * (1 + $targetProfit / 100)) {
-                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol,$buy_price,CommonHelpers::getSettingsValue('future_coin_report_leverage',10),'long');
+                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'long');
                     $candle['should_sell'] = true;
                     $buy_triggers[] = $candle;
                     $currentTrade['sellingCandle'] = json_encode($candle);

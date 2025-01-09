@@ -41,14 +41,14 @@ class DispatchJobs extends Command
     {
         // Spot Trade Workers
         SpotCoinDumper::dispatch()->onQueue('spotCoinDumper');
-        SpotTrendWorker::dispatch()->onQueue('spotTrendWorker');
-        SpotIdealTradeWorker::dispatch()->onQueue('spotIdealTradeWorker');
+        // SpotTrendWorker::dispatch()->onQueue('spotTrendWorker');
+        // SpotIdealTradeWorker::dispatch()->onQueue('spotIdealTradeWorker');
         SpotReportWorker::dispatch()->onQueue('spotCoinReportWorker');
 
         // Future Trade Workers
         FutureCoinDumper::dispatch()->onQueue('futureCoinDumper');
-        FutureTrendWorker::dispatch()->onQueue('futureTrendWorker');
-        FutureIdealTradeWorker::dispatch()->onQueue('futureIdealTradeWorker');
+        // FutureTrendWorker::dispatch()->onQueue('futureTrendWorker');
+        // FutureIdealTradeWorker::dispatch()->onQueue('futureIdealTradeWorker');
         FutureReportWorker::dispatch()->onQueue('futureCoinReportWorker');
     }
 }
