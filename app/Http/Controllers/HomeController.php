@@ -30,11 +30,11 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $symbol = 'HBARUSDT';
-        $interval = '1m';
-        $market = 'SPOT';
+        // $symbol = 'HBARUSDT';
+        // $interval = '1m';
+        // $market = 'SPOT';
        
-        dd(CoinReportService::getCoinReport($symbol,$interval,1000,$market));
+        // dd(CoinReportService::getCoinReport($symbol,$interval,1000,$market));
         $pageSlug = 'Dashboard';
         return view('welcome', compact( 'pageSlug'));
     }
