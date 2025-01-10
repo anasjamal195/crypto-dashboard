@@ -21,6 +21,7 @@ class BinanceController extends Controller
                 DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
                 DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
                 DB::raw('AVG(duration) as average_duration'),                  // Average duration per symbol
+                DB::raw('SUM(duration) as total_duration'),                  // Total duration per symbol
                 DB::raw('MAX(profit) as max_profit'),                          // Maximum profit per symbol
                 DB::raw('MIN(profit) as min_profit'),                          // Minimum profit per symbol
                 DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),                // Maximum of lowestPrice per symbol

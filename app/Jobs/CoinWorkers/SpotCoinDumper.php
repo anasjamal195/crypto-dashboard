@@ -4,6 +4,7 @@ namespace App\Jobs\CoinWorkers;
 
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -45,6 +46,7 @@ class SpotCoinDumper implements ShouldQueue
                             [
                                 'symbol' => $coin['symbol'],
                                 'market' => 'SPOT',
+                                
                             ]
                         );
                     } else {

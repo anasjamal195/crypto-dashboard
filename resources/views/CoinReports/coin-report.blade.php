@@ -17,7 +17,9 @@
                             <table class="table">
                                 <thead class="text-primary">
                                     <tr>
+                                        <th>No</th>
                                         <th>Symbol</th>
+                                        <th>Total Duration</th>
                                         <th>Total Trades</th>
                                         <th>Total Profit (%)</th>
                                         <th>Average Profit (%)</th>
@@ -31,7 +33,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($tradeData as $trade)
+                                    @foreach ($tradeData as $index => $trade)
                                         @php
                                             $totalProfit += number_format($trade->total_profit, 2);
                                             $totalTrades += $trade->total_entries;
@@ -39,7 +41,9 @@
                                         <tr @if (in_array($trade->symbol, $liquidatedSymbols) &&
                                                 in_array($interval, $liquidatedIntervals) &&
                                                 in_array($market, $liquidatedMarkets)) class="bg-danger" @endif>
+                                            <td>{{ $index + 1 }}</td>
                                             <td>{{ $trade->symbol }}</td>
+                                            <td>{{ $trade->total_duration }}</td>
                                             <td>{{ $trade->total_entries }}</td>
                                             <td>{{ number_format($trade->total_profit, 2) }} %</td>
                                             <td>{{ number_format($trade->average_profit, 2) }} %</td>
@@ -60,6 +64,8 @@
                                     @endforeach
                                     <tr>
                                         <td><strong>Grand Total:</strong></td>
+                                        <td>&nbsp;</td>
+                                        <td>&nbsp;</td>
                                         <td>{{ $totalTrades }}</td>
                                         <td>{{ $totalProfit }} %</td>
                                         <td>&nbsp;</td>
