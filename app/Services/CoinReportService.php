@@ -114,7 +114,7 @@ class CoinReportService
             return $candle;
         }, array_merge($averageAdjustmetCandles, $data));
 
-      
+
 
         foreach ($data as $index => $candle) {
 
@@ -129,11 +129,11 @@ class CoinReportService
             $idealBuying = IdealTradeService::getIdealBuyingCandles(array_slice($data, $index - 1000, 1000));
             // dd($symbol,$index,$idealBuying);
             $averages = IdealTradeService::getAverages($idealBuying);
-            
+
 
             $rsiThreshold = $averages['rsi6'];
-            $stochDLimit = $averages['stoch_rsi'];
-            $obvLimit = $averages['previousObvHigh']?(($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100:100;
+            $stochDLimit = $averages['stoch_d'] / 2;
+            $obvLimit = $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100;
             if ($buy_price == 0) {
                 if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
 
@@ -202,7 +202,7 @@ class CoinReportService
                 }
             }
         }
-   
+
 
         // For shifting indexes
         $data_new = [];
