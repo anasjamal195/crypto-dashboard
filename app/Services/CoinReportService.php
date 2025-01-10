@@ -128,6 +128,8 @@ class CoinReportService
             $obvCandles = 15;
             $idealBuying = IdealTradeService::getIdealBuyingCandles(array_slice($data, $index - 1000, 1000));
             // dd($symbol,$index,$idealBuying);
+            if (empty($idealBuying))
+                continue;
             $averages = IdealTradeService::getAverages($idealBuying);
 
 
@@ -158,7 +160,7 @@ class CoinReportService
                         // $wrCondition  = ($candle['wr'] <= $wrLimit);
                         $wrCondition  = true;
                         // $stochDiff = abs($candle['stoch_d'] - $candle['stoch_k']) < 0.5;
-                        // dd("RSI MET",$index,$stochDLimit,$candle['stoch_d']);
+
 
                         if ($obvCondition && $stochCondition && $wrCondition) {
                             $candle['should_buy'] = true;

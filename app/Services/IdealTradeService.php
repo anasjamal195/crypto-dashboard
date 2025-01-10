@@ -62,16 +62,20 @@ class IdealTradeService
             }
 
             if ($priceLock > $candle['close']) {
-                $candle['should_buy'] = true;
+                // Above condition Check for lowest price
                 $priceLock = $candle['close'];
                 $priceLockIndex = $index;
             } else if ($index < $priceLockIndex + 30) {
                 if ($candle['close'] > $priceLock * 1.006) {
-                    $data[$priceLockIndex]['should_sell'] = true;
 
-                    $data[$priceLockIndex]['should_buy'] = false;
+
+
                     $previousObvHigh = 0;
-                    for ($i = $priceLockIndex - 15; $i <= $priceLockIndex; $i++) {
+
+                    $obvIndex = $priceLockIndex - 15;
+                    if ($obvIndex < 0)
+                        $obvIndex = 0;
+                    for ($i = $obvIndex; $i <= $priceLockIndex; $i++) {
 
                         if ($data[$priceLockIndex]['obv'] > $previousObvHigh) {
                             $previousObvHigh = $data[$i]['obv'];
@@ -80,7 +84,6 @@ class IdealTradeService
                     $candle['previousObvHigh'] = $previousObvHigh;
                     $requiredCandles[] = $data[$priceLockIndex];
                     $skipIndex = $index;
-                    $requiredCandles[] = $data[$priceLockIndex];
                 }
             } else if ($index >= $priceLockIndex + 30) {
                 $priceLock = $candle['close'];
