@@ -28,10 +28,62 @@
     <!-- DataTables CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.css">
 
-    <!-- DataTables JS -->
-    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.js"></script>
 
 </head>
+<style>
+    /* Custom CSS for DataTables in Dark Mode */
+    .dataTables_wrapper {
+        color: rgba(255, 255, 255, 0.7);
+
+    }
+
+    table.dataTable thead th,
+    table.dataTable thead td {
+
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+
+    table.dataTable tbody th,
+    table.dataTable tbody td {
+        border-bottom: 1px solid #32383e;
+    }
+
+    table.dataTable tbody tr:nth-child(even) {
+        background-color: #2a2e35;
+    }
+
+    table.dataTable tbody tr:hover {
+        background-color: #32383e;
+    }
+
+    .dataTables_filter input,
+    .dataTables_length select {
+
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .dataTables_paginate .paginate_button {
+        color: rgba(255, 255, 255, 0.7) !important;
+        border: 1px solid transparent;
+        background-color: transparent;
+    }
+
+    .dataTables_paginate .paginate_button.current,
+    .dataTables_paginate .paginate_button.current:hover {
+        color: rgba(255, 255, 255, 0.7) !important;
+        border-color: #5e72e4 !important;
+        background-color: #5e72e4 !important;
+    }
+
+    .dataTables_paginate .paginate_button:hover {
+        background-color: #5e72e4;
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    .dataTables_info, .paginate_button{
+        color:rgba(255, 255, 255, 0.7) !important;
+    }
+</style>
 
 <body class="{{ $class ?? '' }}">
     @auth()
@@ -97,8 +149,11 @@
     <script src="{{ asset('black') }}/js/plugins/bootstrap-notify.js"></script>
 
     <script src="{{ asset('black') }}/js/black-dashboard.js"></script>
+
     <script src="{{ asset('black') }}/js/theme.js"></script>
 
+    <!-- DataTables JS -->
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.js"></script>
     @stack('js')
 
     <script>
