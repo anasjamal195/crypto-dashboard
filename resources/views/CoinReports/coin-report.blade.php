@@ -62,23 +62,24 @@
                                             </td>
                                         </tr>
                                     @endforeach
-                                    <tr>
-                                        <td><strong>Grand Total:</strong></td>
-                                        <td>&nbsp;</td>
-                                        <td>&nbsp;</td>
-                                        <td>{{ $totalTrades }}</td>
-                                        <td>{{ $totalProfit }} %</td>
-                                        <td>&nbsp;</td>
-                                        <td>&nbsp;</td>
-                                        <td>&nbsp;</td>
-                                        <td>&nbsp;</td>
-                                        <td>&nbsp;</td>
-                                        <td>&nbsp;</td>
-                                        <td>&nbsp;</td>
-                                        <td>&nbsp;</td>
-                                    </tr>
+
                                 </tbody>
                             </table>
+                            <div class="d-flex flex-row text-center text-white">
+                                <div class="flex-fill "><strong>Grand Total:</strong></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill ">{{ $totalTrades }}</div>
+                                <div class="flex-fill ">{{ $totalProfit }} %</div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                            </div>
                         </div>
                     </div>
                 </div>
