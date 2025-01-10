@@ -196,11 +196,7 @@
                     }
                 });
             });
-        });
-    </script>
-    <script>
-        $(document).ready(function() {
-            // Initialize DataTables
+
             $('.table').DataTable({
                 "pagingType": "full_numbers",
                 "lengthMenu": [
@@ -209,8 +205,10 @@
                 ],
                 "order": [], // Remove initial order, if necessary
             });
+
         });
     </script>
+
     @stack('js')
 </body>
 
