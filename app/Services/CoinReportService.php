@@ -134,7 +134,7 @@ class CoinReportService
 
 
             $rsiThreshold = $averages['rsi6'];
-            $stochDLimit = $averages['stoch_d'] / 2;
+            $stochDLimit = $averages['stoch_rsi'] * 2;
             $obvLimit = $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100;
             if ($buy_price == 0) {
                 if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
