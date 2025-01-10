@@ -30,9 +30,9 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $symbol = 'XRPUSDT';
-        $interval = '1m';
-        $market = 'SPOT';
+        // $symbol = 'XRPUSDT';
+        // $interval = '1m';
+        // $market = 'SPOT';
 
         // dd(CoinReportService::getCoinReport($symbol, $interval, 1000, $market));
         $pageSlug = 'Dashboard';

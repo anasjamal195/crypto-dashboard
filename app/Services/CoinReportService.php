@@ -102,6 +102,7 @@ class CoinReportService
         $trades = [];
         $lockedPriceBuy = 0;
         $lowestPrice = 0;
+        $buyingCandles = [];
         $timestamp = $data[0]['binance_timestamp'] - (60 * 1000 * 1000);
         $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 1000, $timestamp, $market);
 
@@ -113,20 +114,26 @@ class CoinReportService
             return $candle;
         }, array_merge($averageAdjustmetCandles, $data));
 
-        $dataReduced = array_slice($data, 1000);
-        foreach ($dataReduced as $index => &$candle) {
-            if ($index < 20) {
+      
+
+        foreach ($data as $index => $candle) {
+
+            // Skip First 1000 Candles
+            if ($index < 1000) {
                 continue;
             }
+
+
+
             $obvCandles = 15;
-            // dd(($index +  $obvCandles) ,$index,$obvCandles);
-            // echo $index  - 200;
-            $idealBuying = IdealTradeService::getIdealBuyingCandles(array_slice($data, $index, 1000));
+            $idealBuying = IdealTradeService::getIdealBuyingCandles(array_slice($data, $index - 1000, 1000));
+            // dd($symbol,$index,$idealBuying);
             $averages = IdealTradeService::getAverages($idealBuying);
+            
 
             $rsiThreshold = $averages['rsi6'];
-            $stochDLimit = $averages['stoch_d'];
-            $obvLimit = (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100;
+            $stochDLimit = $averages['stoch_rsi'];
+            $obvLimit = $averages['previousObvHigh']?(($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100:100;
             if ($buy_price == 0) {
                 if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
 
@@ -195,7 +202,7 @@ class CoinReportService
                 }
             }
         }
-
+   
 
         // For shifting indexes
         $data_new = [];

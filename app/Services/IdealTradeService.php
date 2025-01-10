@@ -47,40 +47,36 @@ class IdealTradeService
 
     public static function getIdealBuyingCandles($data)
     {
-        $requiredCandles = [];
-        $priceLock = $data[20]['close'];
-        $priceLockIndex = 20;
-        $skipIndex = 0;
-        foreach ($data as $index => $candle) {
 
+        $requiredCandles = [];
+        $priceLock = $data[0]['close'];
+        $priceLockIndex = 0;
+        $skipIndex = 0;
+
+        foreach ($data as $index => &$candle) {
 
             if ($index < $skipIndex + 10 || $index < 20) {
                 continue;
             } else {
                 $skipIndex == 0;
             }
+
             if ($priceLock > $candle['close']) {
                 $candle['should_buy'] = true;
                 $priceLock = $candle['close'];
                 $priceLockIndex = $index;
             } else if ($index < $priceLockIndex + 30) {
-
                 if ($candle['close'] > $priceLock * 1.006) {
                     $data[$priceLockIndex]['should_sell'] = true;
 
                     $data[$priceLockIndex]['should_buy'] = false;
-
                     $previousObvHigh = 0;
-
                     for ($i = $priceLockIndex - 15; $i <= $priceLockIndex; $i++) {
 
                         if ($data[$priceLockIndex]['obv'] > $previousObvHigh) {
-                            if ($priceLockIndex == 0)
-                                dd($priceLockIndex, $index, $data);
                             $previousObvHigh = $data[$i]['obv'];
                         }
                     }
-
                     $candle['previousObvHigh'] = $previousObvHigh;
                     $requiredCandles[] = $data[$priceLockIndex];
                     $skipIndex = $index;
@@ -91,10 +87,13 @@ class IdealTradeService
             }
         }
 
+
+
         return $requiredCandles;
     }
     public static function getMedian($values)
     {
+
 
         sort($values); // Sort the array
         $count = count($values);
@@ -104,8 +103,6 @@ class IdealTradeService
             // Odd number of values
             return $values[$middle];
         } else {
-            if ($middle == 0)
-                dd($values);
             // Even number of values, return the average of the middle values
             return ($values[$middle - 1] + $values[$middle]) / 2;
         }
@@ -144,9 +141,6 @@ class IdealTradeService
                 return $value !== null;
             });
 
-
-            if (count($filteredValues) == 0)
-                dd($key,$values,$filteredValues,$idealBuyingCandles);
             // Calculate the median
             $median = self::getMedian($filteredValues);
 
