@@ -162,11 +162,15 @@ class CoinReportService
                         // $stochDiff = abs($candle['stoch_d'] - $candle['stoch_k']) < 0.5;
 
                         $obvPositiveCondition = true;
-                        if($candle['obv'] > 0 && $candle['rsi6'] > 0){
+                        $difCondition = true;
+                        if ($candle['obv'] > 0 && $candle['rsi6'] > 0) {
                             $obvPositiveCondition = false;
                         }
+                        if ($candle['dif'] >= 0) {
+                            $difCondition = false;
+                        }
 
-                        if ($obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition) {
+                        if ($obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition) {
                             $candle['should_buy'] = true;
                             $candle['previousObvHigh'] = $previousHighObv;
                             $candle['previousObvHighReduced'] = $previousHighObv * (1 - $obvLimit / 100);
