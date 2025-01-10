@@ -26,7 +26,7 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'settings_key' => 'spot_coin_worker_quantity',
-                'settings_value' => 100
+                'settings_value' => 300
             ],
             [
                 'settings_key' => 'trend_worker_interval_spot',
@@ -65,7 +65,7 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'settings_key' => 'future_coin_worker_quantity',
-                'settings_value' => 100
+                'settings_value' => 300
             ],
             [
                 'settings_key' => 'trend_worker_interval_future',
