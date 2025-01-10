@@ -399,7 +399,7 @@
                                                                 Buying Stoch
                                                                 (<strong>{{ round($buyCandle['stoch_d'], 4) }}</strong>) <
                                                                     Limit Stoch (<strong>
-                                                                    {{ round($buyingAverages['stoch_rsi'], 4) }}</strong>)<br><br>
+                                                                    {{ round($buyingAverages['stoch_d']/2, 4) }}</strong>)<br><br>
                                                                     <strong>Obv Limit:</strong><br>
                                                                     Buying OBV Limit
                                                                     (<strong>{{ $buyCandle['previousObvHigh'] != 0 ? abs(round((($buyCandle['previousObvHigh'] - $buyCandle['obv']) / $buyCandle['previousObvHigh']) * 100, 2)) : 100 }}</strong>)
