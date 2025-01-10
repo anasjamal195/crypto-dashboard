@@ -31,6 +31,7 @@ class BinanceController extends Controller
             ->where('interval', $interval)
             ->groupBy('symbol')
             ->orderBy('total_entries', 'DESC')
+            ->orderBy('last_updated', 'DESC') 
             ->get();
         $pageSlug = 'CoinReport' . $market;
 
