@@ -19,7 +19,7 @@
                                     <tr>
                                         <th>No</th>
                                         <th>Symbol</th>
-                                        <th>Total Duration</th>
+                                        <th>Total Duration (min)</th>
                                         <th>Total Trades</th>
                                         <th>Total Profit (%)</th>
                                         <th>Average Profit (%)</th>
