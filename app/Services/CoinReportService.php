@@ -102,27 +102,32 @@ class CoinReportService
         $trades = [];
         $lockedPriceBuy = 0;
         $lowestPrice = 0;
-        foreach ($data as $index => &$candle) {
+        $timestamp = $data[0]['binance_timestamp'] - (60 * 1000 * 1000);
+        $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 1000, $timestamp, $market);
 
+        $data = array_map(function ($candle) {
             $candle['timestamp'] = $candle['timestamp'] / 1000;
             $date = new \DateTime("@{$candle['timestamp']}");
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
+            return $candle;
+        }, array_merge($averageAdjustmetCandles, $data));
 
-            if ($index < 200) {
+        $dataReduced = array_slice($data, 1000);
+        foreach ($dataReduced as $index => &$candle) {
+            if ($index < 20) {
                 continue;
             }
             $obvCandles = 15;
             // dd(($index +  $obvCandles) ,$index,$obvCandles);
-            $idealBuying = IdealTradeService::getIdealBuyingCandles(array_slice($data, $index  - 200, 200));
+            // echo $index  - 200;
+            $idealBuying = IdealTradeService::getIdealBuyingCandles(array_slice($data, $index, 1000));
             $averages = IdealTradeService::getAverages($idealBuying);
 
             $rsiThreshold = $averages['rsi6'];
-            $stochDLimit = $averages['stoch_rsi'];
+            $stochDLimit = $averages['stoch_d'];
             $obvLimit = (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100;
             if ($buy_price == 0) {
-
-
                 if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
 
                     if ($index > $obvCandles) {
@@ -146,6 +151,7 @@ class CoinReportService
                         // $wrCondition  = ($candle['wr'] <= $wrLimit);
                         $wrCondition  = true;
                         // $stochDiff = abs($candle['stoch_d'] - $candle['stoch_k']) < 0.5;
+                        // dd("RSI MET",$index,$stochDLimit,$candle['stoch_d']);
 
                         if ($obvCondition && $stochCondition && $wrCondition) {
                             $candle['should_buy'] = true;

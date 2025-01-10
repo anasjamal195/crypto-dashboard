@@ -141,6 +141,7 @@ class BinanceApiService
      */
     public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT')
     {
+        usleep(10000); // 10ms Sleep for safety
         // Choose the base URL based on the trade type
         $base_url = $market === 'FUTURE' ?
             config('binance.api.future_base_url') . config('binance.endpoints.klines') :
