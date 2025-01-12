@@ -46,7 +46,8 @@ class SpotReportWorker implements ShouldQueue
                 CoinReportService::updateCoinReport(
                     $this->interval,
                     $this->limit,
-                    $this->market
+                    $this->market,
+                    
                 );
             } catch (\Exception $e) {
                 Log::error($e);

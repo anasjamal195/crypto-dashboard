@@ -36,7 +36,7 @@ class CoinReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.5;
+            $targetProfit = 0.4;
 
             try {
                 $symbol = $coin->symbol;
