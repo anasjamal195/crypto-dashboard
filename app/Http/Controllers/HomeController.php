@@ -30,7 +30,7 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $buy_order = BinanceApiService::placeBuyOrder('XRPUSDT','1m',5,1,"SPOT");
+        $buy_order = BinanceApiService::placeBuyOrder('XRPUSDT','1m',6,1,"SPOT");
        dd($buy_order);
         $pageSlug = 'Dashboard';
         return view('welcome', compact('pageSlug'));
