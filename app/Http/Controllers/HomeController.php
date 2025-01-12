@@ -31,7 +31,7 @@ class HomeController extends Controller
      */
     public function index()
     {
-        dd(LiveTradeService::performLiveTrades('1m','SPOT'));
+        // dd(LiveTradeService::performLiveTrades('1m','SPOT'));
         $pageSlug = 'Dashboard';
         return view('welcome', compact('pageSlug'));
     }
