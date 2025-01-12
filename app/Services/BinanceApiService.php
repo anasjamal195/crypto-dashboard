@@ -703,7 +703,7 @@ class BinanceApiService
     {
 
         $buy_order = DB::table('orders')->where('orderId', $buyOrderId)->first();
-        $trader = $buy_order->trader;
+        $trader = $buy_order->trade_acc;
         $quantity = $buy_order->qty;
         $symbol = $buy_order->symbol;
         $market = $buy_order->market;
