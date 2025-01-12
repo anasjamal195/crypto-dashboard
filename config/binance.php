@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'bot' => [
+        'api_key' => 'fc621b21-00be-4c9e-899d-dccca11462b6',
+        'base_url' => 'https://rocket.cryptoapis.store',
+        'endpoints' => [
+            'check_open_order' => '/check-open-order'
+        ],
+
+    ],
     'api' => [
         'base_url' => 'https://api.binance.com/api/v3',
         'future_base_url' => 'https://fapi.binance.com/fapi/v1'
@@ -8,9 +16,12 @@ return [
     'endpoints' => [
         'ticker_24hr' => '/ticker/24hr',
         'klines' => '/klines',
+        'ticker_price' => '/ticker/price',
         'exchange_info' => '/exchangeInfo',
-        'margin' => '/margin'
-        
+        'margin' => '/margin',
+        'server_time' => '/time',
+        'order' => '/order',
+
     ],
     'settings' => [
         'default_interval' => '15m',  // Default interval for data requests

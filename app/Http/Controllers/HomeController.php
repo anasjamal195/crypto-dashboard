@@ -30,11 +30,8 @@ class HomeController extends Controller
      */
     public function index()
     {
-        // $symbol = 'XRPUSDT';
-        // $interval = '1m';
-        // $market = 'SPOT';
-
-        // dd(CoinReportService::getCoinReport($symbol, $interval, 1000, $market));
+        $buy_order = BinanceApiService::placeBuyOrder('XRPUSDT','1m',5,1,"SPOT");
+       dd($buy_order);
         $pageSlug = 'Dashboard';
         return view('welcome', compact('pageSlug'));
     }

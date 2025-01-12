@@ -2,8 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\User;
+use Carbon\Carbon;
+use Exception;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class BinanceApiService
 {
@@ -26,8 +31,6 @@ class BinanceApiService
     {
 
         $url = config('binance.cmcApi.base_url') . config('binance.cmcApi.latest_coins');
-
-        // $url = 'https://sandbox-api.coinmarketcap.com/v1/cryptocurrency/listings/latest';
         $parameters = [
             'start' => '1',
             'limit' => strval($limit),
@@ -96,7 +99,7 @@ class BinanceApiService
             $data = $response->json();
             foreach ($data['symbols'] as $item) {
                 if ($item['symbol'] === $symbol) {
-                   
+
                     return $item['maintMarginPercent']; // Convert percentage to decimal
                 }
             }
@@ -119,9 +122,9 @@ class BinanceApiService
         $initialMargin = 1 / $leverage; // Initial margin as a fraction of leverage
 
         if ($positionType === 'long') {
-            $liquidationPrice = $entryPrice * (1 - (1 / $leverage) + ($maintenanceMarginRate/$leverage));
+            $liquidationPrice = $entryPrice * (1 - (1 / $leverage) + ($maintenanceMarginRate / $leverage));
         } else {
-            $liquidationPrice = $entryPrice * (1 + (1 / $leverage) + ($maintenanceMarginRate/$leverage));
+            $liquidationPrice = $entryPrice * (1 + (1 / $leverage) + ($maintenanceMarginRate / $leverage));
         }
 
         return $liquidationPrice;
@@ -542,5 +545,157 @@ class BinanceApiService
         }
 
         return $candlesticks;
+    }
+
+
+    // Live Trades Functions 
+    public static function getCurrentPrice($symbol, $market = 'SPOT')
+    {
+        $params = [
+            'symbol' => $symbol,
+        ];
+        $url = '';
+        if ($market == 'FUTURE')
+            $url = config('binance.api.future_base_url') . config('binance.endpoints.ticker_price');
+        else
+            $url = config('binance.api.base_url') . config('binance.endpoints.ticker_price');
+
+        $ticker = self::getHttpClient()->get($url, $params);
+        return isset($ticker['price']) ? $ticker['price'] : '0';
+    }
+
+    private static function getTotalCommission($apiResponse)
+    {
+        $totalCommission = 0;
+        $commissionAsset = '';
+
+        // Check if fills array exists
+        if (isset($apiResponse['fills']) && is_array($apiResponse['fills'])) {
+            foreach ($apiResponse['fills'] as $fill) {
+                // Sum up the commission
+                $totalCommission += (float) $fill['commission'];
+
+                // Get the commission asset (assuming it's the same for all fills)
+                if (empty($commissionAsset)) {
+                    $commissionAsset = $fill['commissionAsset'];
+                }
+            }
+        }
+
+        return [
+            'totalCommission' => $totalCommission,
+            'commissionAsset' => $commissionAsset,
+            'commissionAssetUSDT' => $commissionAsset != 'USDT' ? self::getCurrentPrice($commissionAsset . 'USDT') : $totalCommission,
+        ];
+    }
+    public static function placeBuyOrder($symbol, $interval, $amount,  $trader, $market = 'SPOT')
+    {
+
+        $current_price = self::getCurrentPrice($symbol);
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
+
+        // Get server time from Binance API
+        $serverTime = json_decode(file_get_contents($base_url . config('binance.endpoints.server_time')), true);
+        $serverTimestamp = $serverTime['serverTime'];
+
+        // Calculate timestamp and recvWindow
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
+
+        // Adjust timestamp if necessary
+        if ($timestamp - $serverTimestamp > $recvWindow) {
+            $timestamp = $serverTimestamp + $recvWindow;
+        }
+
+        // Fetch exchange information to get LOT_SIZE filter
+        $exchangeInfo = json_decode(file_get_contents($base_url . config('binance.endpoints.exchange_info') . "?symbol=$symbol"), true);
+        $filters = $exchangeInfo['symbols'][0]['filters'];
+
+        // Extract LOT_SIZE filter values
+        $lotSize = null;
+        foreach ($filters as $filter) {
+            if ($filter['filterType'] == 'LOT_SIZE') {
+                $lotSize = $filter;
+                break;
+            }
+        }
+
+        if ($lotSize === null) {
+            throw new Exception("LOT_SIZE filter not found for symbol $symbol");
+        }
+
+        // Calculate and adjust the quantity
+        $quantity = $amount / $current_price;
+        $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
+
+        // Ensure quantity is within the allowed limits
+        if ($quantity < $lotSize['minQty'] || $quantity > $lotSize['maxQty']) {
+            throw new Exception("Quantity $quantity is outside the allowed LOT_SIZE limits for symbol $symbol");
+        }
+
+        $url = $base_url . config('binance.endpoints.order');
+
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'symbol' => $symbol,
+            'side' => 'BUY',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->asForm()->post($url, [
+            'symbol' => $symbol,
+            'side' => 'BUY',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+        $response = $response->json();
+
+
+
+        $fee_details = self::getTotalCommission($response);
+        if (isset($response['code'])) {
+            Log::info('Trader ' . $trader . ': Buy response' . json_encode($response));
+            return $response;
+        }
+
+        $data =  [
+            'symbol' => $response['symbol'],
+            'amount' => $amount,
+            'interval' => $interval,
+            'market' => $market,
+            'orderId' => $response['orderId'],
+            'status' => $response['status'],
+            'type' => $response['type'],
+            'side' => $response['side'],
+            'price' => $current_price,
+            'trade_status' => 'open',
+            'trade_acc' => $trader,
+            'qty' => $quantity,
+            'commission' => $fee_details['totalCommission'],
+            'commission_asset' => $fee_details['commissionAsset'],
+            'commissionUSDT' => $fee_details['commissionAssetUSDT'],
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+        DB::table('orders')->insert(
+            $data
+        );
+        MailerService::sendEmail($data);
+        return $data;
     }
 }

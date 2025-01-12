@@ -46,9 +46,9 @@ class DispatchJobs extends Command
         SpotReportWorker::dispatch()->onQueue('spotCoinReportWorker');
 
         // Future Trade Workers
-        FutureCoinDumper::dispatch()->onQueue('futureCoinDumper');
+        // FutureCoinDumper::dispatch()->onQueue('futureCoinDumper');
         // FutureTrendWorker::dispatch()->onQueue('futureTrendWorker');
         // FutureIdealTradeWorker::dispatch()->onQueue('futureIdealTradeWorker');
-        FutureReportWorker::dispatch()->onQueue('futureCoinReportWorker');
+        // FutureReportWorker::dispatch()->onQueue('futureCoinReportWorker');
     }
 }
