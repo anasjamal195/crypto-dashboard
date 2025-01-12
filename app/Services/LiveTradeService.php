@@ -16,7 +16,6 @@ class LiveTradeService
     public static function performLiveTrades($interval, $market)
     {
         $tradeHandler = DB::table('trade_handler')->where('interval', $interval)->where('market', $market)->where('isActive', 1)->get();
-        // dd($tradeHandler);
         foreach ($tradeHandler as $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
@@ -31,7 +30,6 @@ class LiveTradeService
                 $priceLockBuffer = $tradeInstance->priceLockBuffer;
                 $leverage = $tradeInstance->leverage;
                 $candleData = BinanceApiService::getCandleStickData($symbol, $interval, 1000, null, $market);
-
                 Log::info('AutoTraderSpot: Current Trade');
                 Log::info('AutoTraderSpot: Coin: ' . $symbol);
                 Log::info('AutoTraderSpot: Interval: ' . $interval);
@@ -42,17 +40,16 @@ class LiveTradeService
                 Log::info('AutoTraderSpot: Price Lock Buffer: ' . $priceLockBuffer);
 
 
-                $api_response = CommonHelpers::checkOpenOrder($symbol, $trade_acc, $interval, $market);
-
-                if (isset($api_response['is_open']) && $api_response['is_open']) {
-                    self::manageOpenOrder($api_response['order'], $candleData, $targetProfit, $stopLossReductionPrecentage, $market);
+                $open_order = CommonHelpers::checkOpenOrder($symbol, $interval, $market, $trade_acc);
+                // dd($open_order);
+                if (isset($open_order['is_open']) && $open_order['is_open']) {
+                    self::manageOpenOrder($open_order['order'], $candleData, $targetProfit, $stopLossReductionPrecentage, $market);
                 } else {
                     $secondLastCandle = $candleData[count($candleData) - 2];
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
                     } else if ($secondLastCandle['rsi6'] <= $rsiThreshold && ($secondLastCandle['ma7'] < $secondLastCandle['ma25'] || $secondLastCandle['ma25'] < $secondLastCandle['ma99'])) {
-
                         $index = 99;
                         $previousHighObv = 0;
                         for ($i = $index - 15; $i <= $index; $i++) {
@@ -69,10 +66,10 @@ class LiveTradeService
                         if ($secondLastCandle['obv'] > 0 && $secondLastCandle['rsi6'] > 0) {
                             $obvPositiveCondition = false;
                         }
-                        if ($secondLastCandle['dif'] >= 0) {
-                            $difCondition = false;
-                        }
-
+                        // if ($secondLastCandle['dif'] >= 0) {
+                        //     $difCondition = false;
+                        // }
+                        // dd($obvCondition,$stochCondition,$obvPositiveCondition,$difCondition);
                         if (
                             $obvCondition &&
                             $stochCondition &&
@@ -89,12 +86,12 @@ class LiveTradeService
             } catch (\Exception $e) {
                 Log::error('AutoTraderSpot: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
-                dd($e);
+                // dd($e);
                 // sendEmailException($e, 'API Store Txn Alert: Exception Alert!');
             }
         return true;
     }
-    private function manageOpenOrder(array $buy_order, $candleData, $targetProfit, $stopLossReductionPrecentage, $market): void
+    private static function manageOpenOrder(array $buy_order, $candleData, $targetProfit, $stopLossReductionPrecentage, $market): void
     {
         Log::info('AutoTraderSpot: Open order found for ' . $buy_order['symbol']);
 
@@ -134,13 +131,13 @@ class LiveTradeService
         }
     }
 
-    private function managePriceLock($tradeInstance): void
+    private static function managePriceLock($tradeInstance): void
     {
         Log::info('AutoTraderSpot: Price Locked for ' . $tradeInstance->symbol);
 
         $current_price = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
         if ($current_price > $tradeInstance->priceLock) {
-            BinanceApiService::placeBuyOrder($tradeInstance, $tradeInstance->interval, $tradeInstance->buyPrice, $tradeInstance->tradeAccount, $tradeInstance->market);
+            BinanceApiService::placeBuyOrder($tradeInstance->symbol, $tradeInstance->interval, $tradeInstance->buyPrice, $tradeInstance->tradeAccount, $tradeInstance->market);
             // Reset price Lock for buying condition
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                 'priceLock' => 0,
