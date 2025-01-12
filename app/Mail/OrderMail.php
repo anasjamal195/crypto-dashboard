@@ -33,7 +33,7 @@ class OrderMail extends Mailable
      */
     public function build()
     {
-        return $this->subject('Api Store Txn Alert: Account ' . User::find($this->details['trade_acc'])->name . ' Amount: ' . $this->details['trade_amount'] . '$')
-            ->view('emails.notification');
+        return $this->subject('Api Store Txn Alert: Account ' . User::find($this->details['trade_acc'])->name . ' Amount: ' . $this->details['amount'] . '$')
+            ->view('Emails.new-order');
     }
 }
