@@ -7,6 +7,7 @@ use App\Jobs\TradeWorker\IdealTradeWorker;
 use App\Services\BinanceApiService;
 use App\Services\CoinReportService;
 use App\Services\IdealTradeService;
+use App\Services\LiveTradeService;
 use App\Services\MarketTrendService;
 use DateTime;
 use Illuminate\Support\Facades\DB;
@@ -30,8 +31,7 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $sell_order = BinanceApiService::placeSellOrder('8210825296');
-        dd($sell_order);
+        dd(LiveTradeService::performLiveTrades('1m','SPOT'));
         $pageSlug = 'Dashboard';
         return view('welcome', compact('pageSlug'));
     }

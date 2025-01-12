@@ -85,9 +85,9 @@ class CommonHelpers
         $open_orders = json_decode(json_encode($open_orders), true);
 
         if (empty($open_orders)) {
-            return response()->json(['is_open' => false], 200);
+            return ['is_open' => false];
         } else {
-            return response()->json(['is_open' => true, 'order' => $open_orders[0]], 200);
+            return ['is_open' => true, 'order' => $open_orders[0]];
         }
     }
 }

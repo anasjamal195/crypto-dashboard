@@ -52,7 +52,14 @@ class SettingsSeeder extends Seeder
                 'settings_key' => 'report_worker_limit_spot',
                 'settings_value' => 1000
             ],
-
+            [
+                'settings_key' => 'live_trade_worker_interval_spot',
+                'settings_value' => '1m'
+            ],
+            [
+                'settings_key' => 'live_trade_worker_limit_spot',
+                'settings_value' => 1000,
+            ],
 
             // Future Trading
             [
@@ -94,6 +101,15 @@ class SettingsSeeder extends Seeder
             [
                 'settings_key' => 'future_coin_report_leverage',
                 'settings_value' => 10
+            ],
+
+            [
+                'settings_key' => 'live_trade_worker_interval_future',
+                'settings_value' => '1m'
+            ],
+            [
+                'settings_key' => 'live_trade_worker_limit_future',
+                'settings_value' => 1000,
             ],
 
         ]);
