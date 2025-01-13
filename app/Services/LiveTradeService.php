@@ -169,7 +169,7 @@ class LiveTradeService
 
             // Dumping Trade Handler data
 
-            if (!CommonHelpers::getMetaValue($user_id, 'is_auto_update_enable' . $meta_prefix, true)) {
+            if (!(CommonHelpers::getMetaValue($user_id, 'is_auto_update_enable' . $meta_prefix, true) == 'true')) {
                 continue;
             }
 
