@@ -672,7 +672,7 @@ class BinanceApiService
             Log::info('Trader ' . $trader . ': Buy response' . json_encode($response));
             return $response;
         }
-        
+
         // $coinReportsLiveId = DB::table('coin_reports_live')->insertGetId([
         //     'symbol' => $response['symbol'],
         //     'interval' => $interval,

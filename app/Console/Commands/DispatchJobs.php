@@ -17,6 +17,7 @@ use App\Jobs\ReportWorkers\SpotReportWorker;
 use App\Jobs\TradeWorker\FutureIdealTradeWorker;
 use App\Jobs\TradeWorker\SpotIdealTradeWorker;
 use App\Jobs\LiveTradeWorker\SpotLiveTradeWorker;
+use App\Jobs\LiveTradeWorker\SpotSettingsWorker;
 use Illuminate\Console\Command;
 
 class DispatchJobs extends Command
@@ -82,6 +83,7 @@ class DispatchJobs extends Command
         SpotTrendWorker::dispatch()->onQueue('spotTrendWorker');
         SpotIdealTradeWorker::dispatch()->onQueue('spotIdealTradeWorker');
         SpotReportWorker::dispatch()->onQueue('spotCoinReportWorker');
+        SpotSettingsWorker::dispatch()->onQueue('spotSettingWorker');
         SpotLiveTradeWorker::dispatch()->onQueue('spotLiveTradeWorker');
     }
 
@@ -122,6 +124,9 @@ class DispatchJobs extends Command
                 break;
             case 'futureCoinReportWorker':
                 FutureReportWorker::dispatch()->onQueue($queueName);
+                break;
+            case 'spotSettingWorker':
+                SpotSettingsWorker::dispatch()->onQueue($queueName);
                 break;
             default:
                 $this->error("Invalid queue name provided.");
