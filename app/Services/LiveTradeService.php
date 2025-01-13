@@ -193,6 +193,7 @@ class LiveTradeService
                 'rsiThreshold' => $averages['rsi6'],
                 'obvLimit' => $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100,
                 'stochLimit' =>  $averages['stoch_rsi'] * 2,
+                'isActive' => 1
             ];
             $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('market', $market)->where('interval', $interval)->where('symbol', $coin)->first();
             if ($existing) {

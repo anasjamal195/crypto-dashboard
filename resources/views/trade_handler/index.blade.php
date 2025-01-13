@@ -9,7 +9,7 @@
             @csrf
             <button type="submit"
                 class="btn {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value == 'true'? 'btn-danger': 'btn-success' }}">
-                {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value? 'Disable Auto-Update': 'Enable Auto-Update' }}
+                {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value == 'true'? 'Disable Auto-Update': 'Enable Auto-Update' }}
             </button>
         </form>
         <table class="table">
