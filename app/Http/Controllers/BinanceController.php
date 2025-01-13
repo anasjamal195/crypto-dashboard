@@ -145,4 +145,9 @@ class BinanceController extends Controller
 
         return view('IdealIndicators.index', ['averages' => $averages, 'pageSlug' => 'averageCandlesticks' . $market]);
     }
+    public function liveTradeResults($market,Request $request){
+
+        $pageSlug = 'liveTradeResults'.$market;
+        return view('live-trades.results',compact('pageSlug'));
+    }
 }

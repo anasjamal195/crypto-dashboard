@@ -14,7 +14,7 @@ class CreateOrdersTable extends Migration
     public function up()
     {
         Schema::create('orders', function (Blueprint $table) {
-            $table->id();  
+            $table->id();
 
             $table->string('symbol', 20)->nullable();
             $table->string('interval', 20)->nullable();
@@ -27,6 +27,7 @@ class CreateOrdersTable extends Migration
             $table->float('price')->nullable();
             $table->float('qty')->nullable();
             $table->integer('trade_acc')->nullable();
+            $table->integer('coin_reports_live_id')->nullable();
             $table->double('targetProfit')->nullable();
             $table->enum('trade_status', ['open', 'close'])->nullable();
 

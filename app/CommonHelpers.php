@@ -14,6 +14,10 @@ class CommonHelpers
     {
         return DB::table('trade_settings')->where('settings_key', $setting_key)->first()->settings_value ?? $default;
     }
+    public static function getMetaValue($id, $meta_key, $default)
+    {
+        return DB::table('user_meta')->where('user_id', $id)->where('meta_key', $meta_key)->first()->meta_value ?? $default;
+    }
     public static function getIndicatorAverages($symbol, $interval, $market)
     {
         $columns = [
@@ -46,7 +50,7 @@ class CommonHelpers
         }
         return $averages;
     }
-    public static function getPriorityQueue($interval, $market)
+    public static function getPriorityQueue($interval, $market, $limit)
     {
 
         $tradeData = DB::table('coin_reports as main')
@@ -69,6 +73,7 @@ class CommonHelpers
             ->orderBy('total_duration', 'ASC')
             ->orderBy('average_profit', 'ASC')
             ->orderBy('max_lowestPrice', 'ASC')
+            ->limit($limit)
             ->get();
 
         return $tradeData;

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\CommonHelpers;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -13,9 +14,9 @@ class LiveTradeService
      */
     public function __construct() {}
 
-    public static function performLiveTrades($interval, $market)
+    public static function performLiveTrades($market)
     {
-        $tradeHandler = DB::table('trade_handler')->where('interval', $interval)->where('market', $market)->where('isActive', 1)->get();
+        $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('isActive', 1)->get();
         foreach ($tradeHandler as $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
@@ -147,5 +148,70 @@ class LiveTradeService
                 'priceLock' => min($current_price * 1.0009, $tradeInstance->priceLock),
             ]);
         }
+    }
+
+    public static function updateTradeHandler($interval, $market = 'SPOT', $user_id)
+    {
+        $meta_prefix = '';
+        if ($market == 'SPOT')
+            $meta_prefix = '_spot';
+        else
+            $meta_prefix = '_future';
+        $limit = CommonHelpers::getMetaValue($user_id, 'live_trade_coin_count' . $meta_prefix, 10);
+        $coins = array_map(function ($value) {
+            return $value['symbol'];
+        }, json_decode(json_encode(CommonHelpers::getPriorityQueue($interval, $market, $limit)), true));
+
+        foreach ($coins as $coin) {
+            $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
+            $idealBuying = IdealTradeService::getIdealBuyingCandles($data);
+            $averages = IdealTradeService::getAverages($idealBuying);
+
+            // Dumping Trade Handler data
+
+            if (!CommonHelpers::getMetaValue($user_id, 'is_auto_update_enable' . $meta_prefix, true)) {
+                continue;
+            }
+
+            // Remove Coins that are not in priority queue
+            $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('market', $market)->where('interval', $interval)->get();
+            foreach ($leftoverEntries as $leftoverCoin) {
+                $open_order = CommonHelpers::checkOpenOrder($leftoverCoin->symbol, $interval, $market, $user_id);
+                if (!$open_order['is_open']) {
+                    DB::table('trade_handler')->where('id', $leftoverCoin->id)->delete();
+                }
+            }
+
+            // Insert new priority data
+            $trade_handler = [
+                'market' => $market,
+                'symbol' => $coin,
+                'interval' => $interval,
+                'buyPrice' => CommonHelpers::getMetaValue($user_id, 'buy_price' . $meta_prefix, 6),
+                'tradeAccount' => $user_id,
+                'targetProfit' => CommonHelpers::getMetaValue($user_id, 'target_profit' . $meta_prefix, 0.4),
+                'rsiThreshold' => $averages['rsi6'],
+                'obvLimit' => $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100,
+                'stochLimit' =>  $averages['stoch_rsi'] * 2,
+            ];
+            $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('market', $market)->where('interval', $interval)->where('symbol', $coin)->first();
+            if ($existing) {
+                DB::table('trade_handler')
+                    ->where('id', $existing->id)
+                    ->update($trade_handler);
+            } else {
+                // Insert new record
+                DB::table('trade_handler')->insert($trade_handler);
+            }
+
+
+
+
+
+            usleep(50000); // 50ms Delay for safety
+        }
+        // dd($coins);
+
+        return $coins;
     }
 }

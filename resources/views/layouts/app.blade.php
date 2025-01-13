@@ -28,6 +28,10 @@
     <!-- DataTables CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.css">
 
+    {{-- Swal Popup --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@10">
+
+
 
 </head>
 <style>
@@ -80,9 +84,23 @@
         background-color: #5e72e4;
         color: rgba(255, 255, 255, 0.7) !important;
     }
-    .dataTables_info, .paginate_button{
-        color:rgba(255, 255, 255, 0.7) !important;
+
+    .dataTables_info,
+    .paginate_button {
+        color: rgba(255, 255, 255, 0.7) !important;
     }
+
+    <style>.swal2-toast-popup {
+        box-shadow: none !important;
+        /* Remove drop shadows */
+    }
+
+    .swal2-toast-title {
+        color: white !important;
+        /* Ensure text color is white */
+    }
+</style>
+
 </style>
 
 <body class="{{ $class ?? '' }}">
@@ -140,6 +158,8 @@
     <script src="{{ asset('black') }}/js/core/popper.min.js"></script>
     <script src="{{ asset('black') }}/js/core/bootstrap.min.js"></script>
     <script src="{{ asset('black') }}/js/plugins/perfect-scrollbar.jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+
     <!--  Google Maps Plugin    -->
     <!-- Place this tag in your head or just before your close body tag. -->
     {{-- <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_KEY_HERE"></script> --}}
@@ -155,6 +175,34 @@
     <!-- DataTables JS -->
     <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.js"></script>
     @stack('js')
+    <script>
+        @if (session('success'))
+            displayToast('success', '{{ session('success') }}');
+        @elseif (session('error'))
+            displayToast('error', '{{ session('error') }}');
+        @elseif (session('warning'))
+            displayToast('warning', '{{ session('warning') }}');
+        @endif
+
+        function displayToast(type, message) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                icon: type,
+                title: message,
+                background: '#1d253b',
+                color: '#FFFFFF',
+                customClass: {
+                    popup: 'swal2-toast-popup',
+                    title: 'swal2-toast-title'
+                }
+            });
+        }
+    </script>
+
 
     <script>
         $(document).ready(function() {

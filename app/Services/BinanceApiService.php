@@ -672,7 +672,15 @@ class BinanceApiService
             Log::info('Trader ' . $trader . ': Buy response' . json_encode($response));
             return $response;
         }
-
+        
+        // $coinReportsLiveId = DB::table('coin_reports_live')->insertGetId([
+        //     'symbol' => $response['symbol'],
+        //     'interval' => $interval,
+        //     'market' => $market,
+        //     'status' => 'active', // Assuming you have a status or similar field
+        //     'created_at' => Carbon::now('Asia/Karachi'),
+        //     'updated_at' => Carbon::now('Asia/Karachi')
+        // ]);
         $data =  [
             'symbol' => $response['symbol'],
             'amount' => $amount,
@@ -686,6 +694,7 @@ class BinanceApiService
             'trade_status' => 'open',
             'trade_acc' => $trader,
             'qty' => $quantity,
+            // 'coin_reports_live_id' => $coinReportsLiveId,
             'commission' => $fee_details['totalCommission'],
             'commission_asset' => $fee_details['commissionAsset'],
             'commissionUSDT' => $fee_details['commissionAssetUSDT'],
@@ -695,6 +704,8 @@ class BinanceApiService
         DB::table('orders')->insert(
             $data
         );
+
+
         MailerService::sendEmail($data);
         return $data;
     }

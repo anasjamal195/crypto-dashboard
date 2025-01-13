@@ -13,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class SpotLiveTradeWorker implements ShouldQueue
+class TradeSettingsWorker implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public $timeout = 360000000;
@@ -27,8 +27,6 @@ class SpotLiveTradeWorker implements ShouldQueue
      */
     public function __construct()
     {
-        
-        $this->market = 'SPOT';
     }
 
     /**
@@ -40,7 +38,7 @@ class SpotLiveTradeWorker implements ShouldQueue
         
         while (true) {
             
-            LiveTradeService::performLiveTrades($this->market);
+            LiveTradeService::performLiveTrades($this->interval,$this->market);
             usleep(200000);
             
         }

@@ -11,6 +11,7 @@ use App\Services\LiveTradeService;
 use App\Services\MarketTrendService;
 use DateTime;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Request;
 
 class HomeController extends Controller
 {
@@ -31,8 +32,9 @@ class HomeController extends Controller
      */
     public function index()
     {
-        // dd(LiveTradeService::performLiveTrades('1m','SPOT'));
         $pageSlug = 'Dashboard';
         return view('welcome', compact('pageSlug'));
     }
+
+
 }
