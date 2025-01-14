@@ -138,7 +138,19 @@ class LiveTradeService
 
         $current_price = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
         if ($current_price > $tradeInstance->priceLock) {
-            BinanceApiService::placeBuyOrder($tradeInstance->symbol, $tradeInstance->interval, $tradeInstance->buyPrice, $tradeInstance->tradeAccount, $tradeInstance->market);
+
+            $lowestPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
+            $isLoop = true;
+            while ($isLoop) {
+                $latestPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
+                if ($lowestPrice > $latestPrice) {
+                    $lowestPrice = $latestPrice;
+                } else if ($latestPrice > $lowestPrice * 1.0009) {
+                    BinanceApiService::placeBuyOrder($tradeInstance->symbol, $tradeInstance->interval, $tradeInstance->buyPrice, $tradeInstance->tradeAccount, $tradeInstance->market);
+                    $isLoop = false;
+                }
+                usleep(100000);
+            }
             // Reset price Lock for buying condition
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                 'priceLock' => 0,

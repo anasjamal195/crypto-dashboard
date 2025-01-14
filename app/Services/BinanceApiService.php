@@ -232,51 +232,39 @@ class BinanceApiService
             $closePrices[] = $close;
 
             if ($index == 0) {
-                // Initialization
+                // Initial trend assumption can actually be decided based on more context or prior data
                 $trend = 'up';
-                $sar = $low; // First SAR is the lowest low of the previous trend
-                $ep = $high; // Extreme Point for the current trend
-                $af = 0.02;  // Acceleration Factor
+                $sar = $low;  // Initial SAR
+                $ep = $high;  // Extreme Point
+                $af = 0.02;   // Acceleration Factor
             } else {
+                $previousCandle = $data[$index - 1];
+                $prevLow = (float) $previousCandle[3];
+                $prevHigh = (float) $previousCandle[2];
+        
                 if ($trend == 'up') {
-                    // Calculate SAR for uptrend
-                    $sar = $sar + $af * ($ep - $sar);
-
-                    // Prevent SAR from exceeding the lows of the current and previous periods
-                    $sar = min($sar, $low, $data[$index - 1][3]);
-
-                    // Update Extreme Point
                     if ($high > $ep) {
                         $ep = $high;
-                        $af = min($af + 0.02, 0.2); // Increment AF up to a maximum of 0.2
+                        $af = min($af + $afStep, $afMax);
                     }
-
-                    // Check for trend reversal
+                    $sar = min($sar + $af * ($ep - $sar), $low, $prevLow);
                     if ($low < $sar) {
                         $trend = 'down';
-                        $sar = $ep; // Reset SAR to the EP of the previous uptrend
-                        $ep = $low; // Set new EP for the downtrend
-                        $af = 0.02; // Reset AF
+                        $sar = $ep;
+                        $ep = $low;
+                        $af = 0.02;
                     }
                 } else {
-                    // Calculate SAR for downtrend
-                    $sar = $sar - $af * ($sar - $ep);
-
-                    // Prevent SAR from exceeding the highs of the current and previous periods
-                    $sar = max($sar, $high, $data[$index - 1][2]);
-
-                    // Update Extreme Point
                     if ($low < $ep) {
                         $ep = $low;
-                        $af = min($af + 0.02, 0.2); // Increment AF up to a maximum of 0.2
+                        $af = min($af + $afStep, $afMax);
                     }
-
-                    // Check for trend reversal
+                    $sar = max($sar - $af * ($sar - $ep), $high, $prevHigh);
                     if ($high > $sar) {
                         $trend = 'up';
-                        $sar = $ep; // Reset SAR to the EP of the previous downtrend
-                        $ep = $high; // Set new EP for the uptrend
-                        $af = 0.02; // Reset AF
+                        $sar = $ep;
+                        $ep = $high;
+                        $af = 0.02;
                     }
                 }
             }
