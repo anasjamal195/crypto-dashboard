@@ -36,8 +36,12 @@ class SpotDynamicTradeWorker implements ShouldQueue
 
 
         while (true) {
-            DynamicTradeService::checkDynamicTrades();
-            usleep(10000); // 10ms delay
+            try {
+                DynamicTradeService::checkDynamicTrades();
+                usleep(10000); // 10ms delay
+            } catch (\Exception $th) {
+                Log::error('An error occured: ' . $th);
+            }
         }
     }
 }
