@@ -839,4 +839,240 @@ class BinanceApiService
 
         return $data;
     }
+
+
+
+
+    public static function placeDynamicBuyOrderSpot($symbol, $amount,  $trader)
+    {
+
+        $current_price = self::getCurrentPrice($symbol);
+        $user = User::find($trader);
+        $market = 'SPOT';
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
+
+        // Get server time from Binance API
+        $serverTime = json_decode(file_get_contents($base_url . config('binance.endpoints.server_time')), true);
+        $serverTimestamp = $serverTime['serverTime'];
+
+        // Calculate timestamp and recvWindow
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
+
+        // Adjust timestamp if necessary
+        if ($timestamp - $serverTimestamp > $recvWindow) {
+            $timestamp = $serverTimestamp + $recvWindow;
+        }
+
+        // Fetch exchange information to get LOT_SIZE filter
+        $exchangeInfo = json_decode(file_get_contents($base_url . config('binance.endpoints.exchange_info') . "?symbol=$symbol"), true);
+        $filters = $exchangeInfo['symbols'][0]['filters'];
+
+        // Extract LOT_SIZE filter values
+        $lotSize = null;
+        foreach ($filters as $filter) {
+            if ($filter['filterType'] == 'LOT_SIZE') {
+                $lotSize = $filter;
+                break;
+            }
+        }
+
+        if ($lotSize === null) {
+            throw new Exception("LOT_SIZE filter not found for symbol $symbol");
+        }
+
+        // Calculate and adjust the quantity
+        $quantity = $amount / $current_price;
+        $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
+
+        // Ensure quantity is within the allowed limits
+        if ($quantity < $lotSize['minQty'] || $quantity > $lotSize['maxQty']) {
+            throw new Exception("Quantity $quantity is outside the allowed LOT_SIZE limits for symbol $symbol");
+        }
+
+        $url = $base_url . config('binance.endpoints.order');
+
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'symbol' => $symbol,
+            'side' => 'BUY',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->asForm()->post($url, [
+            'symbol' => $symbol,
+            'side' => 'BUY',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+        $response = $response->json();
+
+
+
+        $fee_details = self::getTotalCommission($response);
+        if (isset($response['code'])) {
+            Log::info('Trader ' . $trader . ': Buy response' . json_encode($response));
+            return $response;
+        }
+
+      
+        $data =  [
+            'symbol' => $response['symbol'],
+            'amount' => $amount,
+            'interval' => '1m',
+            'market' => $market,
+            'orderId' => $response['orderId'],
+            'status' => $response['status'],
+            'type' => $response['type'],
+            'side' => $response['side'],
+            'price' => $current_price,
+            'trade_status' => 'close',
+            'trade_acc' => $trader,
+            'qty' => $quantity,
+           
+            'commission' => $fee_details['totalCommission'],
+            'commission_asset' => $fee_details['commissionAsset'],
+            'commissionUSDT' => $fee_details['commissionAssetUSDT'],
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+        DB::table('dynamic_orders')->insert(
+            $data
+        );
+
+
+        MailerService::sendEmail($data);
+        return $data;
+    }
+
+    public static function placeDynamicSellOrderSpot($symbol, $quantity,  $trader)
+    {
+        
+        $market = 'SPOT';
+      
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
+
+
+
+        // Get server time from Binance API
+        $serverTime = json_decode(file_get_contents($base_url . config('binance.endpoints.server_time')), true);
+        $serverTimestamp = $serverTime['serverTime'];
+
+        // Calculate timestamp and recvWindow
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
+
+        // Adjust timestamp if necessary
+        if ($timestamp - $serverTimestamp > $recvWindow) {
+            $timestamp = $serverTimestamp + $recvWindow;
+        }
+
+        // Fetch exchange information to get LOT_SIZE filter
+        $exchangeInfo = json_decode(file_get_contents($base_url . config('binance.endpoints.exchange_info') . "?symbol=$symbol"), true);
+        $filters = $exchangeInfo['symbols'][0]['filters'];
+
+        // Extract LOT_SIZE filter values
+        $lotSize = null;
+        foreach ($filters as $filter) {
+            if ($filter['filterType'] == 'LOT_SIZE') {
+                $lotSize = $filter;
+                break;
+            }
+        }
+
+        if ($lotSize === null) {
+            throw new Exception("LOT_SIZE filter not found for symbol $symbol");
+        }
+
+        // Calculate and adjust the quantity
+       
+        $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
+
+        // Ensure quantity is within the allowed limits
+        if ($quantity < $lotSize['minQty'] || $quantity > $lotSize['maxQty']) {
+            throw new Exception("Quantity $quantity is outside the allowed LOT_SIZE limits for symbol $symbol");
+        }
+
+        $url = $base_url . config('binance.endpoints.order');
+
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'symbol' => $symbol,
+            'side' => 'SELL',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->asForm()->post($url, [
+            'symbol' => $symbol,
+            'side' => 'SELL',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+        $response = $response->json();
+
+
+        // return $response;
+        $fee_details = self::getTotalCommission($response);
+
+        if (!isset($response['symbol'])) {
+            Log::info('Trader ' . $trader . ': Sell response' . json_encode($response));
+        }
+        $data =  [
+            'symbol' => $response['symbol'],
+            'amount' => '',
+            'interval' => '',
+            'market' => $market,
+            'orderId' => $response['orderId'],
+            'status' => $response['status'],
+            'type' => $response['type'],
+            'side' => $response['side'],
+            'price' => $current_price,
+            'trade_status' => 'close',
+            'trade_acc' => $trader,
+            'qty' => $quantity,
+            'commission' => $fee_details['totalCommission'],
+            'commission_asset' => $fee_details['commissionAsset'],
+            'commissionUSDT' => $fee_details['commissionAssetUSDT'],
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+        DB::table('dynamic_orders')->insert(
+            $data
+        );
+
+        MailerService::sendEmail($data);
+
+        return $data;
+    }
 }

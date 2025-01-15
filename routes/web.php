@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DynamicTradeController;
 use App\Http\Controllers\TradeHandlerController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +31,7 @@ Route::get('/live-trades-results/{market}', 'App\Http\Controllers\BinanceControl
 
 
 Route::resource('trade-handler', TradeHandlerController::class);
+Route::resource('dynamic-trading', DynamicTradeController::class);
 Route::post('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdate'])->name('user.toggle-auto-update');
 
 Route::group(['middleware' => 'auth'], function () {

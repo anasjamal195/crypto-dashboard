@@ -7,6 +7,7 @@ use App\Jobs\AutoTraderSpot;
 use App\Jobs\CoinReportWorker;
 use App\Jobs\CoinWorkers\FutureCoinDumper;
 use App\Jobs\CoinWorkers\SpotCoinDumper;
+use App\Jobs\DynamicTrading\SpotDynamicTradeWorker;
 use App\Jobs\IndicatorCandleDumper;
 use App\Jobs\MarketTrendAnalyzer;
 use App\Jobs\MarketTrendWorkers\FutureTrendWorker;
@@ -85,6 +86,7 @@ class DispatchJobs extends Command
         SpotReportWorker::dispatch()->onQueue('spotCoinReportWorker');
         SpotSettingsWorker::dispatch()->onQueue('spotSettingWorker');
         SpotLiveTradeWorker::dispatch()->onQueue('spotLiveTradeWorker');
+        SpotDynamicTradeWorker::dispatch()->onQueue('spotDynamicTradeWorker');
     }
 
     protected function dispatchFutureWorkers()
@@ -127,6 +129,9 @@ class DispatchJobs extends Command
                 break;
             case 'spotSettingWorker':
                 SpotSettingsWorker::dispatch()->onQueue($queueName);
+                break;
+            case 'spotDynamicTradeWorker':
+                SpotDynamicTradeWorker::dispatch()->onQueue($queueName);
                 break;
             default:
                 $this->error("Invalid queue name provided.");

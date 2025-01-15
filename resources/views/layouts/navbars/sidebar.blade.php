@@ -163,6 +163,35 @@
                     </ul>
                 </div>
             </li>
+            {{-- Dynamic Trading Module Menu --}}
+            <li class="{{ request()->is('dynamic-trading*') ? 'active' : '' }}">
+                <a data-toggle="collapse" href="#dynamicTradingMenu"
+                    aria-expanded="{{ request()->is('dynamic-trading*') ? 'true' : 'false' }}">
+                    <i class="tim-icons icon-chart-pie-36"></i>
+                    <p>{{ __('Dynamic Trading') }}
+                        <b class="caret"></b>
+                    </p>
+                </a>
+                <div class="collapse {{ request()->is('dynamic-trading*') ? 'show' : '' }}" id="dynamicTradingMenu">
+                    <ul class="nav">
+                        <li class="{{ request()->routeIs('dynamic-trading.manage') ? 'active' : '' }}">
+                            <!-- Example additional management link -->
+                            <a href="{{ route('dynamic-trading.index') }}">
+                                <i class="tim-icons icon-settings-gear-63"></i>
+                                <p>{{ __('Manage Trades') }}</p>
+                            </a>
+                        </li>
+                        <li class="{{ request()->routeIs('dynamic-trading.create') ? 'active' : '' }}">
+                            <a href="{{ route('dynamic-trading.create') }}">
+                                <i class="tim-icons icon-simple-add"></i>
+                                <p>{{ __('Add Trade') }}</p>
+                            </a>
+                        </li>
+                       
+                    </ul>
+                </div>
+            </li>
+
         </ul>
     </div>
 </div>

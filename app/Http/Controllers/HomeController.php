@@ -6,6 +6,7 @@ use App\CommonHelpers;
 use App\Jobs\TradeWorker\IdealTradeWorker;
 use App\Services\BinanceApiService;
 use App\Services\CoinReportService;
+use App\Services\DynamicTradeService;
 use App\Services\IdealTradeService;
 use App\Services\LiveTradeService;
 use App\Services\MarketTrendService;

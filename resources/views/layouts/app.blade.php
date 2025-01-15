@@ -31,6 +31,8 @@
     {{-- Swal Popup --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@10">
 
+    <!-- Select 2  -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 
 
 </head>
@@ -90,7 +92,7 @@
         color: rgba(255, 255, 255, 0.7) !important;
     }
 
-    <style>.swal2-toast-popup {
+    .swal2-toast-popup {
         box-shadow: none !important;
         /* Remove drop shadows */
     }
@@ -99,8 +101,62 @@
         color: white !important;
         /* Ensure text color is white */
     }
-</style>
 
+    select {
+        background-color: #ffffff;
+        /* White background */
+        color: #333333;
+        /* Dark text for readability */
+        border: 1px solid #cccccc;
+        /* Light border to define the edges */
+    }
+
+    select:hover {
+        border-color: #666666;
+        /* Darker border on hover */
+    }
+</style>
+<style>
+    .select2-container--default .select2-selection--single {
+        background-color: #2a2e35;
+        /* Dark background */
+        border: 1px solid #444;
+        /* Darker border for contrast */
+        color: #fff;
+        /* White text */
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        background-color: #333;
+    }
+
+    .select2-dropdown {
+        background-color: #2a2e35;
+        color: #fff;
+        border-color: #444;
+    }
+
+    .select2-results__option {
+        color: #fff;
+    }
+
+    .select2-results__option--highlighted[aria-selected] {
+        background-color: #4a536e;
+        /* Lighter dark background for highlighted item */
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border: solid black 1px;
+        outline: none;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        color: #fff;
+        background: #333;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered{
+        color: #fff;
+    }
 </style>
 
 <body class="{{ $class ?? '' }}">
@@ -172,8 +228,12 @@
 
     <script src="{{ asset('black') }}/js/theme.js"></script>
 
+
     <!-- DataTables JS -->
     <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.js"></script>
+
+    {{-- Select 2 --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
     @stack('js')
     <script>
         @if (session('success'))
@@ -299,7 +359,7 @@
                     }
                 });
 
-                $('.table').DataTable({
+                $('.dataTable').DataTable({
                     "pagingType": "full_numbers",
                     "lengthMenu": [
                         [10, 25, 50, -1],
@@ -307,6 +367,10 @@
                     ],
                     "order": [], // Remove initial order, if necessary
                 });
+
+                $('.select2').select2();
+
+
             });
 
 
