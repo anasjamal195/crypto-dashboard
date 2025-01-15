@@ -37,6 +37,7 @@ class SpotDynamicTradeWorker implements ShouldQueue
 
         while (true) {
             DynamicTradeService::checkDynamicTrades();
+            usleep(10000); // 10ms delay
         }
     }
 }
