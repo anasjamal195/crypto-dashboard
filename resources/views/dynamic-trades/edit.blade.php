@@ -34,12 +34,12 @@
 
                         <div class="form-group">
                             <label for="amount">Amount</label>
-                            <input type="number" name="amount" class="form-control" value="{{ $trade->amount }}">
+                            <input type="number" name="amount" step="0.001" class="form-control" value="{{ $trade->amount }}">
                         </div>
 
                         <div class="form-group">
                             <label for="qty">Quantity</label>
-                            <input type="number" name="qty" class="form-control" value="{{ $trade->qty }}">
+                            <input type="number" name="qty" step="0.001" class="form-control" value="{{ $trade->qty }}">
                         </div>
 
                         <div class="form-group">
@@ -49,12 +49,12 @@
 
                         <div class="form-group">
                             <label for="priceLock">Price Lock</label>
-                            <input type="number" name="priceLock" class="form-control" value="{{ $trade->priceLock }}">
+                            <input type="number" name="priceLock" step="0.001" class="form-control" value="{{ $trade->priceLock }}">
                         </div>
 
                         <div class="form-group">
                             <label for="priceLockBuffer">Price Lock Buffer</label>
-                            <input type="number" name="priceLockBuffer" class="form-control" value="{{ $trade->priceLockBuffer }}">
+                            <input type="number" name="priceLockBuffer" step="0.001" class="form-control" value="{{ $trade->priceLockBuffer }}">
                         </div>
 
                         <div class="form-group">

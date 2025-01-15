@@ -32,19 +32,19 @@
                         </div>
                         <div class="form-group">
                             <label for="amount">Amount (Leave blank if SELL Selected)</label>
-                            <input type="number" name="amount" class="form-control">
+                            <input type="number" name="amount" step="0.001" class="form-control">
                         </div>
                         <div class="form-group">
                             <label for="qty">Quantity (Leave blank if BUY Selected)</label>
-                            <input type="number" name="qty" class="form-control">
+                            <input type="number" name="qty" step="0.001" class="form-control">
                         </div>
                         <div class="form-group">
                             <label for="leverage">Leverage (Leave blank if SPOT Selected)</label>
-                            <input type="number" name="leverage" class="form-control">
+                            <input type="number" name="leverage"  class="form-control">
                         </div>
                         <div class="form-group">
                             <label for="priceLock">Price Lock (Price to Trigger Action)</label>
-                            <input type="number" name="priceLock" class="form-control">
+                            <input type="number" name="priceLock" step="0.001" class="form-control">
                         </div>
                         <div class="form-group">
                             <label for="priceLockBuffer">Price Lock Buffer (Percentage Margin for Locked Price)</label>
