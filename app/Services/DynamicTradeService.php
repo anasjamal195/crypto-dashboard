@@ -23,6 +23,7 @@ class DynamicTradeService
             $dynamicTrades = DB::table('dynamic_trade_handler')
                                ->where('market', 'SPOT')
                                ->where('tradeAccount', $user->id)
+                               ->where('isActive',1)
                                ->get();
 
             foreach ($dynamicTrades as $trade) {
@@ -40,7 +41,7 @@ class DynamicTradeService
                         BinanceApiService::placeDynamicBuyOrderSpot($trade->symbol, $trade->amount, $trade->tradeAccount);
                         DB::table('dynamic_trade_handler')->where('id', $trade->id)->update([
                             'status' => 'FILLED',
-                            'active' => 0,
+                            'isActive' => 0,
                         ]);
                     }
                 } else if ($trade->side == 'SELL') {
@@ -54,7 +55,7 @@ class DynamicTradeService
                         BinanceApiService::placeDynamicSellOrderSpot($trade->symbol, $trade->quantity, $trade->tradeAccount);
                         DB::table('dynamic_trade_handler')->where('id', $trade->id)->update([
                             'status' => 'FILLED',
-                            'active' => 0,
+                            'isActive' => 0,
                         ]);
                     }
                 }
