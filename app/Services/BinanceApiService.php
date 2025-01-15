@@ -1050,8 +1050,8 @@ class BinanceApiService
         }
         $data =  [
             'symbol' => $response['symbol'],
-            'amount' => '',
-            'interval' => '',
+            'amount' => $quantity * $current_price,
+            'interval' => '1m',
             'market' => $market,
             'orderId' => $response['orderId'],
             'status' => $response['status'],
