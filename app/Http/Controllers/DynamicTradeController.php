@@ -10,7 +10,7 @@ class DynamicTradeController extends Controller
     public function index()
     {
         // Fetching all trades
-        $trades = DB::table('dynamic_trade_handler')->get();
+        $trades = DB::table('dynamic_trade_handler')->where('tradeAccount',auth()->user()->id)->get();
         $pageSlug = 'DynamicTrades';
         return view('dynamic-trades.index', compact('trades', 'pageSlug')); // Ensure the view path matches the actual location
     }

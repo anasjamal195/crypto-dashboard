@@ -30,9 +30,9 @@ Route::put('/live-trader-settings-update', 'App\Http\Controllers\SettingsControl
 Route::get('/live-trades-results/{market}', 'App\Http\Controllers\BinanceController@liveTradeResults')->name('live.trades.result')->middleware('auth');
 
 
-Route::resource('trade-handler', TradeHandlerController::class);
-Route::resource('dynamic-trading', DynamicTradeController::class);
-Route::post('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdate'])->name('user.toggle-auto-update');
+Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');
+Route::resource('dynamic-trading', DynamicTradeController::class)->middleware('auth');
+Route::post('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdate'])->name('user.toggle-auto-update')->middleware('auth');
 
 Route::group(['middleware' => 'auth'], function () {
 		Route::get('icons', ['as' => 'pages.icons', 'uses' => 'App\Http\Controllers\PageController@icons']);
