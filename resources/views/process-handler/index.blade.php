@@ -4,14 +4,11 @@
     <div class="container">
         <h2>Trade Handler Settings</h2>
 
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <a href="{{ route('process-handler.action', 'START') }}" class="btn btn-primary btn-sm">Restart All</a>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <a href="{{ route('process-handler.action', 'STOP') }}" class="btn btn-danger btn-sm">Stop All</a>
-        </div>
+
+        <a href="{{ route('process-handler.action', 'START') }}" class="btn btn-primary btn-sm m-2">Restart All</a>
+
+        <a href="{{ route('process-handler.action', 'STOP') }}" class="btn btn-danger btn-sm m-2">Stop All</a>
+
 
         <table class="table">
             <thead>
