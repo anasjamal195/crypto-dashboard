@@ -7,6 +7,21 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class SupervisorService
 {
+
+    public static $processes = [
+        'laravel_spot_coin_dumper',
+        'laravel_future_coin_dumper',
+        'laravel_spot_coin_report_worker',
+        'laravel_future_coin_report_worker',
+        'laravel_spot_setting_worker',
+        'laravel_future_setting_worker',
+        'laravel_spot_live_trade_worker',
+        'laravel_future_live_trade_worker'
+    ];
+
+    public static function getProcesses(){
+        return self::$processes;
+    }
     /**
      * Execute a Supervisor command and format the output.
      *
