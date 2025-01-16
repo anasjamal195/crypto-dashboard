@@ -10,18 +10,28 @@
                     <th>Program Name</th>
                     <th>Status</th>
                     <th>Uptime</th>
-                    <th>Last Updated</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($processes as $process)
                     <tr>
-                        <td>{{ $process->program_name }}</td>
-                        <td>{{ $process->status }}</td>
-                        <td>{{ $process->uptime }}</td>
-                        <td>{{ $process->updated_at }}</td>
-                        <td><a href="{{route('process-handler.restart',$process->program_name)}}" class="btn btn-primary">Restart</a></td>
+                        <td>{{ ucwords(str_replace('_', ' ', $process['processName'])) }}</td>
+                        <td>
+                            <span class="badge {{ $process['status'] == 'RUNNING' ? 'badge-success' : 'badge-danger' }}">
+                                {{ $process['status'] }}
+                            </span>
+                        </td>
+                        <td>{{ $process['uptime'] }}</td>
+                        <td>
+                            @if ($process['status'] == 'RUNNING')
+                                <a href="{{ route('process-handler.stop', $process['processName']) }}"
+                                    class="btn btn-danger btn-sm">Stop</a>
+                            @else
+                                <a href="{{ route('process-handler.restart', $process['processName']) }}"
+                                    class="btn btn-primary btn-sm">Restart</a>
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

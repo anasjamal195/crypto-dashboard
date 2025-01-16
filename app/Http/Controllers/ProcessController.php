@@ -10,12 +10,24 @@ class ProcessController extends Controller
 {
     public function index()
     {
-        $processes = DB::table('process_handlers')->get();
-        // foreach($processes as $process){
-        //     $status = SupervisorService::getStatus($process->program_name);
-        //     $data = $status['data'][0];
-            
-        // }
-        return view('process-handler.index', ['processes' => $processes,'pageSlug'=>'processHandler']);
+        $processes = SupervisorService::getStatus();
+
+        return view('process-handler.index', ['processes' => $processes['data'], 'pageSlug' => 'processHandler']);
+    }
+    public function restart($process)
+    {
+        $process = SupervisorService::restart($process);
+        if ($process['success'])
+            return redirect()->back()->withSuccess('Successfully Restarted');
+
+        return redirect()->back()->withError('Failed to restart');
+    }
+    public function stop($process)
+    {
+        $process = SupervisorService::stop($process);
+        if ($process['success'])
+            return redirect()->back()->withSuccess('Successfully Stopped');
+
+        return redirect()->back()->withError('Failed to Stop');
     }
 }

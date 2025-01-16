@@ -111,15 +111,13 @@ class SupervisorService
     {
         $cmd = is_null($program) ? 'sudo supervisorctl status' : 'sudo supervisorctl status ' . $program;
         $output = self::executeCommand($cmd);
-
-        if ($output['success']) {
+        
+        
             return [
                 'success' => true,
                 'data' => self::parseStatusOutput($output['message'])
             ];
-        }
 
-        return $output; // Return as is if there was an error
     }
 
     /**
@@ -132,7 +130,7 @@ class SupervisorService
     {
         $lines = explode("\n", trim($output));
         $statusArray = [];
-
+        // dd($lines);
         foreach ($lines as $line) {
             if (preg_match('/^(.*?)\s+(RUNNING|STOPPED|STARTING|STOPPING|EXITED|FATAL|UNKNOWN)\s+pid\s+(\d+)?,?\s*uptime\s+(\d+:\d+:\d+)/', $line, $matches)) {
                 $statusArray[] = [

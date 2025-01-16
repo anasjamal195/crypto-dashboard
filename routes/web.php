@@ -36,6 +36,8 @@ Route::post('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdat
 
 // Process Handler Routes
 Route::get('/process-handler', 'App\Http\Controllers\ProcessController@index')->name('process-handler.index')->middleware('auth');
+Route::get('/process-handler/restart/{process_name}', 'App\Http\Controllers\ProcessController@restart')->name('process-handler.restart')->middleware('auth');
+Route::get('/process-handler/stop/{process_name}', 'App\Http\Controllers\ProcessController@stop')->name('process-handler.stop')->middleware('auth');
 
 
 Route::group(['middleware' => 'auth'], function () {
