@@ -30,4 +30,13 @@ class ProcessController extends Controller
 
         return redirect()->back()->withError('Failed to Stop');
     }
+    public function performAction($action)
+    {
+
+        $process = $action == 'START' ? SupervisorService::start() : SupervisorService::stop();
+        if ($process['success'])
+            return redirect()->back()->withSuccess('Action ' . $action);
+
+        return redirect()->back()->withError('Failed to Perform Action ' . $action);
+    }
 }
