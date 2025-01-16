@@ -187,7 +187,27 @@
                                 <p>{{ __('Add Trade') }}</p>
                             </a>
                         </li>
-                       
+
+                    </ul>
+                </div>
+            </li>
+            <li class="{{ request()->is('process-handlers*') ? 'active' : '' }}">
+                <a data-toggle="collapse" href="#processHandlersCollapse" aria-expanded="false">
+                    <i class="tim-icons icon-settings"></i>
+                    <p>{{ __('Process Handlers') }}
+                        <b class="caret"></b>
+                    </p>
+                </a>
+                <div class="collapse {{ request()->is('process-handlers*') ? 'show' : '' }}"
+                    id="processHandlersCollapse">
+                    <ul class="nav">
+                        <li class="{{ request()->routeIs('process-handler.index') ? 'active' : '' }}">
+                            <a href="{{ route('process-handler.index') }}">
+                                <i class="tim-icons icon-bullet-list-67"></i>
+                                <p>{{ __('View All Processes') }}</p>
+                            </a>
+                        </li>
+
                     </ul>
                 </div>
             </li>

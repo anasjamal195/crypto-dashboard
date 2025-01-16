@@ -22,7 +22,8 @@
             <tbody>
                 @foreach ($processes as $process)
                     <tr>
-                        <td>{{ ucwords(str_replace('_', ' ', $process['processName'])) }}</td>
+                        <td>{{ ucwords(str_replace('worker', '', str_replace('laravel', '', str_replace('_', ' ', $process['processName'])))) }}
+                        </td>
                         <td>
                             <span class="badge {{ $process['status'] == 'RUNNING' ? 'badge-success' : 'badge-danger' }}">
                                 {{ $process['status'] }}

@@ -27,7 +27,7 @@ class SpotLiveTradeWorker implements ShouldQueue
      */
     public function __construct()
     {
-        
+
         $this->market = 'SPOT';
     }
 
@@ -37,12 +37,11 @@ class SpotLiveTradeWorker implements ShouldQueue
     public function handle(): void
     {
 
-        
+
         while (true) {
-            
+
             LiveTradeService::performLiveTrades($this->market);
             usleep(200000);
-            
         }
     }
 }
