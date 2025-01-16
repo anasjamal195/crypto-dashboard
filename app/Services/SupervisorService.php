@@ -2,26 +2,31 @@
 
 namespace App\Services;
 
-use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class SupervisorService
 {
     /**
-     * Execute a Supervisor command.
+     * Execute a Supervisor command and format the output.
      *
      * @param string $command The command to execute.
-     * @return string The output from the command.
+     * @return array The formatted output as an associative array.
      */
     private static function executeCommand($command)
     {
+        $process = Process::fromShellCommandline($command);
         try {
-            $process = new Process(explode(' ', $command));
             $process->mustRun();
-
-            return $process->getOutput();
+            return [
+                'success' => true,
+                'message' => trim($process->getOutput())
+            ];
         } catch (ProcessFailedException $exception) {
-            return 'Error: ' . $exception->getMessage();
+            return [
+                'success' => false,
+                'message' => $exception->getMessage()
+            ];
         }
     }
 
@@ -29,7 +34,7 @@ class SupervisorService
      * Start a specific Supervisor program or all programs.
      *
      * @param string|null $program The name of the program or null for all.
-     * @return string
+     * @return array
      */
     public static function start($program = null)
     {
@@ -41,7 +46,7 @@ class SupervisorService
      * Stop a specific Supervisor program or all programs.
      *
      * @param string|null $program The name of the program or null for all.
-     * @return string
+     * @return array
      */
     public static function stop($program = null)
     {
@@ -53,7 +58,7 @@ class SupervisorService
      * Restart a specific Supervisor program or all programs.
      *
      * @param string|null $program The name of the program or null for all.
-     * @return string
+     * @return array
      */
     public static function restart($program = null)
     {
@@ -64,7 +69,7 @@ class SupervisorService
     /**
      * Reread the Supervisor configuration files.
      *
-     * @return string
+     * @return array
      */
     public static function reread()
     {
@@ -74,7 +79,7 @@ class SupervisorService
     /**
      * Update Supervisor to apply any configuration changes.
      *
-     * @return string
+     * @return array
      */
     public static function update()
     {
@@ -85,11 +90,53 @@ class SupervisorService
      * Get the status of one or all Supervisor programs.
      *
      * @param string|null $program The name of the program or null for all.
-     * @return string
+     * @return array
      */
     public static function getStatus($program = null)
     {
         $cmd = is_null($program) ? 'sudo supervisorctl status' : 'sudo supervisorctl status ' . $program;
-        return self::executeCommand($cmd);
+        $output = self::executeCommand($cmd);
+
+        if ($output['success']) {
+            return [
+                'success' => true,
+                'data' => self::parseStatusOutput($output['message'])
+            ];
+        }
+
+        return $output; // Return as is if there was an error
+    }
+
+    /**
+     * Parse the status output into a structured array.
+     *
+     * @param string $output The raw output from supervisorctl status command.
+     * @return array
+     */
+    private static function parseStatusOutput($output)
+    {
+        $lines = explode("\n", trim($output));
+        $statusArray = [];
+
+        foreach ($lines as $line) {
+            if (preg_match('/^(.*?)\s+(RUNNING|STOPPED|STARTING|STOPPING|EXITED|FATAL|UNKNOWN)\s+pid\s+(\d+)?,?\s*uptime\s+(\d+:\d+:\d+)/', $line, $matches)) {
+                $statusArray[] = [
+                    'processName' => $matches[1],
+                    'status' => $matches[2],
+                    'pid' => $matches[3] ?? 'N/A', // Handle cases where pid might not be available
+                    'uptime' => $matches[4]
+                ];
+            } elseif (preg_match('/^(.*?)\s+(RUNNING|STOPPED|STARTING|STOPPING|EXITED|FATAL|UNKNOWN)/', $line, $matches)) {
+                // Catch cases where uptime or pid is not provided
+                $statusArray[] = [
+                    'processName' => $matches[1],
+                    'status' => $matches[2],
+                    'pid' => 'N/A',
+                    'uptime' => 'N/A'
+                ];
+            }
+        }
+
+        return $statusArray;
     }
 }
