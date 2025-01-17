@@ -24,7 +24,7 @@ class MailerService
     }
     public static function sendWorkerEmail($processName)
     {
-        foreach (self::$recipients as $recipient)
-            Mail::to($recipient)->send(new WorkerEmail($processName));
+        // foreach (self::$recipients as $recipient)
+        //     Mail::to($recipient)->send(new WorkerEmail($processName));
     }
 }
