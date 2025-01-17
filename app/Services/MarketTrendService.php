@@ -218,6 +218,8 @@ class MarketTrendService
             $indexCounter = 0;
             $indexLimit = 6;
             foreach ($data as $index => &$candle) {
+                $candle_1m['marketTrend'] = 'green';
+
                 if ($index < 100){
                     continue;
                 }
