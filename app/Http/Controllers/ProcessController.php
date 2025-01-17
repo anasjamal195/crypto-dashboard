@@ -36,7 +36,7 @@ class ProcessController extends Controller
             $currentlyRunning = SupervisorService::getStatus();
             foreach ($currentlyRunning['data'] as $process) {
                 if ($process['status'] == 'RUNNING') {
-                    SupervisorService::restart($process['programName']);
+                    SupervisorService::restart($process['processName']);
                 }
             }
             return redirect()->back()->withSuccess('Action ' . $action);
