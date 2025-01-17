@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @php
-    $buy_orders = json_decode(json_encode($order_sell), true);
+    $buy_orders = json_decode(json_encode($order_buy), true);
     $sell_orders = json_decode(json_encode($order_sell), true);
     // dd($buy_orders,$sell_orders);
     $buyTriggers = array_map(function ($order) {
@@ -23,7 +23,10 @@
     }, $sell_orders);
     $lowestTriggers = [];
     $liquidationTriggers = [];
-    // dd($buyTriggers, $sellTriggers,$candlestickData);
+    // dd($buyTriggers, $sellTriggers,array_map(function ($candle) {
+
+    //     return $candle['binance_timestamp'];
+    // }, $candlestickData));
 @endphp
 
 @section('content')
@@ -107,12 +110,24 @@
                 <div class="card">
                     <div class="card-header card-header-primary">
                         <h4 class="card-title">Candlestick Chart</h4>
-                        <p class="card-category">Visual representation of trade data</p>
+                        <p class="card-category">Total Trades = {{ count($buyTriggers) }}</p>
+                        <p class="card-category">Open Trades = {{ count($buyTriggers) - count($sellTriggers) }}</p>
                         <div>
-                            <span class="badge badge-rounded " style="background-color:green;color:white">Buying</span>
-                            <span class="badge badge-rounded " style="background-color:orange;color:white">Ideal
-                                Buying</span>
-                            <span class="badge badge-rounded " style="background-color:red;color:white">Buying</span>
+
+                            <!-- Anchor buttons with arrows -->
+                            <a href="{{ route('live.trades.details', ['symbol' => $symbol, 'interval' => $interval, 'market' => $market, 'timestamp' => $candlestickData[0]['binance_timestamp'] - 1000 * 60 * 1000]) }}"
+                                class="btn btn-primary btn-sm" role="button">
+                                <i class="fas fa-arrow-left"></i> Previous
+                            </a>
+                            <a href="{{ route('live.trades.details', ['symbol' => $symbol, 'interval' => $interval, 'market' => $market, 'timestamp' => $candlestickData[count($candlestickData) - 1]['binance_timestamp']]) }}"
+                                class="btn btn-primary btn-sm" role="button">
+                                <i class="fas fa-arrow-right"></i> Next
+                            </a>
+                            <a href="{{ route('live.trades.details', ['symbol' => $symbol, 'interval' => $interval, 'market' => $market]) }}"
+                                class="btn btn-info btn-sm" role="button">
+                                <i class="fas fa-fast-forward"></i> Go to Start
+                            </a>
+
                         </div>
                     </div>
 
@@ -156,21 +171,29 @@
                     const binanceTimestamp = candlestickData[index].binance_timestamp;
                     if (buyTriggers.includes(binanceTimestamp)) {
                         return {
-                            backgroundColor: 'green', // Green for buy triggers
-                            borderColor: 'darkgreen', // Darker green border
-                            radius: 6 // Larger point radius
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)', // Red for sell triggers
+                            borderColor: 'rgba(52, 152, 219, 0.8)', // Darker red border
+
+                            radius: 8 // Larger point radius
                         };
                     } else if (sellTriggers.includes(binanceTimestamp)) {
                         return {
+                            backgroundColor: 'rgba(243, 156, 18, 0.8)', // Red for sell triggers
+                            borderColor: 'rgba(243, 156, 18, 0.8)', // Darker red border
+
+                            radius: 8 // Larger point radius
+                        };
+                    } else if (candlestickData[index]['marketTrend'] === 'green') {
+                        return {
+                            backgroundColor: 'green', // Green for buy triggers
+                            borderColor: 'darkgreen', // Darker green border
+                            radius: 3 // Larger point radius
+                        };
+                    } else if (candlestickData[index]['marketTrend'] === 'red') {
+                        return {
                             backgroundColor: 'red', // Red for sell triggers
                             borderColor: 'darkred', // Darker red border
-                            radius: 6 // Larger point radius
-                        };
-                    } else if (lowestTriggers.includes(binanceTimestamp)) {
-                        return {
-                            backgroundColor: 'orange', // Red for sell triggers
-                            borderColor: 'darkred', // Darker red border
-                            radius: 6 // Larger point radius
+                            radius: 3 // Larger point radius
                         };
                     } else {
                         return {
@@ -190,8 +213,8 @@
                         datasets: [{
                             label: 'Close Prices',
                             data: closePrices,
-                            borderColor: 'blue',
-                            backgroundColor: 'rgba(0, 94, 255, 0.22)',
+                            borderColor: 'rgba(0, 255, 0, 0.15)',
+                            backgroundColor: 'rgba(0, 255, 0, 0.1)',
                             fill: true,
                             tension: 0.1,
                             yAxisID: 'y',

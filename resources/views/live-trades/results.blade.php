@@ -44,8 +44,8 @@
             </div>
         </form> --}}
 
-        <table class="table table-bordered">
-            <thead class="thead-light">
+        <table class="table">
+            <thead class="">
                 <tr>
                     <th>Coin</th>
                     <th>Interval</th>
@@ -57,6 +57,7 @@
                     <th>Duration</th>
                     <th>Buying Time</th>
                     <th>Selling Time</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -88,7 +89,7 @@
 
                             $profit =
                                 $order_sell->price * $order_sell->qty - $order->price * $order->qty - $total_fee_usdt;
-                            
+
                             $profit_percentage = ($profit / ($order->price * $order->qty)) * 100;
                             if ($order_sell->qty != $order->qty) {
                                 $profit =
@@ -101,6 +102,13 @@
                             $profit_percentage_total += $profit_percentage;
                             $color = $profit >= 0 ? 'green' : 'red';
                         }
+
+                        $sqlTimestamp = $order->created_at;
+                        $date = Carbon::createFromFormat('Y-m-d H:i:s', $sqlTimestamp, 'Asia/Karachi');
+                        $date->setTimezone('GMT');
+                        $unixTimestamp = $date->timestamp * 1000;
+                        $unixTimestamp = floor($unixTimestamp / 60000) * 60000;
+                        $unixTimestamp = intval($unixTimestamp);
                     @endphp
 
                     <tr>
@@ -125,12 +133,18 @@
                         <td>{{ $duration }}</td>
                         <td>{{ $order->created_at }}</td>
                         <td>{{ $order_sell ? $order_sell->created_at : '-' }}</td>
+
+                        <td> <a href="{{ route('live.trades.details', ['symbol' => $order->symbol, 'interval' => $order->interval, 'market' => $order->market, 'timestamp' => $unixTimestamp - 6000000 ]) }}"
+                                class="btn btn-primary btn-sm" role="button">
+                                <i class="fas fa-chart-bar"></i> 
+                            </a></td>
                     </tr>
                 @endforeach
                 <tr>
                     <td colspan="10" style="text-align: right;">
                         <strong>Total Trades:</strong> {{ count($orders) }}<br>
-                        <strong>Total Profit:</strong> ${{ number_format($profit_total, 4) }} ({{ round($profit_percentage_total,2)}} %)
+                        <strong>Total Profit:</strong> ${{ number_format($profit_total, 4) }}
+                        ({{ round($profit_percentage_total, 2) }} %)
                     </td>
                 </tr>
             </tbody>

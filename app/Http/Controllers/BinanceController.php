@@ -164,14 +164,13 @@ class BinanceController extends Controller
         // dd($orders);
         return view('live-trades.results', compact('orders', 'pageSlug'));
     }
-    public function liveTradeDetails($interval,$market,$symbol)
+    public function liveTradeDetails($interval,$market,$symbol,Request $request)
     {
 
         $pageSlug = 'liveTradeDetails';
         $order_buy = DB::table('orders')->where('side','BUY')->where('symbol',$symbol)->where('interval',$interval)->get();
-        $order_sell = DB::table('orders')->where('side','BUY')->where('symbol',$symbol)->where('interval',$interval)->get();
-        
-        $candlestickData = BinanceApiService::getCandleStickData($symbol,$interval,1000,null,$market);
+        $order_sell = DB::table('orders')->where('side','SELL')->where('symbol',$symbol)->where('interval',$interval)->get();
+        $candlestickData = MarketTrendService::getSymbolHistoricalTrendsSet2($symbol,$interval,$market,$request->timestamp);
          
         foreach ($candlestickData as $index => &$candle) {
 
