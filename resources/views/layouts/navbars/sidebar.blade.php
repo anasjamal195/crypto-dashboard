@@ -28,7 +28,7 @@
                     <ul class="nav">
                         {{-- SPOT Child Tab --}}
                         <li
-                            class="{{ $pageSlug == 'CoinReportSPOT' || $pageSlug == 'MarketTrendsSPOT' || $pageSlug == 'averageCandlesticksSPOT' ? 'active' : '' }}">
+                            class="{{ $pageSlug == 'CoinReportSPOT' || $pageSlug == 'MarketTrendsSPOT' || $pageSlug == 'averageCandlesticksSPOT' || $pageSlug == 'liveTradeResultsSPOT' ? 'active' : '' }}">
                             <a data-toggle="collapse" href="#spotMenu">
                                 <i class="tim-icons icon-components"></i>
                                 <p>{{ __('SPOT') }}

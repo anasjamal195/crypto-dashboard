@@ -7,6 +7,7 @@
     $loss_total = 0;
     $trades_total = 0;
     $profit_order_count = 0;
+    $profit_percentage_total = 0;
     $loss_order_count = 0;
     $symbols = [];
     $symbols = DB::table('orders')->pluck('symbol')->unique();
@@ -87,6 +88,7 @@
 
                             $profit =
                                 $order_sell->price * $order_sell->qty - $order->price * $order->qty - $total_fee_usdt;
+                            
                             $profit_percentage = ($profit / ($order->price * $order->qty)) * 100;
                             if ($order_sell->qty != $order->qty) {
                                 $profit =
@@ -95,6 +97,8 @@
                                     $total_fee_usdt;
                                 $profit_percentage = ($profit / ($order->price * $order->qty)) * 100;
                             }
+                            $profit_total += $profit;
+                            $profit_percentage_total += $profit_percentage;
                             $color = $profit >= 0 ? 'green' : 'red';
                         }
                     @endphp
@@ -123,6 +127,12 @@
                         <td>{{ $order_sell ? $order_sell->created_at : '-' }}</td>
                     </tr>
                 @endforeach
+                <tr>
+                    <td colspan="10" style="text-align: right;">
+                        <strong>Total Trades:</strong> {{ count($orders) }}<br>
+                        <strong>Total Profit:</strong> ${{ number_format($profit_total, 4) }} ({{ round($profit_percentage_total,2)}} %)
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
