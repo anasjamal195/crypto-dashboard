@@ -39,4 +39,18 @@ class ProcessController extends Controller
 
         return redirect()->back()->withError('Failed to Perform Action ' . $action);
     }
+    public function performActionOnPleskGit($apiKey, $action)
+    {
+
+        if ($action == 'RESTART' && $apiKey == config('binance.bot.api_key')) {
+            $currentlyRunning = SupervisorService::getStatus();
+            foreach ($currentlyRunning['data'] as $process) {
+                if ($process['status'] == 'RUNNING') {
+                    SupervisorService::restart($process['programName']);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
 }
