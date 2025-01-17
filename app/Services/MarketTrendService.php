@@ -221,7 +221,6 @@ class MarketTrendService
 
                 if ($index < 100) {
                     $candle_1m['marketTrend'] = 'red';
-
                     continue;
                 }
 
