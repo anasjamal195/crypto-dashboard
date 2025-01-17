@@ -34,6 +34,7 @@ class HomeController extends Controller
      */
     public function index()
     {
+        // dd(MarketTrendService::getSymbolHistoricalTrends('BTCUSDT','1m','SPOT'));
         $pageSlug = 'Dashboard';
         return view('welcome', compact('pageSlug'));
     }

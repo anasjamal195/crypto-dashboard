@@ -95,7 +95,8 @@ class BinanceController extends Controller
     public function showTrends($market, Request $request)
     {
         $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
-        $historicalTrends = MarketTrendService::getHistoricalTrends($request->interval, $market);
+        $historicalTrends = MarketTrendService::getSymbolHistoricalTrendsSet1($request->symbol,$request->interval, $market);
+
         // $timestamp = $request->timestamp;
 
         // // Create a DateTime object
@@ -162,5 +163,26 @@ class BinanceController extends Controller
         $orders = $orders->orderBy('created_at', 'desc')->get();
         // dd($orders);
         return view('live-trades.results', compact('orders', 'pageSlug'));
+    }
+    public function liveTradeDetails($interval,$market,$symbol)
+    {
+
+        $pageSlug = 'liveTradeDetails';
+        $order_buy = DB::table('orders')->where('side','BUY')->where('symbol',$symbol)->where('interval',$interval)->get();
+        $order_sell = DB::table('orders')->where('side','BUY')->where('symbol',$symbol)->where('interval',$interval)->get();
+        
+        $candlestickData = BinanceApiService::getCandleStickData($symbol,$interval,1000,null,$market);
+         
+        foreach ($candlestickData as $index => &$candle) {
+
+            $candle['timestamp'] = $candle['timestamp'] / 1000;
+            $date = new \DateTime("@{$candle['timestamp']}");
+            $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
+            $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
+        }
+
+      
+        // dd($orders);
+        return view('live-trades.trade-details', compact( 'pageSlug','symbol','interval','market','order_sell','order_buy','candlestickData'));
     }
 }

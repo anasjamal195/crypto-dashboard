@@ -49,10 +49,10 @@
                                 <label for="datetime" class="col-md-2 col-form-label text-md-right">Select Date and
                                     Time:</label>
                                 <div class="col-md-4">
-                                    <input type="datetime-local" class="form-control" id="datetime" name="timestamp" value="{{request()->get('timestamp')}}"
-                                        required>
-                                        <input type="hidden" class="form-control" id="interval" name="interval" value="{{request()->get('interval')}}"
-                                        required>
+                                    <input type="datetime-local" class="form-control" id="datetime" name="timestamp"
+                                        value="{{ request()->get('timestamp') }}" required>
+                                    <input type="hidden" class="form-control" id="interval" name="interval"
+                                        value="{{ request()->get('interval') }}" required>
                                 </div>
                                 <div class="col-md-4">
                                     <button type="submit" class="btn btn-primary">Submit</button>
@@ -67,17 +67,16 @@
         </div>
     </div>
     <script>
-       
         document.addEventListener("DOMContentLoaded", function() {
             const historicalTrends = @json($historicalTrends);
 
             // Extract timestamps and close prices
-            const timestamps = historicalTrends.BTCUSDT.map(data => data.timestamp);
-            const closePricesBTC = historicalTrends.BTCUSDT.map(data => data.close);
-            const closePricesETH = historicalTrends.ETHUSDT.map(data => data.close);
+            const timestamps = historicalTrends.map(data => data.timestamp);
+            const closePrices = historicalTrends.map(data => data.close);
+
 
             // Determine point colors and styles based on buy/sell triggers
-            const pointStylesBTC = historicalTrends.BTCUSDT.map((candle, index) => {
+            const pointStyles = historicalTrends.map((candle, index) => {
                 if (candle.marketTrend == 'green') {
                     return {
                         backgroundColor: 'rgba(46, 204, 113,0.7)', // Soft green for buy triggers
@@ -93,21 +92,7 @@
                 }
             });
 
-            const pointStylesETH = historicalTrends.ETHUSDT.map((candle, index) => {
-                if (candle.marketTrend == 'green') {
-                    return {
-                        backgroundColor: 'rgba(46, 204, 113,0.7)', // Soft green for buy triggers
-                        borderColor: 'darkgreen', // Darker green border
-                        radius: 5 // Larger point radius for emphasis
-                    };
-                } else {
-                    return {
-                        backgroundColor: 'rgba(231, 76, 60,0.7)', // Soft red for other points
-                        borderColor: 'darkred', // Red border
-                        radius: 3 // Normal point radius
-                    };
-                }
-            });
+
 
             // Initialize Chart.js
             const ctx = document.getElementById('candlestickChart').getContext('2d');
@@ -116,28 +101,16 @@
                 data: {
                     labels: timestamps,
                     datasets: [{
-                            label: 'Close Prices BTC',
-                            data: closePricesBTC,
-                            borderColor: 'rgba(231, 76, 60,1.0)', // Red border color
-                            backgroundColor: 'rgba(255, 255, 0, 0.22)', // Transparent yellow background
-                            tension: 0.1,
-                            yAxisID: 'yBTC',
-                            pointBackgroundColor: pointStylesBTC.map(style => style.backgroundColor),
-                            pointBorderColor: pointStylesBTC.map(style => style.borderColor),
-                            pointRadius: pointStylesBTC.map(style => style.radius)
-                        },
-                        {
-                            label: 'Close Prices ETH',
-                            data: closePricesETH,
-                            borderColor: 'rgba(231, 76, 60,1.0)', // Red border color
-                            backgroundColor: 'rgba(255, 255, 0, 0.22)', // Transparent yellow background
-                            tension: 0.1,
-                            yAxisID: 'yETH',
-                            pointBackgroundColor: pointStylesETH.map(style => style.backgroundColor),
-                            pointBorderColor: pointStylesETH.map(style => style.borderColor),
-                            pointRadius: pointStylesETH.map(style => style.radius)
-                        }
-                    ],
+                        label: 'Close Prices {{ request()->get('symbol') }}',
+                        data: closePrices,
+                        borderColor: 'rgba(231, 76, 60,1.0)', // Red border color
+                        backgroundColor: 'rgba(255, 255, 0, 0.22)', // Transparent yellow background
+                        tension: 0.1,
+                        yAxisID: 'y',
+                        pointBackgroundColor: pointStyles.map(style => style.backgroundColor),
+                        pointBorderColor: pointStyles.map(style => style.borderColor),
+                        pointRadius: pointStyles.map(style => style.radius)
+                    }, ],
                 },
                 options: {
                     responsive: true,

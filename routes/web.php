@@ -28,6 +28,7 @@ Route::get('/live-trader-settings', 'App\Http\Controllers\SettingsController@liv
 Route::put('/live-trader-settings-update', 'App\Http\Controllers\SettingsController@liveTraderSettingsUpdate')->name('live.trader.settings.update')->middleware('auth');
 
 Route::get('/live-trades-results/{market}', 'App\Http\Controllers\BinanceController@liveTradeResults')->name('live.trades.result')->middleware('auth');
+Route::get('/live-trades-details/{interval}/{market}/{symbol}', 'App\Http\Controllers\BinanceController@liveTradeDetails')->name('live.trades.details')->middleware('auth');
 
 
 Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');

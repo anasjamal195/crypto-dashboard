@@ -154,6 +154,97 @@ class MarketTrendService
         }
         return $marketTrendData;
     }
+
+    // Using indivisual Coin Data on a single Interval
+    public static function getSymbolHistoricalTrendsSet1(
+        $symbol,
+        $interval = '1m',
+        $market = 'SPOT',
+        $timestamp = null,
+    ) {
+
+
+
+
+
+        try {
+
+            $limit = 1000;
+            $data_interval = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
+            $last_timestamp_1m = $data_interval[0]['binance_timestamp'];
+            $data_15m = BinanceApiService::getCandleStickData($symbol, '15m', $limit, $last_timestamp_1m - (15 * 60 * 1000), $market);
+
+            foreach ($data_interval as $index => &$candle_1m) {
+                $timestamp_1m = $candle_1m['binance_timestamp'] / 1000;
+                $candle_1m['nearest_15m_candle'] = null;
+                $timestamp_nearest_15m = $timestamp_1m * 1000;
+                if ($timestamp_1m % (15 * 60) != 0)
+                    $timestamp_nearest_15m = (floor($timestamp_1m / (15 * 60)) * (15 * 60)) * 1000;
+                foreach ($data_15m as $candle_15m) {
+                    if ($candle_15m['binance_timestamp'] == $timestamp_nearest_15m) {
+                        $candle_1m['nearest_15m_candle'] = $candle_15m;
+                        $candle_1m['marketTrend'] = 'red';
+                        if ($index > 100) {
+                            if ($candle_1m['ma7'] > $candle_1m['ma25']  &&  $candle_1m['ma7'] > $candle_1m['ma99']) {
+                                $candle_1m['marketTrend'] = 'green';
+                            }
+                        }
+                    }
+                }
+            }
+            return $data_interval;
+        } catch (\Throwable $th) {
+            Log::error('DataDumper: Error - ' . $th->getMessage());
+            Log::error($th->getTraceAsString());
+            return $th;
+        }
+    }
+
+
+    // Using indivisual Coin Data on a single Interval
+    public static function getSymbolHistoricalTrendsSet2(
+        $symbol,
+        $interval = '1m',
+        $market = 'SPOT',
+        $timestamp = null,
+    ) {
+
+
+
+
+
+        try {
+
+            $limit = 1000;
+            $data_interval = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
+            $last_timestamp_1m = $data_interval[0]['binance_timestamp'];
+            $data_15m = BinanceApiService::getCandleStickData($symbol, '15m', $limit, $last_timestamp_1m - (15 * 60 * 1000), $market);
+
+            foreach ($data_interval as $index => &$candle_1m) {
+                $timestamp_1m = $candle_1m['binance_timestamp'] / 1000;
+                $candle_1m['nearest_15m_candle'] = null;
+                $timestamp_nearest_15m = $timestamp_1m * 1000;
+                if ($timestamp_1m % (15 * 60) != 0)
+                    $timestamp_nearest_15m = (floor($timestamp_1m / (15 * 60)) * (15 * 60)) * 1000;
+                foreach ($data_15m as $candle_15m) {
+                    if ($candle_15m['binance_timestamp'] == $timestamp_nearest_15m) {
+                        $candle_1m['nearest_15m_candle'] = $candle_15m;
+                        $candle_1m['marketTrend'] = 'red';
+                        if ($index > 100) {
+                            if ($candle_1m['ma7'] > $candle_1m['ma25']  &&  $candle_1m['ma7'] > $candle_1m['ma99']) {
+                                $candle_1m['marketTrend'] = 'green';
+                            }
+                        }
+                    }
+                }
+            }
+            return $data_interval;
+        } catch (\Throwable $th) {
+            Log::error('DataDumper: Error - ' . $th->getMessage());
+            Log::error($th->getTraceAsString());
+            return $th;
+        }
+    }
     public static function istradeAllowed(
         $interval = '1m',
         $limit = 15,
