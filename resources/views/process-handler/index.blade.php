@@ -20,6 +20,7 @@
                 </tr>
             </thead>
             <tbody>
+                
                 @foreach ($processes as $process)
                     <tr>
                         <td>{{ ucwords(str_replace('worker', '', str_replace('laravel', '', str_replace('_', ' ', $process['processName'])))) }}
