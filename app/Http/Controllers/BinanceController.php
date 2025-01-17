@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\BinanceApiService;
 use App\Services\MarketTrendService;
+use Carbon\Carbon;
 use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class BinanceController extends Controller
             ->where('interval', $interval)
             ->groupBy('symbol')
             ->orderBy('total_entries', 'DESC')
-            ->orderBy('last_updated', 'DESC') 
+            ->orderBy('last_updated', 'DESC')
             ->get();
         $pageSlug = 'CoinReport' . $market;
 
@@ -145,9 +146,21 @@ class BinanceController extends Controller
 
         return view('IdealIndicators.index', ['averages' => $averages, 'pageSlug' => 'averageCandlesticks' . $market]);
     }
-    public function liveTradeResults($market,Request $request){
+    public function liveTradeResults($market, Request $request)
+    {
 
-        $pageSlug = 'liveTradeResults'.$market;
-        return view('live-trades.results',compact('pageSlug'));
+        $pageSlug = 'liveTradeResults' . $market;
+        $orders = DB::table('orders')->where('market',$market)->where('trade_acc',auth()->user()->id)
+            ->where('side', 'BUY');
+
+        if ($request->filled('start_date'))
+            $orders = $orders->where('created_at', '>=', Carbon::parse($_GET['start_date'])->format('Y-m-d H:i:s'));
+        if ($request->filled('end_date'))
+            $orders = $orders->where('created_at', '<=', Carbon::parse($_GET['end_date'])->format('Y-m-d H:i:s'));
+        if ($request->filled('symbol'))
+            $orders = $orders->where('symbol', $_GET['symbol']);
+        $orders = $orders->orderBy('created_at', 'desc')->get();
+        // dd($orders);
+        return view('live-trades.results', compact('orders', 'pageSlug'));
     }
 }
