@@ -207,9 +207,6 @@ class MarketTrendService
     ) {
 
 
-
-
-
         try {
 
             $limit = 1000;
@@ -220,7 +217,7 @@ class MarketTrendService
             foreach ($data as $index => &$candle) {
 
                 if ($index < 100) {
-                    $candle_1m['marketTrend'] = 'red';
+                    $candle['marketTrend'] = 'red';
                     continue;
                 }
 
