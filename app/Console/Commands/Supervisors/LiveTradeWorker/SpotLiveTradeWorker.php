@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Supervisors\LiveTradeWorker;
 
 use App\Services\LiveTradeService;
+use App\Services\MailerService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -27,6 +28,7 @@ class SpotLiveTradeWorker extends Command
      */
     public function handle()
     {
+        MailerService::sendWorkerEmail('spot_live_trader');
         while (true) {
             try {
                 LiveTradeService::performLiveTrades('SPOT');

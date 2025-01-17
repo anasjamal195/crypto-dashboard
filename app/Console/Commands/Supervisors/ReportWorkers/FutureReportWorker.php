@@ -4,6 +4,7 @@ namespace App\Console\Commands\Supervisors\ReportWorkers;
 
 use App\CommonHelpers;
 use App\Services\CoinReportService;
+use App\Services\MailerService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -36,6 +37,9 @@ class FutureReportWorker extends Command
     public function handle()
     {
         while (true) {
+
+        MailerService::sendWorkerEmail('future_report_worker');
+
             $this->market = 'FUTURE';
             $this->interval = CommonHelpers::getSettingsValue('report_worker_interval_future', '1m');
             $this->limit = CommonHelpers::getSettingsValue('report_worker_limit_future', 1000);

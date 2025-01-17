@@ -4,6 +4,7 @@ namespace App\Console\Commands\Supervisors\CoinWorkers;
 
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
+use App\Services\MailerService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,6 +33,7 @@ class FutureCoinDumper extends Command
      */
     public function handle()
     {
+        MailerService::sendWorkerEmail('future_coin_dumper');
         while (true) {
             $this->minPercentage = CommonHelpers::getSettingsValue('future_coin_worker_min_percentage', -5);
             $this->maxPercentage = CommonHelpers::getSettingsValue('future_coin_worker_max_percentage', 5);

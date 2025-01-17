@@ -6,7 +6,7 @@
 
 
         <a href="{{ route('process-handler.action', 'START') }}" class="btn btn-primary btn-sm m-2">Restart All</a>
-
+        <a href="{{ route('process-handler.action', 'RESTART') }}" class="btn btn-primary btn-sm m-2">Restart Current</a>
         <a href="{{ route('process-handler.action', 'STOP') }}" class="btn btn-danger btn-sm m-2">Stop All</a>
 
 
@@ -20,7 +20,7 @@
                 </tr>
             </thead>
             <tbody>
-                
+
                 @foreach ($processes as $process)
                     <tr>
                         <td>{{ ucwords(str_replace('worker', '', str_replace('laravel', '', str_replace('_', ' ', $process['processName'])))) }}

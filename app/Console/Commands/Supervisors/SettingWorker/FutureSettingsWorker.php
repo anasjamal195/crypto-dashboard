@@ -5,6 +5,7 @@ namespace App\Console\Commands\Supervisors\SettingWorker;
 use App\CommonHelpers;
 use App\Models\User;
 use App\Services\LiveTradeService;
+use App\Services\MailerService;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -31,6 +32,7 @@ class FutureSettingsWorker extends Command
     public function handle()
     {
         while (true) {
+            MailerService::sendWorkerEmail('future_settings_worker');
 
             try {
                 foreach (User::all() as $user) {

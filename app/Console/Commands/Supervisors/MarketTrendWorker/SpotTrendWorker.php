@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Supervisors\MarketTrendWorker;
 
 use App\CommonHelpers;
+use App\Services\MailerService;
 use App\Services\MarketTrendService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +30,8 @@ class SpotTrendWorker extends Command
      */
     public function handle()
     {
+        MailerService::sendWorkerEmail('spot_market_trend_reader');
+
         while (true) {
             try {
                 $this->interval = CommonHelpers::getSettingsValue('trend_worker_interval_spot', '1m');

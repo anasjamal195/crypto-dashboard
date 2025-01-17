@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Supervisors\MarketTrendWorker;
 
 use App\CommonHelpers;
+use App\Services\MailerService;
 use App\Services\MarketTrendService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -30,6 +31,8 @@ class FutureTrendWorker extends Command
     public function handle()
     {
         while (true) {
+            MailerService::sendWorkerEmail('future_market_trend_reader');
+
             try {
                 $this->interval = CommonHelpers::getSettingsValue('trend_worker_interval_future', '1m');
                 $this->limit = CommonHelpers::getSettingsValue('trend_worker_limit_future', 15);
