@@ -117,7 +117,7 @@
                         </td>
                         <td>{{ number_format($order->price, 4) }}</td>
                         <td>
-                            @if ($order->pair_id == 0)
+                            @if ($order->pair_id == -1)
                                 <br>
                                 <span class="badge badge-danger">Sold Manually</span>
                             @else

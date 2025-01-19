@@ -796,7 +796,7 @@ class BinanceApiService
                 ->where('trade_acc', $trader)
                 ->update(
                     [
-                        'pair_id' => 0,
+                        'pair_id' => -1,
                         'trade_status' => 'close',
                     ]
                 );
