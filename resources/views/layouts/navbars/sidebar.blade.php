@@ -137,32 +137,7 @@
                     </ul>
                 </div>
             </li>
-            <li class="{{ request()->routeIs('internal.trader.settings', 'live.trader.settings') ? 'active' : '' }}">
-                <a data-toggle="collapse" href="#settingsMenu"
-                    aria-expanded="{{ request()->routeIs('internal.trader.settings', 'live.trader.settings') ? 'true' : 'false' }}">
-                    <i class="tim-icons icon-settings"></i>
-                    <p>{{ __('Settings') }}
-                        <b class="caret"></b>
-                    </p>
-                </a>
-                <div class="collapse {{ request()->routeIs('internal.trader.settings', 'live.trader.settings') ? 'show' : '' }}"
-                    id="settingsMenu">
-                    <ul class="nav">
-                        <li class="{{ request()->routeIs('internal.trader.settings') ? 'active' : '' }}">
-                            <a href="{{ route('internal.trader.settings') }}">
-                                <i class="tim-icons icon-components"></i>
-                                <p>{{ __('Internal Trader') }}</p>
-                            </a>
-                        </li>
-                        <li class="{{ request()->routeIs('live.trader.settings') ? 'active' : '' }}">
-                            <a href="{{ route('live.trader.settings') }}">
-                                <i class="tim-icons icon-spaceship"></i>
-                                <p>{{ __('Live Trader') }}</p>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </li>
+
             {{-- Dynamic Trading Module Menu --}}
             <li class="{{ request()->is('dynamic-trading*') ? 'active' : '' }}">
                 <a data-toggle="collapse" href="#dynamicTradingMenu"
@@ -211,7 +186,32 @@
                     </ul>
                 </div>
             </li>
-
+            <li class="{{ request()->routeIs('internal.trader.settings', 'live.trader.settings') ? 'active' : '' }}">
+                <a data-toggle="collapse" href="#settingsMenu"
+                    aria-expanded="{{ request()->routeIs('internal.trader.settings', 'live.trader.settings') ? 'true' : 'false' }}">
+                    <i class="tim-icons icon-settings"></i>
+                    <p>{{ __('Settings') }}
+                        <b class="caret"></b>
+                    </p>
+                </a>
+                <div class="collapse {{ request()->routeIs('internal.trader.settings', 'live.trader.settings') ? 'show' : '' }}"
+                    id="settingsMenu">
+                    <ul class="nav">
+                        <li class="{{ request()->routeIs('internal.trader.settings') ? 'active' : '' }}">
+                            <a href="{{ route('internal.trader.settings') }}">
+                                <i class="tim-icons icon-components"></i>
+                                <p>{{ __('Internal Trader') }}</p>
+                            </a>
+                        </li>
+                        <li class="{{ request()->routeIs('live.trader.settings') ? 'active' : '' }}">
+                            <a href="{{ route('live.trader.settings') }}">
+                                <i class="tim-icons icon-spaceship"></i>
+                                <p>{{ __('Live Trader') }}</p>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
         </ul>
     </div>
 </div>
