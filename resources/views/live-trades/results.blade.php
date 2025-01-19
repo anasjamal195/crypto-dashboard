@@ -66,9 +66,7 @@
                         $order_sell = DB::table('orders')
                             ->where('orderId', $order->pair_id)
                             ->first();
-                        $order_sell = DB::table('orders')
-                            ->where('orderId', $order->pair_id)
-                            ->first();
+
                         $total_fee_usdt = '-';
                         $fee_percentage = '-';
                         $profit = '-';
