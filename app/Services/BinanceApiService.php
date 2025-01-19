@@ -784,16 +784,13 @@ class BinanceApiService
             'signature' => $signature
         ]);
         $response = $response->json();
+        Log::info('Trader ' . $trader . ': Sell response' . json_encode($response));
 
-
-        // return $response;
-        $fee_details = self::getTotalCommission($response);
 
         if ($response['code'] == -2010) {
-            Log::info('Trader ' . $trader . ': Sell response' . json_encode($response));
+            Log::info('Trader ' . $trader . ' Symbol: ' . $symbol . ' Insufficient Balance' . ' Buy Order: ' . $buy_order->orderId);
             DB::table('orders')
-                ->where('orderId', $buy_order->orderId)
-                ->where('trade_acc', $trader)
+                ->where('id', $buy_order->id)
                 ->update(
                     [
                         'pair_id' => -1,
@@ -802,6 +799,9 @@ class BinanceApiService
                 );
             return false;
         }
+
+        // return $response;
+        $fee_details = self::getTotalCommission($response);
         $data =  [
             'symbol' => $response['symbol'],
             'amount' => $amount,
