@@ -241,7 +241,7 @@ class BinanceApiService
                 $previousCandle = $data[$index - 1];
                 $prevLow = (float) $previousCandle[3];
                 $prevHigh = (float) $previousCandle[2];
-        
+
                 if ($trend == 'up') {
                     if ($high > $ep) {
                         $ep = $high;
@@ -792,14 +792,15 @@ class BinanceApiService
         if (!isset($response['code']) && $response['code'] == -2010) {
             Log::info('Trader ' . $trader . ': Sell response' . json_encode($response));
             DB::table('orders')
-            ->where('orderId', $buy_order->orderId)
-            ->where('trade_acc', $trader)
-            ->update(
-                [
-                    'pair_id' => 0,
-                    'trade_status' => 'close',
-                ]
-            );
+                ->where('orderId', $buy_order->orderId)
+                ->where('trade_acc', $trader)
+                ->update(
+                    [
+                        'pair_id' => 0,
+                        'trade_status' => 'close',
+                    ]
+                );
+            return false;
         }
         $data =  [
             'symbol' => $response['symbol'],
@@ -938,7 +939,7 @@ class BinanceApiService
             return $response;
         }
 
-      
+
         $data =  [
             'symbol' => $response['symbol'],
             'amount' => $amount,
@@ -952,7 +953,7 @@ class BinanceApiService
             'trade_status' => 'close',
             'trade_acc' => $trader,
             'qty' => $quantity,
-           
+
             'commission' => $fee_details['totalCommission'],
             'commission_asset' => $fee_details['commissionAsset'],
             'commissionUSDT' => $fee_details['commissionAssetUSDT'],
@@ -970,9 +971,9 @@ class BinanceApiService
 
     public static function placeDynamicSellOrderSpot($symbol, $quantity,  $trader)
     {
-        
+
         $market = 'SPOT';
-      
+
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
         $user = User::find($trader);
@@ -1013,7 +1014,7 @@ class BinanceApiService
         }
 
         // Calculate and adjust the quantity
-       
+
         $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
 
         // Ensure quantity is within the allowed limits
