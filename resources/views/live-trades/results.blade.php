@@ -118,7 +118,14 @@
 
                         </td>
                         <td>{{ number_format($order->price, 4) }}</td>
-                        <td>{{ $order_sell ? number_format($order_sell->price, 4) : '-' }}</td>
+                        <td>
+                            @if ($order->pair_id == 0)
+                                <br>
+                                <span class="badge badge-danger">Sold Manually</span>
+                            @else
+                                {{ $order_sell ? number_format($order_sell->price, 4) : '-' }}
+                            @endif
+                        </td>
 
                         <td
                             @if ($color) style="color:{{ $color }} !important;text-align:center;" @endif>
@@ -134,9 +141,9 @@
                         <td>{{ $order->created_at }}</td>
                         <td>{{ $order_sell ? $order_sell->created_at : '-' }}</td>
 
-                        <td> <a href="{{ route('live.trades.details', ['symbol' => $order->symbol, 'interval' => $order->interval, 'market' => $order->market, 'timestamp' => $unixTimestamp - 6000000 ]) }}"
+                        <td> <a href="{{ route('live.trades.details', ['symbol' => $order->symbol, 'interval' => $order->interval, 'market' => $order->market, 'timestamp' => $unixTimestamp - 6000000]) }}"
                                 class="btn btn-primary btn-sm" role="button">
-                                <i class="fas fa-chart-bar"></i> 
+                                <i class="fas fa-chart-bar"></i>
                             </a></td>
                     </tr>
                 @endforeach

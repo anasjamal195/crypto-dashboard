@@ -789,8 +789,17 @@ class BinanceApiService
         // return $response;
         $fee_details = self::getTotalCommission($response);
 
-        if (!isset($response['symbol'])) {
+        if (!isset($response['code']) && $response['code'] == -2010) {
             Log::info('Trader ' . $trader . ': Sell response' . json_encode($response));
+            DB::table('orders')
+            ->where('orderId', $buy_order->orderId)
+            ->where('trade_acc', $trader)
+            ->update(
+                [
+                    'pair_id' => 0,
+                    'trade_status' => 'close',
+                ]
+            );
         }
         $data =  [
             'symbol' => $response['symbol'],
