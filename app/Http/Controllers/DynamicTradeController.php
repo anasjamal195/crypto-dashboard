@@ -54,43 +54,44 @@ class DynamicTradeController extends Controller
         ]);
 
         // Inserting new trade
-        if(!$request->openOrderId){
-        DB::table('dynamic_trade_handler')->insert([
-            'market' => $request->market,
-            'symbol' => $request->symbol,
-            'amount' => $request->amount,
-            'qty' => $request->qty,
-            'position' => $request->side === 'BUY' ? 'LONG' : 'SHORT',
-            'side' => $request->side,
-            'status' => 'PENDING',
-            'tradeAccount' => auth()->user()->id,
-            'leverage' => $request->leverage,
-            'priceLock' => $request->priceLock,
-            'priceLockBuffer' => $request->priceLockBuffer,
-            'isActive' => $request->isActive,
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-    }else{
-        $openOrder = DB::table('dynamic_orders')->where('orderId',$request->openOrderId)->first();
+        if (!$request->openOrderId) {
+            DB::table('dynamic_trade_handler')->insert([
+                'market' => $request->market,
+                'symbol' => $request->symbol,
+                'amount' => $request->amount,
+                'qty' => $request->qty,
+                'position' => $request->side === 'BUY' ? 'LONG' : 'SHORT',
+                'side' => $request->side,
+                'status' => 'PENDING',
+                'tradeAccount' => auth()->user()->id,
+                'leverage' => $request->leverage,
+                'priceLock' => $request->priceLock,
+                'priceLockBuffer' => $request->priceLockBuffer,
+                'isActive' => $request->isActive,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        } else {
+            $openOrder = DB::table('dynamic_orders')->where('orderId', $request->openOrderId)->first();
 
-        DB::table('dynamic_trade_handler')->insert([
-            'market' => $openOrder->market,
-            'symbol' => $openOrder->symbol,
-            'amount' => $openOrder->amount,
-            'qty' => $openOrder->qty,
-            'position' => $openOrder->side === 'BUY' ? 'LONG' : 'SHORT',
-            'side' => $openOrder->side,
-            'status' => 'PENDING',
-            'tradeAccount' => auth()->user()->id,
-            'leverage' => $openOrder->leverage,
-            'priceLock' => $request->priceLock,
-            'priceLockBuffer' => $request->priceLockBuffer,
-            'isActive' => $request->isActive,
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-    }
+            DB::table('dynamic_trade_handler')->insert([
+                'market' => $openOrder->market,
+                'symbol' => $openOrder->symbol,
+                'amount' => $openOrder->amount,
+                'qty' => $openOrder->qty,
+                'position' => $openOrder->side === 'BUY' ? 'LONG' : 'SHORT',
+                'side' => $openOrder->side,
+                'status' => 'PENDING',
+                'tradeAccount' => auth()->user()->id,
+                'leverage' => $openOrder->leverage,
+                'openOrderId' => $openOrder->orderId,
+                'priceLock' => $request->priceLock,
+                'priceLockBuffer' => $request->priceLockBuffer,
+                'isActive' => $request->isActive,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
 
         return redirect()->route('dynamic-trading.index', ['market' => $request->market])->with('success', 'Trade created successfully!');
     }
