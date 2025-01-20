@@ -5,12 +5,13 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="card">
-                    <div class="card-header">Create Future Trade (Open Position)</div>
+                    <div class="card-header">Create Future Trade </div>
                     <div class="card-body">
                         <form action="{{ route('dynamic-trading.store') }}" method="POST">
                             @csrf
                             <input type="hidden" name="tradeAccount" value="{{ auth()->user()->id }}">
                             <input type="hidden" name="market" value="FUTURE">
+
 
                             <div class="form-group">
                                 <label for="side">Side</label>
@@ -19,6 +20,11 @@
                                     <option value="BUY">BUY/LONG</option>
                                     <option value="SELL">SELL/SHORT</option>
                                 </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="openOrderId">Open Order Id</label>
+                                <input type="text" name="openOrderId" class="form-control" required>
                             </div>
                             <div class="form-group">
                                 <label for="symbol">Symbol</label>

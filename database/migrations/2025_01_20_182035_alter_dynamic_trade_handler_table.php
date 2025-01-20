@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::table('dynamic_trade_handler', function (Blueprint $table) {
             $table->string('position')->nullable()->after('side');
+            $table->string('openOrderId')->nullable()->after('position');
         });
     }
 
@@ -23,6 +24,7 @@ return new class extends Migration
     {
         Schema::table('dynamic_trade_handler', function (Blueprint $table) {
             $table->dropColumn('position');
+            $table->dropColumn('openOrderId');
         });
     }
 };

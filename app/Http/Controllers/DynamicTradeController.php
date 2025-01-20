@@ -54,6 +54,7 @@ class DynamicTradeController extends Controller
         ]);
 
         // Inserting new trade
+        if(!$request->openOrderId){
         DB::table('dynamic_trade_handler')->insert([
             'market' => $request->market,
             'symbol' => $request->symbol,
@@ -70,6 +71,26 @@ class DynamicTradeController extends Controller
             'created_at' => now(),
             'updated_at' => now()
         ]);
+    }else{
+        $openOrder = DB::where('id',$request->openOrderId)->first();
+
+        DB::table('dynamic_trade_handler')->insert([
+            'market' => $openOrder->market,
+            'symbol' => $openOrder->symbol,
+            'amount' => $openOrder->amount,
+            'qty' => $openOrder->qty,
+            'position' => $openOrder->side === 'BUY' ? 'LONG' : 'SHORT',
+            'side' => $openOrder->side,
+            'status' => 'PENDING',
+            'tradeAccount' => auth()->user()->id,
+            'leverage' => $openOrder->leverage,
+            'priceLock' => $request->priceLock,
+            'priceLockBuffer' => $request->priceLockBuffer,
+            'isActive' => $request->isActive,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+    }
 
         return redirect()->route('dynamic-trading.index', ['market' => $request->market])->with('success', 'Trade created successfully!');
     }

@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class FutureCoinDumper extends Command
+class FutureDynamicTradeWorker extends Command
 {
     /**
      * The name and signature of the console command.
