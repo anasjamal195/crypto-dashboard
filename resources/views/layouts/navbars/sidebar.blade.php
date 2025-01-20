@@ -151,17 +151,24 @@
                     <ul class="nav">
                         <li class="{{ request()->routeIs('dynamic-trading.manage') ? 'active' : '' }}">
                             <!-- Example additional management link -->
-                            <a href="{{ route('dynamic-trading.index') }}">
+                            <a href="{{ route('dynamic-trading.index',['market' => 'SPOT']) }}">
                                 <i class="tim-icons icon-settings-gear-63"></i>
                                 <p>{{ __('Spot Trades') }}</p>
                             </a>
                         </li>
-                        <li class="{{ request()->routeIs('dynamic-trading.create') ? 'active' : '' }}">
+                        <li class="{{ request()->routeIs('dynamic-trading.manage') ? 'active' : '' }}">
+                            <!-- Example additional management link -->
+                            <a href="{{ route('dynamic-trading.index',['market' => 'FUTURE']) }}">
+                                <i class="tim-icons icon-settings-gear-63"></i>
+                                <p>{{ __('Future Trades') }}</p>
+                            </a>
+                        </li>
+                        {{-- <li class="{{ request()->routeIs('dynamic-trading.create') ? 'active' : '' }}">
                             <a href="{{ route('dynamic-trading.create') }}">
                                 <i class="tim-icons icon-simple-add"></i>
                                 <p>{{ __('Add Trade') }}</p>
                             </a>
-                        </li>
+                        </li> --}}
 
                     </ul>
                 </div>

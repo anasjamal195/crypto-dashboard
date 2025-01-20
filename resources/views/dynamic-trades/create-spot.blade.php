@@ -10,14 +10,7 @@
                     <form action="{{ route('dynamic-trading.store') }}" method="POST">
                         @csrf
                         <input type="hidden" name="tradeAccount" value="{{auth()->user()->id}}">
-                        <div class="form-group">
-                            <label for="market">Market</label>
-                            <select name="market" class=" select2 form-control">
-                                <option value="">Select an option</option>
-                                <option value="SPOT">SPOT</option>
-                                <option value="FUTURE">FUTURE</option>
-                            </select>
-                        </div>
+                        <input type="hidden" name="market" value="SPOT">
                         <div class="form-group">
                             <label for="side">Side</label>
                             <select name="side" class="select2 form-control">
@@ -38,10 +31,7 @@
                             <label for="qty">Quantity (Leave blank if BUY Selected)</label>
                             <input type="number" name="qty" step="0.001" class="form-control">
                         </div>
-                        <div class="form-group">
-                            <label for="leverage">Leverage (Leave blank if SPOT Selected)</label>
-                            <input type="number" name="leverage"  class="form-control">
-                        </div>
+                       
                         <div class="form-group">
                             <label for="priceLock">Price Lock (Price to Trigger Action)</label>
                             <input type="number" name="priceLock" step="0.001" class="form-control">

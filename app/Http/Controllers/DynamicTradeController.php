@@ -7,25 +7,39 @@ use Illuminate\Support\Facades\DB;
 
 class DynamicTradeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Fetching all trades
-        $trades = DB::table('dynamic_trade_handler')->where('tradeAccount',auth()->user()->id)->get();
-        $pageSlug = 'DynamicTrades';
-        return view('dynamic-trades.index', compact('trades', 'pageSlug')); // Ensure the view path matches the actual location
+        if ($request->market == 'SPOT') {
+            $trades = DB::table('dynamic_trade_handler')->where('market', 'SPOT')->where('tradeAccount', auth()->user()->id)->get();
+            $pageSlug = 'DynamicTradesSPOT';
+            return view('dynamic-trades.index', compact('trades', 'pageSlug'));
+        } else if ($request->market == 'FUTURE') {
+            $trades = DB::table('dynamic_trade_handler')->where('market', 'FUTURE')->where('tradeAccount', auth()->user()->id)->get();
+            $pageSlug = 'DynamicTradesFUTURE';
+            return view('dynamic-trades.index', compact('trades', 'pageSlug'));
+        } else {
+            abort(404);
+        }
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        // Loading the creation view
-        $pageSlug = 'DynamicTradesCreate';
+        if ($request->market == 'SPOT') {
+            $pageSlug = 'DynamicTradesCreateSPOT';
 
-        return view('dynamic-trades.create', compact('pageSlug')); // Make sure this view exists in the correct directory
+            return view('dynamic-trades.create-spot', compact('pageSlug'));
+        } else  if ($request->market == 'FUTURE') {
+            $pageSlug = 'DynamicTradesCreateFUTURE';
+            return view('dynamic-trades.create-future', compact('pageSlug'));
+        } else {
+            abort(404);
+        }
     }
 
     public function store(Request $request)
     {
-        // dd($request->all());
+
         // Validation can be added here
         $request->validate([
             'market' => 'required',
@@ -45,9 +59,10 @@ class DynamicTradeController extends Controller
             'symbol' => $request->symbol,
             'amount' => $request->amount,
             'qty' => $request->qty,
+            'position' => $request->side === 'BUY' ? 'LONG' : 'SHORT',
             'side' => $request->side,
             'status' => 'PENDING',
-            'tradeAccount' => auth()->user()->id, // Assuming the logged in user's ID should be used
+            'tradeAccount' => auth()->user()->id,
             'leverage' => $request->leverage,
             'priceLock' => $request->priceLock,
             'priceLockBuffer' => $request->priceLockBuffer,
@@ -56,7 +71,7 @@ class DynamicTradeController extends Controller
             'updated_at' => now()
         ]);
 
-        return redirect()->route('dynamic-trading.index')->with('success', 'Trade created successfully!');
+        return redirect()->route('dynamic-trading.index', ['market' => $request->market])->with('success', 'Trade created successfully!');
     }
 
     public function edit($id)

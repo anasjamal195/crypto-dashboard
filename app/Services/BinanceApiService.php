@@ -1245,11 +1245,14 @@ class BinanceApiService
         $openOrder = DB::table('dynamic_orders')->where('orderId', $openOrderId)->first();
         $market = 'FUTURE';
         $tradePosition = $openOrder->position;
-        $position = $openOrder->position === 'LONG' ? 'BUY' : 'SELL';
+        $position = $openOrder->position === 'LONG' ? 'SELL' : 'BUY';
         $symbol = $openOrder->symbol;
-        $trader = $openOrder->trader;
+        $trader = $openOrder->trade_acc;
         $quantity = $openOrder->qty;
+        
+        
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
         $user = User::find($trader);
         $apiKey = $user->api_key;
         $apiSecret = $user->api_secret;

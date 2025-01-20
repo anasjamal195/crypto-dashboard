@@ -7,7 +7,7 @@
             <div class="card">
                 <div class="card-header">
                     <h4 class="card-title">Trades List</h4>
-                    <a href="{{ route('dynamic-trading.create') }}" class="btn btn-success"><i class="fa fa-plus"></i> Add New Trade</a>
+                    <a href="{{ route('dynamic-trading.create',['market'=>request()->get('market')]) }}" class="btn btn-success"><i class="fa fa-plus"></i> Add New Trade</a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
