@@ -1201,7 +1201,7 @@ class BinanceApiService
         // Calculate liquidation price
         $entryPrice = $current_price; // Assuming trade executed at provided price
         $accountMargin = $tradeAmount; // User's margin
-
+        $liquidationPrice = 0;
         if ($position === 'LONG') {
             $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
         } else if ($position === 'SHORT') {
