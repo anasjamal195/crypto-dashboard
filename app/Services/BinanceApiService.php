@@ -1211,6 +1211,8 @@ class BinanceApiService
         $data =  [
             'symbol' => $response['symbol'],
             'orderId' => $response['orderId'],
+            'interval' => '1m',
+            'market' => $market,
             'status' => $response['status'],
             'type' => $response['type'],
             'amount' => $tradeAmount,
