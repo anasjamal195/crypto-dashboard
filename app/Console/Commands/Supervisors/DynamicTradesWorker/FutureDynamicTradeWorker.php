@@ -1,16 +1,12 @@
 <?php
 
-namespace App\Console\Commands\DynamicTradesWorker;
+namespace App\Console\Commands\Supervisors\DynamicTradesWorker;
 
-use App\CommonHelpers;
-use App\Services\BinanceApiService;
 use App\Services\DynamicTradeService;
-use App\Services\MailerService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class FutureCoinDumper extends Command
+class FutureDynamicTradeWorker extends Command
 {
     /**
      * The name and signature of the console command.
@@ -19,23 +15,18 @@ class FutureCoinDumper extends Command
      */
     protected $signature = 'app:future-dynamic-trade-worker';
 
-    public $coins;
-    public $minPercentage;
-    public $maxPercentage;
-    public $quantity;
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Dynamic Future Worker';
+    protected $description = 'Command description';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-
         while (true) {
             try {
                 DynamicTradeService::checkDynamicTradesFUTURE();
