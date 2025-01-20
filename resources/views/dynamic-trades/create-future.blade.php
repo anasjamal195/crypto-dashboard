@@ -38,13 +38,7 @@
                             <div class="form-group">
                                 <label for="leverage">Leverage</label>
 
-                                <select name="leverage" class="select2 form-control">
-                                    <option value="">Select an option</option>
-                                    <option value="5">5x</option>
-                                    <option value="10">10x</option>
-                                    <option value="15">15x</option>
-                                    <option value="20">20x</option>
-                                </select>
+                                <input type="number" name="leverage" step="1" class="form-control">
                             </div>
                             <div class="form-group">
                                 <label for="priceLock">Price Lock (Price to Trigger Action)</label>
