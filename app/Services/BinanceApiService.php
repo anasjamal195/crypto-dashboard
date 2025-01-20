@@ -1090,7 +1090,7 @@ class BinanceApiService
 
     // Future Api's
 
-    public static function placeMarketPosition($symbol, $tradeAmount, $position = 'LONG', $leverage, $trader)
+    public static function openMarketPosition($symbol, $tradeAmount, $position = 'LONG', $leverage, $trader)
     {
 
         $market = 'FUTURE';
@@ -1236,12 +1236,17 @@ class BinanceApiService
         return $data;
     }
 
-    public static function closeMarketPosition($symbol, $quantity, $position = 'LONG', $trader)
+    public static function closeMarketPosition($openOrderId)
     {
 
+
+        $openOrder = DB::table('dynamic_orders')->where('orderId', $openOrderId)->first();
         $market = 'FUTURE';
-        $tradePosition = $position;
-        $position = $position === 'LONG' ? 'SELL' : 'BUY';
+        $tradePosition = $openOrder->position;
+        $position = $openOrder->position === 'LONG' ? 'BUY' : 'SELL';
+        $symbol = $openOrder->symbol;
+        $trader = $openOrder->trader;
+        $quantity = $openOrder->qty;
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
         $user = User::find($trader);
         $apiKey = $user->api_key;
