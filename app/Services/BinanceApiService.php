@@ -1102,9 +1102,9 @@ class BinanceApiService
         $apiSecret = $user->api_secret;
         $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
 
-      
+
         // Step 1: Set leverage
-        
+
         $leverageUrl = $base_url . config('binance.endpoints.leverage');
 
         $leverageData = [
@@ -1159,7 +1159,7 @@ class BinanceApiService
         // Adjust quantity to match LOT_SIZE step size
         $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
 
-     
+
         $url = $base_url . config('binance.endpoints.order');
 
         $timestamp =  round(microtime(true) * 1000);
@@ -1191,7 +1191,7 @@ class BinanceApiService
         $response = $response->json();
 
 
-       
+
         if (isset($response['code']) && $response['code'] < 0) {
             throw new Exception("Order failed: " . $response['msg']);
         }
@@ -1229,7 +1229,7 @@ class BinanceApiService
         DB::table('dynamic_orders')->insert(
             $data
         );
-       
+
 
         $data['dif_lim'] = 0;
         $data['dif_lim'] = 0;
@@ -1240,5 +1240,119 @@ class BinanceApiService
         return $data;
     }
 
-    
+    public static function placeMarketSellPosition($symbol, $quantity, $trader)
+    {
+
+        $market = 'FUTURE';
+
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
+        $url = $base_url . config('binance.endpoints.order');
+
+        $timestamp =  round(microtime(true) * 1000);
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'symbol' => $symbol,
+            "side" => "SELL",
+            "type" => "MARKET",
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->asForm()->post($url, [
+            'symbol' => $symbol,
+            "side" => "SELL",
+            "type" => "MARKET",
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+        $response = $response->json();
+
+
+
+        if (isset($response['code']) && $response['code'] < 0) {
+            throw new Exception("Order failed: " . $response['msg']);
+        }
+
+        $data =  [
+            'symbol' => $response['symbol'],
+            'orderId' => $response['orderId'],
+            'status' => $response['status'],
+            'type' => $response['type'],
+            'side' => $response['side'],
+            'price' => $current_price,
+            'trade_status' => 'close',
+            'trade_acc' => $trader,
+            'qty' => $quantity,
+            'commission' => 0,
+            'commission_asset' => 0,
+            'commissionUSDT' => 0,
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+
+        DB::table('dynamic_orders')->insert(
+            $data
+        );
+
+
+
+        $data['target_sell_price'] = 0;
+        $data['stop_loss'] = 0;
+        $data['dif_lim'] = 0;
+        $data['dif_lim'] = 0;
+        $data['dea_lim'] = 0;
+        $data['per_lim'] = 0;
+        $data['target_profit_percentage'] = 0;
+        $data['trade_amount'] = number_format($quantity * $current_price, 2, '.', '');
+        $data['fee'] = 0;
+
+
+
+        $buy_order =  DB::table('dynamic_orders')
+            ->where('symbol', $data['symbol'])
+            ->where('trade_acc', $data['trade_acc'])
+            ->where('side', 'BUY')
+            ->where('trade_status', 'open')
+            ->orderBy('created_at', 'DESC')
+            ->first();
+
+        DB::table('dynamic_orders')
+            ->where('orderId', $buy_order->orderId)
+            ->where('trade_acc', $data['trade_acc'])
+            ->update(
+                [
+                    'pair_id' => $data['orderId'],
+                    'trade_status' => 'close',
+
+                ]
+            );
+        DB::table('dynamic_orders')
+            ->where('orderId', $data['orderId'])
+            ->where('trade_acc', $data['trade_acc'])
+            ->update(
+                [
+                    'pair_id' => $buy_order->orderId,
+                    'trade_status' => 'close',
+                ]
+            );
+
+        $data['pair_id'] = $buy_order->orderId;
+        MailerService::sendEmail($data);
+
+        return $data;
+    }
 }
