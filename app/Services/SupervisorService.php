@@ -16,10 +16,13 @@ class SupervisorService
         'laravel_spot_setting_worker',
         'laravel_future_setting_worker',
         'laravel_spot_live_trade_worker',
-        'laravel_future_live_trade_worker'
+        'laravel_future_live_trade_worker',
+        'laravel_spot_dynamic_trade_worker',
+        'laravel_future_dynamic_trade_worker'
     ];
 
-    public static function getProcesses(){
+    public static function getProcesses()
+    {
         return self::$processes;
     }
     /**
@@ -111,13 +114,12 @@ class SupervisorService
     {
         $cmd = is_null($program) ? 'sudo supervisorctl status' : 'sudo supervisorctl status ' . $program;
         $output = self::executeCommand($cmd);
-        
-        
-            return [
-                'success' => true,
-                'data' => self::parseStatusOutput($output['message'])
-            ];
 
+
+        return [
+            'success' => true,
+            'data' => self::parseStatusOutput($output['message'])
+        ];
     }
 
     /**
