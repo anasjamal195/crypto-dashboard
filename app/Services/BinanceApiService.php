@@ -1218,7 +1218,7 @@ class BinanceApiService
             'side' => $response['side'],
             'price' => $current_price,
             'liqPrice' => $liquidationPrice,
-            'leverage' => $response['leverage'],
+            'leverage' => $leverage,
             'trade_status' => 'open',
             'trade_acc' => $trader,
             'qty' => $quantity,
