@@ -72,7 +72,7 @@ class DynamicTradeController extends Controller
             'updated_at' => now()
         ]);
     }else{
-        $openOrder = DB::where('id',$request->openOrderId)->first();
+        $openOrder = DB::table('dynamic_orders')->where('id',$request->openOrderId)->first();
 
         DB::table('dynamic_trade_handler')->insert([
             'market' => $openOrder->market,
