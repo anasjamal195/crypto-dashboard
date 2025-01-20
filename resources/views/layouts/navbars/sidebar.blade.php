@@ -153,7 +153,7 @@
                             <!-- Example additional management link -->
                             <a href="{{ route('dynamic-trading.index') }}">
                                 <i class="tim-icons icon-settings-gear-63"></i>
-                                <p>{{ __('Manage Trades') }}</p>
+                                <p>{{ __('Spot Trades') }}</p>
                             </a>
                         </li>
                         <li class="{{ request()->routeIs('dynamic-trading.create') ? 'active' : '' }}">

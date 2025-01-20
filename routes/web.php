@@ -5,11 +5,16 @@ use App\Http\Controllers\TradeHandlerController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+
 Auth::routes();
 
 
 Route::get('/', function(){
-	return view('welcome',['pageSlug'=>'dashboard']);
+	if(auth()->user())
+	return view('welcome',['pageSlug'=>'Dashboard']);
+else
+	return view('auth.login',['pageSlug'=>'Login']);
 });
 
 Auth::routes();
