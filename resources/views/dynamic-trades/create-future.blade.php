@@ -23,8 +23,8 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="openOrderId">Open Order Id</label>
-                                <input type="text" name="openOrderId" class="form-control" required>
+                                <label for="openOrderId">Open Order Id (Optional)</label>
+                                <input type="text" name="openOrderId" class="form-control">
                             </div>
                             <div class="form-group">
                                 <label for="symbol">Symbol</label>
@@ -36,6 +36,8 @@
                             </div>
 
                             <div class="form-group">
+                                <label for="leverage">Leverage</label>
+
                                 <select name="leverage" class="select2 form-control">
                                     <option value="">Select an option</option>
                                     <option value="5">5x</option>
