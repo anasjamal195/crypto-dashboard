@@ -43,7 +43,7 @@ class DynamicTradeController extends Controller
         // Validation can be added here
         $request->validate([
             'market' => 'required',
-            'symbol' => 'required',
+            'symbol' => 'nullable',
             'amount' => 'nullable|numeric',
             'qty' => 'nullable|numeric',
             'side' => 'required',
