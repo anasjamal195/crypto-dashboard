@@ -1090,10 +1090,12 @@ class BinanceApiService
 
     // Future Api's
 
-    public static function placeMarketLongPosition($symbol, $tradeAmount, $leverage, $trader)
+    public static function placeMarketPosition($symbol, $tradeAmount, $position = 'LONG', $leverage, $trader)
     {
 
         $market = 'FUTURE';
+        $tradePosition = $position;
+        $position = $position === 'LONG' ? 'BUY' : 'SELL';
 
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
@@ -1166,7 +1168,7 @@ class BinanceApiService
         // Prepare query string for signature
         $queryString = http_build_query([
             'symbol' => $symbol,
-            "side" => "BUY",
+            "side" => $position,
             "type" => "MARKET",
             'quantity' => strval($quantity),
             'timestamp' => $timestamp,
@@ -1182,7 +1184,7 @@ class BinanceApiService
             'X-MBX-APIKEY' => $apiKey,
         ])->asForm()->post($url, [
             'symbol' => $symbol,
-            "side" => "BUY",
+            "side" => $position,
             "type" => "MARKET",
             'quantity' => strval($quantity),
             'timestamp' => $timestamp,
@@ -1200,22 +1202,22 @@ class BinanceApiService
         $entryPrice = $current_price; // Assuming trade executed at provided price
         $accountMargin = $tradeAmount; // User's margin
 
-        $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
+        if ($position === 'LONG') {
+            $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
+        } else if ($position === 'SHORT') {
+            $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
+        }
 
-        $response['positionQty'] = $quantity;
-        $response['leverage'] = $leverage;
-        $response['positionSize'] = $positionSize;
-        $response['tradeAmount'] = $tradeAmount;
-
-        $response['liquidationPrice'] = round($liquidationPrice, 2); // Rounded to 2 decimals for readability
         $data =  [
             'symbol' => $response['symbol'],
             'orderId' => $response['orderId'],
             'status' => $response['status'],
             'type' => $response['type'],
+            'amount' => $tradeAmount,
+            'position' => $tradePosition,
             'side' => $response['side'],
             'price' => $current_price,
-            'liqPrice' => $response['liquidationPrice'],
+            'liqPrice' => $liquidationPrice,
             'leverage' => $response['leverage'],
             'trade_status' => 'open',
             'trade_acc' => $trader,
@@ -1229,24 +1231,18 @@ class BinanceApiService
         DB::table('dynamic_orders')->insert(
             $data
         );
-
-
-        $data['dif_lim'] = 0;
-        $data['dif_lim'] = 0;
-        $data['dea_lim'] = 0;
-        $data['per_lim'] = 0;
-        $data['trade_amount'] = number_format($tradeAmount, 2, '.', '');
         // sendEmail($data);
+
         return $data;
     }
 
-    public static function placeMarketSellPosition($symbol, $quantity, $trader)
+    public static function closeMarketPosition($symbol, $quantity, $position = 'LONG', $trader)
     {
 
         $market = 'FUTURE';
-
+        $tradePosition = $position;
+        $position = $position === 'LONG' ? 'SELL' : 'BUY';
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
-
         $user = User::find($trader);
         $apiKey = $user->api_key;
         $apiSecret = $user->api_secret;
@@ -1257,7 +1253,7 @@ class BinanceApiService
         // Prepare query string for signature
         $queryString = http_build_query([
             'symbol' => $symbol,
-            "side" => "SELL",
+            "side" => $position,
             "type" => "MARKET",
             'quantity' => strval($quantity),
             'timestamp' => $timestamp,
@@ -1273,7 +1269,7 @@ class BinanceApiService
             'X-MBX-APIKEY' => $apiKey,
         ])->asForm()->post($url, [
             'symbol' => $symbol,
-            "side" => "SELL",
+            "side" => $position,
             "type" => "MARKET",
             'quantity' => strval($quantity),
             'timestamp' => $timestamp,
@@ -1291,6 +1287,9 @@ class BinanceApiService
             'symbol' => $response['symbol'],
             'orderId' => $response['orderId'],
             'status' => $response['status'],
+            'interval' => '1m',
+            'market' => $market,
+            'position' => $tradePosition,
             'type' => $response['type'],
             'side' => $response['side'],
             'price' => $current_price,
@@ -1307,51 +1306,6 @@ class BinanceApiService
         DB::table('dynamic_orders')->insert(
             $data
         );
-
-
-
-        $data['target_sell_price'] = 0;
-        $data['stop_loss'] = 0;
-        $data['dif_lim'] = 0;
-        $data['dif_lim'] = 0;
-        $data['dea_lim'] = 0;
-        $data['per_lim'] = 0;
-        $data['target_profit_percentage'] = 0;
-        $data['trade_amount'] = number_format($quantity * $current_price, 2, '.', '');
-        $data['fee'] = 0;
-
-
-
-        $buy_order =  DB::table('dynamic_orders')
-            ->where('symbol', $data['symbol'])
-            ->where('trade_acc', $data['trade_acc'])
-            ->where('side', 'BUY')
-            ->where('trade_status', 'open')
-            ->orderBy('created_at', 'DESC')
-            ->first();
-
-        DB::table('dynamic_orders')
-            ->where('orderId', $buy_order->orderId)
-            ->where('trade_acc', $data['trade_acc'])
-            ->update(
-                [
-                    'pair_id' => $data['orderId'],
-                    'trade_status' => 'close',
-
-                ]
-            );
-        DB::table('dynamic_orders')
-            ->where('orderId', $data['orderId'])
-            ->where('trade_acc', $data['trade_acc'])
-            ->update(
-                [
-                    'pair_id' => $buy_order->orderId,
-                    'trade_status' => 'close',
-                ]
-            );
-
-        $data['pair_id'] = $buy_order->orderId;
-        MailerService::sendEmail($data);
 
         return $data;
     }
