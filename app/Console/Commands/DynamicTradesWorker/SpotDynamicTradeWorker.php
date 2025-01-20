@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands\Supervisors\DynamicTradesWorker;
+namespace App\Console\Commands\DynamicTradesWorker;
 
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
@@ -17,7 +17,7 @@ class SpotCoinDumper extends Command
      *
      * @var string
      */
-    protected $signature = 'app:spot-dynamic-worker';
+    protected $signature = 'app:spot-dynamic-trade-worker';
     public $coins;
     public $minPercentage;
     public $maxPercentage;

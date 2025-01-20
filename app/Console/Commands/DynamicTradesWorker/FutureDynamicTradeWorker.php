@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands\Supervisors\DynamicTradesWorker;
+namespace App\Console\Commands\DynamicTradesWorker;
 
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
@@ -17,7 +17,8 @@ class FutureCoinDumper extends Command
      *
      * @var string
      */
-    protected $signature = 'app:future-dynamic-worker';
+    protected $signature = 'app:future-dynamic-trade-worker';
+
     public $coins;
     public $minPercentage;
     public $maxPercentage;
