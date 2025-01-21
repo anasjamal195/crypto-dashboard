@@ -26,7 +26,7 @@
                                         <th>Price Lock Buffer Sell</th>
                                         <th>Status</th>
                                         <th>Active</th>
-                                        {{-- <th>Actions</th> --}}
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -34,18 +34,18 @@
                                         <tr>
                                             <td>{{ $trade->id }}</td>
                                             <td>{{ $trade->symbol }}</td>
-                                            <td>{{ number_format($trade->amount, 2) }}</td>
-                                            <td>{{ number_format($trade->qty, 2) }}</td>
+                                            <td>{{ number_format($trade->amount, 5) }}</td>
+                                            <td>{{ number_format($trade->qty, 5) }}</td>
                                             <td>{{ $trade->side }}</td>
                                             <td>
-                                                {{ number_format($trade->priceLockBuy, 2) }}
+                                                {{ number_format($trade->priceLockBuy, 5) }}
                                             </td>
 
                                             <td>
                                                 {{ $trade->priceLockBuyBuffer }}
                                             </td>
                                             <td>
-                                                {{ number_format($trade->priceLockSell, 2) }}
+                                                {{ number_format($trade->priceLockSell, 5) }}
                                             </td>
 
                                             <td>
@@ -53,17 +53,18 @@
                                             </td>
                                             <td>{{ $trade->status }}</td>
                                             <td>{{ $trade->isActive ? 'Yes' : 'No' }}</td>
-                                            {{-- <td>
-                                                <a href="{{ route('dynamic-trading.edit', $trade->id) }}"
+                                            <td class="action-btn">
+                                                <a href="{{ route('dynamic-trading.edit', $trade->id) }}?market=SPOT"
                                                     class="btn btn-primary btn-sm"><i class="fa fa-edit"></i></a>
                                                 <form action="{{ route('dynamic-trading.destroy', $trade->id) }}"
                                                     method="POST" style="display:inline;">
                                                     @csrf
+                                                    <input type="hidden" name="market" value="SPOT">
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-danger btn-sm"><i
                                                             class="fa fa-trash"></i></button>
                                                 </form>
-                                            </td> --}}
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>

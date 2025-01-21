@@ -114,51 +114,80 @@ class DynamicTradeController extends Controller
         return redirect()->route('dynamic-trading.index', ['market' => $request->market])->with('success', 'Trade created successfully!');
     }
 
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
-        // Loading the edit view with trade data
-        $trade = DB::table('dynamic_trade_handler')->where('id', $id)->first();
-        $pageSlug = 'DynamicTradesEdit';
+        if ($request->market == 'SPOT') {
+            $trade = DB::table('dynamic_trades_spot')->where('id', $id)->first();
+            $pageSlug = 'DynamicTradesEdit';
 
-        return view('dynamic-trades.edit', compact('trade', 'pageSlug')); // Ensure this view exists
+            return view('dynamic-trades.edit-spot', compact('trade', 'pageSlug')); // Ensure this view exists
+        } else if ($request->market == 'FUTURE') {
+            $trade = DB::table('dynamic_trades_future')->where('id', $id)->first();
+            $pageSlug = 'DynamicTradesEdit';
+
+            return view('dynamic-trades.edit-future', compact('trade', 'pageSlug')); // Ensure this view exists
+        }
+        // Loading the edit view with trade data
+
     }
 
     public function update(Request $request, $id)
     {
-        // Validation can be similar to the store method
-        $request->validate([
-            'market' => 'required',
-            'symbol' => 'required',
-            'amount' => 'nullable|numeric',
-            'qty' => 'nullable|numeric',
-            'side' => 'required',
-            'leverage' => 'nullable|numeric',
-            'priceLock' => 'nullable|numeric',
-            'priceLockBuffer' => 'nullable|numeric',
-            'isActive' => 'required|boolean'
-        ]);
+        // dd($request->all());
+        if ($request->market == 'SPOT') {
+            DB::table('dynamic_trades_spot')->where('id', $id)->update([
+                'symbol' => $request->symbol,
+                'amount' => $request->amount,
+                'qty' => $request->qty,
+                'side' => $request->side,
+                'status' => 'PENDING-BUY',
+                'tradeAccount' => auth()->user()->id,
+                'priceLockBuy' => $request->priceLockBuy,
+                'priceLockBuyBuffer' => $request->priceLockBuyBuffer,
+                'priceLockSell' => $request->priceLockSell,
+                'priceLockSellBuffer' => $request->priceLockSellBuffer,
+                'stopLoss' => $request->stopLoss,
+                'stopLossBuffer' => $request->stopLossBuffer,
+                'isActive' => $request->isActive,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        } else if ($request->market == 'FUTURE') {
+            DB::table('dynamic_trades_future')->where('id', $id)->update([
+                'symbol' => $request->symbol,
+                'amount' => $request->amount,
+                'position' => $request->position,
+                'allowClose' => $request->allowClose === 'on',
+                'qty' => $request->qty,
+                'leverage' => $request->leverage,
+                'status' => 'PENDING-OPEN',
+                'tradeAccount' => auth()->user()->id,
+                'priceLockOpen' => $request->priceLockOpen,
+                'priceLockOpenBuffer' => $request->priceLockOpenBuffer,
+                'priceLockClose' => $request->priceLockClose,
+                'priceLockCloseBuffer' => $request->priceLockCloseBuffer,
+                'stopLoss' => $request->stopLoss,
+                'stopLossBuffer' => $request->stopLossBuffer,
+                'isActive' => $request->isActive,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        } else {
+            abort(404);
+        }
 
-        // Updating existing trade
-        DB::table('dynamic_trade_handler')->where('id', $id)->update([
-            'market' => $request->market,
-            'symbol' => $request->symbol,
-            'amount' => $request->amount,
-            'qty' => $request->qty,
-            'side' => $request->side,
-            'leverage' => $request->leverage,
-            'priceLock' => $request->priceLock,
-            'priceLockBuffer' => $request->priceLockBuffer,
-            'isActive' => $request->isActive,
-            'updated_at' => now()
-        ]);
-
-        return redirect()->route('dynamic-trading.index')->with('success', 'Trade updated successfully!');
+        return redirect()->route('dynamic-trading.index', ['market' => $request->market])->with('success', 'Trade Updated successfully!');
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         // Deleting a trade
-        DB::table('dynamic_trade_handler')->where('id', $id)->delete();
-        return redirect()->route('dynamic-trading.index')->with('success', 'Trade deleted successfully!');
+        if ($request->market == 'SPOT')
+            DB::table('dynamic_trades_spot')->where('id', $id)->delete();
+        else if ($request->market == 'FUTURE')
+            DB::table('dynamic_trades_future')->where('id', $id)->delete();
+        else
+            abort(404);
+        return redirect()->route('dynamic-trading.index', ['market' => $request->market])->with('success', 'Trade Deleted successfully!');
     }
 }

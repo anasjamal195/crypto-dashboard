@@ -110,6 +110,13 @@
         border: 1px solid #cccccc;
         /* Light border to define the edges */
     }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        gap: 20px;
+    }
 </style>
 <style>
     .select2-container--default .select2-selection--single {
