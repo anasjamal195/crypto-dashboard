@@ -618,10 +618,10 @@ class BinanceApiService
         ])->get($url);
 
         $response = $response->json();
-
+            // print_r($response);exit;
         // dd($response);
         if (isset($response['balances'])) {
-            $balance = collect($response['balances'])->where('asset', $symbol)->first();
+            $balance = collect($response['balances'])->where('asset', str_replace('USDT','',$symbol))->first();
             return [
                 'asset' => $symbol,
                 'free' => $balance['free'] ? floatval($balance['free']) : 0, // Available balance

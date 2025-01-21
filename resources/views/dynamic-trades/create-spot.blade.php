@@ -46,7 +46,7 @@
                                     <label for="qty">Quantity</label>
                                     <input type="number" name="qty" id="qty" step="0.00000001"
                                         class="form-control">
-                                    <button type="button" id="maxQty" class="btn btn-info">Max</button>
+                                    <button type="button" id="maxQty" class="btn btn-warning">Max</button>
                                 </div>
 
                             </div>
