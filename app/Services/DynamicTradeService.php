@@ -153,6 +153,7 @@ class DynamicTradeService
                                 'status' => 'FILLED',
                                 'isActive' => 0,
                             ]);
+                            continue;
                         }
                         if ($currentPrice > $trade->priceLockClose) {
                             Log::info("Updating price lock for CLOSE BUY trade {$trade->id}: new price lock is {$currentPrice}");
@@ -199,6 +200,7 @@ class DynamicTradeService
                                 'status' => 'FILLED',
                                 'isActive' => 0,
                             ]);
+                            continue;
                         }
                         if ($currentPrice < $trade->priceLockClose) {
                             Log::info("Updating price lock for CLOSE SELL trade {$trade->id}: new price lock is {$currentPrice}");
