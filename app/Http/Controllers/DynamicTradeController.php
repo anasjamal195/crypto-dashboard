@@ -22,9 +22,10 @@ class DynamicTradeController extends Controller
             abort(404);
         }
     }
-    public function dynamicTradeResults($market){
-          // Fetching all trades
-          if ($market == 'SPOT') {
+    public function dynamicTradeResults($market)
+    {
+        // Fetching all trades
+        if ($market == 'SPOT') {
             $results = DB::table('dynamic_trades_spot_results')->where('trade_acc', auth()->user()->id)->get();
             $pageSlug = 'DynamicTradesResultSPOT';
             return view('dynamic-trades.index-spot-results', compact('results', 'pageSlug'));
@@ -80,6 +81,8 @@ class DynamicTradeController extends Controller
                 'priceLockBuyBuffer' => $request->priceLockBuyBuffer,
                 'priceLockSell' => $request->priceLockSell,
                 'priceLockSellBuffer' => $request->priceLockSellBuffer,
+                'stopLoss' => $request->stopLoss,
+                'stopLossBuffer' => $request->stopLossBuffer,
                 'isActive' => $request->isActive,
                 'created_at' => now(),
                 'updated_at' => now()
@@ -98,6 +101,8 @@ class DynamicTradeController extends Controller
                 'priceLockOpenBuffer' => $request->priceLockOpenBuffer,
                 'priceLockClose' => $request->priceLockClose,
                 'priceLockCloseBuffer' => $request->priceLockCloseBuffer,
+                'stopLoss' => $request->stopLoss,
+                'stopLossBuffer' => $request->stopLossBuffer,
                 'isActive' => $request->isActive,
                 'created_at' => now(),
                 'updated_at' => now()

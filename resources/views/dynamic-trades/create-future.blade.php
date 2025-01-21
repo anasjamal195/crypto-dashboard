@@ -52,6 +52,16 @@
                                 <input type="number" name="priceLockOpenBuffer" step="0.001" class="form-control">
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6" id="stopLossGroup">
+                                <label for="stopLoss">Stop Loss</label>
+                                <input type="number" name="stopLoss" step="0.001" class="form-control">
+                            </div>
+                            {{-- <div class="form-group col-md-6" id="stopLossBufferGroup">
+                                <label for="stopLossBuffer">Stop Loss Buffer</label>
+                                <input type="number" name="priceLockSellBuffer" step="0.001" class="form-control">
+                            </div> --}}
+                        </div>
 
                         <div class="form-row">
                             <div class="form-group col-md-6">

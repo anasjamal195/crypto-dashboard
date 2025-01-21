@@ -36,7 +36,7 @@
                                 </div>
                             </div>
 
-                            <div class="form-row" >
+                            <div class="form-row">
                                 <div class="form-group col-md-6" id="amountGroup">
                                     <label for="amount">Amount</label>
                                     <input type="number" name="amount" step="0.001" class="form-control">
@@ -71,6 +71,17 @@
                                 </div>
                             </div>
 
+                            <div class="form-row">
+                                <div class="form-group col-md-6" id="stopLossGroup">
+                                    <label for="stopLoss">Stop Loss</label>
+                                    <input type="number" name="stopLoss" step="0.001" class="form-control">
+                                </div>
+                                {{-- <div class="form-group col-md-6" id="stopLossBufferGroup">
+                                    <label for="stopLossBuffer">Stop Loss Buffer</label>
+                                    <input type="number" name="priceLockSellBuffer" step="0.001" class="form-control">
+                                </div> --}}
+                            </div>
+
                             <div class="form-group">
                                 <button type="submit" class="btn btn-success">Create Trade</button>
                             </div>
@@ -93,6 +104,8 @@
             document.getElementById('priceLockBuyBufferGroup').style.display = isBuy || isTradePair ? 'block' : 'none';
             document.getElementById('priceLockSellGroup').style.display = isSell || isTradePair ? 'block' : 'none';
             document.getElementById('priceLockSellBufferGroup').style.display = isSell || isTradePair ? 'block' : 'none';
+            // document.getElementById('stopLossGroup').style.display = isSell || isTradePair ? 'block' : 'none';
+            // document.getElementById('stopLossBufferGroup').style.display = isSell || isTradePair ? 'block' : 'none';
         }
     </script>
 @endsection
