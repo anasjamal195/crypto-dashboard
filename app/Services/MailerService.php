@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Mail\DynamicFutureTradeNotification;
+use App\Mail\DynamicSpotTradeNotification;
 use App\Mail\OrderMail;
 use App\Mail\WorkerEmail;
 use Illuminate\Support\Facades\Mail;
@@ -26,5 +28,13 @@ class MailerService
     {
         // foreach (self::$recipients as $recipient)
         //     Mail::to($recipient)->send(new WorkerEmail($processName));
+    }
+    public static function sendSpotTradeDynamicEmail($details){
+        foreach (self::$recipients as $recipient)
+        Mail::to($recipient)->send(new DynamicSpotTradeNotification($details));
+    }
+    public static function sendFutureTradeDynamicEmail($details){
+        foreach (self::$recipients as $recipient)
+        Mail::to($recipient)->send(new DynamicFutureTradeNotification($details));
     }
 }

@@ -110,11 +110,6 @@
         border: 1px solid #cccccc;
         /* Light border to define the edges */
     }
-
-    select:hover {
-        border-color: #666666;
-        /* Darker border on hover */
-    }
 </style>
 <style>
     .select2-container--default .select2-selection--single {
@@ -126,9 +121,30 @@
         /* White text */
     }
 
+    .select2-container--bootstrap .select2-selection {
+        border-color: #2b3553;
+        border-radius: 0.4285rem;
+        font-size: 0.75rem;
+    }
+
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         background-color: #333;
+        /* Ensure this doesn't blend into the arrow itself */
+        height: calc(2.25rem + 2px);
+        /* Ensure height matches the parent */
+        display: block;
+        /* Ensure it is not set to 'none' */
+        position: absolute;
+        /* Ensure it's positioned correctly */
+        top: 0;
+        right: 1px;
+        /* Adjust as necessary */
+        width: 20px;
+        /* Ensure width is enough for the arrow to show */
+        line-height: 2.25rem;
+        /* Align arrow vertically */
     }
+
 
     .select2-dropdown {
         background-color: #2a2e35;
@@ -154,8 +170,67 @@
         color: #fff;
         background: #333;
     }
-    .select2-container--default .select2-selection--single .select2-selection__rendered{
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
         color: #fff;
+    }
+
+    .select2-container--bootstrap .select2-selection {
+        /* background-color: #333; */
+        /* Dark background for the input */
+        border: 1px solid #2b3553;
+        /* Darker border color for visibility */
+        color: #fff;
+        /* White text color */
+        border-radius: 0.25rem;
+        /* Keeping the border-radius from Bootstrap */
+    }
+
+    .select2-container--bootstrap .select2-selection--single {
+        height: calc(2.25rem + 2px);
+        /* Standard height adjustment */
+    }
+
+    .select2-container--bootstrap .select2-selection--single .select2-selection__rendered {
+        line-height: 1.5;
+        /* Line height for vertical alignment */
+        color: #fff;
+        /* Ensure the text color is white for visibility */
+    }
+
+    .select2-container--bootstrap .select2-dropdown {
+        /* background-color: #2b355; */
+        /* Dark background for the dropdown */
+        border-color: #2b3553;
+        /* Dark border for the dropdown */
+    }
+
+    .select2-container--bootstrap .select2-results__option {
+        color: #ccc;
+        /* Lighter text color for items in the dropdown */
+    }
+
+    .select2-container--bootstrap .select2-results__option--highlighted[aria-selected] {
+        background-color: #565656;
+        /* Darker background for highlighted item */
+        color: white;
+        /* White text color for highlighted item */
+    }
+
+    .select2-container--bootstrap .select2-selection--single .select2-selection__arrow {
+        color: #ccc;
+        /* Arrow color */
+    }
+
+    .select2-container--bootstrap .select2-search--dropdown .select2-search__field {
+        color: #fff;
+        /* Color for the search input text */
+        background-color: #333;
+        /* Background for the search input */
+    }
+
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        padding-top: 10px;
     }
 </style>
 
@@ -368,7 +443,9 @@
                     "order": [], // Remove initial order, if necessary
                 });
 
-                $('.select2').select2();
+                $('.select2').select2({
+                    theme: 'bootstrap'
+                });
 
 
             });

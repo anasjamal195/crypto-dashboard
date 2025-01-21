@@ -853,7 +853,7 @@ class BinanceApiService
 
 
 
-    public static function placeDynamicBuyOrderSpot($symbol, $amount,  $trader)
+    public static function placeDynamicBuyOrderSpot($symbol, $amount,  $trader, $trade = null)
     {
 
         $current_price = self::getCurrentPrice($symbol);
@@ -942,34 +942,27 @@ class BinanceApiService
 
         $data =  [
             'symbol' => $response['symbol'],
-            'amount' => $amount,
-            'interval' => '1m',
-            'market' => $market,
             'orderId' => $response['orderId'],
-            'status' => $response['status'],
-            'type' => $response['type'],
+            'tradeId' => $trade ? $trade->id : null,
             'side' => $response['side'],
-            'price' => $current_price,
-            'trade_status' => 'close',
-            'trade_acc' => $trader,
+            'amount' => $amount,
             'qty' => $quantity,
-
-            'commission' => $fee_details['totalCommission'],
-            'commission_asset' => $fee_details['commissionAsset'],
-            'commissionUSDT' => $fee_details['commissionAssetUSDT'],
+            'status' => $response['status'],
+            'price' => $current_price,
+            'trade_acc' => $trader,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
-        DB::table('dynamic_orders')->insert(
+        DB::table('dynamic_trades_spot_results')->insert(
             $data
         );
 
 
-        MailerService::sendEmail($data);
+        MailerService::sendSpotTradeDynamicEmail($data);
         return $data;
     }
 
-    public static function placeDynamicSellOrderSpot($symbol, $quantity,  $trader)
+    public static function placeDynamicSellOrderSpot($symbol, $quantity,  $trader, $trade)
     {
 
         $market = 'SPOT';
@@ -1052,50 +1045,42 @@ class BinanceApiService
         $response = $response->json();
 
 
-        // return $response;
-        $fee_details = self::getTotalCommission($response);
-
         if (!isset($response['symbol'])) {
             Log::info('Trader ' . $trader . ': Sell response' . json_encode($response));
         }
         $data =  [
             'symbol' => $response['symbol'],
-            'amount' => $quantity * $current_price,
-            'interval' => '1m',
-            'market' => $market,
             'orderId' => $response['orderId'],
-            'status' => $response['status'],
-            'type' => $response['type'],
+            'tradeId' => $trade ? $trade->id : null,
             'side' => $response['side'],
-            'price' => $current_price,
-            'trade_status' => 'close',
-            'trade_acc' => $trader,
+            'amount' => $quantity * $current_price,
             'qty' => $quantity,
-            'commission' => $fee_details['totalCommission'],
-            'commission_asset' => $fee_details['commissionAsset'],
-            'commissionUSDT' => $fee_details['commissionAssetUSDT'],
+            'status' => $response['status'],
+            'price' => $current_price,
+            'trade_acc' => $trader,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
-        DB::table('dynamic_orders')->insert(
+
+        DB::table('dynamic_trades_spot_results')->insert(
             $data
         );
 
-        MailerService::sendEmail($data);
+        MailerService::sendSpotTradeDynamicEmail($data);
+
 
         return $data;
     }
 
 
-
     // Future Api's
 
-    public static function openMarketPosition($symbol, $tradeAmount, $position = 'LONG', $leverage, $trader)
+    public static function openMarketPosition($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $trade)
     {
 
         $market = 'FUTURE';
-        $tradePosition = $position;
-        $position = $position === 'LONG' ? 'BUY' : 'SELL';
+
+
 
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
@@ -1202,55 +1187,48 @@ class BinanceApiService
         $entryPrice = $current_price; // Assuming trade executed at provided price
         $accountMargin = $tradeAmount; // User's margin
         $liquidationPrice = 0;
-        if ($position === 'LONG') {
+        if ($position === 'BUY') {
             $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
-        } else if ($position === 'SHORT') {
+        } else if ($position === 'SELL') {
             $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
         }
 
         $data =  [
-            'symbol' => $response['symbol'],
             'orderId' => $response['orderId'],
-            'interval' => '1m',
-            'market' => $market,
-            'status' => $response['status'],
-            'type' => $response['type'],
-            'amount' => $tradeAmount,
-            'position' => $tradePosition,
+            'tradeId' => $trade->id,
+            'symbol' => $response['symbol'],
             'side' => $response['side'],
-            'price' => $current_price,
-            'liqPrice' => $liquidationPrice,
-            'leverage' => $leverage,
-            'trade_status' => 'open',
-            'trade_acc' => $trader,
+            'amount' => $tradeAmount,
+            'type' => 'open',
             'qty' => $quantity,
-            'commission' => 0,
-            'commission_asset' => 0,
-            'commissionUSDT' => 0,
+            'leverage' => $leverage,
+            'price' => $current_price,
+            'trade_acc' => $trader,
+            'liqPrice' => $liquidationPrice,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
-        DB::table('dynamic_orders')->insert(
+        DB::table('dynamic_trades_future_results')->insert(
             $data
         );
-        // sendEmail($data);
+        MailerService::sendFutureTradeDynamicEmail($data);
 
         return $data;
     }
 
-    public static function closeMarketPosition($openOrderId)
+    public static function closeMarketPosition($openOrderId, $trade)
     {
 
 
         $openOrder = DB::table('dynamic_orders')->where('orderId', $openOrderId)->first();
         $market = 'FUTURE';
-        $tradePosition = $openOrder->position;
-        $position = $openOrder->position === 'LONG' ? 'SELL' : 'BUY';
+        $position = $openOrder->position == 'BUY' ? 'SELL' : 'BUY';
+
         $symbol = $openOrder->symbol;
         $trader = $openOrder->trade_acc;
         $quantity = $openOrder->qty;
-        
-        
+
+
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
         $user = User::find($trader);
@@ -1294,28 +1272,26 @@ class BinanceApiService
         }
 
         $data =  [
-            'symbol' => $response['symbol'],
             'orderId' => $response['orderId'],
-            'status' => $response['status'],
-            'interval' => '1m',
-            'market' => $market,
-            'position' => $tradePosition,
-            'type' => $response['type'],
+            'tradeId' => $trade->id,
+            'symbol' => $response['symbol'],
             'side' => $response['side'],
-            'price' => $current_price,
-            'trade_status' => 'close',
-            'trade_acc' => $trader,
+            'amount' => $quantity * $current_price,
             'qty' => $quantity,
-            'commission' => 0,
-            'commission_asset' => 0,
-            'commissionUSDT' => 0,
+            'type' => 'close',
+            'leverage' => $trade->leverage,
+            'price' => $current_price,
+            'trade_acc' => $trader,
+            'liqPrice' => 0,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
-
-        DB::table('dynamic_orders')->insert(
+        DB::table('dynamic_trades_future_results')->insert(
             $data
         );
+        
+        MailerService::sendFutureTradeDynamicEmail($data);
+
 
         return $data;
     }
