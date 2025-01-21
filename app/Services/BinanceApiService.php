@@ -1220,7 +1220,7 @@ class BinanceApiService
     {
 
 
-        $openOrder = DB::table('dynamic_orders')->where('orderId', $openOrderId)->first();
+        $openOrder = DB::table('dynamic_trades_future_results')->where('orderId', $openOrderId)->first();
         $market = 'FUTURE';
         $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
 
