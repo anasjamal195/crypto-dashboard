@@ -37,6 +37,7 @@ Route::get('/live-trades-details/{interval}/{market}/{symbol}', 'App\Http\Contro
 
 
 Route::get('/dynamic-trades-results/{market}', 'App\Http\Controllers\DynamicTradeController@dynamicTradeResults')->name('dynamic.trades.result')->middleware('auth');
+Route::get('/get-available-balance', 'App\Http\Controllers\BinanceController@getAvailableBalance')->name('get.available.balance')->middleware('auth');
 
 Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');
 Route::resource('dynamic-trading', DynamicTradeController::class)->middleware('auth');

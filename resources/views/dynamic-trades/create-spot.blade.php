@@ -41,10 +41,14 @@
                                     <label for="amount">Amount</label>
                                     <input type="number" name="amount" step="0.00000001" class="form-control">
                                 </div>
+
                                 <div class="form-group col-md-6" id="qtyGroup">
                                     <label for="qty">Quantity</label>
-                                    <input type="number" name="qty" step="0.00000001" class="form-control">
+                                    <input type="number" name="qty" id="qty" step="0.00000001"
+                                        class="form-control">
+                                    <button type="button" id="maxQty" class="btn btn-info">Max</button>
                                 </div>
+
                             </div>
 
                             <div class="form-row">
@@ -67,7 +71,8 @@
                                 <div class="form-group col-md-6" id="priceLockSellBufferGroup">
                                     <label for="priceLockSellBuffer">Price Lock Sell Buffer (Percentage Margin for Locked
                                         Price)</label>
-                                    <input type="number" name="priceLockSellBuffer" step="0.0000000000001" class="form-control">
+                                    <input type="number" name="priceLockSellBuffer" step="0.0000000000001"
+                                        class="form-control">
                                 </div>
                             </div>
 
@@ -108,4 +113,33 @@
             // document.getElementById('stopLossBufferGroup').style.display = isSell || isTradePair ? 'block' : 'none';
         }
     </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#maxQty').click(function() {
+                var symbol = $('input[name="symbol"]').val(); // Assuming the symbol input has an ID of 'symbol'
+                console.log(symbol)
+                if (!symbol) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('get.available.balance') }}' ,
+                    type: 'GET',
+                    data: {
+                        symbol: symbol,
+                        market: 'SPOT'
+                    },
+                    success: function(response) {
+                        $('input[name="qty"]').val(response
+                        .free); // Update the Quantity field with the free balance
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching balance:', error);
+                    }
+                });
+            });
+        });
+    </script>
+
 @endsection

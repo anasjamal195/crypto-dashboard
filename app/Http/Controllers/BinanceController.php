@@ -111,6 +111,9 @@ class BinanceController extends Controller
 
         return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends]);
     }
+    public function getAvailableBalance(Request $request){
+        return BinanceApiService::fetchAvailableQuantity($request->symbol,auth()->user()->id,$request->market);
+    }
     public function showAverages($market, Request $request)
     {
         $averages = DB::table('ideal_buying_candles')

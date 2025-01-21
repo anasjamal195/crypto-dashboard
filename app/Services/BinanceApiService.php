@@ -579,6 +579,7 @@ class BinanceApiService
 
     public static function fetchAvailableQuantity($symbol, $trader, $market = 'SPOT')
     {
+      
         $user = User::find($trader);
         $apiKey = $user->api_key;
         $apiSecret = $user->api_secret;
@@ -623,8 +624,8 @@ class BinanceApiService
             $balance = collect($response['balances'])->where('asset', $symbol)->first();
             return [
                 'asset' => $symbol,
-                'free' => $balance['free'] ?? 0, // Available balance
-                'locked' => $balance['locked'] ?? 0 // Balance in orders
+                'free' => floatval($balance['free']) ?? 0, // Available balance
+                'locked' => floatval($balance['locked']) ?? 0 // Balance in orders
             ];
         } else {
             // Log or handle the error appropriately

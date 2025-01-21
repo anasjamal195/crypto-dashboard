@@ -97,4 +97,32 @@
         document.getElementById('closeFields').style.display = allowCloseCheckbox.checked ? 'block' : 'none';
     }
 </script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#maxQty').click(function() {
+                var symbol = $('input[name="symbol"]').val(); // Assuming the symbol input has an ID of 'symbol'
+                console.log(symbol)
+                if (!symbol) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('get.available.balance') }}' ,
+                    type: 'GET',
+                    data: {
+                        symbol: symbol,
+                        market: 'FUTURE'
+                    },
+                    success: function(response) {
+                        $('input[name="qty"]').val(response
+                        .free); // Update the Quantity field with the free balance
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching balance:', error);
+                    }
+                });
+            });
+        });
+    </script>
 @endsection
