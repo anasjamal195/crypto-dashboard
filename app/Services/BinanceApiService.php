@@ -1222,7 +1222,7 @@ class BinanceApiService
 
         $openOrder = DB::table('dynamic_orders')->where('orderId', $openOrderId)->first();
         $market = 'FUTURE';
-        $position = $openOrder->position == 'BUY' ? 'SELL' : 'BUY';
+        $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
 
         $symbol = $openOrder->symbol;
         $trader = $openOrder->trade_acc;
@@ -1289,7 +1289,7 @@ class BinanceApiService
         DB::table('dynamic_trades_future_results')->insert(
             $data
         );
-        
+
         MailerService::sendFutureTradeDynamicEmail($data);
 
 
