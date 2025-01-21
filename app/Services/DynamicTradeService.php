@@ -153,7 +153,7 @@ class DynamicTradeService
                             DB::table('dynamic_trades_future')
                                 ->where('id', $trade->id)
                                 ->update(['priceLockOpen' => $currentPrice]);
-                        } else if ($currentPrice > $trade->priceLockOpen * (1 + ($trade->priceLockOpenBuffer / 100))) {
+                        } else if ($currentPrice < $trade->priceLockOpen * (1 - ($trade->priceLockOpenBuffer / 100))) {
                             Log::info("Executing OPEN SELL order for trade {$trade->id} due to price increase beyond buffer.");
                             BinanceApiService::openMarketPosition($trade->symbol, $trade->amount, $trade->position, $trade->leverage ?? 0, $trade->tradeAccount, $trade);
                             if ($trade->allowClose)
@@ -167,12 +167,12 @@ class DynamicTradeService
                                 ]);
                         }
                     } else if ($trade->status == 'PENDING-CLOSE') {
-                        if ($currentPrice > $trade->priceLockClose) {
+                        if ($currentPrice < $trade->priceLockClose) {
                             Log::info("Updating price lock for CLOSE SELL trade {$trade->id}: new price lock is {$currentPrice}");
                             DB::table('dynamic_trade_handler')
                                 ->where('id', $trade->id)
                                 ->update(['priceLockClose' => $currentPrice]);
-                        } else if ($currentPrice < $trade->priceLockClose * (1 + ($trade->priceLockCloseBuffer / 100))) {
+                        } else if ($currentPrice > $trade->priceLockClose * (1 + ($trade->priceLockCloseBuffer / 100))) {
                             Log::info("Executing SELL BUY order for trade {$trade->id} due to price increase beyond buffer.");
                             $openOrderId = DB::table('dynamic_trades_future_results')->where('tradeId', $trade->id)->where('side', 'SELL')->first()->orderId;
                             BinanceApiService::closeMarketPosition($openOrderId, $trade);
