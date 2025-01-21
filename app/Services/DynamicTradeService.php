@@ -147,7 +147,7 @@ class DynamicTradeService
 
                         if ($trade->stopLoss != 0 && $currentPrice < $trade->stopLoss) {
                             $openOrderId = DB::table('dynamic_trades_future_results')->where('tradeId', $trade->id)->first()->orderId;
-                            Log::info("Executing OPEN BUY order for trade {$trade->id} due to price increase beyond Stop Loss. Order Id: " . $openOrderId);
+                            Log::info("Executing OPEN BUY order for trade {$trade->id} due to price decrease beyond Stop Loss. Order Id: " . $openOrderId);
                             BinanceApiService::closeMarketPosition($openOrderId, $trade);
                             DB::table('dynamic_trade_handler')->where('id', $trade->id)->update([
                                 'status' => 'FILLED',
