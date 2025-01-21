@@ -26,8 +26,8 @@ class DynamicTradeService
                 ->get();
 
             foreach ($dynamicTrades as $trade) {
-                $currentPrice = BinanceApiService::getCurrentPrice($trade->symbol, $trade->market);
-                Log::info("Current price for {$trade->symbol} in market {$trade->market}: {$currentPrice}");
+                $currentPrice = BinanceApiService::getCurrentPrice($trade->symbol,'SPOT');
+                Log::info("Current price for {$trade->symbol} in market SPOT: {$currentPrice}");
 
                 if ($trade->side == 'BUY') {
                     if ($currentPrice < $trade->priceLockBuy) {
@@ -107,8 +107,8 @@ class DynamicTradeService
                 ->get();
 
             foreach ($dynamicTrades as $trade) {
-                $currentPrice = BinanceApiService::getCurrentPrice($trade->symbol, $trade->market);
-                Log::info("Current price for {$trade->symbol} in market {$trade->market}: {$currentPrice}");
+                $currentPrice = BinanceApiService::getCurrentPrice($trade->symbol, 'FUTURE');
+                Log::info("Current price for {$trade->symbol} in market FUTURE: {$currentPrice}");
 
                 if ($trade->position == 'BUY') {
                     if ($trade->status == 'PENDING-OPEN') {
