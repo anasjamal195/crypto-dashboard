@@ -26,7 +26,7 @@
                                         <th>Price Lock Buffer Sell</th>
                                         <th>Status</th>
                                         <th>Active</th>
-                                        <th>Actions</th>
+                                        {{-- <th>Actions</th> --}}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -53,7 +53,7 @@
                                             </td>
                                             <td>{{ $trade->status }}</td>
                                             <td>{{ $trade->isActive ? 'Yes' : 'No' }}</td>
-                                            <td>
+                                            {{-- <td>
                                                 <a href="{{ route('dynamic-trading.edit', $trade->id) }}"
                                                     class="btn btn-primary btn-sm"><i class="fa fa-edit"></i></a>
                                                 <form action="{{ route('dynamic-trading.destroy', $trade->id) }}"
@@ -63,7 +63,7 @@
                                                     <button type="submit" class="btn btn-danger btn-sm"><i
                                                             class="fa fa-trash"></i></button>
                                                 </form>
-                                            </td>
+                                            </td> --}}
                                         </tr>
                                     @endforeach
                                 </tbody>
