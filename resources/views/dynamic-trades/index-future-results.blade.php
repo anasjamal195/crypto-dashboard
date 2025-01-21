@@ -41,7 +41,7 @@
                                         <td>{{ $result->leverage }}</td>
                                         <td>{{ number_format($result->liqPrice, 2) }}</td>
                                         <td>{{ number_format($result->price, 2) }}</td>
-                                        <td>{{ $result->created_at->format('Y-m-d H:i') }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($result->created_at)->format('Y-m-d H:i') }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
