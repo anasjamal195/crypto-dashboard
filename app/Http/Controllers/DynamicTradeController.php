@@ -22,7 +22,20 @@ class DynamicTradeController extends Controller
             abort(404);
         }
     }
-
+    public function dynamicTradeResults($market){
+          // Fetching all trades
+          if ($market == 'SPOT') {
+            $results = DB::table('dynamic_trades_spot_results')->where('trade_acc', auth()->user()->id)->get();
+            $pageSlug = 'DynamicTradesResultSPOT';
+            return view('dynamic-trades.index-spot-results', compact('results', 'pageSlug'));
+        } else if ($market == 'FUTURE') {
+            $results = DB::table('dynamic_trades_future_results')->where('trade_acc', auth()->user()->id)->get();
+            $pageSlug = 'DynamicTradesResultFUTURE';
+            return view('dynamic-trades.index-future-results', compact('results', 'pageSlug'));
+        } else {
+            abort(404);
+        }
+    }
     public function create(Request $request)
     {
         if ($request->market == 'SPOT') {

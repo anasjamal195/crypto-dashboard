@@ -36,6 +36,8 @@ Route::get('/live-trades-results/{market}', 'App\Http\Controllers\BinanceControl
 Route::get('/live-trades-details/{interval}/{market}/{symbol}', 'App\Http\Controllers\BinanceController@liveTradeDetails')->name('live.trades.details')->middleware('auth');
 
 
+Route::get('/dynamic-trades-results/{market}', 'App\Http\Controllers\DynamicTradeController@dynamicTradeResults')->name('dynamic.trades.result')->middleware('auth');
+
 Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');
 Route::resource('dynamic-trading', DynamicTradeController::class)->middleware('auth');
 Route::post('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdate'])->name('user.toggle-auto-update')->middleware('auth');

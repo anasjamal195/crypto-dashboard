@@ -149,30 +149,35 @@
                 </a>
                 <div class="collapse {{ request()->is('dynamic-trading*') ? 'show' : '' }}" id="dynamicTradingMenu">
                     <ul class="nav">
-                        <li class="{{ request()->routeIs('dynamic-trading.manage') ? 'active' : '' }}">
-                            <!-- Example additional management link -->
+                        <li class="{{ request()->routeIs('dynamic-trading.index') && request()->get('market') == 'SPOT' ? 'active' : '' }}">
                             <a href="{{ route('dynamic-trading.index',['market' => 'SPOT']) }}">
                                 <i class="tim-icons icon-settings-gear-63"></i>
                                 <p>{{ __('Spot Trades') }}</p>
                             </a>
                         </li>
-                        <li class="{{ request()->routeIs('dynamic-trading.manage') ? 'active' : '' }}">
-                            <!-- Example additional management link -->
+                        <li class="{{ request()->routeIs('dynamic.trades.result') && request()->get('market') == 'SPOT' ? 'active' : '' }}">
+                            <a href="{{ route('dynamic.trades.result',['market' => 'SPOT']) }}">
+                                <i class="tim-icons icon-bullet-list-67"></i>
+                                <p>{{ __('Spot Results') }}</p>
+                            </a>
+                        </li>
+                        <li class="{{ request()->routeIs('dynamic-trading.index') && request()->get('market') == 'FUTURE' ? 'active' : '' }}">
                             <a href="{{ route('dynamic-trading.index',['market' => 'FUTURE']) }}">
                                 <i class="tim-icons icon-settings-gear-63"></i>
                                 <p>{{ __('Future Trades') }}</p>
                             </a>
                         </li>
-                        {{-- <li class="{{ request()->routeIs('dynamic-trading.create') ? 'active' : '' }}">
-                            <a href="{{ route('dynamic-trading.create') }}">
-                                <i class="tim-icons icon-simple-add"></i>
-                                <p>{{ __('Add Trade') }}</p>
+                        <li class="{{ request()->routeIs('dynamic.trades.result') && request()->get('market') == 'FUTURE' ? 'active' : '' }}">
+                            <a href="{{ route('dynamic.trades.result',['market' => 'FUTURE']) }}">
+                                <i class="tim-icons icon-bullet-list-67"></i>
+                                <p>{{ __('Future Results') }}</p>
                             </a>
-                        </li> --}}
-
+                        </li>
+                       
                     </ul>
                 </div>
             </li>
+            
             <li class="{{ request()->is('process-handlers*') ? 'active' : '' }}">
                 <a data-toggle="collapse" href="#processHandlersCollapse" aria-expanded="false">
                     <i class="tim-icons icon-settings"></i>
