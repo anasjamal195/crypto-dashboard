@@ -138,7 +138,7 @@ class DynamicTradeService
                                 ->update(['priceLockClose' => $currentPrice]);
                         } else if ($currentPrice < $trade->priceLockClose * (1 + ($trade->priceLockCloseBuffer / 100))) {
                             Log::info("Executing OPEN BUY order for trade {$trade->id} due to price increase beyond buffer.");
-                            $openOrderId = DB::table('dynamic_trades_future_results')->where('tradeId', $trade->id)->where('side', 'BUY')->first()->orderId;
+                            $openOrderId = DB::table('dynamic_trades_future_results')->where('tradeId', $trade->id)->where('position', 'BUY')->first()->orderId;
                             BinanceApiService::closeMarketPosition($openOrderId, $trade);
                             DB::table('dynamic_trade_handler')->where('id', $trade->id)->update([
                                 'status' => 'FILLED',
@@ -174,7 +174,7 @@ class DynamicTradeService
                                 ->update(['priceLockClose' => $currentPrice]);
                         } else if ($currentPrice > $trade->priceLockClose * (1 + ($trade->priceLockCloseBuffer / 100))) {
                             Log::info("Executing SELL BUY order for trade {$trade->id} due to price increase beyond buffer.");
-                            $openOrderId = DB::table('dynamic_trades_future_results')->where('tradeId', $trade->id)->where('side', 'SELL')->first()->orderId;
+                            $openOrderId = DB::table('dynamic_trades_future_results')->where('tradeId', $trade->id)->where('position', 'SELL')->first()->orderId;
                             BinanceApiService::closeMarketPosition($openOrderId, $trade);
                             DB::table('dynamic_trade_handler')->where('id', $trade->id)->update([
                                 'status' => 'FILLED',
