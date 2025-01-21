@@ -37,7 +37,7 @@
                         <div class="form-row">
                             <div class="form-group col-md-3">
                                 <label for="amount">Amount</label>
-                                <input type="number" name="amount" step="0.001" class="form-control">
+                                <input type="number" name="amount" step="0.00000001" class="form-control">
                             </div>
                             <div class="form-group col-md-3">
                                 <label for="leverage">Leverage</label>
@@ -45,21 +45,21 @@
                             </div>
                             <div class="form-group col-md-3">
                                 <label for="priceLockOpen">Price Lock Open (Price to Trigger Open)</label>
-                                <input type="number" name="priceLockOpen" step="0.001" class="form-control">
+                                <input type="number" name="priceLockOpen" step="0.00000001" class="form-control">
                             </div>
                             <div class="form-group col-md-3">
                                 <label for="priceLockOpenBuffer">Price Lock Buffer Open</label>
-                                <input type="number" name="priceLockOpenBuffer" step="0.001" class="form-control">
+                                <input type="number" name="priceLockOpenBuffer" step="0.00000001" class="form-control">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group col-md-6" id="stopLossGroup">
                                 <label for="stopLoss">Stop Loss</label>
-                                <input type="number" name="stopLoss" step="0.001" class="form-control">
+                                <input type="number" name="stopLoss" step="0.00000001" class="form-control">
                             </div>
                             {{-- <div class="form-group col-md-6" id="stopLossBufferGroup">
                                 <label for="stopLossBuffer">Stop Loss Buffer</label>
-                                <input type="number" name="priceLockSellBuffer" step="0.001" class="form-control">
+                                <input type="number" name="priceLockSellBuffer" step="0.00000001" class="form-control">
                             </div> --}}
                         </div>
 
@@ -72,11 +72,11 @@
                                 <div class="form-row">
                                     <div class="col-md-6">
                                         <label for="priceLockClose">Price Lock Close (Price to Trigger Close)</label>
-                                        <input type="number" name="priceLockClose" step="0.001" class="form-control">
+                                        <input type="number" name="priceLockClose" step="0.00000001" class="form-control">
                                     </div>
                                     <div class="col-md-6">
                                         <label for="priceLockCloseBuffer">Price Lock Close Buffer </label>
-                                        <input type="number" name="priceLockCloseBuffer" step="0.001" class="form-control">
+                                        <input type="number" name="priceLockCloseBuffer" step="0.00000001" class="form-control">
                                     </div>
                                 </div>
                             </div>

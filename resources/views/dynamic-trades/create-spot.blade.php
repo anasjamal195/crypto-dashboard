@@ -39,46 +39,46 @@
                             <div class="form-row">
                                 <div class="form-group col-md-6" id="amountGroup">
                                     <label for="amount">Amount</label>
-                                    <input type="number" name="amount" step="0.001" class="form-control">
+                                    <input type="number" name="amount" step="0.00000001" class="form-control">
                                 </div>
                                 <div class="form-group col-md-6" id="qtyGroup">
                                     <label for="qty">Quantity</label>
-                                    <input type="number" name="qty" step="0.001" class="form-control">
+                                    <input type="number" name="qty" step="0.00000001" class="form-control">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group col-md-6" id="priceLockBuyGroup">
                                     <label for="priceLockBuy">Price Lock Buy (Price to Trigger Action)</label>
-                                    <input type="number" name="priceLockBuy" step="0.001" class="form-control">
+                                    <input type="number" name="priceLockBuy" step="0.00000001" class="form-control">
                                 </div>
                                 <div class="form-group col-md-6" id="priceLockBuyBufferGroup">
                                     <label for="priceLockBuyBuffer">Price Lock Buy Buffer (Percentage Margin for Locked
                                         Price)</label>
-                                    <input type="number" name="priceLockBuyBuffer" step="0.001" class="form-control">
+                                    <input type="number" name="priceLockBuyBuffer" step="0.00000001" class="form-control">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group col-md-6" id="priceLockSellGroup">
                                     <label for="priceLockSell">Price Lock Sell (Price to Trigger Action)</label>
-                                    <input type="number" name="priceLockSell" step="0.001" class="form-control">
+                                    <input type="number" name="priceLockSell" step="0.00000001" class="form-control">
                                 </div>
                                 <div class="form-group col-md-6" id="priceLockSellBufferGroup">
                                     <label for="priceLockSellBuffer">Price Lock Sell Buffer (Percentage Margin for Locked
                                         Price)</label>
-                                    <input type="number" name="priceLockSellBuffer" step="0.001" class="form-control">
+                                    <input type="number" name="priceLockSellBuffer" step="0.0000000000001" class="form-control">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group col-md-6" id="stopLossGroup">
                                     <label for="stopLoss">Stop Loss</label>
-                                    <input type="number" name="stopLoss" step="0.001" class="form-control">
+                                    <input type="number" name="stopLoss" step="0.00000001" class="form-control">
                                 </div>
                                 {{-- <div class="form-group col-md-6" id="stopLossBufferGroup">
                                     <label for="stopLossBuffer">Stop Loss Buffer</label>
-                                    <input type="number" name="priceLockSellBuffer" step="0.001" class="form-control">
+                                    <input type="number" name="priceLockSellBuffer" step="0.00000001" class="form-control">
                                 </div> --}}
                             </div>
 
