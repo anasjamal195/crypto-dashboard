@@ -30,12 +30,14 @@ class MailerService
         // foreach (self::$recipients as $recipient)
         //     Mail::to($recipient)->send(new WorkerEmail($processName));
     }
-    public static function sendSpotTradeDynamicEmail($details){
+    public static function sendSpotTradeDynamicEmail($details)
+    {
         foreach (self::$recipients as $recipient)
-        Mail::to($recipient)->send(new DynamicSpotTradeNotification($details));
+            Mail::to($recipient)->send(new DynamicSpotTradeNotification($details));
     }
-    public static function sendFutureTradeDynamicEmail($details){
+    public static function sendFutureTradeDynamicEmail($details)
+    {
         foreach (self::$recipients as $recipient)
-        Mail::to($recipient)->send(new DynamicFutureTradeNotification($details));
+            Mail::to($recipient)->send(new DynamicFutureTradeNotification($details));
     }
 }
