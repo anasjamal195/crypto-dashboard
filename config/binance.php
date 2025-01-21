@@ -21,7 +21,8 @@ return [
         'margin' => '/margin',
         'server_time' => '/time',
         'order' => '/order',
-        'leverage' => '/leverage'
+        'leverage' => '/leverage',
+        'account_info' => '/account',
 
     ],
     'settings' => [

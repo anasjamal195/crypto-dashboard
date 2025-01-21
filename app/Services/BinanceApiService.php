@@ -576,6 +576,63 @@ class BinanceApiService
             'commissionAssetUSDT' => $commissionAsset != 'USDT' ? self::getCurrentPrice($commissionAsset . 'USDT') : $totalCommission,
         ];
     }
+
+    public static function fetchAvailableQuantity($symbol, $trader, $market = 'SPOT')
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
+
+        // Get server time from Binance API to sync up the request
+        $serverTime = json_decode(file_get_contents($base_url . config('binance.endpoints.server_time')), true);
+        $serverTimestamp = $serverTime['serverTime'];
+
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
+
+        // Adjust timestamp if necessary
+        if ($timestamp - $serverTimestamp > $recvWindow) {
+            $timestamp = $serverTimestamp + $recvWindow;
+        }
+
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'timestamp' => $timestamp,
+            'recvWindow' => $recvWindow
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        // Construct the request URL
+        $url = $base_url . config('binance.endpoints.account_info') . '?' . $queryString;
+
+        // Make the API request to Binance
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->get($url);
+
+        $response = $response->json();
+
+        // dd($response);
+        if (isset($response['balances'])) {
+            $balance = collect($response['balances'])->where('asset', $symbol)->first();
+            return [
+                'asset' => $symbol,
+                'free' => $balance['free'] ?? 0, // Available balance
+                'locked' => $balance['locked'] ?? 0 // Balance in orders
+            ];
+        } else {
+            // Log or handle the error appropriately
+            Log::error('Failed to fetch balance for ' . $symbol . ' for trader ' . $trader . ': ' . json_encode($response));
+            return null;
+        }
+    }
+
     public static function placeBuyOrder($symbol, $interval, $amount,  $trader, $market = 'SPOT')
     {
 

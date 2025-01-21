@@ -35,6 +35,7 @@ class HomeController extends Controller
     public function index()
     {
         // dd(MarketTrendService::getSymbolHistoricalTrends('BTCUSDT','1m','SPOT'));
+        dd(BinanceApiService::fetchAvailableQuantity('BNB', auth()->user()->id, 'SPOT'));
         $pageSlug = 'Dashboard';
         return view('welcome', compact('pageSlug'));
     }
