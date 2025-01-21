@@ -13,6 +13,7 @@ class MailerService
     public static $recipients = [
         'anasj5749@gmail.com',
         'drupalmind@gmail.com',
+        'egeniuscare@gmail.com'
     ];
     /**
      * Create a new class instance.
