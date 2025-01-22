@@ -128,6 +128,8 @@
                 if (symbol && symbol.includes("USDT")) {
                     updatePrice(symbol); // Update immediately
                     priceInterval = setInterval(() => updatePrice(symbol), 2000); // Update every 2 seconds
+                }else{
+                    $('label[for="symbol"]').html(`Symbol`);
                 }
             });
             $('#maxQty').click(function() {
