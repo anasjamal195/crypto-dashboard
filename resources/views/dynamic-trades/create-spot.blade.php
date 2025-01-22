@@ -26,6 +26,8 @@
                                 <div class="form-group col-md-4">
                                     <label for="symbol">Symbol</label>
                                     <input type="text" name="symbol" class="form-control" required>
+                                    
+
                                 </div>
                                 <div class="form-group col-md-4">
                                     <label for="isActive">Active</label>
@@ -39,7 +41,8 @@
                             <div class="form-row">
                                 <div class="form-group col-md-6" id="amountGroup">
                                     <label for="amount">Amount</label>
-                                    <input type="number" name="amount" step="0.00000001" class="form-control">
+                                    <input type="number" name="amount" step="0.00000001" value="30"
+                                        class="form-control">
                                 </div>
 
                                 <div class="form-group col-md-6" id="qtyGroup">
@@ -116,15 +119,46 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         $(document).ready(function() {
+            let priceInterval; // Variable to store the interval ID
+
+            // Function to update price
+            function updatePrice(symbol) {
+                $.ajax({
+                    url: '{{ route('get.current.price') }}', // Adjust this to your route that fetches the price
+                    type: 'GET',
+                    data: {
+                        symbol: symbol,
+                        market: 'SPOT'
+                    },
+                    success: function(response) {
+                        $('label[for="symbol"]').html(`Symbol ( ${response} USDT)`); // Assuming the response has a 'price' attribute
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching current price:', error);
+                    }
+                });
+            }
+
+            // Event handler for the symbol input field
+            $('input[name="symbol"]').on('input', function() {
+                const symbol = $(this).val();
+                clearInterval(priceInterval); // Clear existing interval
+
+                if (symbol && symbol.includes("USDT")) {
+                    updatePrice(symbol); // Update immediately
+                    priceInterval = setInterval(() => updatePrice(symbol), 2000); // Update every 2 seconds
+                }
+            });
             $('#maxQty').click(function() {
-                var symbol = $('input[name="symbol"]').val(); // Assuming the symbol input has an ID of 'symbol'
+                var symbol = $('input[name="symbol"]')
+                    .val(); // Assuming the symbol input has an ID of 'symbol'
                 console.log(symbol)
                 if (!symbol) {
                     return;
                 }
 
                 $.ajax({
-                    url: '{{ route('get.available.balance') }}' ,
+                    url: '{{ route('get.available.balance') }}',
                     type: 'GET',
                     data: {
                         symbol: symbol,
@@ -132,7 +166,7 @@
                     },
                     success: function(response) {
                         $('input[name="qty"]').val(response
-                        .free); // Update the Quantity field with the free balance
+                            .free); // Update the Quantity field with the free balance
                     },
                     error: function(xhr, status, error) {
                         console.error('Error fetching balance:', error);
@@ -141,5 +175,4 @@
             });
         });
     </script>
-
 @endsection

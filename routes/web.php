@@ -3,6 +3,8 @@
 use App\Http\Controllers\DynamicTradeController;
 use App\Http\Controllers\TradeHandlerController;
 use App\Http\Controllers\UserController;
+use App\Services\BinanceApiService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -10,11 +12,11 @@ use Illuminate\Support\Facades\Route;
 Auth::routes();
 
 
-Route::get('/', function(){
-	if(auth()->user())
-	return view('welcome',['pageSlug'=>'Dashboard']);
-else
-	return view('auth.login',['pageSlug'=>'Login']);
+Route::get('/', function () {
+	if (auth()->user())
+		return view('welcome', ['pageSlug' => 'Dashboard']);
+	else
+		return view('auth.login', ['pageSlug' => 'Login']);
 });
 
 Auth::routes();
@@ -38,6 +40,9 @@ Route::get('/live-trades-details/{interval}/{market}/{symbol}', 'App\Http\Contro
 
 Route::get('/dynamic-trades-results/{market}', 'App\Http\Controllers\DynamicTradeController@dynamicTradeResults')->name('dynamic.trades.result')->middleware('auth');
 Route::get('/get-available-balance', 'App\Http\Controllers\BinanceController@getAvailableBalance')->name('get.available.balance')->middleware('auth');
+Route::get('/get-current-price', function (Request $request) {
+	return BinanceApiService::getCurrentPrice($request->symbol, $request->market);
+})->name('get.current.price')->middleware('auth');
 
 Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');
 Route::resource('dynamic-trading', DynamicTradeController::class)->middleware('auth');
@@ -54,13 +59,13 @@ Route::get('/process-handler/action/plesk-git/{apiKey}/{action}', 'App\Http\Cont
 
 
 Route::group(['middleware' => 'auth'], function () {
-		Route::get('icons', ['as' => 'pages.icons', 'uses' => 'App\Http\Controllers\PageController@icons']);
-		Route::get('maps', ['as' => 'pages.maps', 'uses' => 'App\Http\Controllers\PageController@maps']);
-		Route::get('notifications', ['as' => 'pages.notifications', 'uses' => 'App\Http\Controllers\PageController@notifications']);
-		Route::get('rtl', ['as' => 'pages.rtl', 'uses' => 'App\Http\Controllers\PageController@rtl']);
-		Route::get('tables', ['as' => 'pages.tables', 'uses' => 'App\Http\Controllers\PageController@tables']);
-		Route::get('typography', ['as' => 'pages.typography', 'uses' => 'App\Http\Controllers\PageController@typography']);
-		Route::get('upgrade', ['as' => 'pages.upgrade', 'uses' => 'App\Http\Controllers\PageController@upgrade']);
+	Route::get('icons', ['as' => 'pages.icons', 'uses' => 'App\Http\Controllers\PageController@icons']);
+	Route::get('maps', ['as' => 'pages.maps', 'uses' => 'App\Http\Controllers\PageController@maps']);
+	Route::get('notifications', ['as' => 'pages.notifications', 'uses' => 'App\Http\Controllers\PageController@notifications']);
+	Route::get('rtl', ['as' => 'pages.rtl', 'uses' => 'App\Http\Controllers\PageController@rtl']);
+	Route::get('tables', ['as' => 'pages.tables', 'uses' => 'App\Http\Controllers\PageController@tables']);
+	Route::get('typography', ['as' => 'pages.typography', 'uses' => 'App\Http\Controllers\PageController@typography']);
+	Route::get('upgrade', ['as' => 'pages.upgrade', 'uses' => 'App\Http\Controllers\PageController@upgrade']);
 });
 
 Route::group(['middleware' => 'auth'], function () {
@@ -69,4 +74,3 @@ Route::group(['middleware' => 'auth'], function () {
 	Route::put('profile', ['as' => 'profile.update', 'uses' => 'App\Http\Controllers\ProfileController@update']);
 	Route::put('profile/password', ['as' => 'profile.password', 'uses' => 'App\Http\Controllers\ProfileController@password']);
 });
-

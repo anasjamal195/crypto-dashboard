@@ -37,7 +37,7 @@
                         <div class="form-row">
                             <div class="form-group col-md-3">
                                 <label for="amount">Amount</label>
-                                <input type="number" name="amount" step="0.00000001" class="form-control">
+                                <input type="number" name="amount" value="30" step="0.00000001" class="form-control">
                             </div>
                             <div class="form-group col-md-3">
                                 <label for="leverage">Leverage</label>
@@ -100,6 +100,35 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         $(document).ready(function() {
+
+            // Function to update price
+            function updatePrice(symbol) {
+                $.ajax({
+                    url: '{{ route('get.current.price') }}', // Adjust this to your route that fetches the price
+                    type: 'GET',
+                    data: {
+                        symbol: symbol,
+                        market: 'FUTURE'
+                    },
+                    success: function(response) {
+                        $('label[for="symbol"]').html(`Symbol ( ${response} USDT)`); // Assuming the response has a 'price' attribute
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching current price:', error);
+                    }
+                });
+            }
+
+            // Event handler for the symbol input field
+            $('input[name="symbol"]').on('input', function() {
+                const symbol = $(this).val();
+                clearInterval(priceInterval); // Clear existing interval
+
+                if (symbol && symbol.includes("USDT")) {
+                    updatePrice(symbol); // Update immediately
+                    priceInterval = setInterval(() => updatePrice(symbol), 2000); // Update every 2 seconds
+                }
+            });
             $('#maxQty').click(function() {
                 var symbol = $('input[name="symbol"]').val(); // Assuming the symbol input has an ID of 'symbol'
                 console.log(symbol)
