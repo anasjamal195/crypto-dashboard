@@ -100,6 +100,7 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         $(document).ready(function() {
+            let priceInterval; // Variable to store the interval ID
 
             // Function to update price
             function updatePrice(symbol) {
