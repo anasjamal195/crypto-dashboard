@@ -41,7 +41,7 @@
                             <div class="form-row">
                                 <div class="form-group col-md-6" id="amountGroup">
                                     <label for="amount">Amount</label>
-                                    <input type="number" name="amount" step="0.00000001" value="30"
+                                    <input type="number" name="amount" step="0.00000001" 
                                         class="form-control">
                                 </div>
 
