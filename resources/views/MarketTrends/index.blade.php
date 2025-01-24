@@ -73,23 +73,41 @@
             // Extract timestamps and close prices
             const timestamps = historicalTrends.map(data => data.timestamp);
             const closePrices = historicalTrends.map(data => data.close);
+            const ma25 = historicalTrends.map(data => data.ma25);
 
 
             // Determine point colors and styles based on buy/sell triggers
             const pointStyles = historicalTrends.map((candle, index) => {
-                if (candle.marketTrend == 'green') {
-                    return {
-                        backgroundColor: 'rgba(46, 204, 113,0.7)', // Soft green for buy triggers
-                        borderColor: 'darkgreen', // Darker green border
-                        radius: 5 // Larger point radius for emphasis
-                    };
-                } else {
-                    return {
-                        backgroundColor: 'rgba(231, 76, 60,0.7)', // Soft red for other points
-                        borderColor: 'darkred', // Red border
-                        radius: 3 // Normal point radius
-                    };
-                }
+                return {
+                    backgroundColor: candle.marketTrend, // Soft green for buy triggers
+                    borderColor: 'dark' + candle.marketTrend, // Darker green border
+                    radius: candle.marketTrend !== 'blue' ? 6:4 // Larger point radius for emphasis
+                };
+                // if (candle.marketTrend == 'green') {
+                //     return {
+                //         backgroundColor: 'rgba(46, 204, 113,0.7)', // Soft green for buy triggers
+                //         borderColor: 'darkgreen', // Darker green border
+                //         radius: 5 // Larger point radius for emphasis
+                //     };
+                // } else  if(candle.marketTrend == 'red'){
+                //     return {
+                //         backgroundColor: 'rgba(231, 76, 60,0.7)', // Soft red for other points
+                //         borderColor: 'darkred', // Red border
+                //         radius: 3 // Normal point radius
+                //     };
+                // } else  if(candle.marketTrend == 'yellow'){
+                //     return {
+                //         backgroundColor: 'rgba(231, 76, 60,0.7)', // Soft red for other points
+                //         borderColor: 'darkred', // Red border
+                //         radius: 3 // Normal point radius
+                //     };
+                // } else  if(candle.marketTrend == 'blue'){
+                //     return {
+                //         backgroundColor: 'rgba(231, 76, 60,0.7)', // Soft red for other points
+                //         borderColor: 'darkred', // Red border
+                //         radius: 3 // Normal point radius
+                //     };
+                // }
             });
 
 
@@ -103,14 +121,28 @@
                     datasets: [{
                         label: 'Close Prices {{ request()->get('symbol') }}',
                         data: closePrices,
-                        borderColor: 'rgba(231, 76, 60,1.0)', // Red border color
-                        backgroundColor: 'rgba(255, 255, 0, 0.22)', // Transparent yellow background
+                        borderColor: 'rgba(52, 152, 219, 1.0)', // Blue border color
+                        backgroundColor: 'rgba(52, 152, 219, 0.22)', // Transparent blue background
+
                         tension: 0.1,
                         yAxisID: 'y',
                         pointBackgroundColor: pointStyles.map(style => style.backgroundColor),
                         pointBorderColor: pointStyles.map(style => style.borderColor),
                         pointRadius: pointStyles.map(style => style.radius)
-                    }, ],
+                    },
+                    // {
+                    //     label: 'MA25',
+                    //     data: ma25,
+                    //     borderColor: 'pink', // Blue border color
+                    //     backgroundColor: 'pink', // Transparent blue background
+                        
+                    //     tension: 0.1,
+                    //     yAxisID: 'y',
+                    //     pointBackgroundColor: 'pink',
+                    //     pointBorderColor: 'darkpink',
+                    //     pointRadius: 3
+                    // },
+                 ],
                 },
                 options: {
                     responsive: true,

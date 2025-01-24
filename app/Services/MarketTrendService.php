@@ -248,6 +248,158 @@ class MarketTrendService
             return $th;
         }
     }
+
+    public static function getSymbolHistoricalTrendsSet3(
+        $symbol = 'BTCUSDT',
+        $interval = '1m',
+        $market = 'SPOT',
+        $candleSpan = 12,
+        $timestamp = null,
+    ) {
+
+
+        try {
+
+          
+            $limit = 1000;
+            $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
+            $signal = 'green';
+            $indexCounter = 0;
+            $indexLimit = 6;
+
+            $supportPrice = $data[0]['low'];
+            $supportIndex = 0;
+
+            $breakPointIndex = 0;
+           
+
+            $tradePrice = 0;
+            $targetProfit = 0.4;
+            $tradeType = '';
+
+
+            $lastTrade = '';
+            $resistancePrice = $data[0]['high'];
+            $resistanceIndex = 0;
+            $lastIndex = 0;
+
+            $waitingIndex = $candleSpan;
+
+            $candlesCounter = 0;
+            $calculateSportResistance = true;
+            $supportThreshold = $resistanceThreshold  = 0.3;
+
+            foreach ($data as $index => &$candle) {
+                $candle['marketTrend'] = 'blue';
+                /*
+                calculate sport (min) and resistance(max) of last 100 candles,
+                wait for resistance to break after that,
+                when resistance breaks,
+                skip 100 next candles
+                */
+
+
+                if ($waitingIndex) {
+                    $waitingIndex--;
+                    continue;
+                }
+
+                // // Handle if a trade is open
+                if ($tradePrice !== 0) {
+                    if ($tradeType == "LONG") {
+                        $candle['marketTrend'] = 'yellow';
+
+                        // dd($tradePrice,$tradePrice * (1 + $targetProfit/100));
+                        if ($candle['close'] >= $tradePrice * (1 + $targetProfit / 100)) {
+
+                            // dd($candle['close'],$tradePrice,$resistancePrice);
+                            $tradePrice = 0;
+                            $tradeType = '';
+                            $lastTrade = 'RESISTANCE';
+                            // $latestIndex = max($resistanceIndex,$supportIndex);
+                            // $waitingIndex = $index - $lastIndex > 50? 1:50 - ($index - $lastIndex);
+                            $waitingIndex = $candleSpan;
+                            $calculateSportResistance = true;
+                            // $waitingIndex = 1000;
+                            continue;
+                        }
+                    }
+                    if ($tradeType == 'SHORT') {
+                        $candle['marketTrend'] = 'white';
+
+                        if ($candle['close'] <= $tradePrice * (1 - $targetProfit / 100)) {
+                            // dd($tradePrice,$candle['close']);
+                            $tradePrice = 0;
+                            $tradeType = '';
+                            $lastTrade = 'SUPPORT';
+
+                            // $latestIndex = max($resistanceIndex,$supportIndex);
+                            // $waitingIndex = $index - $lastIndex > 50? 1:50 - ($index - $lastIndex);
+                            $waitingIndex = $candleSpan;
+                            $calculateSportResistance = true;
+                            continue;
+                        }
+                    }
+                    continue;
+                }
+
+
+                if ($calculateSportResistance) {
+                    $supportIndex = $resistanceIndex = $index;
+                    $supportPrice = $candle['close'];
+                    $resistancePrice = $candle['close'];
+                    // $data[$index - 50]['marketTrend'] = 'orange';
+                    // Calculate nEW values for Support and Resistance
+                    for ($i = $index - $candleSpan; $i < $index; $i++) {
+                        if ($data[$i]['close'] < $supportPrice) {
+                            $supportPrice = $data[$i]['close'];
+                            $supportIndex = $i;
+                        }
+
+                        if ($data[$i]['close'] > $resistancePrice) {
+                            $resistancePrice = $data[$i]['close'];
+                            $resistanceIndex = $i;
+                        }
+                    }
+
+                    $data[$supportIndex]['marketTrend'] = 'red';
+                    // $data[$supportIndex]['close'] = $data[$supportIndex]['low'];
+                    $data[$resistanceIndex]['marketTrend'] = 'green';
+                    // $data[$resistanceIndex]['close'] = $data[$resistanceIndex]['high'];
+                    // $calculateSportResistance = false;
+                    $waitingIndex = $candleSpan;
+                    continue;
+                }
+
+
+
+                // Now check for resistance/Spot break
+                if (!$calculateSportResistance) {
+                    if ($data[$index]['close'] > $resistancePrice * (1 + $resistanceThreshold / 100)) {
+                        // Resistance Broken,
+                        // dd("calculating",$index);
+                        $candle['marketTrend'] = 'yellow';
+                        $tradePrice = $candle['close'];
+                        $tradeType = 'LONG';
+                    } else if ($data[$index]['close'] < $supportPrice * (1 - $supportThreshold / 100)) {
+                        // Resistance Broken,
+                        $candle['marketTrend'] = 'white';
+
+                        // Initiate a LONG Trade
+                        $tradePrice = $candle['close'];
+                        $tradeType = 'SHORT';
+                    }
+                }
+            }
+            // dd($data);
+            return $data;
+        } catch (\Throwable $th) {
+            Log::error('DataDumper: Error - ' . $th->getMessage());
+            Log::error($th->getTraceAsString());
+            dd($th);
+            return $th;
+        }
+    }
     public static function istradeAllowed(
         $interval = '1m',
         $limit = 15,

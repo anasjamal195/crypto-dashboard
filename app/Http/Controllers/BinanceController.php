@@ -96,7 +96,7 @@ class BinanceController extends Controller
     public function showTrends($market, Request $request)
     {
         $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
-        $historicalTrends = MarketTrendService::getSymbolHistoricalTrendsSet1($request->symbol,$request->interval, $market);
+        $historicalTrends = MarketTrendService::getSymbolHistoricalTrendsSet3($request->symbol,$request->interval, $market, $request->candleSpan);
 
         // $timestamp = $request->timestamp;
 
