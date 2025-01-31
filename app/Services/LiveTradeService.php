@@ -48,7 +48,7 @@ class LiveTradeService
 
                 // dd($open_order);
                 if (isset($open_order['is_open']) && $open_order['is_open']) {
-                    self::manageOpenOrder($open_order['order'], $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance);
+                    self::manageOpenOrder($tradeInstance, $open_order['order'], $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance);
                 } else {
                     // Max open order should be 5
                     if (CommonHelpers::getOpenOrderCount($interval, $market, $trade_acc) >= 5) {
@@ -116,13 +116,22 @@ class LiveTradeService
             }
         return true;
     }
-    private static function manageOpenOrder(array $buy_order, $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance): void
+    private static function manageOpenOrder($tradeInstance, array $buy_order, $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance): void
     {
         Log::info('AutoTraderSpot: Open order found for ' . $buy_order['symbol']);
 
         $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
         $current_profit = (($current_price - $buy_order['price']) / $buy_order['price']) * 100;
 
+        if ($current_price <= $supportResistance['resistance'] * (1 + 0.0025) && $current_price >=  $supportResistance['resistance'] * (1 - 0.0025)) {
+            return;
+        } else if ($current_price > $supportResistance['resistance'] * (1 + 0.0025) &&  $buy_order['stopLoss'] < $supportResistance['resistance']) {
+            $buy_order['stopLoss'] = $supportResistance['resistance'];
+            $buy_order['stopLossReductionPrecentage'] = 0.15;
+            DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                'targetProfit' => 1,
+            ]);
+        }
         Log::info('AutoTraderSpot: Current Price: ' . $current_price);
         Log::info('AutoTraderSpot: Buy Order Price: ' . $buy_order['price']);
         Log::info('AutoTraderSpot: Current Profit: ' . $current_profit . '%');
