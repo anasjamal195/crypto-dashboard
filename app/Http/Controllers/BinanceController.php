@@ -81,8 +81,6 @@ class BinanceController extends Controller
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
         }
 
-
-
         return view('CoinReports.coin-report-details', [
             'pageSlug' => 'Report Details',
             'symbol' => $symbol,
@@ -96,18 +94,8 @@ class BinanceController extends Controller
     public function showTrends($market, Request $request)
     {
         $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
-        $historicalTrends = MarketTrendService::getSymbolHistoricalTrendsSet3($request->symbol,$request->interval, $market, $request->candleSpan);
-
-        // $timestamp = $request->timestamp;
-
-        // // Create a DateTime object
-        // if ($request->timestamp) {
-        //     $dateTime = new DateTime($request->timestamp);
-
-        //     // Get the UNIX timestamp and convert it to milliseconds
-        //     $timestamp = $dateTime->getTimestamp() * 1000;
-        // }
-        // dd($request->timestamp, $timestamp, $historicalTrends);
+        $historicalTrends = MarketTrendService::getCurrentSupportResistanceGraph($request->symbol,$request->interval, $market, $request->candleSpan);
+        // dd($historicalTrends);
 
         return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends]);
     }

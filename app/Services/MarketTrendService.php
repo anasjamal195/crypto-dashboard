@@ -248,157 +248,257 @@ class MarketTrendService
             return $th;
         }
     }
-
-    public static function getSymbolHistoricalTrendsSet3(
+    public static function getCurrentSupportResistanceGraph(
         $symbol = 'BTCUSDT',
         $interval = '1m',
         $market = 'SPOT',
-        $candleSpan = 12,
+        $candleSpan = 10,
         $timestamp = null,
-    ) {
-
-
+    ){
         try {
-
-          
-            $limit = 1000;
+            $limit = 100;
             $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
-            $signal = 'green';
-            $indexCounter = 0;
-            $indexLimit = 6;
-
-            $supportPrice = $data[0]['low'];
+            $candleSpan = 8;
+            $lastSupport = null;
+            $lastResistance = null;
             $supportIndex = 0;
-
-            $breakPointIndex = 0;
-           
-
-            $tradePrice = 0;
-            $targetProfit = 0.4;
-            $tradeType = '';
-
-
-            $lastTrade = '';
-            $resistancePrice = $data[0]['high'];
             $resistanceIndex = 0;
-            $lastIndex = 0;
-
-            $waitingIndex = $candleSpan;
-
-            $candlesCounter = 0;
-            $calculateSportResistance = true;
-            $supportThreshold = $resistanceThreshold  = 0.3;
-
-            foreach ($data as $index => &$candle) {
+            foreach($data as &$candle){
                 $candle['marketTrend'] = 'blue';
-                /*
-                calculate sport (min) and resistance(max) of last 100 candles,
-                wait for resistance to break after that,
-                when resistance breaks,
-                skip 100 next candles
-                */
-
-
-                if ($waitingIndex) {
-                    $waitingIndex--;
-                    continue;
-                }
-
-                // // Handle if a trade is open
-                if ($tradePrice !== 0) {
-                    if ($tradeType == "LONG") {
-                        $candle['marketTrend'] = 'yellow';
-
-                        // dd($tradePrice,$tradePrice * (1 + $targetProfit/100));
-                        if ($candle['close'] >= $tradePrice * (1 + $targetProfit / 100)) {
-
-                            // dd($candle['close'],$tradePrice,$resistancePrice);
-                            $tradePrice = 0;
-                            $tradeType = '';
-                            $lastTrade = 'RESISTANCE';
-                            // $latestIndex = max($resistanceIndex,$supportIndex);
-                            // $waitingIndex = $index - $lastIndex > 50? 1:50 - ($index - $lastIndex);
-                            $waitingIndex = $candleSpan;
-                            $calculateSportResistance = true;
-                            // $waitingIndex = 1000;
-                            continue;
-                        }
-                    }
-                    if ($tradeType == 'SHORT') {
-                        $candle['marketTrend'] = 'white';
-
-                        if ($candle['close'] <= $tradePrice * (1 - $targetProfit / 100)) {
-                            // dd($tradePrice,$candle['close']);
-                            $tradePrice = 0;
-                            $tradeType = '';
-                            $lastTrade = 'SUPPORT';
-
-                            // $latestIndex = max($resistanceIndex,$supportIndex);
-                            // $waitingIndex = $index - $lastIndex > 50? 1:50 - ($index - $lastIndex);
-                            $waitingIndex = $candleSpan;
-                            $calculateSportResistance = true;
-                            continue;
-                        }
-                    }
-                    continue;
-                }
-
-
-                if ($calculateSportResistance) {
-                    $supportIndex = $resistanceIndex = $index;
-                    $supportPrice = $candle['close'];
-                    $resistancePrice = $candle['close'];
-                    // $data[$index - 50]['marketTrend'] = 'orange';
-                    // Calculate nEW values for Support and Resistance
-                    for ($i = $index - $candleSpan; $i < $index; $i++) {
-                        if ($data[$i]['close'] < $supportPrice) {
-                            $supportPrice = $data[$i]['close'];
-                            $supportIndex = $i;
-                        }
-
-                        if ($data[$i]['close'] > $resistancePrice) {
-                            $resistancePrice = $data[$i]['close'];
-                            $resistanceIndex = $i;
-                        }
-                    }
-
-                    $data[$supportIndex]['marketTrend'] = 'red';
-                    // $data[$supportIndex]['close'] = $data[$supportIndex]['low'];
-                    $data[$resistanceIndex]['marketTrend'] = 'green';
-                    // $data[$resistanceIndex]['close'] = $data[$resistanceIndex]['high'];
-                    // $calculateSportResistance = false;
-                    $waitingIndex = $candleSpan;
-                    continue;
-                }
-
-
-
-                // Now check for resistance/Spot break
-                if (!$calculateSportResistance) {
-                    if ($data[$index]['close'] > $resistancePrice * (1 + $resistanceThreshold / 100)) {
-                        // Resistance Broken,
-                        // dd("calculating",$index);
-                        $candle['marketTrend'] = 'yellow';
-                        $tradePrice = $candle['close'];
-                        $tradeType = 'LONG';
-                    } else if ($data[$index]['close'] < $supportPrice * (1 - $supportThreshold / 100)) {
-                        // Resistance Broken,
-                        $candle['marketTrend'] = 'white';
-
-                        // Initiate a LONG Trade
-                        $tradePrice = $candle['close'];
-                        $tradeType = 'SHORT';
-                    }
-                }
             }
-            // dd($data);
+            for($i = $limit - 1;$i >= 0;$i--){
+                $resistance = self::calculatePivotHighAtIndex($data,$i,$candleSpan,$candleSpan);
+                $support = self::calculatePivotLowAtIndex($data,$i,$candleSpan,$candleSpan);
+                if ($supportIndex != 0 && $resistanceIndex != 0){
+                    break;
+                }
+                if($support && $supportIndex == 0){
+                    $supportIndex = $i;
+                    $lastSupport = $support;
+                }
+                if($resistance && $resistanceIndex == 0){
+                    $resistanceIndex = $i;
+                    $lastResistance = $resistance;
+                }
+               
+            }
+
+            // dd($lastSupport,$lastResistance);
+            for($i = min($supportIndex,$resistanceIndex); $i < $limit; $i++){
+                $data[$i]['support'] = $lastSupport;
+                $data[$i]['resistance'] = $lastResistance;
+                
+            }
+            
+    
+           
             return $data;
         } catch (\Throwable $th) {
             Log::error('DataDumper: Error - ' . $th->getMessage());
             Log::error($th->getTraceAsString());
-            dd($th);
-            return $th;
+            throw $th;
         }
+    }
+
+
+    public static function getCurrentSupportResistanceValue(
+        $symbol = 'BTCUSDT',
+        $interval = '1m',
+        $market = 'SPOT',
+        $candleSpan = 10,
+        $timestamp = null,
+    ){
+        try {
+            $limit = 100;
+            $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
+            $candleSpan = 8;
+            $lastSupport = null;
+            $lastResistance = null;
+            $supportIndex = 0;
+            $resistanceIndex = 0;
+            for($i = $limit - 1;$i >= 0;$i--){
+                $resistance = self::calculatePivotHighAtIndex($data,$i,$candleSpan,$candleSpan);
+                $support = self::calculatePivotLowAtIndex($data,$i,$candleSpan,$candleSpan);
+                if ($supportIndex != 0 && $resistanceIndex != 0){
+                    break;
+                }
+                if($support && $supportIndex == 0){
+                    $supportIndex = $i;
+                    $lastSupport = $support;
+                }
+                if($resistance && $resistanceIndex == 0){
+                    $resistanceIndex = $i;
+                    $lastResistance = $resistance;
+                }
+               
+            }
+
+            return [
+                'support' => $lastSupport,    
+                'resistance' => $lastResistance,    
+                'supportCandle' => $data[$supportIndex],    
+                'resistanceCandle' => $data[$resistanceIndex],    
+            ];
+        } catch (\Throwable $th) {
+            Log::error('DataDumper: Error - ' . $th->getMessage());
+            Log::error($th->getTraceAsString());
+            throw $th;
+        }
+    }
+    public static function getSymbolHistoricalTrendsSet3(
+        $symbol = 'BTCUSDT',
+        $interval = '1m',
+        $market = 'SPOT',
+        $candleSpan = 10,
+        $timestamp = null,
+    ) {
+        try {
+            $limit = 500;
+            $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
+            $candleSpan = 10;
+            // Initialize variables to track last support and resistance levels
+            $lastSupport = null;
+            $lastResistance = null;
+    
+            // Loop through the candles to calculate support and resistance
+            foreach ($data as $index => &$candle) {
+                $close = $candle['close'];
+                $open = $candle['open'];
+                $high = $candle['high'];
+                $low = $candle['low'];
+    
+                // Default values for support and resistance
+                $candle['support'] = null;
+                $candle['resistance'] = null;
+                $candle['marketTrend'] = 'blue'; // Default trend
+
+    
+                // Check if we have enough data to calculate pivot points
+                if ($index >= $candleSpan && $index + $candleSpan < count($data)) {
+                    // Use the pivot functions to calculate pivot high and low
+                    $pivotHigh = self::calculatePivotHighAtIndex($data, $index, $candleSpan, 1);
+                    $pivotLow = self::calculatePivotLowAtIndex($data, $index, $candleSpan, 1);
+    
+                    // Update support and resistance levels only if valid pivots are found
+                    if ($pivotHigh !== null) {
+                        $lastResistance = $pivotHigh;
+                    }
+                    
+                    if ($pivotLow !== null) {
+                        $lastSupport = $pivotLow;
+                    }
+                }
+    
+                // Assign the last known support and resistance levels to the current candle
+                $candle['support'] = $lastSupport;
+                $candle['resistance'] = $lastResistance;
+    
+                // Detect trend based on breaking of support/resistance
+                if ($lastResistance !== null && $close > $lastResistance) {
+                    // Resistance is broken, reset resistance level
+                    $lastResistance = null;
+                    $candle['marketTrend'] = 'green'; // Uptrend
+                } elseif ($lastSupport !== null && $close < $lastSupport) {
+                    // Support is broken, reset support level
+                    $lastSupport = null;
+                    $candle['marketTrend'] = 'red'; // Downtrend
+                } else {
+                    // No breakout, maintain the current trend
+                    $candle['marketTrend'] = 'blue';
+                }
+            }
+    
+            return $data;
+        } catch (\Throwable $th) {
+            Log::error('DataDumper: Error - ' . $th->getMessage());
+            Log::error($th->getTraceAsString());
+            throw $th;
+        }
+    }
+
+
+    /**
+     * Function to calculate pivot high for a specific candle index
+     *
+     * @param array $data The array of candles (each candle has 'high', 'low', etc.)
+     * @param int $index The index of the candle to calculate the pivot high for
+     * @param int $leftBars Number of candles to the left to compare
+     * @param int $rightBars Number of candles to the right to compare
+     * @return float|null The pivot high value, or null if no pivot is found
+     */
+    private static function calculatePivotHighAtIndex(array $data, int $index, int $leftBars, int $rightBars): ?float
+    {
+        $length = count($data);
+
+        // Check if the index is within bounds
+        if ($index < $leftBars || $index + $rightBars >= $length) {
+            return null; // Not enough candles to calculate pivot
+        }
+
+        $currentHigh = $data[$index]['high'];
+        $isPivotHigh = true;
+
+        // Check candles to the left
+        for ($j = 1; $j <= $leftBars; $j++) {
+            if ($currentHigh <= $data[$index - $j]['high']) {
+                $isPivotHigh = false;
+                break;
+            }
+        }
+
+        // Check candles to the right
+        if ($isPivotHigh) {
+            for ($j = 1; $j <= $rightBars; $j++) {
+                if ($currentHigh <= $data[$index + $j]['high']) {
+                    $isPivotHigh = false;
+                    break;
+                }
+            }
+        }
+
+        return $isPivotHigh ? $currentHigh : null;
+    }
+
+    /**
+     * Function to calculate pivot low for a specific candle index
+     *
+     * @param array $data The array of candles (each candle has 'high', 'low', etc.)
+     * @param int $index The index of the candle to calculate the pivot low for
+     * @param int $leftBars Number of candles to the left to compare
+     * @param int $rightBars Number of candles to the right to compare
+     * @return float|null The pivot low value, or null if no pivot is found
+     */
+    private static function calculatePivotLowAtIndex(array $data, int $index, int $leftBars, int $rightBars): ?float
+    {
+        $length = count($data);
+
+        // Check if the index is within bounds
+        if ($index < $leftBars || $index + $rightBars >= $length) {
+            return null; // Not enough candles to calculate pivot
+        }
+
+        $currentLow = $data[$index]['low'];
+        $isPivotLow = true;
+
+        // Check candles to the left
+        for ($j = 1; $j <= $leftBars; $j++) {
+            if ($currentLow >= $data[$index - $j]['low']) {
+                $isPivotLow = false;
+                break;
+            }
+        }
+
+        // Check candles to the right
+        if ($isPivotLow) {
+            for ($j = 1; $j <= $rightBars; $j++) {
+                if ($currentLow >= $data[$index + $j]['low']) {
+                    $isPivotLow = false;
+                    break;
+                }
+            }
+        }
+
+        return $isPivotLow ? $currentLow : null;
     }
     public static function istradeAllowed(
         $interval = '1m',

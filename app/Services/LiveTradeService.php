@@ -40,13 +40,31 @@ class LiveTradeService
                 Log::info('AutoTraderSpot: OBV Limit: ' . $obvLimit);
                 Log::info('AutoTraderSpot: Price Lock Buffer: ' . $priceLockBuffer);
 
-
+                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '15m', $market, 10);
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $interval, $market, $trade_acc);
+
+
                 // dd($open_order);
                 if (isset($open_order['is_open']) && $open_order['is_open']) {
-                    self::manageOpenOrder($open_order['order'], $candleData, $targetProfit, $stopLossReductionPrecentage, $market);
+                    self::manageOpenOrder($open_order['order'], $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance);
                 } else {
+
+                    $candleData15m = BinanceApiService::getCandleStickData($symbol, '15m', 1000, null, $market);
+                    $currentCandle15m = $candleData[count($candleData15m) - 1];
+                    $secondLastCandle15m = $candleData[count($candleData15m) - 2];
+                    $thirdLastCandle15m = $candleData[count($candleData15m) - 3];
+
+
                     $secondLastCandle = $candleData[count($candleData) - 2];
+
+                    // Support Resistance Check to block Trades (Skip the trades that are below support or in decline)
+                    if (
+                        $secondLastCandle15m['close'] < $thirdLastCandle15m['close'] || // Candles are in decline
+                        $currentCandle15m['close'] < $supportResistance['support']  // Current candle below
+                    ) {
+                        continue;
+                    }
+
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
@@ -92,7 +110,7 @@ class LiveTradeService
             }
         return true;
     }
-    private static function manageOpenOrder(array $buy_order, $candleData, $targetProfit, $stopLossReductionPrecentage, $market): void
+    private static function manageOpenOrder(array $buy_order, $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance): void
     {
         Log::info('AutoTraderSpot: Open order found for ' . $buy_order['symbol']);
 
@@ -126,7 +144,8 @@ class LiveTradeService
             'obvMin' => $buy_order['obvMin'] > $candleData[count($candleData) - 1]['obv'] ? $candleData[count($candleData) - 1]['obv'] : $buy_order['obvMin'],
             'priceMin' => $buy_order['priceMin'] > $candleData[count($candleData) - 1]['close'] ? $candleData[count($candleData) - 1]['close'] : $buy_order['priceMin'],
         ]);
-        if ($current_price < $newStopLoss) {
+
+        if ($current_price < $newStopLoss || $current_price < $supportResistance['support'] * (1 - 0.005)) {
             Log::info('AutoTraderSpot: Current price below stop-loss, executing sell.');
             BinanceApiService::placeSellOrder($buy_order['orderId']);
         }
@@ -173,6 +192,7 @@ class LiveTradeService
         $coins = array_map(function ($value) {
             return $value['symbol'];
         }, json_decode(json_encode(CommonHelpers::getPriorityQueue($interval, $market, $limit)), true));
+
 
         foreach ($coins as $coin) {
             $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
