@@ -78,6 +78,16 @@ class CommonHelpers
 
         return $tradeData;
     }
+    public static function getOpenOrderCount($interval,$market,$trade_acc){
+        return  DB::table('orders')
+        ->where('interval', $interval)
+        ->where('trade_acc', $trade_acc)
+        ->where('market', $market)
+        ->where('trade_status', 'open')
+        ->where('side', 'BUY')
+        ->count();
+        
+    }
     public static function checkOpenOrder($symbol, $interval, $market, $trade_acc)
     {
         $open_orders =  DB::table('orders')

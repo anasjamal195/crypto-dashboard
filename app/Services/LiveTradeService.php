@@ -31,6 +31,8 @@ class LiveTradeService
                 $priceLockBuffer = $tradeInstance->priceLockBuffer;
                 $leverage = $tradeInstance->leverage;
                 $candleData = BinanceApiService::getCandleStickData($symbol, $interval, 1000, null, $market);
+
+
                 Log::info('AutoTraderSpot: Current Trade');
                 Log::info('AutoTraderSpot: Coin: ' . $symbol);
                 Log::info('AutoTraderSpot: Interval: ' . $interval);
@@ -48,6 +50,10 @@ class LiveTradeService
                 if (isset($open_order['is_open']) && $open_order['is_open']) {
                     self::manageOpenOrder($open_order['order'], $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance);
                 } else {
+                    // Max open order should be 5
+                    if (CommonHelpers::getOpenOrderCount($interval, $market, $trade_acc) >= 5) {
+                        continue;
+                    }
 
                     $candleData15m = BinanceApiService::getCandleStickData($symbol, '15m', 1000, null, $market);
                     $currentCandle15m = $candleData[count($candleData15m) - 1];
