@@ -847,14 +847,14 @@ class BinanceApiService
 
         if ($response['code'] == -2010) {
             Log::info('Trader ' . $trader . ' Symbol: ' . $symbol . ' Insufficient Balance' . ' Buy Order: ' . $buy_order->orderId);
-            DB::table('orders')
-                ->where('id', $buy_order->id)
-                ->update(
-                    [
-                        'pair_id' => -1,
-                        'trade_status' => 'close',
-                    ]
-                );
+            // DB::table('orders')
+            //     ->where('id', $buy_order->id)
+            //     ->update(
+            //         [
+            //             'pair_id' => -1,
+            //             'trade_status' => 'close',
+            //         ]
+            //     );
             return false;
         }
 
