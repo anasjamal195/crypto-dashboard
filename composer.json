@@ -7,6 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "arcanedev/log-viewer": "^11.0",
         "laravel-frontend-presets/black-dashboard": "^1.0",
         "laravel/framework": "^11.31",
         "laravel/tinker": "^2.9",
