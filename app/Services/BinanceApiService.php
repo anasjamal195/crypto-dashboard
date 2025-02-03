@@ -1257,6 +1257,7 @@ class BinanceApiService
             'qty' => $quantity,
             'leverage' => $leverage,
             'price' => $current_price,
+            'trade_status' => 'open',
             'trade_acc' => $trader,
             'liqPrice' => $liquidationPrice,
             'created_at' => Carbon::now('Asia/Karachi'),
@@ -1333,6 +1334,7 @@ class BinanceApiService
             'qty' => $quantity,
             'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
             'type' => 'close',
+            'trade_status' => 'close',
             'leverage' => $leverage,
             'price' => $current_price,
             'trade_acc' => $trader,
@@ -1343,7 +1345,9 @@ class BinanceApiService
         DB::table('live_trades_future_results')->insert(
             $data
         );
-
+        DB::table('live_trades_future_results')->update([
+            'trade_status' => 'close',
+        ]);
         MailerService::sendFutureTradeDynamicEmail($data);
 
         return $data;

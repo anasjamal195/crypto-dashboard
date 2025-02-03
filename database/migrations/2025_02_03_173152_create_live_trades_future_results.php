@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('side', 5)->nullable();
             $table->string('position', 5)->nullable();
             $table->string('type', 5)->nullable();
+            $table->string('trade_status', 5)->nullable();
             $table->float('amount', 20)->nullable();
             $table->float('previousPrice', 20)->nullable();
             $table->float('stopLoss', 20)->nullable();
