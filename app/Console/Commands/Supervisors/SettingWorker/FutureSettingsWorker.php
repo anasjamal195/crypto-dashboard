@@ -4,8 +4,8 @@ namespace App\Console\Commands\Supervisors\SettingWorker;
 
 use App\CommonHelpers;
 use App\Models\User;
-use App\Services\LiveTradeFutureService\LiveTradeLONGFutureServiceEXP1;
-use App\Services\LiveTradeFutureService\LiveTradeSHORTFutureServiceEXP1;
+use App\Services\FutureLiveTrades\LiveTradeLONGFutureServiceEXP1;
+use App\Services\FutureLiveTrades\LiveTradeSHORTFutureServiceEXP1;
 use App\Services\LiveTradeService;
 use App\Services\MailerService;
 use Exception;

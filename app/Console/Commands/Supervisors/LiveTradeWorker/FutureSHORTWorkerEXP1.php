@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands\Supervisors\LiveTradeWorker;
 
-use App\Services\LiveTradeFutureService\LiveTradeSHORTFutureServiceEXP1;
+use App\Services\FutureLiveTrades\LiveTradeSHORTFutureServiceEXP1;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 

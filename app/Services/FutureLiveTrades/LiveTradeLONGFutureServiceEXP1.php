@@ -10,7 +10,7 @@ Will Target Long Trades with a profit limit of 0.4% and a stop loss of support v
 
 */
 
-namespace App\Services\LiveTradeFutureService;
+namespace App\Services\FutureLiveTrades;
 
 use App\CommonHelpers;
 use App\Models\User;
