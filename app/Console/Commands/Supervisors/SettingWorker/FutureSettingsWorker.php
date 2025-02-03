@@ -4,6 +4,8 @@ namespace App\Console\Commands\Supervisors\SettingWorker;
 
 use App\CommonHelpers;
 use App\Models\User;
+use App\Services\LiveTradeFutureService\LiveTradeLONGFutureServiceEXP1;
+use App\Services\LiveTradeFutureService\LiveTradeSHORTFutureServiceEXP1;
 use App\Services\LiveTradeService;
 use App\Services\MailerService;
 use Exception;
@@ -32,12 +34,12 @@ class FutureSettingsWorker extends Command
     public function handle()
     {
         while (true) {
-            MailerService::sendWorkerEmail('future_settings_worker');
-
+           
             try {
                 foreach (User::all() as $user) {
                     $interval = CommonHelpers::getMetaValue($user->id, 'live_trade_worker_interval_future', '1m');
-                    LiveTradeService::updateTradeHandler($interval, 'FUTURE', $user->id);
+                    LiveTradeLONGFutureServiceEXP1::updateTradeHandler($interval, 'FUTURE', $user->id);
+                    LiveTradeSHORTFutureServiceEXP1::updateTradeHandler($interval, 'FUTURE', $user->id);
                 }
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
