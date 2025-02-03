@@ -30,7 +30,7 @@ class FutureSHORTWorkerEXP1 extends Command
         while (true) {
             try {
                 LiveTradeSHORTFutureServiceEXP1::performLiveTrades('FUTURE');
-                usleep(200000);
+                usleep(500000);
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }

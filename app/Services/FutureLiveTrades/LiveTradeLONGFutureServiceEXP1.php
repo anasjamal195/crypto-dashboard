@@ -145,7 +145,7 @@ class LiveTradeLONGFutureServiceEXP1
                     BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol,$tradeInstance->buyPrice,$tradeInstance->side,$tradeInstance->leverage,$tradeInstance->tradeAcc);
                      $isLoop = false;
                 }
-                usleep(100000);
+                usleep(300000);
             }
             // Reset price Lock for buying condition
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
