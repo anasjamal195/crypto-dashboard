@@ -56,7 +56,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 Log::info('AutoTraderSpot: Price Lock Buffer: ' . $priceLockBuffer);
 
                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5, 10, 15]);
-                $open_order = CommonHelpers::checkOpenOrder($symbol, $interval, $market, $trade_acc);
+                $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
 
 
                 // dd($open_order);

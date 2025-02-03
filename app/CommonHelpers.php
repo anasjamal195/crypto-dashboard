@@ -93,7 +93,6 @@ class CommonHelpers
         if ($market === 'SPOT') {
             $open_orders =  DB::table('orders')
                 ->where('symbol', $symbol)
-                ->where('interval', $interval)
                 ->where('trade_acc', $trade_acc)
                 ->where('market', $market)
                 ->where('trade_status', 'open')
@@ -109,7 +108,7 @@ class CommonHelpers
         } else if ($market === 'FUTURE') {
             $open_orders =  DB::table('live_trades_future_results')
                 ->where('symbol', $symbol)
-                ->where('interval', $interval)
+                ->where('position', $interval)
                 ->where('trade_acc', $trade_acc)
                 ->where('market', $market)
                 ->where('trade_status', 'open')
