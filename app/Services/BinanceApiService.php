@@ -618,10 +618,10 @@ class BinanceApiService
         ])->get($url);
 
         $response = $response->json();
-            // print_r($response);exit;
+        // print_r($response);exit;
         // dd($response);
         if (isset($response['balances'])) {
-            $balance = collect($response['balances'])->where('asset', str_replace('USDT','',$symbol))->first();
+            $balance = collect($response['balances'])->where('asset', str_replace('USDT', '', $symbol))->first();
             return [
                 'asset' => $symbol,
                 'free' => $balance['free'] ? floatval($balance['free']) : 0, // Available balance
@@ -1132,6 +1132,223 @@ class BinanceApiService
 
 
     // Future Api's
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader)
+    {
+
+        $market = 'FUTURE';
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
+
+
+        // Step 1: Set leverage
+
+        $leverageUrl = $base_url . config('binance.endpoints.leverage');
+
+        $leverageData = [
+            "symbol" => $symbol,
+            "leverage" => $leverage,
+            "timestamp" => round(microtime(true) * 1000),
+        ];
+
+        $leverageQuery = http_build_query($leverageData);
+        $leverageSignature = hash_hmac('sha256', $leverageQuery, $apiSecret);
+        $leverageQuery .= "&signature=" . $leverageSignature;
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $leverageUrl . "?" . $leverageQuery);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ["X-MBX-APIKEY: $apiKey"]);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $leverageResponse = curl_exec($ch);
+        curl_close($ch);
+        $leverageResponse = json_decode($leverageResponse, true);
+        if (isset($leverageResponse['code']) && $leverageResponse['code'] < 0) {
+            throw new Exception("Failed to set leverage: " . $leverageResponse['msg']);
+        }
+        // Step 2: Fetch trading rules
+        $exchangeInfoUrl =  $base_url . config('binance.endpoints.exchange_info');
+        $exchangeInfo = json_decode(file_get_contents($exchangeInfoUrl . "?symbol=$symbol"), true);
+
+        foreach ($exchangeInfo['symbols'] as $excInfo) {
+            if ($excInfo['symbol'] == $symbol) {
+                $filters = $excInfo['filters'];
+                break;
+            }
+        }
+
+        // Extract LOT_SIZE filter values
+        $lotSize = null;
+        foreach ($filters as $filter) {
+            if ($filter['filterType'] == 'LOT_SIZE') {
+                $lotSize = $filter;
+                break;
+            }
+        }
+
+        if ($lotSize === null) {
+            throw new Exception("LOT_SIZE filter not found for symbol $symbol");
+        }
+
+        // Step 3: Calculate position quantity
+        $positionSize = $tradeAmount * $leverage; // Total position size with leverage
+        $quantity = $positionSize / $current_price;      // Contract quantity based on the price
+
+        // Adjust quantity to match LOT_SIZE step size
+        $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
+
+
+        $url = $base_url . config('binance.endpoints.order');
+
+        $timestamp =  round(microtime(true) * 1000);
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'symbol' => $symbol,
+            "side" => $position,
+            "type" => "MARKET",
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->asForm()->post($url, [
+            'symbol' => $symbol,
+            "side" => $position,
+            "type" => "MARKET",
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+        $response = $response->json();
+
+
+
+        if (isset($response['code']) && $response['code'] < 0) {
+            throw new Exception("Order failed: " . $response['msg']);
+        }
+
+        // Calculate liquidation price
+        $entryPrice = $current_price; // Assuming trade executed at provided price
+        $accountMargin = $tradeAmount; // User's margin
+        $liquidationPrice = 0;
+        if ($position === 'BUY') {
+            $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
+        } else if ($position === 'SELL') {
+            $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
+        }
+
+        $data =  [
+            'orderId' => $response['orderId'],
+            'symbol' => $response['symbol'],
+            'side' => $response['side'],
+            'amount' => $tradeAmount,
+            'type' => 'open',
+            'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
+            'qty' => $quantity,
+            'leverage' => $leverage,
+            'price' => $current_price,
+            'trade_acc' => $trader,
+            'liqPrice' => $liquidationPrice,
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+        DB::table('live_trades_future_results')->insert(
+            $data
+        );
+        MailerService::sendFutureTradeDynamicEmail($data);
+
+        return $data;
+    }
+
+    public static function closeMarketPositionLiveTrader($openOrderId)
+    {
+
+
+        $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
+        $market = 'FUTURE';
+        $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
+        $leverage = $openOrder->leverage;
+        $symbol = $openOrder->symbol;
+        $trader = $openOrder->trade_acc;
+        $quantity = $openOrder->qty;
+
+
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
+        $url = $base_url . config('binance.endpoints.order');
+
+        $timestamp =  round(microtime(true) * 1000);
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'symbol' => $symbol,
+            "side" => $position,
+            "type" => "MARKET",
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->asForm()->post($url, [
+            'symbol' => $symbol,
+            "side" => $position,
+            "type" => "MARKET",
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+        $response = $response->json();
+
+
+
+        if (isset($response['code']) && $response['code'] < 0) {
+            throw new Exception("Order failed: " . $response['msg']);
+        }
+
+        $data =  [
+            'orderId' => $response['orderId'],
+            'symbol' => $response['symbol'],
+            'side' => $response['side'],
+            'amount' => $quantity * $current_price,
+            'qty' => $quantity,
+            'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
+            'type' => 'close',
+            'leverage' => $leverage,
+            'price' => $current_price,
+            'trade_acc' => $trader,
+            'liqPrice' => 0,
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+        DB::table('live_trades_future_results')->insert(
+            $data
+        );
+
+        MailerService::sendFutureTradeDynamicEmail($data);
+
+        return $data;
+    }
+
 
     public static function openMarketPosition($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $trade)
     {

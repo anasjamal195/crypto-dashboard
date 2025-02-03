@@ -78,32 +78,49 @@ class CommonHelpers
 
         return $tradeData;
     }
-    public static function getOpenOrderCount($interval,$market,$trade_acc){
-        return  DB::table('orders')
-        ->where('interval', $interval)
-        ->where('trade_acc', $trade_acc)
-        ->where('market', $market)
-        ->where('trade_status', 'open')
-        ->where('side', 'BUY')
-        ->count();
-        
-    }
-    public static function checkOpenOrder($symbol, $interval, $market, $trade_acc)
+    public static function getOpenOrderCount($interval, $market, $trade_acc)
     {
-        $open_orders =  DB::table('orders')
-            ->where('symbol', $symbol)
+        return  DB::table('orders')
             ->where('interval', $interval)
             ->where('trade_acc', $trade_acc)
             ->where('market', $market)
             ->where('trade_status', 'open')
             ->where('side', 'BUY')
-            ->get();
-        $open_orders = json_decode(json_encode($open_orders), true);
+            ->count();
+    }
+    public static function checkOpenOrder($symbol, $interval, $market, $trade_acc)
+    {
+        if ($market === 'SPOT') {
+            $open_orders =  DB::table('orders')
+                ->where('symbol', $symbol)
+                ->where('interval', $interval)
+                ->where('trade_acc', $trade_acc)
+                ->where('market', $market)
+                ->where('trade_status', 'open')
+                ->where('side', 'BUY')
+                ->get();
 
-        if (empty($open_orders)) {
-            return ['is_open' => false];
-        } else {
-            return ['is_open' => true, 'order' => $open_orders[0]];
+            $open_orders = json_decode(json_encode($open_orders), true);
+            if (empty($open_orders)) {
+                return ['is_open' => false];
+            } else {
+                return ['is_open' => true, 'order' => $open_orders[0]];
+            }
+        } else if ($market === 'FUTURE') {
+            $open_orders =  DB::table('live_trades_future_results')
+                ->where('symbol', $symbol)
+                ->where('interval', $interval)
+                ->where('trade_acc', $trade_acc)
+                ->where('market', $market)
+                ->where('trade_status', 'open')
+                ->get();
+
+            $open_orders = json_decode(json_encode($open_orders), true);
+            if (empty($open_orders)) {
+                return ['is_open' => false];
+            } else {
+                return ['is_open' => true, 'order' => $open_orders[0]];
+            }
         }
     }
 }

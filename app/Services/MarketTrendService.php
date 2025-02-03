@@ -257,8 +257,8 @@ class MarketTrendService
     ){
         try {
             $limit = 100;
+            
             $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
-            $candleSpan = 8;
             $lastSupport = null;
             $lastResistance = null;
             $supportIndex = 0;
@@ -305,40 +305,44 @@ class MarketTrendService
         $symbol = 'BTCUSDT',
         $interval = '1m',
         $market = 'SPOT',
-        $candleSpan = 10,
+        $candleSpan = [10],
         $timestamp = null,
     ){
         try {
             $limit = 100;
             $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
-            $candleSpan = 8;
-            $lastSupport = null;
-            $lastResistance = null;
-            $supportIndex = 0;
-            $resistanceIndex = 0;
-            for($i = $limit - 1;$i >= 0;$i--){
-                $resistance = self::calculatePivotHighAtIndex($data,$i,$candleSpan,$candleSpan);
-                $support = self::calculatePivotLowAtIndex($data,$i,$candleSpan,$candleSpan);
-                if ($supportIndex != 0 && $resistanceIndex != 0){
-                    break;
+            $supportResistances = [];
+            foreach($candleSpan as $span){
+                $lastSupport = null;
+                $lastResistance = null;
+                $supportIndex = 0;
+                $resistanceIndex = 0;
+                for($i = $limit - 1;$i >= 0;$i--){
+                    $resistance = self::calculatePivotHighAtIndex($data,$i,$span,$span);
+                    $support = self::calculatePivotLowAtIndex($data,$i,$span,$span);
+                    if ($supportIndex != 0 && $resistanceIndex != 0){
+                        break;
+                    }
+                    if($support && $supportIndex == 0){
+                        $supportIndex = $i;
+                        $lastSupport = $support;
+                    }
+                    if($resistance && $resistanceIndex == 0){
+                        $resistanceIndex = $i;
+                        $lastResistance = $resistance;
+                    }
+                   
                 }
-                if($support && $supportIndex == 0){
-                    $supportIndex = $i;
-                    $lastSupport = $support;
-                }
-                if($resistance && $resistanceIndex == 0){
-                    $resistanceIndex = $i;
-                    $lastResistance = $resistance;
-                }
-               
+    
+                $supportResistances[$span] = [
+                    'support' => $lastSupport,    
+                    'resistance' => $lastResistance,    
+                    'supportCandle' => $data[$supportIndex],    
+                    'resistanceCandle' => $data[$resistanceIndex],    
+                ];
             }
-
-            return [
-                'support' => $lastSupport,    
-                'resistance' => $lastResistance,    
-                'supportCandle' => $data[$supportIndex],    
-                'resistanceCandle' => $data[$resistanceIndex],    
-            ];
+            return $supportResistances;
+           
         } catch (\Throwable $th) {
             Log::error('DataDumper: Error - ' . $th->getMessage());
             Log::error($th->getTraceAsString());
