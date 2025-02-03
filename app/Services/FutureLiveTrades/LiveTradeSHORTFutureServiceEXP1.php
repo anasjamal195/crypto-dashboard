@@ -142,7 +142,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 if ($highestPrice < $latestPrice) {
                     $highestPrice = $latestPrice;
                 } else if ($latestPrice < $highestPrice * 0.9991) {
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buy_price, $tradeInstance->side, $tradeInstance->leverage, $tradeInstance->tradeAcc);
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->side, $tradeInstance->leverage, $tradeInstance->tradeAcc);
                     $isLoop = false;
                 }
                 usleep(100000);
