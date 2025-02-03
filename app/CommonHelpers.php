@@ -110,7 +110,6 @@ class CommonHelpers
                 ->where('symbol', $symbol)
                 ->where('position', $interval)
                 ->where('trade_acc', $trade_acc)
-                ->where('market', $market)
                 ->where('trade_status', 'open')
                 ->get();
 
