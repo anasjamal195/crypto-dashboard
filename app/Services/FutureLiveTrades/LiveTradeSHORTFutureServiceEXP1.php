@@ -3,7 +3,7 @@
 
 =======EXPERIMENT I========
 
-Simple formula based on Resistance break with a threshold of 0.5 % 
+Simple formula based on Resistance break with a threshold of 1.5 % 
 For SHORT Trades in future market
 Will Target SHORT Trades with a profit limit of 0.4% and a stop loss of support value
 
@@ -40,7 +40,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 $targetProfit = $tradeInstance->targetProfit;
                 $stopLossReductionPrecentage = $tradeInstance->stopLossReductionPrecentage;
                 $obvLimit = $tradeInstance->obvLimit;
-                
+
                 $priceLockBuffer = $tradeInstance->priceLockBuffer;
                 $leverage = $tradeInstance->leverage;
                 $candleData = BinanceApiService::getCandleStickData($symbol, '5m', 300, null, $market);
@@ -72,7 +72,10 @@ class LiveTradeSHORTFutureServiceEXP1
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
 
-                    $supportResistanceContition = $supportResistance[5]['support'] >= $supportResistance[10]['support'] && $supportResistance[10]['support'] >= $supportResistance[15]['support'] &&  $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.5 / 100);
+                    $supportResistanceContition =   $supportResistance[5]['support'] >= $supportResistance[10]['support'] &&
+                        $supportResistance[10]['support'] >= $supportResistance[15]['support'] &&
+                        $secondLastCandle['close'] > $supportResistance[5]['support'] * (1 - 1.5 / 100) &&
+                        $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 1.5 / 100);
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
@@ -96,7 +99,7 @@ class LiveTradeSHORTFutureServiceEXP1
         Log::info('AutoTraderSpot: Open order found for ' . $buy_order['symbol']);
 
         $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
-        $current_profit = (($buy_order['price']  - $current_price) / $current_price) * 100;
+        $current_profit = (($current_price - $buy_order['price']) / $buy_order['price']) * 100 * -1;
 
 
         Log::info('AutoTraderSpot: Current Price: ' . $current_price);
@@ -125,7 +128,7 @@ class LiveTradeSHORTFutureServiceEXP1
         ]);
 
         // if ($current_price > $newStopLoss || $current_price > $supportResistance['support'] * (1 + 0.005)) {
-        if ($current_price > $newStopLoss ) {
+        if ($current_price > $newStopLoss) {
             Log::info('AutoTraderSpot: Current price below stop-loss, executing sell.');
             BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
         }
@@ -145,7 +148,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 if ($highestPrice < $latestPrice) {
                     $highestPrice = $latestPrice;
                 } else if ($latestPrice < $highestPrice * 0.9991) {
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol,$tradeInstance->buyPrice,$tradeInstance->position === 'LONG' ?'BUY':'SELL',$tradeInstance->leverage,$tradeInstance->tradeAccount);
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount);
                     $isLoop = false;
                 }
                 CommonHelpers::delayMS(1000);
