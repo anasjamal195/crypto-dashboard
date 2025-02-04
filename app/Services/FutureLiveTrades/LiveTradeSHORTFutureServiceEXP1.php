@@ -77,8 +77,8 @@ class LiveTradeSHORTFutureServiceEXP1
                         $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
                         $CurrentCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
                         $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.3 / 100);
-                    Log::info('FutureTraderShortEXP1: Support: ' . $supportResistance[5]['support']);
-                    Log::info('FutureTraderShortEXP1: Second Last Close: ' .   $secondLastCandle['close']);
+                    Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
+                   
 
 
                     if ($tradeInstance->priceLock != 0) {
