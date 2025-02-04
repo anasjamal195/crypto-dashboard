@@ -42,12 +42,12 @@ class LiveTradeLONGFutureServiceEXP1
                 $candleData = BinanceApiService::getCandleStickData($symbol, '5m', 300, null, $market);
 
 
-                Log::info('AutoTraderSpot: Current Trade');
-                Log::info('AutoTraderSpot: Coin: ' . $symbol);
-                Log::info('AutoTraderSpot: Interval: ' . $interval);
-                Log::info('AutoTraderSpot: Account: ' . $trade_acc);
-                Log::info('AutoTraderSpot: Invested: ' . $buy_coin_price . ' $');
-                Log::info('AutoTraderSpot: Price Lock Buffer: ' . $priceLockBuffer);
+                Log::info('FutureTraderLongEXP1: Current Trade');
+                Log::info('FutureTraderLongEXP1: Coin: ' . $symbol);
+                Log::info('FutureTraderLongEXP1: Interval: ' . $interval);
+                Log::info('FutureTraderLongEXP1: Account: ' . $trade_acc);
+                Log::info('FutureTraderLongEXP1: Invested: ' . $buy_coin_price . ' $');
+                Log::info('FutureTraderLongEXP1: Price Lock Buffer: ' . $priceLockBuffer);
 
                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5, 10, 15]);
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
@@ -66,9 +66,9 @@ class LiveTradeLONGFutureServiceEXP1
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
                     $supportResistanceContition =   $supportResistance[5]['resistance'] <= $supportResistance[10]['resistance'] &&
-                                                    $supportResistance[10]['resistance'] <= $supportResistance[15]['resistance'] &&
-                                                    $secondLastCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 1.5 / 100)  &&
-                                                    $thirdLastCandle['close'] < $supportResistance[5]['resistance'] * (1 + 1.5 / 100);
+                        $supportResistance[10]['resistance'] <= $supportResistance[15]['resistance'] &&
+                        $secondLastCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 1.5 / 100)  &&
+                        $thirdLastCandle['close'] < $supportResistance[5]['resistance'] * (1 + 1.5 / 100);
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
@@ -80,7 +80,7 @@ class LiveTradeLONGFutureServiceEXP1
                 }
                 CommonHelpers::delayMS(1000);
             } catch (\Exception $e) {
-                Log::error('AutoTraderSpot: Error - ' . $e->getMessage());
+                Log::error('FutureTraderLongEXP1: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
                 // dd($e);
                 // sendEmailException($e, 'API Store Txn Alert: Exception Alert!');
@@ -89,15 +89,16 @@ class LiveTradeLONGFutureServiceEXP1
     }
     private static function manageOpenOrder($tradeInstance, array $buy_order, $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance): void
     {
-        Log::info('AutoTraderSpot: Open order found for ' . $buy_order['symbol']);
+        Log::info('FutureTraderLongEXP1: Open order found for ' . $buy_order['symbol']);
 
         $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
         $current_profit = (($current_price - $buy_order['price']) / $buy_order['price']) * 100;
 
 
-        Log::info('AutoTraderSpot: Current Price: ' . $current_price);
-        Log::info('AutoTraderSpot: Buy Order Price: ' . $buy_order['price']);
-        Log::info('AutoTraderSpot: Current Profit: ' . $current_profit . '%');
+        Log::info('FutureTraderLongEXP1: Current Price: ' . $current_price);
+        Log::info('FutureTraderLongEXP1: Buy Order Price: ' . $buy_order['price']);
+        Log::info('FutureTraderLongEXP1: Current Profit: ' . $current_profit . '%');
+        Log::info('FutureTraderLongEXP1: StopLoss: ' . $buy_order['stopLoss'] . '%');
 
         $newStopLoss = $buy_order['stopLoss'];
         $newStopLossReductionPrecentage = $buy_order['stopLossReductionPrecentage'];
@@ -110,8 +111,8 @@ class LiveTradeLONGFutureServiceEXP1
             $newStopLoss = max($buy_order['stopLoss'], $newStopLoss, $buy_order['price'] * (1 + $targetProfit / 100) * (1 - $stopLossReductionPrecentage / 100));
 
 
-            Log::info('AutoTraderSpot: Updated Stop-Loss Percentage: ' . $newStopLossReductionPrecentage . '%');
-            Log::info('AutoTraderSpot: Updated Stop Loss: ' . $newStopLoss);
+            Log::info('FutureTraderLongEXP1: Updated Stop-Loss Percentage: ' . $newStopLossReductionPrecentage . '%');
+            Log::info('FutureTraderLongEXP1: Updated Stop Loss: ' . $newStopLoss);
         }
 
         DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -122,14 +123,14 @@ class LiveTradeLONGFutureServiceEXP1
 
         // if ($current_price < $newStopLoss || $current_price < $supportResistance['resistance'] * (1 - 0.005)) {
         if ($current_price < $newStopLoss) {
-            Log::info('AutoTraderSpot: Current price below stop-loss, executing sell.');
+            Log::info('FutureTraderLongEXP1: Current price below stop-loss, executing sell.');
             BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
         }
     }
 
     private static function managePriceLock($tradeInstance): void
     {
-        Log::info('AutoTraderSpot: Price Locked for ' . $tradeInstance->symbol);
+        Log::info('FutureTraderLongEXP1: Price Locked for ' . $tradeInstance->symbol);
 
         $current_price = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
         if ($current_price > $tradeInstance->priceLock) {
