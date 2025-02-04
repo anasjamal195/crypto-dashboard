@@ -67,7 +67,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     if (CommonHelpers::getOpenOrderCount($interval, $market, $trade_acc) >= 1) {
                         continue;
                     }
-
+                    $CurrentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
@@ -80,6 +80,13 @@ class LiveTradeSHORTFutureServiceEXP1
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
                     } else if ($supportResistanceContition) {
+
+                        Log::info('FutureTraderShortEXP1: Support: ' . $supportResistance[5]['support']);
+                        Log::info('FutureTraderShortEXP1: Support Limit: ' . $supportResistance[5]['support'] * (1 + 0.3 / 100));
+                        Log::info('FutureTraderShortEXP1: Second Last Close: ' .   $secondLastCandle['close']);
+                        Log::info('FutureTraderShortEXP1: Third Last Close: ' .   $thirdLastCandle['close']);
+                        Log::info('FutureTraderShortEXP1: Current Close: ' .   $CurrentCandle['close']);
+
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 - $priceLockBuffer / 100),
                         ]);
