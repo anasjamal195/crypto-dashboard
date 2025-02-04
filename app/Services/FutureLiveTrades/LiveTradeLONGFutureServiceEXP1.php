@@ -71,6 +71,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                     $supportResistanceContition =   $supportResistance[5]['resistance'] <= $supportResistance[10]['resistance'] &&
                         $supportResistance[10]['resistance'] <= $supportResistance[15]['resistance'] &&
+                        $CurrentCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 0.3 / 100)  &&
                         $secondLastCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 0.3 / 100)  &&
                         $thirdLastCandle['close'] < $supportResistance[5]['resistance'] * (1 + 0.3 / 100);
 
