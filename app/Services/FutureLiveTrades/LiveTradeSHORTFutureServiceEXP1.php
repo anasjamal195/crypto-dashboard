@@ -91,6 +91,7 @@ class LiveTradeSHORTFutureServiceEXP1
                         Log::info('FutureTraderShortEXP1: Third Last Close: ' .   $thirdLastCandle['close']);
                         Log::info('FutureTraderShortEXP1: Current Close: ' .   $CurrentCandle['close']);
 
+                        continue;
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 - $priceLockBuffer / 100),
                         ]);
