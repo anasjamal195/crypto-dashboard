@@ -64,7 +64,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     self::manageOpenOrder($tradeInstance, $open_order['order'], $candleData, $targetProfit, $stopLossReductionPrecentage, $market, $supportResistance);
                 } else {
                     // Max open order should be 5
-                    if (CommonHelpers::getOpenOrderCount($interval, $market, $trade_acc) >= 5) {
+                    if (CommonHelpers::getOpenOrderCount($interval, $market, $trade_acc) >= 1) {
                         continue;
                     }
 
