@@ -74,7 +74,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     $supportResistanceContition =   $supportResistance[5]['support'] >= $supportResistance[10]['support'] &&
                         $supportResistance[10]['support'] >= $supportResistance[15]['support'] &&
-                        $secondLastCandle['close'] > $supportResistance[5]['support'] * (1 - 1.5 / 100) &&
+                        $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 1.5 / 100) &&
                         $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 1.5 / 100);
 
                     if ($tradeInstance->priceLock != 0) {
