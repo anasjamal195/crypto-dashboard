@@ -195,7 +195,7 @@ class LiveTradeLONGFutureServiceEXP1
             }
 
             // Remove Coins that are not in priority queue
-            $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('market', $market)->where('interval', $interval)->get();
+            $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('position', 'LONG')->where('market', $market)->where('interval', $interval)->get();
             foreach ($leftoverEntries as $leftoverCoin) {
                 $open_order = CommonHelpers::checkOpenOrder($leftoverCoin->symbol, $interval, $market, $user_id);
                 if (!$open_order['is_open']) {
@@ -218,7 +218,7 @@ class LiveTradeLONGFutureServiceEXP1
                 'stochLimit' =>  $averages['stoch_rsi'] * 2,
                 'isActive' => 1
             ];
-            $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('market', $market)->where('interval', $interval)->where('symbol', $coin)->first();
+            $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('market', $market)->where('position', 'LONG')->where('interval', $interval)->where('symbol', $coin)->first();
             if ($existing) {
                 DB::table('trade_handler')
                     ->where('id', $existing->id)

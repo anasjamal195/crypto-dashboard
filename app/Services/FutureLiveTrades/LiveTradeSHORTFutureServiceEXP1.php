@@ -96,7 +96,7 @@ class LiveTradeSHORTFutureServiceEXP1
                         Log::info('FutureTraderShortEXP1: Second Last Close: ' .   $secondLastCandle['close']);
                         Log::info('FutureTraderShortEXP1: Third Last Close: ' .   $thirdLastCandle['close']);
                         Log::info('FutureTraderShortEXP1: Current Close: ' .   $CurrentCandle['close']);
-                        
+
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 - $priceLockBuffer / 100),
                         ]);
@@ -208,7 +208,7 @@ class LiveTradeSHORTFutureServiceEXP1
             }
 
             // Remove Coins that are not in priority queue
-            $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('market', $market)->where('interval', $interval)->get();
+            $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('position', 'SHORT')->where('market', $market)->where('interval', $interval)->get();
             foreach ($leftoverEntries as $leftoverCoin) {
                 $open_order = CommonHelpers::checkOpenOrder($leftoverCoin->symbol, $interval, $market, $user_id);
                 if (!$open_order['is_open']) {
@@ -232,7 +232,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 'isActive' => 1
             ];
 
-            $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('market', $market)->where('interval', $interval)->where('symbol', $coin)->first();
+            $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('position', 'SHORT')->where('market', $market)->where('interval', $interval)->where('symbol', $coin)->first();
             if ($existing) {
                 DB::table('trade_handler')
                     ->where('id', $existing->id)
