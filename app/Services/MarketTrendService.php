@@ -380,8 +380,8 @@ class MarketTrendService
                 // Check if we have enough data to calculate pivot points
                 if ($index >= $candleSpan && $index + $candleSpan < count($data)) {
                     // Use the pivot functions to calculate pivot high and low
-                    $pivotHigh = self::calculatePivotHighAtIndex($data, $index, $candleSpan, 1);
-                    $pivotLow = self::calculatePivotLowAtIndex($data, $index, $candleSpan, 1);
+                    $pivotHigh = self::calculatePivotHighAtIndex($data, $index, $candleSpan, $candleSpan);
+                    $pivotLow = self::calculatePivotLowAtIndex($data, $index, $candleSpan, $candleSpan);
     
                     // Update support and resistance levels only if valid pivots are found
                     if ($pivotHigh !== null) {

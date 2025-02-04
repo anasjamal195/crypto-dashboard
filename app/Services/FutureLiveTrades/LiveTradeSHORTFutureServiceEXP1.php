@@ -3,7 +3,7 @@
 
 =======EXPERIMENT I========
 
-Simple formula based on Resistance break with a threshold of 1.5 % 
+Simple formula based on Resistance break with a threshold of 0.3 % 
 For SHORT Trades in future market
 Will Target SHORT Trades with a profit limit of 0.4% and a stop loss of support value
 
@@ -74,8 +74,8 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     $supportResistanceContition =   $supportResistance[5]['support'] >= $supportResistance[10]['support'] &&
                         $supportResistance[10]['support'] >= $supportResistance[15]['support'] &&
-                        $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 1.5 / 100) &&
-                        $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 1.5 / 100);
+                        $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
+                        $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.3 / 100);
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
