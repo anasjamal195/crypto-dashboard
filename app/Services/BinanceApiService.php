@@ -1241,11 +1241,16 @@ class BinanceApiService
         $entryPrice = $current_price; // Assuming trade executed at provided price
         $accountMargin = $tradeAmount; // User's margin
         $liquidationPrice = 0;
+        $stopLoss = 0;
+
         if ($position === 'BUY') {
             $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
+            $stopLoss = $current_price * (1 - 1.5 / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - 1.5 / 100);
         } else if ($position === 'SELL') {
             $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
+            $stopLoss = $current_price * (1 + 1.5 / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + 1.5 / 100);
         }
+
 
         $data =  [
             'orderId' => $response['orderId'],
@@ -1256,6 +1261,8 @@ class BinanceApiService
             'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
             'qty' => $quantity,
             'leverage' => $leverage,
+            'stopLoss' => $stopLoss,
+            'stopLossReductionPrecentage' => 0.5,
             'price' => $current_price,
             'trade_status' => 'open',
             'trade_acc' => $trader,
