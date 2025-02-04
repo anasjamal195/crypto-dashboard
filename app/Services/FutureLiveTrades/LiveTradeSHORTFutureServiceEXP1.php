@@ -29,7 +29,11 @@ class LiveTradeSHORTFutureServiceEXP1
 
     public static function performLiveTrades($market)
     {
+        DB::table('trade_handler')->where('market', $market)->where('position', 'SHORT')->update([
+            'priceLock' => 0,
+        ]);
         $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'SHORT')->where('isActive', 1)->get();
+
         foreach ($tradeHandler as $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
@@ -77,8 +81,10 @@ class LiveTradeSHORTFutureServiceEXP1
                         $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
                         $CurrentCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
                         $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.3 / 100);
+
+
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
-                   
+
 
 
                     if ($tradeInstance->priceLock != 0) {
@@ -90,8 +96,7 @@ class LiveTradeSHORTFutureServiceEXP1
                         Log::info('FutureTraderShortEXP1: Second Last Close: ' .   $secondLastCandle['close']);
                         Log::info('FutureTraderShortEXP1: Third Last Close: ' .   $thirdLastCandle['close']);
                         Log::info('FutureTraderShortEXP1: Current Close: ' .   $CurrentCandle['close']);
-
-                        continue;
+                        
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 - $priceLockBuffer / 100),
                         ]);
