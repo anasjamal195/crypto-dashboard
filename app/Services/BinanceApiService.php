@@ -1278,7 +1278,6 @@ class BinanceApiService
         $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
         $market = 'FUTURE';
         $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
-        $leverage = $openOrder->leverage;
         $symbol = $openOrder->symbol;
         $trader = $openOrder->trade_acc;
         $quantity = $openOrder->qty;
@@ -1330,12 +1329,12 @@ class BinanceApiService
             'orderId' => $response['orderId'],
             'symbol' => $response['symbol'],
             'side' => $response['side'],
-            'amount' => $quantity * $current_price,
+            'amount' => $openOrder->amount,
             'qty' => $quantity,
-            'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
+            'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
             'type' => 'close',
             'trade_status' => 'close',
-            'leverage' => $leverage,
+            'leverage' => 0,
             'price' => $current_price,
             'trade_acc' => $trader,
             'liqPrice' => 0,
@@ -1345,11 +1344,11 @@ class BinanceApiService
         DB::table('live_trades_future_results')->insert(
             $data
         );
-        DB::table('live_trades_future_results')->update([
+        DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
             'trade_status' => 'close',
         ]);
-        MailerService::sendFutureTradeDynamicEmail($data);
 
+        MailerService::sendFutureTradeDynamicEmail($data);
         return $data;
     }
 

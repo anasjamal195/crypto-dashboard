@@ -62,7 +62,7 @@ class SpotCoinDumper extends Command
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
-            usleep(600000000); // 10 mins delay
+            CommonHelpers::delayMin(5);
         }
     }
 }

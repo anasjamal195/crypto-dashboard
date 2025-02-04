@@ -38,7 +38,7 @@ class FutureReportWorker extends Command
     {
         while (true) {
 
-        MailerService::sendWorkerEmail('future_report_worker');
+            MailerService::sendWorkerEmail('future_report_worker');
 
             $this->market = 'FUTURE';
             $this->interval = CommonHelpers::getSettingsValue('report_worker_interval_future', '1m');
@@ -54,6 +54,8 @@ class FutureReportWorker extends Command
             } catch (\Exception $e) {
                 Log::error($e);
             }
+
+            CommonHelpers::delayMS(500);
         }
     }
 }

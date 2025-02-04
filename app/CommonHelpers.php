@@ -80,13 +80,19 @@ class CommonHelpers
     }
     public static function getOpenOrderCount($interval, $market, $trade_acc)
     {
-        return  DB::table('orders')
-            ->where('interval', $interval)
-            ->where('trade_acc', $trade_acc)
-            ->where('market', $market)
-            ->where('trade_status', 'open')
-            ->where('side', 'BUY')
-            ->count();
+        if ($market === 'SPOT')
+            return  DB::table('orders')
+                ->where('interval', $interval)
+                ->where('trade_acc', $trade_acc)
+                ->where('market', $market)
+                ->where('trade_status', 'open')
+                ->where('side', 'BUY')
+                ->count();
+        else
+            return  DB::table('live_trades_future_results')
+                ->where('trade_acc', $trade_acc)
+                ->where('trade_status', 'open')
+                ->count();
     }
     public static function checkOpenOrder($symbol, $interval, $market, $trade_acc)
     {
@@ -120,5 +126,17 @@ class CommonHelpers
                 return ['is_open' => true, 'order' => $open_orders[0]];
             }
         }
+    }
+    public static function delayMS($ms)
+    {
+        usleep($ms * 1000);
+    }
+    public static function delayS($s)
+    {
+        usleep($s * 1000 * 1000);
+    }
+    public static function delayMin($m)
+    {
+        usleep($m * 60 * 1000 * 1000);
     }
 }

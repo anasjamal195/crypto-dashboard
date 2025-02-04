@@ -53,6 +53,8 @@ class SpotReportWorker extends Command
             } catch (\Exception $e) {
                 Log::error($e);
             }
+
+            CommonHelpers::delayMS(500);
         }
     }
 }

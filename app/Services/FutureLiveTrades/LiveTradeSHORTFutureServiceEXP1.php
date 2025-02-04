@@ -40,7 +40,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 $targetProfit = $tradeInstance->targetProfit;
                 $stopLossReductionPrecentage = $tradeInstance->stopLossReductionPrecentage;
                 $obvLimit = $tradeInstance->obvLimit;
-                $stochLimit = $tradeInstance->stochLimit;
+                
                 $priceLockBuffer = $tradeInstance->priceLockBuffer;
                 $leverage = $tradeInstance->leverage;
                 $candleData = BinanceApiService::getCandleStickData($symbol, '5m', 300, null, $market);
@@ -69,18 +69,20 @@ class LiveTradeSHORTFutureServiceEXP1
                     }
 
                     $secondLastCandle = $candleData[count($candleData) - 2];
+                    $thirdLastCandle = $candleData[count($candleData) - 3];
 
-                    $supportResistanceContition = $supportResistance[5]['support'] >= $supportResistance[10]['support'] && $supportResistance[10]['support'] >= $supportResistance[15]['support'] && $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.5 / 100);
+
+                    $supportResistanceContition = $supportResistance[5]['support'] >= $supportResistance[10]['support'] && $supportResistance[10]['support'] >= $supportResistance[15]['support'] &&  $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.5 / 100);
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
                     } else if ($supportResistanceContition) {
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 + $priceLockBuffer / 100),
+                            'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 - $priceLockBuffer / 100),
                         ]);
                     }
                 }
-                usleep(300000); // 300 ms
+                CommonHelpers::delayMS(1000);
             } catch (\Exception $e) {
                 Log::error('AutoTraderSpot: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
@@ -122,7 +124,8 @@ class LiveTradeSHORTFutureServiceEXP1
             'previousPrice' => $current_price,
         ]);
 
-        if ($current_price > $newStopLoss || $current_price > $supportResistance['support'] * (1 + 0.005)) {
+        // if ($current_price > $newStopLoss || $current_price > $supportResistance['support'] * (1 + 0.005)) {
+        if ($current_price > $newStopLoss ) {
             Log::info('AutoTraderSpot: Current price below stop-loss, executing sell.');
             BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
         }
@@ -135,7 +138,7 @@ class LiveTradeSHORTFutureServiceEXP1
         $current_price = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
         if ($current_price < $tradeInstance->priceLock) {
 
-            $highestPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
+            $highestPrice = $current_price;
             $isLoop = true;
             while ($isLoop) {
                 $latestPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
@@ -145,7 +148,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol,$tradeInstance->buyPrice,$tradeInstance->position === 'LONG' ?'BUY':'SELL',$tradeInstance->leverage,$tradeInstance->tradeAccount);
                     $isLoop = false;
                 }
-                usleep(300000);
+                CommonHelpers::delayMS(1000);
             }
             // Reset price Lock for buying condition
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
@@ -206,6 +209,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 'stochLimit' =>  $averages['stoch_rsi'] * 2,
                 'isActive' => 1
             ];
+
             $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('market', $market)->where('interval', $interval)->where('symbol', $coin)->first();
             if ($existing) {
                 DB::table('trade_handler')
@@ -216,7 +220,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 DB::table('trade_handler')->insert($trade_handler);
             }
 
-            usleep(50000); // 50ms Delay for safety
+            CommonHelpers::delayMS(5000);
         }
         // dd($coins);
 

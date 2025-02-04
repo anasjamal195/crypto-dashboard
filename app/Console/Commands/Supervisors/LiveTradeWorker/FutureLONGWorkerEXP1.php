@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Supervisors\LiveTradeWorker;
 
+use App\CommonHelpers;
 use App\Services\FutureLiveTrades\LiveTradeLONGFutureServiceEXP1;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -30,10 +31,10 @@ class FutureLONGWorkerEXP1 extends Command
         while (true) {
             try {
                 LiveTradeLONGFutureServiceEXP1::performLiveTrades('FUTURE');
-                usleep(500000);
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
+            CommonHelpers::delayMS(500);
         }
     }
 }

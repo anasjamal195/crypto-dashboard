@@ -36,13 +36,9 @@ class LiveTradeLONGFutureServiceEXP1
                 $interval = $tradeInstance->interval;
                 $trade_acc = $tradeInstance->tradeAccount;
                 $buy_coin_price = $tradeInstance->buyPrice;
-                $rsiThreshold = $tradeInstance->rsiThreshold;
                 $targetProfit = $tradeInstance->targetProfit;
                 $stopLossReductionPrecentage = $tradeInstance->stopLossReductionPrecentage;
-                $obvLimit = $tradeInstance->obvLimit;
-                $stochLimit = $tradeInstance->stochLimit;
                 $priceLockBuffer = $tradeInstance->priceLockBuffer;
-                $leverage = $tradeInstance->leverage;
                 $candleData = BinanceApiService::getCandleStickData($symbol, '5m', 300, null, $market);
 
 
@@ -51,8 +47,6 @@ class LiveTradeLONGFutureServiceEXP1
                 Log::info('AutoTraderSpot: Interval: ' . $interval);
                 Log::info('AutoTraderSpot: Account: ' . $trade_acc);
                 Log::info('AutoTraderSpot: Invested: ' . $buy_coin_price . ' $');
-                Log::info('AutoTraderSpot: RSI Threshold: ' . $rsiThreshold);
-                Log::info('AutoTraderSpot: OBV Limit: ' . $obvLimit);
                 Log::info('AutoTraderSpot: Price Lock Buffer: ' . $priceLockBuffer);
 
                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5, 10, 15]);
@@ -69,9 +63,9 @@ class LiveTradeLONGFutureServiceEXP1
                     }
 
                     $secondLastCandle = $candleData[count($candleData) - 2];
+                    $thirdLastCandle = $candleData[count($candleData) - 3];
 
-                    $supportResistanceContition = $supportResistance[5]['resistance'] <= $supportResistance[10]['resistance'] && $supportResistance[10]['resistance'] <= $supportResistance[15]['resistance'] && $secondLastCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 0.5/100);
-
+                    $supportResistanceContition = $supportResistance[5]['resistance'] <= $supportResistance[10]['resistance'] && $supportResistance[10]['resistance'] <= $supportResistance[15]['resistance'] && $secondLastCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 0.5 / 100)  && $thirdLastCandle['close'] < $supportResistance[5]['resistance'] * (1 + 0.5 / 100);
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
                     } else if ($supportResistanceContition) {
@@ -80,7 +74,7 @@ class LiveTradeLONGFutureServiceEXP1
                         ]);
                     }
                 }
-                usleep(300000); // 300 ms
+                CommonHelpers::delayMS(1000);
             } catch (\Exception $e) {
                 Log::error('AutoTraderSpot: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
@@ -96,7 +90,7 @@ class LiveTradeLONGFutureServiceEXP1
         $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
         $current_profit = (($current_price - $buy_order['price']) / $buy_order['price']) * 100;
 
-        
+
         Log::info('AutoTraderSpot: Current Price: ' . $current_price);
         Log::info('AutoTraderSpot: Buy Order Price: ' . $buy_order['price']);
         Log::info('AutoTraderSpot: Current Profit: ' . $current_profit . '%');
@@ -122,7 +116,8 @@ class LiveTradeLONGFutureServiceEXP1
             'previousPrice' => $current_price,
         ]);
 
-        if ($current_price < $newStopLoss || $current_price < $supportResistance['resistance'] * (1 - 0.005)) {
+        // if ($current_price < $newStopLoss || $current_price < $supportResistance['resistance'] * (1 - 0.005)) {
+        if ($current_price < $newStopLoss) {
             Log::info('AutoTraderSpot: Current price below stop-loss, executing sell.');
             BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
         }
@@ -135,17 +130,17 @@ class LiveTradeLONGFutureServiceEXP1
         $current_price = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
         if ($current_price > $tradeInstance->priceLock) {
 
-            $lowestPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
+            $lowestPrice = $current_price;
             $isLoop = true;
             while ($isLoop) {
                 $latestPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
                 if ($lowestPrice > $latestPrice) {
                     $lowestPrice = $latestPrice;
                 } else if ($latestPrice > $lowestPrice * 1.0009) {
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol,$tradeInstance->buyPrice,$tradeInstance->position === 'LONG' ?'BUY':'SELL',$tradeInstance->leverage,$tradeInstance->tradeAccount);
-                     $isLoop = false;
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount);
+                    $isLoop = false;
                 }
-                usleep(300000);
+                CommonHelpers::delayMS(1000);
             }
             // Reset price Lock for buying condition
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
@@ -216,7 +211,7 @@ class LiveTradeLONGFutureServiceEXP1
                 DB::table('trade_handler')->insert($trade_handler);
             }
 
-            usleep(50000); // 50ms Delay for safety
+            CommonHelpers::delayMS(5000);
         }
         // dd($coins);
 

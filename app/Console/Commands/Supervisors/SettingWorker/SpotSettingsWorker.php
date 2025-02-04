@@ -37,10 +37,15 @@ class SpotSettingsWorker extends Command
                 foreach (User::all() as $user) {
                     $interval = CommonHelpers::getMetaValue($user->id, 'live_trade_worker_interval_spot', '1m');
                     LiveTradeService::updateTradeHandler($interval, 'SPOT', $user->id);
+                    CommonHelpers::delayMS(500);
+
                 }
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
+                CommonHelpers::delayMS(500);
+
             }
+            
         }
     }
 }

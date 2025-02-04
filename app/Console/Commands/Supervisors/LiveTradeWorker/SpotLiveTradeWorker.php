@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Supervisors\LiveTradeWorker;
 
+use App\CommonHelpers;
 use App\Services\LiveTradeService;
 use App\Services\MailerService;
 use Illuminate\Console\Command;
@@ -32,10 +33,10 @@ class SpotLiveTradeWorker extends Command
         while (true) {
             try {
                 LiveTradeService::performLiveTrades('SPOT');
-                usleep(200000);
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
+            CommonHelpers::delayMS(500);
         }
     }
 }
