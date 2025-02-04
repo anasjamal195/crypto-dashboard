@@ -94,9 +94,9 @@ class BinanceController extends Controller
     public function showTrends($market, Request $request)
     {
         $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
-        // $historicalTrends = MarketTrendService::getCurrentSupportResistanceGraph($request->symbol,$request->interval, $market, $request->candleSpan);
-        $historicalTrends = MarketTrendService::getCurrentSupportResistanceValue($request->symbol,$request->interval,'FUTURE',[5,10,15]);
-        dd($historicalTrends);
+        $historicalTrends = MarketTrendService::getCurrentSupportResistanceGraph($request->symbol,$request->interval, $market, $request->candleSpan);
+        // $historicalTrends = MarketTrendService::getCurrentSupportResistanceValue($request->symbol,$request->interval,'FUTURE',[5,10,15]);
+        // dd($historicalTrends);
 
         return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends]);
     }
