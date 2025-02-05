@@ -1334,6 +1334,7 @@ class BinanceApiService
 
         $data =  [
             'orderId' => $response['orderId'],
+            'pairId' => $openOrder->pairId,
             'symbol' => $response['symbol'],
             'side' => $response['side'],
             'amount' => $openOrder->amount,
@@ -1353,6 +1354,8 @@ class BinanceApiService
         );
         DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
             'trade_status' => 'close',
+            'pairId' => $response['orderId'],
+
         ]);
 
         MailerService::sendFutureTradeDynamicEmail($data);

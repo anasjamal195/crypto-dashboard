@@ -131,6 +131,11 @@ class LiveTradeLONGFutureServiceEXP1
             'stopLossReductionPrecentage' => $newStopLossReductionPrecentage,
             'stopLoss' => $newStopLoss,
             'previousPrice' => $current_price,
+            'currentPrice' => $current_price,
+            'currentSupport' => $supportResistance[5]['support'],
+            'currentResistance' => $supportResistance[5]['resistance'],
+            'currentProfit' => $current_profit,
+            'targetProfit' => $targetProfit,
         ]);
 
         // if ($current_price < $newStopLoss || $current_price < $supportResistance['resistance'] * (1 - 0.005)) {

@@ -35,7 +35,9 @@ Route::get('/live-trader-settings', 'App\Http\Controllers\SettingsController@liv
 Route::put('/live-trader-settings-update', 'App\Http\Controllers\SettingsController@liveTraderSettingsUpdate')->name('live.trader.settings.update')->middleware('auth');
 
 Route::get('/live-trades-results/{market}', 'App\Http\Controllers\BinanceController@liveTradeResults')->name('live.trades.result')->middleware('auth');
+Route::get('/live-trades-coins/{market}', 'App\Http\Controllers\BinanceController@liveTradeCoins')->name('live.trades.coins')->middleware('auth');
 Route::get('/live-trades-details/{interval}/{market}/{symbol}', 'App\Http\Controllers\BinanceController@liveTradeDetails')->name('live.trades.details')->middleware('auth');
+Route::get('/live-trades-future-close/{orderId}', 'App\Http\Controllers\BinanceController@closeFutureTrade')->name('live.trades.future.close')->middleware('auth');
 
 
 Route::get('/dynamic-trades-results/{market}', 'App\Http\Controllers\DynamicTradeController@dynamicTradeResults')->name('dynamic.trades.result')->middleware('auth');

@@ -9,6 +9,7 @@ use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+
 class BinanceController extends Controller
 {
     public function getCoinReport($market, Request $request)
@@ -94,14 +95,15 @@ class BinanceController extends Controller
     public function showTrends($market, Request $request)
     {
         $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
-        $historicalTrends = MarketTrendService::getCurrentSupportResistanceGraph($request->symbol,$request->interval, $market, $request->candleSpan);
+        $historicalTrends = MarketTrendService::getCurrentSupportResistanceGraph($request->symbol, $request->interval, $market, $request->candleSpan);
         // $historicalTrends = MarketTrendService::getCurrentSupportResistanceValue($request->symbol,$request->interval,'FUTURE',[5,10,15]);
         // dd($historicalTrends);
 
         return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends]);
     }
-    public function getAvailableBalance(Request $request){
-        return BinanceApiService::fetchAvailableQuantity($request->symbol,auth()->user()->id,$request->market);
+    public function getAvailableBalance(Request $request)
+    {
+        return BinanceApiService::fetchAvailableQuantity($request->symbol, auth()->user()->id, $request->market);
     }
     public function showAverages($market, Request $request)
     {
@@ -142,29 +144,67 @@ class BinanceController extends Controller
     }
     public function liveTradeResults($market, Request $request)
     {
+        if ($market === 'SPOT') {
+            $pageSlug = 'liveTradeResults' . $market;
+            $orders = DB::table('orders')->where('market', $market)->where('trade_acc', auth()->user()->id)
+                ->where('side', 'BUY');
 
-        $pageSlug = 'liveTradeResults' . $market;
-        $orders = DB::table('orders')->where('market',$market)->where('trade_acc',auth()->user()->id)
-            ->where('side', 'BUY');
+            if ($request->filled('start_date'))
+                $orders = $orders->where('created_at', '>=', Carbon::parse($_GET['start_date'])->format('Y-m-d H:i:s'));
+            if ($request->filled('end_date'))
+                $orders = $orders->where('created_at', '<=', Carbon::parse($_GET['end_date'])->format('Y-m-d H:i:s'));
+            if ($request->filled('symbol'))
+                $orders = $orders->where('symbol', $_GET['symbol']);
+            $orders = $orders->orderBy('created_at', 'desc')->get();
+            // dd($orders);
+            return view('live-trades.results', compact('orders', 'pageSlug'));
+        } else if ($market === 'FUTURE') {
+            $pageSlug = 'liveTradeResults' . $market;
+            $orders = DB::table('live_trades_future_results')->where('trade_acc', auth()->user()->id)
+                ->where('type', 'open');
 
-        if ($request->filled('start_date'))
-            $orders = $orders->where('created_at', '>=', Carbon::parse($_GET['start_date'])->format('Y-m-d H:i:s'));
-        if ($request->filled('end_date'))
-            $orders = $orders->where('created_at', '<=', Carbon::parse($_GET['end_date'])->format('Y-m-d H:i:s'));
-        if ($request->filled('symbol'))
-            $orders = $orders->where('symbol', $_GET['symbol']);
-        $orders = $orders->orderBy('created_at', 'desc')->get();
-        // dd($orders);
-        return view('live-trades.results', compact('orders', 'pageSlug'));
+            $orders = $orders->orderBy('created_at', 'desc')->get();
+            // dd($orders);
+            return view('live-trades.results-future', compact('orders', 'pageSlug'));
+        }
     }
-    public function liveTradeDetails($interval,$market,$symbol,Request $request)
+
+
+    public function liveTradeCoins($market, Request $request)
+    {
+        if ($market === 'SPOT') {
+            // $pageSlug = 'liveTradeResults' . $market;
+            // $orders = DB::table('orders')->where('market', $market)->where('trade_acc', auth()->user()->id)
+            //     ->where('side', 'BUY');
+
+            // if ($request->filled('start_date'))
+            //     $orders = $orders->where('created_at', '>=', Carbon::parse($_GET['start_date'])->format('Y-m-d H:i:s'));
+            // if ($request->filled('end_date'))
+            //     $orders = $orders->where('created_at', '<=', Carbon::parse($_GET['end_date'])->format('Y-m-d H:i:s'));
+            // if ($request->filled('symbol'))
+            //     $orders = $orders->where('symbol', $_GET['symbol']);
+            // $orders = $orders->orderBy('created_at', 'desc')->get();
+            // // dd($orders);
+            // return view('live-trades.results', compact('orders', 'pageSlug'));
+        } else if ($market === 'FUTURE') {
+            $pageSlug = 'coins' . $market;
+            $coins = DB::table('trade_handler')->where('market', "FUTURE")
+                ->distinct('symbol')
+                ->where('tradeAccount', auth()->user()->id)
+                ->get();
+
+            // dd($coins);
+            return view('live-trades.coins', compact('coins', 'pageSlug'));
+        }
+    }
+    public function liveTradeDetails($interval, $market, $symbol, Request $request)
     {
 
         $pageSlug = 'liveTradeDetails';
-        $order_buy = DB::table('orders')->where('side','BUY')->where('symbol',$symbol)->where('interval',$interval)->get();
-        $order_sell = DB::table('orders')->where('side','SELL')->where('symbol',$symbol)->where('interval',$interval)->get();
-        $candlestickData = MarketTrendService::getSymbolHistoricalTrendsSet2($symbol,$interval,$market,$request->timestamp);
-         
+        $order_buy = DB::table('orders')->where('side', 'BUY')->where('symbol', $symbol)->where('interval', $interval)->get();
+        $order_sell = DB::table('orders')->where('side', 'SELL')->where('symbol', $symbol)->where('interval', $interval)->get();
+        $candlestickData = MarketTrendService::getSymbolHistoricalTrendsSet2($symbol, $interval, $market, $request->timestamp);
+
         foreach ($candlestickData as $index => &$candle) {
 
             $candle['timestamp'] = $candle['timestamp'] / 1000;
@@ -173,8 +213,14 @@ class BinanceController extends Controller
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
         }
 
-      
+
         // dd($orders);
-        return view('live-trades.trade-details', compact( 'pageSlug','symbol','interval','market','order_sell','order_buy','candlestickData'));
+        return view('live-trades.trade-details', compact('pageSlug', 'symbol', 'interval', 'market', 'order_sell', 'order_buy', 'candlestickData'));
+    }
+
+    public function closeFutureTrade($orderId)
+    {
+        BinanceApiService::closeMarketPositionLiveTrader($orderId);
+        return redirect()->back()->withSuccess('Trade Closed Successfully');
     }
 }

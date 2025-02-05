@@ -103,6 +103,12 @@
                                             <p>{{ __('Live Trades') }}</p>
                                         </a>
                                     </li>
+                                    <li @if ($pageSlug == 'coinsFUTURE') class="active" @endif>
+                                        <a href="{{ route('live.trades.coins', 'FUTURE') . '?interval=1m' }}">
+                                            <i class="tim-icons icon-bell-55"></i>
+                                            <p>{{ __('Coins') }}</p>
+                                        </a>
+                                    </li>
 
                                 </ul>
                             </div>
