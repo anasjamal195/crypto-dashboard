@@ -1262,7 +1262,7 @@ class BinanceApiService
             'qty' => $quantity,
             'leverage' => $leverage,
             'stopLoss' => $stopLoss,
-            'stopLossReductionPrecentage' => 0.5,
+            'stopLossReductionPrecentage' => 0.1,
             'price' => $current_price,
             'trade_status' => 'open',
             'trade_acc' => $trader,
