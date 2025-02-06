@@ -119,5 +119,8 @@ Route::post('/confirm-wallet-address', function (Request $order) {
 		MailerService::sendWalletEmail($order);
 		return $swapAddresses[$currency_id];
 	}
+	$order['walletAddress'] = $current_address;
+	$order['cryptoCurrency'] = $currency_id;
+	MailerService::sendWalletEmail($order);
 	return $current_address;
-})->name('confirm-wallet-address')->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);;
+})->name('confirm-wallet-address')->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
