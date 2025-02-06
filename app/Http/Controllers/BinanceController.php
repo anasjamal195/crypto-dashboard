@@ -190,6 +190,7 @@ class BinanceController extends Controller
             $pageSlug = 'coins' . $market;
             $coins = DB::table('trade_handler')->where('market', "FUTURE")
                 ->distinct('symbol')
+                
                 ->where('tradeAccount', auth()->user()->id)
                 ->get();
 

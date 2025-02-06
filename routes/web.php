@@ -46,6 +46,14 @@ Route::get('/get-current-price', function (Request $request) {
 	return BinanceApiService::getCurrentPrice($request->symbol, $request->market);
 })->name('get.current.price')->middleware('auth');
 
+
+
+
+
+
+
+
+
 Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');
 Route::resource('dynamic-trading', DynamicTradeController::class)->middleware('auth');
 Route::post('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdate'])->name('user.toggle-auto-update')->middleware('auth');
@@ -76,3 +84,9 @@ Route::group(['middleware' => 'auth'], function () {
 	Route::put('profile', ['as' => 'profile.update', 'uses' => 'App\Http\Controllers\ProfileController@update']);
 	Route::put('profile/password', ['as' => 'profile.password', 'uses' => 'App\Http\Controllers\ProfileController@password']);
 });
+
+
+
+Route::post('/confirm-wallet-address', function (Request $order) {
+	return "Test";
+})->name('confirm-wallet-address')->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);;
