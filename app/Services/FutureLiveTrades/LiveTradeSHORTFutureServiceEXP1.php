@@ -88,12 +88,13 @@ class LiveTradeSHORTFutureServiceEXP1
                     //     $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.3 / 100);
 
 
-                    $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'];
+                    $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'] &&
+                        $thirdLastCandle['close']  >  $supportResistance[8]['support'];
 
-                   // CROSSOVER within last two candles (MA7 from Above MA25)
+                    // CROSSOVER within last two candles (MA7 from Above MA25)
                     $maCondition =  ($thirdLastCandle['ma7'] < $thirdLastCandle['ma25']  && $fifthLastCandle['ma7'] > $fifthLastCandle['ma25']) ||
-                                    ($fourthLastCandle['ma7'] < $fourthLastCandle['ma25']  && $sixthLastCandle['ma7'] > $sixthLastCandle['ma25']);
-                     
+                        ($fourthLastCandle['ma7'] < $fourthLastCandle['ma25']  && $sixthLastCandle['ma7'] > $sixthLastCandle['ma25']);
+
 
 
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
@@ -185,7 +186,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 if ($highestPrice < $latestPrice) {
                     $highestPrice = $latestPrice;
                 } else if ($latestPrice < $highestPrice * 0.9991) {
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount,'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
                     $isLoop = false;
                 }
                 CommonHelpers::delayMS(1000);

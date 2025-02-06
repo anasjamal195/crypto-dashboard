@@ -79,7 +79,8 @@ class LiveTradeLONGFutureServiceEXP1
                     //     $thirdLastCandle['close'] < $supportResistance[5]['resistance'] * (1 + 0.3 / 100);
 
 
-                    $supportResistanceContition = $secondLastCandle['close']  >  $supportResistance[8]['resistance'];
+                    $supportResistanceContition = $secondLastCandle['close']  >  $supportResistance[8]['resistance'] &&
+                    $thirdLastCandle['close']  <  $supportResistance[8]['resistance'];
 
                     // CROSSOVER within last two candles (MA7 from Below MA25)
                     $maCondition =  ($thirdLastCandle['ma7'] > $thirdLastCandle['ma25']  && $fifthLastCandle['ma7'] < $fifthLastCandle['ma25']) ||
