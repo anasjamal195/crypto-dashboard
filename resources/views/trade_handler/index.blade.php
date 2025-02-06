@@ -7,8 +7,8 @@
         <a href="{{ route('trade-handler.create') }}" class="btn btn-primary mb-2">Add New</a>
         <a href="{{ route('trade-handler.delete.all') }}" class="btn btn-danger mb-2">Delete All</a>
         <a href="{{ route('user.toggle-auto-update') }}"
-            class="btn mb-2 float-right {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value == 'on'? 'btn-danger': 'btn-success' }}"
-            >{{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value == 'on'? 'Disable Auto-Update': 'Enable Auto-Update' }}</a>
+            class="btn mb-2 float-right {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_future')->first()->meta_value == 'on'? 'btn-danger': 'btn-success' }}"
+            >{{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_future')->first()->meta_value == 'on'? 'Disable Auto-Update': 'Enable Auto-Update' }}</a>
         <table class="table">
             <thead>
                 <tr>

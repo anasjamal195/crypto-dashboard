@@ -37,6 +37,20 @@ class UserController extends Controller
             ]);
         }
 
+        $currentSetting = DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_future')->first();
+
+        if ($currentSetting) {
+            DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_future')->update([
+                'meta_value' =>   $currentSetting->meta_value == 'on' ? 'off' : 'on'
+            ]);
+        } else {
+            DB::table('user_meta')->insert([
+                'meta_key' => 'is_auto_update_enable_future',
+                'meta_value' => 'on',
+                'user_id' => auth()->user()->id
+            ]);
+        }
+
         return back()->with('success', 'Auto-update setting toggled.');
     }
 }
