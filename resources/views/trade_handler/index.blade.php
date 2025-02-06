@@ -5,6 +5,7 @@
         <h2>Trade Handler Settings</h2>
         
         <a href="{{ route('trade-handler.create') }}" class="btn btn-primary mb-2">Add New</a>
+        <a href="{{ route('trade-handler.delete-all') }}" class="btn btn-danger mb-2">Delete All</a>
         <form action="{{ route('user.toggle-auto-update') }}" method="POST" class="mb-2 float-right">
             @csrf
             <button type="submit"

