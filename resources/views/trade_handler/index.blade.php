@@ -9,7 +9,7 @@
         <a href="{{ route('user.toggle-auto-update') }}"
             class="btn mb-2 float-right {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_future')->first()->meta_value == 'on'? 'btn-danger': 'btn-success' }}"
             >{{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_future')->first()->meta_value == 'on'? 'Disable Auto-Update': 'Enable Auto-Update' }}</a>
-        <table class="table">
+        <table class="table dataTable">
             <thead>
                 <tr>
                     <th>Market</th>
