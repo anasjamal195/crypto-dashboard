@@ -53,12 +53,10 @@ Route::get('/get-current-price', function (Request $request) {
 
 
 
-
-
+Route::get('/trade-handler/delete/all', [TradeHandlerController::class, 'deleteAll'])->name('trade-handler.delete.all')->middleware('auth');
 Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');
 Route::resource('dynamic-trading', DynamicTradeController::class)->middleware('auth');
-Route::post('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdate'])->name('user.toggle-auto-update')->middleware('auth');
-Route::get('/trade-handler/delete/all', [TradeHandlerController::class, 'deleteAll'])->name('trade-handler.delete.all')->middleware('auth');
+Route::get('/user/toggle-auto-update', [UserController::class, 'toggleAutoUpdate'])->name('user.toggle-auto-update')->middleware('auth');
 
 // Process Handler Routes
 Route::get('/process-handler', 'App\Http\Controllers\ProcessController@index')->name('process-handler.index')->middleware('auth');

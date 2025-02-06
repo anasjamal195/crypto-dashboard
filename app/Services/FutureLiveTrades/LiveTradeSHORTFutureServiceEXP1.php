@@ -190,6 +190,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
     public static function updateTradeHandler($interval, $market = 'SPOT', $user_id)
     {
+        
         $meta_prefix = '';
         if ($market == 'SPOT')
             $meta_prefix = '_spot';
@@ -207,8 +208,7 @@ class LiveTradeSHORTFutureServiceEXP1
             $averages = IdealTradeService::getAverages($idealBuying);
 
             // Dumping Trade Handler data
-
-            if (!(CommonHelpers::getMetaValue($user_id, 'is_auto_update_enable' . $meta_prefix, true) == 'true')) {
+            if (CommonHelpers::getMetaValue($user_id, 'is_auto_update_enable' . $meta_prefix, true) !== 'on') {
                 continue;
             }
 

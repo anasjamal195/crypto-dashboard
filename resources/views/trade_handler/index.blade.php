@@ -3,16 +3,12 @@
 @section('content')
     <div class="container">
         <h2>Trade Handler Settings</h2>
-        
+
         <a href="{{ route('trade-handler.create') }}" class="btn btn-primary mb-2">Add New</a>
-        <a href="{{ route('trade-handler.delete-all') }}" class="btn btn-danger mb-2">Delete All</a>
-        <form action="{{ route('user.toggle-auto-update') }}" method="POST" class="mb-2 float-right">
-            @csrf
-            <button type="submit"
-                class="btn {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value == 'true'? 'btn-danger': 'btn-success' }}">
-                {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value == 'true'? 'Disable Auto-Update': 'Enable Auto-Update' }}
-            </button>
-        </form>
+        <a href="{{ route('trade-handler.delete.all') }}" class="btn btn-danger mb-2">Delete All</a>
+        <a href="{{ route('user.toggle-auto-update') }}"
+            class="btn mb-2 float-right {{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value == 'on'? 'btn-danger': 'btn-success' }}"
+            >{{ \DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->first()->meta_value == 'on'? 'Disable Auto-Update': 'Enable Auto-Update' }}</a>
         <table class="table">
             <thead>
                 <tr>

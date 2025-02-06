@@ -47,8 +47,7 @@ class TradeHandlerController extends Controller
     }
     public function deleteAll()
     {
-        
-        $tradeHandler->delete();
-        return redirect()->route('trade-handler.index')->with('success', 'Handler deleted successfully.');
+        TradeHandler::where('tradeAccount', auth()->user()->id)->delete();
+        return redirect()->route('trade-handler.index')->with('success', 'Handlers deleted successfully.');
     }
 }

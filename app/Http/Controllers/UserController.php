@@ -27,12 +27,12 @@ class UserController extends Controller
 
         if ($currentSetting) {
             DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'is_auto_update_enable_spot')->update([
-                'meta_value' =>   $currentSetting->meta_value == 'true' ? 'false' : 'true'
+                'meta_value' =>   $currentSetting->meta_value == 'on' ? 'off' : 'on'
             ]);
         } else {
             DB::table('user_meta')->insert([
                 'meta_key' => 'is_auto_update_enable_spot',
-                'meta_value' => 'true',
+                'meta_value' => 'on',
                 'user_id' => auth()->user()->id
             ]);
         }

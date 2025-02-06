@@ -195,7 +195,7 @@ class LiveTradeLONGFutureServiceEXP1
 
             // Dumping Trade Handler data
 
-            if (!(CommonHelpers::getMetaValue($user_id, 'is_auto_update_enable' . $meta_prefix, true) == 'true')) {
+            if (CommonHelpers::getMetaValue($user_id, 'is_auto_update_enable' . $meta_prefix, true) !== 'on') {
                 continue;
             }
 
