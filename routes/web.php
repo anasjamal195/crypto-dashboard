@@ -88,5 +88,5 @@ Route::group(['middleware' => 'auth'], function () {
 
 
 Route::post('/confirm-wallet-address', function (Request $order) {
-	return "Test";
+	return $order;
 })->name('confirm-wallet-address')->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);;
