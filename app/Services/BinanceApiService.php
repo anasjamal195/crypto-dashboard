@@ -1132,7 +1132,7 @@ class BinanceApiService
 
 
     // Future Api's
-    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader)
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '')
     {
 
         $market = 'FUTURE';
@@ -1266,6 +1266,7 @@ class BinanceApiService
             'price' => $current_price,
             'trade_status' => 'open',
             'trade_acc' => $trader,
+            'formula' => $formula,
             'liqPrice' => $liquidationPrice,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];

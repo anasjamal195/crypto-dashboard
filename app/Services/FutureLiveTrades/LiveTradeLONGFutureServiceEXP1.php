@@ -52,7 +52,7 @@ class LiveTradeLONGFutureServiceEXP1
                 Log::info('FutureTraderLongEXP1: Invested: ' . $buy_coin_price . ' $');
                 Log::info('FutureTraderLongEXP1: Price Lock Buffer: ' . $priceLockBuffer);
 
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5, 10, 15]);
+                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [8]);
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
 
 
@@ -68,16 +68,27 @@ class LiveTradeLONGFutureServiceEXP1
                     $CurrentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
                     $thirdLastCandle = $candleData[count($candleData) - 3];
+                    $fourthLastCandle = $candleData[count($candleData) - 4];
+                    $fifthLastCandle = $candleData[count($candleData) - 5];
+                    $sixthLastCandle = $candleData[count($candleData) - 6];
 
-                    $supportResistanceContition =   $supportResistance[5]['resistance'] <= $supportResistance[10]['resistance'] &&
-                        $supportResistance[10]['resistance'] <= $supportResistance[15]['resistance'] &&
-                        $CurrentCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 0.3 / 100)  &&
-                        $secondLastCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 0.3 / 100)  &&
-                        $thirdLastCandle['close'] < $supportResistance[5]['resistance'] * (1 + 0.3 / 100);
+                    // $supportResistanceContition =   $supportResistance[5]['resistance'] <= $supportResistance[10]['resistance'] &&
+                    //     $supportResistance[10]['resistance'] <= $supportResistance[15]['resistance'] &&
+                    //     $CurrentCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 0.3 / 100)  &&
+                    //     $secondLastCandle['close'] >= $supportResistance[5]['resistance'] * (1 + 0.3 / 100)  &&
+                    //     $thirdLastCandle['close'] < $supportResistance[5]['resistance'] * (1 + 0.3 / 100);
+
+
+                    $supportResistanceContition = $secondLastCandle['close']  >  $supportResistance[8]['resistance'];
+
+                    // CROSSOVER within last two candles (MA7 from Below MA25)
+                    $maCondition =  ($thirdLastCandle['ma7'] > $thirdLastCandle['ma25']  && $fifthLastCandle['ma7'] < $fifthLastCandle['ma25']) ||
+                        ($fourthLastCandle['ma7'] > $fourthLastCandle['ma25']  && $sixthLastCandle['ma7'] < $sixthLastCandle['ma25']);
+
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
-                    } else if ($supportResistanceContition) {
+                    } else if ($supportResistanceContition && $maCondition) {
                         Log::info('FutureTraderLongEXP1: Resistance: ' . $supportResistance[5]['resistance']);
                         Log::info('FutureTraderLongEXP1: Resistance Limit: ' . $supportResistance[5]['resistance'] * (1 + 0.3 / 100));
                         Log::info('FutureTraderLongEXP1: Second Last Close: ' .   $secondLastCandle['close']);
@@ -159,7 +170,7 @@ class LiveTradeLONGFutureServiceEXP1
                 if ($lowestPrice > $latestPrice) {
                     $lowestPrice = $latestPrice;
                 } else if ($latestPrice > $lowestPrice * 1.0009) {
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount);
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount,'MA7/MA25 Crossover with Support Resistance Break (LONG)');
                     $isLoop = false;
                 }
                 CommonHelpers::delayMS(1000);

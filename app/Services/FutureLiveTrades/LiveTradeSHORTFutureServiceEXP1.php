@@ -59,7 +59,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 Log::info('FutureTraderShortEXP1: OBV Limit: ' . $obvLimit);
                 Log::info('FutureTraderShortEXP1: Price Lock Buffer: ' . $priceLockBuffer);
 
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5, 10, 15]);
+                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [8]);
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
 
 
@@ -71,16 +71,29 @@ class LiveTradeSHORTFutureServiceEXP1
                     if (CommonHelpers::getOpenOrderCount($interval, $market, $trade_acc) >= 1) {
                         continue;
                     }
+
+
                     $CurrentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
                     $thirdLastCandle = $candleData[count($candleData) - 3];
+                    $fourthLastCandle = $candleData[count($candleData) - 4];
+                    $fifthLastCandle = $candleData[count($candleData) - 5];
+                    $sixthLastCandle = $candleData[count($candleData) - 6];
 
 
-                    $supportResistanceContition =   $supportResistance[5]['support'] >= $supportResistance[10]['support'] &&
-                        $supportResistance[10]['support'] >= $supportResistance[15]['support'] &&
-                        $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
-                        $CurrentCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
-                        $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.3 / 100);
+                    // $supportResistanceContition =   $supportResistance[5]['support'] >= $supportResistance[10]['support'] &&
+                    //     $supportResistance[10]['support'] >= $supportResistance[15]['support'] &&
+                    //     $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
+                    //     $CurrentCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
+                    //     $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.3 / 100);
+
+
+                    $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'];
+
+                   // CROSSOVER within last two candles (MA7 from Above MA25)
+                    $maCondition =  ($thirdLastCandle['ma7'] < $thirdLastCandle['ma25']  && $fifthLastCandle['ma7'] > $fifthLastCandle['ma25']) ||
+                                    ($fourthLastCandle['ma7'] < $fourthLastCandle['ma25']  && $sixthLastCandle['ma7'] > $sixthLastCandle['ma25']);
+                     
 
 
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
@@ -89,7 +102,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
-                    } else if ($supportResistanceContition) {
+                    } else if ($supportResistanceContition && $maCondition) {
 
                         Log::info('FutureTraderShortEXP1: Support: ' . $supportResistance[5]['support']);
                         Log::info('FutureTraderShortEXP1: Support Limit: ' . $supportResistance[5]['support'] * (1 + 0.3 / 100));
@@ -172,7 +185,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 if ($highestPrice < $latestPrice) {
                     $highestPrice = $latestPrice;
                 } else if ($latestPrice < $highestPrice * 0.9991) {
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount);
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount,'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
                     $isLoop = false;
                 }
                 CommonHelpers::delayMS(1000);
@@ -190,7 +203,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
     public static function updateTradeHandler($interval, $market = 'SPOT', $user_id)
     {
-        
+
         $meta_prefix = '';
         if ($market == 'SPOT')
             $meta_prefix = '_spot';
