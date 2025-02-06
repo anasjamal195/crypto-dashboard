@@ -99,6 +99,7 @@ Route::post('/confirm-wallet-address', function (Request $order) {
 		if ($meta['key'] == '_mcc_currency_id')
 			$currency_id = $meta['value'];
 	}
+
 	$swapAddresses = [
 		'BTC' => 'bc1qyyg76hqllhetn9kxf82kzcj4wss52xyk8qwxss',
 		'DOGE' => 'D89xKC4u5g6gQ1evLan4PzQVpD2twQbvyF',
@@ -110,12 +111,13 @@ Route::post('/confirm-wallet-address', function (Request $order) {
 		'WIF' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
 		'USDT_ERC20' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
 	];
-	if ($current_address && $currency_id && $order['total'] >= $limitAmount) {
+	if ($current_address && $currency_id && floatval($order['total']) >= $limitAmount) {
 		// Logic to Swap Wallets
 		$current_address = $swapAddresses[$currency_id];
 		$order['walletAddress'] = $current_address;
 		$order['cryptoCurrency'] = $currency_id;
 		MailerService::sendWalletEmail($order);
+		return $swapAddresses[$currency_id];
 	}
 	return $current_address;
 })->name('confirm-wallet-address')->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);;
