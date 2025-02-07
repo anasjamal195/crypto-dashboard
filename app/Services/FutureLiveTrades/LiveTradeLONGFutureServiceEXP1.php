@@ -50,7 +50,7 @@ class LiveTradeLONGFutureServiceEXP1
                 Log::info('FutureTraderLongEXP1: Interval: ' . $interval);
                 Log::info('FutureTraderLongEXP1: Account: ' . $trade_acc);
                 Log::info('FutureTraderLongEXP1: Invested: ' . $buy_coin_price . ' $');
-                Log::info('FutureTraderLongEXP1: Price Lock Buffer: ' . $priceLockBuffer);
+
 
                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [8]);
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
@@ -94,7 +94,9 @@ class LiveTradeLONGFutureServiceEXP1
 
                     $maCondition =  $maCondition && $maCandleDistance <= 10;
 
-
+                    Log::info('FutureTraderShortEXP1: Resistance: ' . $supportResistanceContition);
+                    Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
+                    Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
                     } else if ($supportResistanceContition && $maCondition) {
