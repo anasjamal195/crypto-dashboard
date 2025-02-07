@@ -115,7 +115,7 @@ class LiveTradeSHORTFutureServiceEXP1
                         Log::info('FutureTraderShortEXP1: Current Close: ' .   $CurrentCandle['close']);
 
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 - $priceLockBuffer / 100),
+                            'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market),
                         ]);
                     }
                 }
@@ -143,16 +143,15 @@ class LiveTradeSHORTFutureServiceEXP1
         } else {
             $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
             $newStopLossReductionPrecentage = 0;
-        if ($current_profit >= $targetProfit && $targetProfit == 0.5) {
-            $targetProfit = 1;
-            $newStopLoss = $current_price;
-            $newStopLossReductionPrecentage = 0.3;
-        }
-        if ($current_profit >= $targetProfit && $targetProfit == 1) {
-            $targetProfit = 2;
-            $newStopLoss = $current_price;
-        }
-
+            if ($current_profit >= $targetProfit && $targetProfit == 0.5) {
+                $targetProfit = 1;
+                $newStopLoss = $current_price;
+                $newStopLossReductionPrecentage = 0.3;
+            }
+            if ($current_profit >= $targetProfit && $targetProfit == 1) {
+                $targetProfit = 2;
+                $newStopLoss = $current_price;
+            }
         }
         Log::info('FutureTraderShortEXP1: Current Price: ' . $current_price);
         Log::info('FutureTraderShortEXP1: Buy Order Price: ' . $buy_order['price']);

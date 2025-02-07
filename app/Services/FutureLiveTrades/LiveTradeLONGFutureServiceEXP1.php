@@ -105,7 +105,7 @@ class LiveTradeLONGFutureServiceEXP1
 
 
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 + $priceLockBuffer / 100),
+                            'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market),
                         ]);
                     }
                 }
