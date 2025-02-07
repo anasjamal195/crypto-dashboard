@@ -85,9 +85,10 @@ class LiveTradeSHORTFutureServiceEXP1
                     //     $thirdLastCandle['close'] > $supportResistance[8]['support'] * (1 - 0.3 / 100);
 
 
-                    $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'] &&
-                        $thirdLastCandle['close']  >  $supportResistance[8]['support'];
+                    // $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'] &&
+                    //     $thirdLastCandle['close']  >  $supportResistance[8]['support'];
 
+                    $supportResistanceContition = true;
                     $maCondition = false;
                     $maCandleDistance = 0;
 
