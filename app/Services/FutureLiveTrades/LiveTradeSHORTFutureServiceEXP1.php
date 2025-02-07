@@ -104,8 +104,8 @@ class LiveTradeSHORTFutureServiceEXP1
 
 
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
-                    Log::notice('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
-                    Log::error('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
+                    Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
+                    Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
 
 
