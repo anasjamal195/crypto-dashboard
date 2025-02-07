@@ -138,6 +138,11 @@ class LiveTradeSHORTFutureServiceEXP1
         $newStopLoss = $buy_order['stopLoss'];
         $newStopLossReductionPrecentage = $buy_order['stopLossReductionPrecentage'];
 
+        if ($targetProfit >=  1) {
+            $current_price = $candleData[count($candleData) - 2]['close'];
+        } else {
+            $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
+            $newStopLossReductionPrecentage = 0;
         if ($current_profit >= $targetProfit && $targetProfit == 0.5) {
             $targetProfit = 1;
             $newStopLoss = $current_price;
@@ -148,11 +153,6 @@ class LiveTradeSHORTFutureServiceEXP1
             $newStopLoss = $current_price;
         }
 
-        if ($targetProfit >=  1) {
-            $current_price = $candleData[count($candleData) - 2]['close'];
-        } else {
-            $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
-            $newStopLossReductionPrecentage = 0;
         }
         Log::info('FutureTraderShortEXP1: Current Price: ' . $current_price);
         Log::info('FutureTraderShortEXP1: Buy Order Price: ' . $buy_order['price']);
