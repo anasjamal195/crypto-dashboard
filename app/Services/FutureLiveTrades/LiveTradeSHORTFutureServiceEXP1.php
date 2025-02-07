@@ -29,9 +29,6 @@ class LiveTradeSHORTFutureServiceEXP1
 
     public static function performLiveTrades($market)
     {
-        DB::table('trade_handler')->where('market', $market)->where('position', 'SHORT')->update([
-            'priceLock' => 0,
-        ]);
         $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'SHORT')->where('isActive', 1)->get();
 
         foreach ($tradeHandler as $tradeInstance)
@@ -85,10 +82,9 @@ class LiveTradeSHORTFutureServiceEXP1
                     //     $thirdLastCandle['close'] > $supportResistance[8]['support'] * (1 - 0.3 / 100);
 
 
-                    // $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'] &&
-                    //     $thirdLastCandle['close']  >  $supportResistance[8]['support'];
+                    $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'] &&
+                        $thirdLastCandle['close']  >  $supportResistance[8]['support'];
 
-                    $supportResistanceContition = true;
                     $maCondition = false;
                     $maCandleDistance = 0;
 
@@ -101,7 +97,7 @@ class LiveTradeSHORTFutureServiceEXP1
                         }
                     }
 
-                    $maCondition =  $maCondition && $maCandleDistance <= 50;
+                    $maCondition =  $maCondition && $maCandleDistance <= 10;
 
 
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
@@ -118,11 +114,8 @@ class LiveTradeSHORTFutureServiceEXP1
                         Log::info('FutureTraderShortEXP1: Third Last Close: ' .   $thirdLastCandle['close']);
                         Log::info('FutureTraderShortEXP1: Current Close: ' .   $CurrentCandle['close']);
 
-                        $priceLock = BinanceApiService::getCurrentPrice($symbol, $market) * (1 - $priceLockBuffer / 100);
-                        Log::info('FutureTraderShortEXP1: Price Lock: ' .   $priceLock);
-
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'priceLock' => $priceLock,
+                            'priceLock' => BinanceApiService::getCurrentPrice($symbol, $market) * (1 - $priceLockBuffer / 100),
                         ]);
                     }
                 }
@@ -196,10 +189,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 if ($highestPrice < $latestPrice) {
                     $highestPrice = $latestPrice;
                 } else if ($latestPrice < $highestPrice * 0.9991) {
-
-                    $open_response  = BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
-                    Log::info('FutureTraderShortEXP1: Open Response ', $open_response);
-
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
                     $isLoop = false;
                 }
                 CommonHelpers::delayMS(1000);

@@ -29,9 +29,6 @@ class LiveTradeLONGFutureServiceEXP1
 
     public static function performLiveTrades($market)
     {
-        DB::table('trade_handler')->where('market', $market)->where('position', 'SHORT')->update([
-            'priceLock' => 0,
-        ]);
         $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
         foreach ($tradeHandler as $tradeInstance)
             try {
