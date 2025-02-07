@@ -196,7 +196,10 @@ class LiveTradeSHORTFutureServiceEXP1
                 if ($highestPrice < $latestPrice) {
                     $highestPrice = $latestPrice;
                 } else if ($latestPrice < $highestPrice * 0.9991) {
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
+
+                    $open_response  = BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
+                    Log::info('FutureTraderShortEXP1: Open Response ', $open_response);
+
                     $isLoop = false;
                 }
                 CommonHelpers::delayMS(1000);
