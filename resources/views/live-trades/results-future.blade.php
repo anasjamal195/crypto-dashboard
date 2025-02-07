@@ -14,7 +14,7 @@
 
 @endphp
 @section('content')
-    <div class="container">
+    <div class="">
         <h1 class="text-center mb-4">Trade Statistics Future</h1>
         <table class="table dataTable">
             <thead class="">

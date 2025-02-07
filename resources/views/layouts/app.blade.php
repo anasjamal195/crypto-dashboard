@@ -448,6 +448,7 @@
                         [10, 25, 50, "All"]
                     ],
                     "order": [], // Remove initial order, if necessary
+                    "responsive": true // Enable responsiveness
                 });
 
                 $('.select2').select2({
