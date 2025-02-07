@@ -132,7 +132,7 @@ class LiveTradeSHORTFutureServiceEXP1
     {
         Log::info('FutureTraderShortEXP1: Open order found for ' . $buy_order['symbol']);
 
-        $current_price = 0;
+        $current_price =  BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
         $current_profit = (($current_price - $buy_order['price']) / $buy_order['price']) * 100 * -1;
 
         $newStopLoss = $buy_order['stopLoss'];
@@ -148,7 +148,7 @@ class LiveTradeSHORTFutureServiceEXP1
             $newStopLoss = $current_price;
         }
 
-        if ($current_profit >=  1) {
+        if ($targetProfit >=  1) {
             $current_price = $candleData[count($candleData) - 2]['close'];
         } else {
             $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
