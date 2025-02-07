@@ -80,11 +80,19 @@ class LiveTradeLONGFutureServiceEXP1
 
 
                     $supportResistanceContition = $secondLastCandle['close']  >  $supportResistance[8]['resistance'] &&
-                    $thirdLastCandle['close']  <  $supportResistance[8]['resistance'];
+                        $thirdLastCandle['close']  <  $supportResistance[8]['resistance'];
+                    $maCondition = false;
+                    $maCandleDistance = 0;
+                    // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
+                    for ($i = count($candleData) - 2; $i >= 1; $i--) {
+                        $maCondition =  ($candleData[$i + 1]['ma7'] > $candleData[$i + 1]['ma25']  && $candleData[$i - 1]['ma7'] < $candleData[$i - 1]['ma25']);
+                        if ($maCondition) {
+                            $maCandleDistance = (count($candleData) - 1) - $i;
+                            break;
+                        }
+                    }
 
-                    // CROSSOVER within last two candles (MA7 from Below MA25)
-                    $maCondition =  ($thirdLastCandle['ma7'] > $thirdLastCandle['ma25']  && $fifthLastCandle['ma7'] < $fifthLastCandle['ma25']) ||
-                        ($fourthLastCandle['ma7'] > $fourthLastCandle['ma25']  && $sixthLastCandle['ma7'] < $sixthLastCandle['ma25']);
+                    $maCondition =  $maCondition && $maCandleDistance <= 10;
 
 
                     if ($tradeInstance->priceLock != 0) {
@@ -171,7 +179,7 @@ class LiveTradeLONGFutureServiceEXP1
                 if ($lowestPrice > $latestPrice) {
                     $lowestPrice = $latestPrice;
                 } else if ($latestPrice > $lowestPrice * 1.0009) {
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount,'MA7/MA25 Crossover with Support Resistance Break (LONG)');
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (LONG)');
                     $isLoop = false;
                 }
                 CommonHelpers::delayMS(1000);

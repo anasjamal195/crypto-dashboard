@@ -91,10 +91,19 @@ class LiveTradeSHORTFutureServiceEXP1
                     $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'] &&
                         $thirdLastCandle['close']  >  $supportResistance[8]['support'];
 
-                    // CROSSOVER within last two candles (MA7 from Above MA25)
-                    $maCondition =  ($thirdLastCandle['ma7'] < $thirdLastCandle['ma25']  && $fifthLastCandle['ma7'] > $fifthLastCandle['ma25']) ||
-                        ($fourthLastCandle['ma7'] < $fourthLastCandle['ma25']  && $sixthLastCandle['ma7'] > $sixthLastCandle['ma25']);
+                    $maCondition = false;
+                    $maCandleDistance = 0;
 
+                    // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
+                    for ($i = count($candleData) - 2; $i >= 1; $i--) {
+                        $maCondition =  ($candleData[$i + 1]['ma7'] < $candleData[$i + 1]['ma25']  && $candleData[$i - 1]['ma7'] > $candleData[$i - 1]['ma25']);
+                        if ($maCondition) {
+                            $maCandleDistance = (count($candleData) - 1) - $i;
+                            break;
+                        }
+                    }
+
+                    $maCondition =  $maCondition && $maCandleDistance <= 10;
 
 
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
