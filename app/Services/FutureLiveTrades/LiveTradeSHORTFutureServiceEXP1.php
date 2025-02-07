@@ -56,7 +56,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 Log::info('FutureTraderShortEXP1: Account: ' . $trade_acc);
                 Log::info('FutureTraderShortEXP1: Invested: ' . $buy_coin_price . ' $');
 
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5]);
+                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [8]);
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
 
 
@@ -78,15 +78,15 @@ class LiveTradeSHORTFutureServiceEXP1
                     $sixthLastCandle = $candleData[count($candleData) - 6];
 
 
-                    // $supportResistanceContition =   $supportResistance[5]['support'] >= $supportResistance[10]['support'] &&
+                    // $supportResistanceContition =   $supportResistance[8]['support'] >= $supportResistance[10]['support'] &&
                     //     $supportResistance[10]['support'] >= $supportResistance[15]['support'] &&
-                    //     $secondLastCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
-                    //     $CurrentCandle['close'] <= $supportResistance[5]['support'] * (1 - 0.3 / 100) &&
-                    //     $thirdLastCandle['close'] > $supportResistance[5]['support'] * (1 - 0.3 / 100);
+                    //     $secondLastCandle['close'] <= $supportResistance[8]['support'] * (1 - 0.3 / 100) &&
+                    //     $CurrentCandle['close'] <= $supportResistance[8]['support'] * (1 - 0.3 / 100) &&
+                    //     $thirdLastCandle['close'] > $supportResistance[8]['support'] * (1 - 0.3 / 100);
 
 
-                    $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[5]['support'] &&
-                        $thirdLastCandle['close']  >  $supportResistance[5]['support'];
+                    $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[8]['support'] &&
+                        $thirdLastCandle['close']  >  $supportResistance[8]['support'];
 
                     $maCondition = false;
                     $maCandleDistance = 0;
@@ -111,8 +111,8 @@ class LiveTradeSHORTFutureServiceEXP1
                         self::managePriceLock($tradeInstance);
                     } else if ($supportResistanceContition && $maCondition) {
 
-                        Log::info('FutureTraderShortEXP1: Support: ' . $supportResistance[5]['support']);
-                        Log::info('FutureTraderShortEXP1: Support Limit: ' . $supportResistance[5]['support'] * (1 + 0.3 / 100));
+                        Log::info('FutureTraderShortEXP1: Support: ' . $supportResistance[8]['support']);
+                        Log::info('FutureTraderShortEXP1: Support Limit: ' . $supportResistance[8]['support'] * (1 + 0.3 / 100));
                         Log::info('FutureTraderShortEXP1: Second Last Close: ' .   $secondLastCandle['close']);
                         Log::info('FutureTraderShortEXP1: Third Last Close: ' .   $thirdLastCandle['close']);
                         Log::info('FutureTraderShortEXP1: Current Close: ' .   $CurrentCandle['close']);
@@ -165,8 +165,8 @@ class LiveTradeSHORTFutureServiceEXP1
             'stopLoss' => $newStopLoss,
             'previousPrice' => $current_price,
             'currentPrice' => $current_price,
-            'currentSupport' => $supportResistance[5]['support'],
-            'currentResistance' => $supportResistance[5]['resistance'],
+            'currentSupport' => $supportResistance[8]['support'],
+            'currentResistance' => $supportResistance[8]['resistance'],
             'currentProfit' => $current_profit,
             'targetProfit' => $targetProfit,
         ]);
