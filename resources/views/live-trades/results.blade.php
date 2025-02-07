@@ -44,7 +44,7 @@
             </div>
         </form> --}}
 
-        <table class="table">
+        <table class="table dataTable">
             <thead class="">
                 <tr>
                     <th>Coin</th>
@@ -63,9 +63,7 @@
             <tbody>
                 @foreach ($orders as $order)
                     @php
-                        $order_sell = DB::table('orders')
-                            ->where('orderId', $order->pair_id)
-                            ->first();
+                        $order_sell = DB::table('orders')->where('orderId', $order->pair_id)->first();
 
                         $total_fee_usdt = '-';
                         $fee_percentage = '-';

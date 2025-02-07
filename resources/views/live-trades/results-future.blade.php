@@ -16,7 +16,7 @@
 @section('content')
     <div class="container">
         <h1 class="text-center mb-4">Trade Statistics Future</h1>
-        <table class="table">
+        <table class="table dataTable">
             <thead class="">
                 <tr>
                     <th>Coin</th>

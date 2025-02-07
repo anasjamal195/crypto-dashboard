@@ -11,7 +11,7 @@
 @section('content')
     <div class="container">
         <h1 class="text-center mb-4">Shortlisted Coins for Future Trade</h1>
-        <table class="table">
+        <table class="table dataTable">
             <thead>
                 <tr>
                     <th>Coin</th>
