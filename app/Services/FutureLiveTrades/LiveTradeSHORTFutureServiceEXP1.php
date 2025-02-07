@@ -100,7 +100,7 @@ class LiveTradeSHORTFutureServiceEXP1
                         }
                     }
 
-                    $maCondition =  $maCondition && $maCandleDistance <= 10;
+                    $maCondition =  $maCondition && $maCandleDistance <= 50;
 
 
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
