@@ -50,11 +50,11 @@ class LiveTradeSHORTFutureServiceEXP1
                 $candleData = BinanceApiService::getCandleStickData($symbol, '5m', 300, null, $market);
 
 
-                Log::info('FutureTraderLongEXP1: Current Trade');
-                Log::info('FutureTraderLongEXP1: Coin: ' . $symbol);
-                Log::info('FutureTraderLongEXP1: Interval: ' . $interval);
-                Log::info('FutureTraderLongEXP1: Account: ' . $trade_acc);
-                Log::info('FutureTraderLongEXP1: Invested: ' . $buy_coin_price . ' $');
+                Log::info('FutureTraderShortEXP1: Current Trade');
+                Log::info('FutureTraderShortEXP1: Coin: ' . $symbol);
+                Log::info('FutureTraderShortEXP1: Interval: ' . $interval);
+                Log::info('FutureTraderShortEXP1: Account: ' . $trade_acc);
+                Log::info('FutureTraderShortEXP1: Invested: ' . $buy_coin_price . ' $');
 
                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5]);
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
@@ -104,10 +104,8 @@ class LiveTradeSHORTFutureServiceEXP1
 
 
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
-                    Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
-                    Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
-
-
+                    Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
+                    Log::info('FutureTraderShortEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
                     if ($tradeInstance->priceLock != 0) {
                         self::managePriceLock($tradeInstance);
