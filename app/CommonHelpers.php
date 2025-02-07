@@ -91,6 +91,7 @@ class CommonHelpers
         else
             return  DB::table('live_trades_future_results')
                 ->where('trade_acc', $trade_acc)
+                ->where('currentProfit', '<= ', 1)
                 ->where('trade_status', 'open')
                 ->count();
     }
