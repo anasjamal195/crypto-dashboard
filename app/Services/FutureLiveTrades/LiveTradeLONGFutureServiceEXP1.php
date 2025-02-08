@@ -146,6 +146,8 @@ class LiveTradeLONGFutureServiceEXP1
         }
 
 
+
+
         Log::info('FutureTraderLongEXP1: Current Price: ' . $current_price);
         Log::info('FutureTraderLongEXP1: Buy Order Price: ' . $buy_order['price']);
         Log::info('FutureTraderLongEXP1: Current Profit: ' . $current_profit . '%');
@@ -177,7 +179,7 @@ class LiveTradeLONGFutureServiceEXP1
         ]);
 
         // if ($current_price < $newStopLoss || $current_price < $supportResistance['resistance'] * (1 - 0.005)) {
-        if ($current_price < $newStopLoss) {
+        if ($current_price < $newStopLoss || $current_profit > 2) {
             Log::info('FutureTraderLongEXP1: Current price below stop-loss, executing sell.');
             BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
         }

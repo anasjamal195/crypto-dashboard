@@ -185,7 +185,7 @@ class LiveTradeSHORTFutureServiceEXP1
         ]);
 
         // if ($current_price > $newStopLoss || $current_price > $supportResistance['support'] * (1 + 0.005)) {
-        if ($current_price > $newStopLoss) {
+        if ($current_price > $newStopLoss && $current_profit > 2) {
             Log::info('FutureTraderShortEXP1: Current price below stop-loss, executing sell.');
             BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
         }
