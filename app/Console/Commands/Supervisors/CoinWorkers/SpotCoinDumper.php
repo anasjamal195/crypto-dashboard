@@ -34,6 +34,8 @@ class SpotCoinDumper extends Command
     public function handle()
     {
         MailerService::sendWorkerEmail('spot_coin_dumper');
+        Log::info("Spot Coin Dumper Started" );
+
         while (true) {
             $this->minPercentage = CommonHelpers::getSettingsValue('spot_coin_worker_min_percentage', -5);
             $this->maxPercentage = CommonHelpers::getSettingsValue('spot_coin_worker_max_percentage', 5);

@@ -34,6 +34,8 @@ class FutureCoinDumper extends Command
     public function handle()
     {
         MailerService::sendWorkerEmail('future_coin_dumper');
+        Log::info("Future Coin Dumper Started");
+
         while (true) {
             $this->minPercentage = CommonHelpers::getSettingsValue('future_coin_worker_min_percentage', -5);
             $this->maxPercentage = CommonHelpers::getSettingsValue('future_coin_worker_max_percentage', 5);
@@ -63,7 +65,6 @@ class FutureCoinDumper extends Command
                 Log::error('An error occured: ' . $th);
             }
             CommonHelpers::delayMin(5);
-
         }
     }
 }

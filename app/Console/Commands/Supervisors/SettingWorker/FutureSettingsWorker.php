@@ -33,6 +33,8 @@ class FutureSettingsWorker extends Command
      */
     public function handle()
     {
+        Log::info("Future Trade Handler Started" );
+
         while (true) {
 
             try {

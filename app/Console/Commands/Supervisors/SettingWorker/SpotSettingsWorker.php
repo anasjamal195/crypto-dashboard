@@ -31,6 +31,8 @@ class SpotSettingsWorker extends Command
      */
     public function handle()
     {
+        Log::info("Spot Trade Handler Started" );
+
         while (true) {
             MailerService::sendWorkerEmail('spot_settings_worker');
             try {

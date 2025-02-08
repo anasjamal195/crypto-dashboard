@@ -279,7 +279,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 DB::table('trade_handler')->insert($trade_handler);
             }
 
-            CommonHelpers::delayMS(5000);
+            CommonHelpers::delayS(60);
         }
         // dd($coins);
 

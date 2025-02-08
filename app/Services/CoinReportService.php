@@ -49,7 +49,7 @@ class CoinReportService
                 DB::table('coin_reports')->insert($trades);
                 $tradesTotal[$symbol] = $trades;
 
-                Log::info("Updated coin report for $symbol at interval $interval.");
+                // Log::info("Updated coin report for $symbol at interval $interval.");
             } catch (\Exception $e) {
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
