@@ -160,6 +160,9 @@ class BinanceController extends Controller
             // dd($orders);
             return view('live-trades.results', compact('orders', 'pageSlug'));
         } else if ($market === 'FUTURE') {
+
+
+
             $pageSlug = 'liveTradeResults' . $market;
             $orders = DB::table('live_trades_future_results')->where('trade_acc', auth()->user()->id)
                 ->where('type', 'open');

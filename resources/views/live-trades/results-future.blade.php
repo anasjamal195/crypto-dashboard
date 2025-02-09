@@ -118,7 +118,7 @@
                             <td>{{ $order->stopLoss ?? '-' }}</td> --}}
                             <td
                                 style="color:{{ isset($order->currentProfit) ? ($order->currentProfit > 0 ? 'green' : ($order->currentProfit < 0 ? 'red' : '')) : '' }} !important">
-                                {{ isset($order->currentProfit) ? $order->currentProfit . '%' : '0' }}
+                                {{ isset($order->currentProfit) ? round($order->currentProfit,2) . '%' : '0' }}
                             </td>
                             <td>
                                 <span
