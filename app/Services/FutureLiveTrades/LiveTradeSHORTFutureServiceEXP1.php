@@ -98,7 +98,14 @@ class LiveTradeSHORTFutureServiceEXP1
                     }
 
                     $maCondition =  $maCondition && $maCandleDistance <= 10;
-
+                    if ($maCondition) {
+                        for ($i = count($candleData) - 2; $i >= (count($candleData) - 2) - $maCandleDistance; $i--) {
+                            if ($candleData[$i]['close'] > $candleData[$i]['open'] && $candleData[$i - 1]['close'] > $candleData[$i - 1]['open']) {
+                                $maCondition = false;
+                                break;
+                            }
+                        }
+                    }
 
                     Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
                     Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
