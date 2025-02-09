@@ -94,7 +94,9 @@ body {
   line-height: 1.5;
   color: #525f7f;
   text-align: left;
-  background-color: #1e1e2f;
+  background-image: url('http://127.0.0.1:8000/black/img/login-bg.jpg');
+  background-size: cover;
+  background-position: center;
 }
 
 [tabindex="-1"]:focus {
@@ -17895,4 +17897,7 @@ Copyright (c) 2015 Daniel Eden
   line-height: 32px;
 }
 
+.table-container{
+  overflow-x: auto;
+}
 /*# sourceMappingURL=dashboard-free.css.map */

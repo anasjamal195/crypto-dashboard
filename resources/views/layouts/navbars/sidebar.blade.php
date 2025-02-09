@@ -12,8 +12,8 @@
 <div class="sidebar" data="blue">
     <div class="sidebar-wrapper">
         <div class="logo">
-            <a href="#" class="simple-text logo-mini">{{ __('C') }}</a>
-            <a href="#" class="simple-text logo-normal">{{ __('Crypto Api Store') }}</a>
+            <a href="{{ route('home') }}" class="simple-text logo-mini">{{ __('C') }}</a>
+            <a href="{{ route('home') }}" class="simple-text logo-normal">{{ __('Crypto Api Store') }}</a>
         </div>
         {{-- 1m-CandleSticks Parent Tab --}}
         <ul class="nav">
@@ -155,35 +155,39 @@
                 </a>
                 <div class="collapse {{ request()->is('dynamic-trading*') ? 'show' : '' }}" id="dynamicTradingMenu">
                     <ul class="nav">
-                        <li class="{{ request()->routeIs('dynamic-trading.index') && request()->get('market') == 'SPOT' ? 'active' : '' }}">
-                            <a href="{{ route('dynamic-trading.index',['market' => 'SPOT']) }}">
+                        <li
+                            class="{{ request()->routeIs('dynamic-trading.index') && request()->get('market') == 'SPOT' ? 'active' : '' }}">
+                            <a href="{{ route('dynamic-trading.index', ['market' => 'SPOT']) }}">
                                 <i class="tim-icons icon-settings-gear-63"></i>
                                 <p>{{ __('Spot Trades') }}</p>
                             </a>
                         </li>
-                        <li class="{{ request()->routeIs('dynamic.trades.result') && request()->get('market') == 'SPOT' ? 'active' : '' }}">
-                            <a href="{{ route('dynamic.trades.result',['market' => 'SPOT']) }}">
+                        <li
+                            class="{{ request()->routeIs('dynamic.trades.result') && request()->get('market') == 'SPOT' ? 'active' : '' }}">
+                            <a href="{{ route('dynamic.trades.result', ['market' => 'SPOT']) }}">
                                 <i class="tim-icons icon-bullet-list-67"></i>
                                 <p>{{ __('Spot Results') }}</p>
                             </a>
                         </li>
-                        <li class="{{ request()->routeIs('dynamic-trading.index') && request()->get('market') == 'FUTURE' ? 'active' : '' }}">
-                            <a href="{{ route('dynamic-trading.index',['market' => 'FUTURE']) }}">
+                        <li
+                            class="{{ request()->routeIs('dynamic-trading.index') && request()->get('market') == 'FUTURE' ? 'active' : '' }}">
+                            <a href="{{ route('dynamic-trading.index', ['market' => 'FUTURE']) }}">
                                 <i class="tim-icons icon-settings-gear-63"></i>
                                 <p>{{ __('Future Trades') }}</p>
                             </a>
                         </li>
-                        <li class="{{ request()->routeIs('dynamic.trades.result') && request()->get('market') == 'FUTURE' ? 'active' : '' }}">
-                            <a href="{{ route('dynamic.trades.result',['market' => 'FUTURE']) }}">
+                        <li
+                            class="{{ request()->routeIs('dynamic.trades.result') && request()->get('market') == 'FUTURE' ? 'active' : '' }}">
+                            <a href="{{ route('dynamic.trades.result', ['market' => 'FUTURE']) }}">
                                 <i class="tim-icons icon-bullet-list-67"></i>
                                 <p>{{ __('Future Results') }}</p>
                             </a>
                         </li>
-                       
+
                     </ul>
                 </div>
             </li>
-            
+
             <li class="{{ request()->is('process-handlers*') ? 'active' : '' }}">
                 <a data-toggle="collapse" href="#processHandlersCollapse" aria-expanded="false">
                     <i class="tim-icons icon-settings"></i>

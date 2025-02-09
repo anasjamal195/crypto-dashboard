@@ -8,7 +8,7 @@
                     <span class="navbar-toggler-bar bar3"></span>
                 </button>
             </div>
-            <a class="navbar-brand" href="#">{{ $page ?? __('Dashboard') }}</a>
+            <a class="navbar-brand" href="{{route('home')}}">{{ $page ?? __('Dashboard') }}</a>
         </div>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navigation" aria-expanded="false" aria-label="{{ __('Toggle navigation') }}">
             <span class="navbar-toggler-bar navbar-kebab"></span>
@@ -19,18 +19,18 @@
             <ul class="navbar-nav ml-auto">
                
                 
-                <li class="search-bar input-group">
+                {{-- <li class="search-bar input-group">
                     <button class="btn btn-link" id="search-button" data-toggle="modal" data-target="#searchModal"><i class="tim-icons icon-zoom-split"></i>
                         <span class="d-lg-none d-md-block">{{ __('Search') }}</span>
                     </button>
-                </li>
-                <li class="search-bar input-group">
+                </li> --}}
+                {{-- <li class="search-bar input-group">
                     <button class="btn btn-link" id="log-viewer-button" onclick="window.location.href='/log-viewer'">
                         <i class="tim-icons icon-notes"></i>
                         <span class="d-lg-none d-md-block">{{ __('Logs') }}</span>
                     </button>
-                </li>
-                <li class="dropdown nav-item">
+                </li> --}}
+                {{-- <li class="dropdown nav-item">
                     <a href="#" class="dropdown-toggle nav-link" data-toggle="dropdown">
                         <div class="notification d-none d-lg-block d-xl-block"></div>
                         <i class="tim-icons icon-sound-wave"></i>
@@ -53,7 +53,7 @@
                             <a href="#" class="nav-item dropdown-item">{{ __('Another one') }}</a>
                         </li>
                     </ul>
-                </li>
+                </li> --}}
                 <li class="dropdown nav-item">
                     <a href="#" class="dropdown-toggle nav-link" data-toggle="dropdown">
                         <div class="photo">
@@ -66,9 +66,9 @@
                         <li class="nav-link">
                             <a href="{{ route('profile.edit') }}" class="nav-item dropdown-item">{{ __('Profile') }}</a>
                         </li>
-                        <li class="nav-link">
+                        {{-- <li class="nav-link">
                             <a href="#" class="nav-item dropdown-item">{{ __('Settings') }}</a>
-                        </li>
+                        </li> --}}
                         <li class="dropdown-divider"></li>
                         <li class="nav-link">
                             <a href="{{ route('logout') }}" class="nav-item dropdown-item" onclick="event.preventDefault();  document.getElementById('logout-form').submit();">{{ __('Log out') }}</a>
