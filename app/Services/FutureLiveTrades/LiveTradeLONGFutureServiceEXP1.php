@@ -136,17 +136,19 @@ class LiveTradeLONGFutureServiceEXP1
         Log::info('FutureTraderLongEXP1: Open order found for ' . $buy_order['symbol']);
 
         $current_price =  BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
-        $current_profit = (($current_price - $buy_order['price']) / $buy_order['price']) * 100;
         $newStopLoss = $buy_order['stopLoss'];
         $newStopLossReductionPrecentage = $buy_order['stopLossReductionPrecentage'];
 
 
         if ($targetProfit >=  1) {
             $current_price = $candleData[count($candleData) - 2]['close'];
+            $newStopLossReductionPrecentage = 0;
         } else {
             $current_price = BinanceApiService::getCurrentPrice($buy_order['symbol'], $market);
-            $newStopLossReductionPrecentage = 0;
         }
+
+        $current_profit = (($current_price - $buy_order['price']) / $buy_order['price']) * 100;
+
 
         if ($current_profit >= $targetProfit && $targetProfit == 0.5) {
             $targetProfit = 1;
