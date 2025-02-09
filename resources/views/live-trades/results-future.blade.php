@@ -28,12 +28,12 @@
                         <th>Entry Price</th>
                         <th>Close Price</th>
                         <th>Current Price</th>
-                        <th>Current Support</th>
+                        {{-- <th>Current Support</th>
                         <th>Current Resistance</th>
-                        <th>Stop Loss</th>
+                        <th>Stop Loss</th> --}}
                         <th>Current Profit</th>
-                        <th>Take Profit</th>
                         <th>Status</th>
+                        <th>Take Profit</th>
                         <th>Time</th>
                         <th>Action</th>
 
@@ -63,21 +63,22 @@
                             <td>{{ $order->price ?? '-' }}</td>
                             <td>{{ $orderClose->price ?? '-' }}</td>
                             <td>{{ $order->previousPrice ?? '-' }}</td>
-                            <td>{{ $order->currentSupport ?? '-' }}</td>
+                            {{-- <td>{{ $order->currentSupport ?? '-' }}</td>
                             <td>{{ $order->currentResistance ?? '-' }}</td>
-                            <td>{{ $order->stopLoss ?? '-' }}</td>
+                            <td>{{ $order->stopLoss ?? '-' }}</td> --}}
                             <td
                                 style="color:{{ isset($order->currentProfit) ? ($order->currentProfit > 0 ? 'green' : ($order->currentProfit < 0 ? 'red' : '')) : '' }} !important">
                                 {{ isset($order->currentProfit) ? $order->currentProfit . '%' : '0' }}
                             </td>
-                            <td>{{ $order->targetProfit ? $order->targetProfit . '%' : '-' }}</td>
                             <td>
                                 <span
                                     class="badge {{ $order->trade_status == 'open' ? 'bg-info' : 'bg-secondary text-dark' }}">
                                     {{ ucfirst($order->trade_status ?? '-') }}
                                 </span>
                             </td>
-                            <td>{{ isset($date) ? $date->format('H:i:s , M d, Y') : '-' }}</td>
+                            <td>{{ $order->targetProfit ? $order->targetProfit . '%' : '-' }}</td>
+                            <td>{{ isset($date) ? $date->setTimezone('Asia/Karachi')->format('H:i:s , M d, Y') : '-' }}
+                            </td>
                             <td>
                                 @if (!$orderClose)
                                     <a href="{{ route('live.trades.future.close', $order->orderId ?? 0) }}"
