@@ -28,7 +28,7 @@
             <div class="card text-white bg-success mb-3 col-md-2 mx-3">
                 <div class="card-header">Total Profit</div>
                 <div class="card-body">
-                    <h5 class="card-title">{{ $tradeStatistics['total_profit'] }} %</h5>
+                    <h5 class="card-title">{{ round($tradeStatistics['total_profit'], 2) }} %</h5>
 
                 </div>
             </div>
@@ -36,7 +36,7 @@
             <div class="card text-white bg-danger mb-3 col-md-2 mx-3">
                 <div class="card-header">Total Loss</div>
                 <div class="card-body">
-                    <h5 class="card-title">{{ $tradeStatistics['total_loss'] }} %</h5>
+                    <h5 class="card-title">{{ round($tradeStatistics['total_loss'], 2) }} %</h5>
 
                 </div>
             </div>
@@ -44,7 +44,7 @@
             <div class="card text-white bg-warning mb-3 col-md-2 mx-3">
                 <div class="card-header">Net Total</div>
                 <div class="card-body">
-                    <h5 class="card-title">{{ $tradeStatistics['net_total'] }} %</h5>
+                    <h5 class="card-title">{{ round($tradeStatistics['net_total'], 2) }} %</h5>
 
                 </div>
             </div>

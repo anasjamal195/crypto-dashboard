@@ -17901,3 +17901,12 @@ Copyright (c) 2015 Daniel Eden
   overflow-x: auto;
 }
 /*# sourceMappingURL=dashboard-free.css.map */
+
+.card-header{
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+.card-title{
+  font-weight: bold;
+  font-size: 1.2rem;
+}
