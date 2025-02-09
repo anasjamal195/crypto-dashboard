@@ -16,6 +16,56 @@
 @section('content')
     <div class="container">
         <h1 class="text-center mb-4">Trade Statistics Future</h1>
+        <div class="row ">
+            <!-- RSI Average Card -->
+            <div class="card text-white bg-primary mb-3 col-md-2 mx-3">
+                <div class="card-header">Total Orders</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ $tradeStatistics['total_orders'] }}</h5>
+                </div>
+            </div>
+            <!-- Stoch Average Card -->
+            <div class="card text-white bg-success mb-3 col-md-2 mx-3">
+                <div class="card-header">Total Profit</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ $tradeStatistics['total_profit'] }} %</h5>
+
+                </div>
+            </div>
+            <!-- Highest OBV Card -->
+            <div class="card text-white bg-danger mb-3 col-md-2 mx-3">
+                <div class="card-header">Total Loss</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ $tradeStatistics['total_loss'] }} %</h5>
+
+                </div>
+            </div>
+            <!-- OBV Card -->
+            <div class="card text-white bg-warning mb-3 col-md-2 mx-3">
+                <div class="card-header">Net Total</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ $tradeStatistics['net_total'] }} %</h5>
+
+                </div>
+            </div>
+            <!-- OBV Limit Card -->
+            <div class="card text-white bg-success mb-3 col-md-2 mx-3">
+                <div class="card-header">Total Short</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ $tradeStatistics['total_short'] }} </h5>
+
+                </div>
+            </div>
+            <!-- K Card -->
+            <div class="card text-white bg-danger mb-3 col-md-2 mx-3">
+                <div class="card-header">Total Long</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ $tradeStatistics['total_long'] }} </h5>
+
+                </div>
+            </div>
+
+        </div>
         <div class="table-container">
             <table class="table dataTable">
                 <thead class="">

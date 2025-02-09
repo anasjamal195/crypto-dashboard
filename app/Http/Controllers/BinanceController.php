@@ -144,7 +144,7 @@ class BinanceController extends Controller
     }
     public function liveTradeResults($market, Request $request)
     {
-        
+
         if ($market === 'SPOT') {
             $pageSlug = 'liveTradeResults' . $market;
             $orders = DB::table('orders')->where('market', $market)->where('trade_acc', auth()->user()->id)
@@ -165,8 +165,35 @@ class BinanceController extends Controller
                 ->where('type', 'open');
 
             $orders = $orders->orderBy('created_at', 'desc')->get();
+
+
+            $tradeStatistics = [
+                'total_orders' => 0,
+                'total_short' => 0,
+                'total_long' => 0,
+                'total_profit' => 0,
+                'total_loss' => 0,
+                'net_total' => 0,
+
+            ];
+
+            foreach ($orders as $order) {
+                $tradeStatistics['total_orders'] += 1;
+                $tradeStatistics['net_total'] += $order->currentProfit;
+
+                if ($order->position === 'LONG')
+                    $tradeStatistics['total_long'] += 1;
+                if ($order->position === 'SHORT')
+                    $tradeStatistics['total_short'] += 1;
+
+                if ($order->currentProfit >= 0)
+                    $tradeStatistics['total_profit'] += $order->currentProfit;
+
+                if ($order->currentProfit < 0)
+                    $tradeStatistics['total_loss'] += abs($order->currentProfit);
+            }
             // dd($orders);
-            return view('live-trades.results-future', compact('orders', 'pageSlug'));
+            return view('live-trades.results-future', compact('orders', 'tradeStatistics', 'pageSlug'));
         }
     }
 
@@ -191,7 +218,7 @@ class BinanceController extends Controller
             $pageSlug = 'coins' . $market;
             $coins = DB::table('trade_handler')->where('market', "FUTURE")
                 ->distinct('symbol')
-                
+
                 ->where('tradeAccount', auth()->user()->id)
                 ->get();
 
