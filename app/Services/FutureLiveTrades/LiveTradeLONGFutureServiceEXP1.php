@@ -252,7 +252,7 @@ class LiveTradeLONGFutureServiceEXP1
             // Remove Coins that are not in priority queue
             $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('position', 'LONG')->where('market', $market)->where('interval', $interval)->get();
             foreach ($leftoverEntries as $leftoverCoin) {
-                $open_order = CommonHelpers::checkOpenOrder($leftoverCoin->symbol, $interval, $market, $user_id);
+                $open_order = CommonHelpers::checkOpenOrder($leftoverCoin->symbol, 'LONG', $market, $user_id);
                 if (!$open_order['is_open']) {
                     DB::table('trade_handler')->where('id', $leftoverCoin->id)->delete();
                 }
