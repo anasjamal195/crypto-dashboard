@@ -549,6 +549,10 @@ class BinanceApiService
             $url = config('binance.api.base_url') . config('binance.endpoints.ticker_price');
 
         $ticker = self::getHttpClient()->get($url, $params);
+        if(!isset($ticker['price']) ){
+            Log::error('Failed to fetch price for ' . $symbol . ': ' . json_encode($ticker));
+            
+        }
         return isset($ticker['price']) ? $ticker['price'] : '0';
     }
 
