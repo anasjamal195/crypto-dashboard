@@ -168,15 +168,13 @@ class BinanceApiService
 
         // Handle the API response
         if (!$response->successful()) {
-            $error = $response->json();
-            if ($error['code'] == -1121) {
-                $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('symbol', $symbol)->first();
-                if (!$openSymbols)
-                    DB::table('live_trades_future_results')->where('trade_status', 'open')->delete();
-                else
-                    Log::info('Error Delete Invalid Coin, Order Open for symbol: ' . $symbol);
-            } else
-                throw new \Exception("Failed to fetch data from Binance: {$response->body()}");
+            $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('symbol', $symbol)->first();
+            if (!$openSymbols)
+                DB::table('live_trades_future_results')->where('trade_status', 'open')->delete();
+            else
+                Log::info('Error Delete Invalid Coin, Order Open for symbol: ' . $symbol);
+
+            Log::error('Error Fetching Coin data: ' . $symbol);
         }
 
         return self::processData($response->json(), $market);
