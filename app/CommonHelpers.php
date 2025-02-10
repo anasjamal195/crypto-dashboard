@@ -53,30 +53,30 @@ class CommonHelpers
     public static function getPriorityQueue($interval, $market, $limit)
     {
 
-        $tradeData = DB::table('coin_reports as main')
-            ->select(
-                'main.symbol',
-                DB::raw('COUNT(main.id) as total_entries'),              // Total number of entries per symbol
-                DB::raw('SUM(main.profit) as total_profit'),             // Sum of profit per symbol
-                DB::raw('AVG(main.profit) as average_profit'),           // Average profit per symbol
-                DB::raw('AVG(main.duration) as average_duration'),       // Average duration per symbol
-                DB::raw('SUM(main.duration) as total_duration'),         // Total duration per symbol
-                DB::raw('MAX(main.profit) as max_profit'),               // Maximum profit per symbol
-                DB::raw('MIN(main.profit) as min_profit'),               // Minimum profit per symbol
-                DB::raw('MAX(main.lowestPricePercentage) as max_lowestPrice'),  // Maximum of lowestPrice per symbol
-                DB::raw('MIN(main.lowestPricePercentage) as min_lowestPrice'),   // Minimum of lowestPrice per symbol
-                DB::raw('MAX(main.created_at) as last_updated')          // Last updated time for each symbol
-            )
-            ->where('main.market', $market)
-            ->where('main.interval', $interval)
-            ->groupBy('main.symbol')
-            ->orderBy('total_duration', 'ASC')
-            ->orderBy('average_profit', 'ASC')
-            ->orderBy('max_lowestPrice', 'ASC')
-            ->limit($limit)
-            ->get();
+        // $tradeData = DB::table('coin_reports as main')
+        //     ->select(
+        //         'main.symbol',
+        //         DB::raw('COUNT(main.id) as total_entries'),              // Total number of entries per symbol
+        //         DB::raw('SUM(main.profit) as total_profit'),             // Sum of profit per symbol
+        //         DB::raw('AVG(main.profit) as average_profit'),           // Average profit per symbol
+        //         DB::raw('AVG(main.duration) as average_duration'),       // Average duration per symbol
+        //         DB::raw('SUM(main.duration) as total_duration'),         // Total duration per symbol
+        //         DB::raw('MAX(main.profit) as max_profit'),               // Maximum profit per symbol
+        //         DB::raw('MIN(main.profit) as min_profit'),               // Minimum profit per symbol
+        //         DB::raw('MAX(main.lowestPricePercentage) as max_lowestPrice'),  // Maximum of lowestPrice per symbol
+        //         DB::raw('MIN(main.lowestPricePercentage) as min_lowestPrice'),   // Minimum of lowestPrice per symbol
+        //         DB::raw('MAX(main.created_at) as last_updated')          // Last updated time for each symbol
+        //     )
+        //     ->where('main.market', $market)
+        //     ->where('main.interval', $interval)
+        //     ->groupBy('main.symbol')
+        //     ->orderBy('total_duration', 'ASC')
+        //     ->orderBy('average_profit', 'ASC')
+        //     ->orderBy('max_lowestPrice', 'ASC')
+        //     ->limit($limit)
+        //     ->get();
 
-        // $tradeData = DB::table('coins')->limit($limit)->get();
+        $tradeData = DB::table('coins')->limit($limit)->get();
         return $tradeData;
     }
     public static function getOpenOrderCount($interval, $market, $trade_acc)
