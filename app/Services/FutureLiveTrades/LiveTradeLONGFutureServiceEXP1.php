@@ -33,7 +33,7 @@ class LiveTradeLONGFutureServiceEXP1
         $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
         $tradeHandler = [];
         $delay = 500;
-        if ($openSymbols) {
+        if (count($openSymbols) != 0) {
             $delay = 300;
             $openSymbolsAll = DB::table('live_trades_future_results')->where('trade_status', 'open')->pluck('symbol');
             $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->whereIn('symbol', $openSymbolsAll)->where('isActive', 1)->get();
