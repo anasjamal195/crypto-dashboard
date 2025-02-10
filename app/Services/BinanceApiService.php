@@ -170,7 +170,7 @@ class BinanceApiService
         if (!$response->successful()) {
             $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('symbol', $symbol)->first();
             if (!$openSymbols)
-                DB::table('live_trades_future_results')->where('trade_status', 'open')->delete();
+                DB::table('coins')->where('symbol', $symbol)->delete();
             else
                 Log::info('Error Delete Invalid Coin, Order Open for symbol: ' . $symbol);
 
