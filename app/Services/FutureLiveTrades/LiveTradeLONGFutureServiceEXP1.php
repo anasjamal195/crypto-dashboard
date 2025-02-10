@@ -73,7 +73,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                     $supportResistanceContition = $secondLastCandle['close']  >  $supportResistance[5]['resistance'] &&
                         $thirdLastCandle['close']  <  $supportResistance[5]['resistance'] &&
-                        $CurrentCandle['close'] <= $supportResistance[5]['resistance'] * 1.001;
+                        $CurrentCandle['close'] <= $supportResistance[5]['resistance'] * 1.002;
 
                     $maCondition = false;
                     $maCandleDistance = 0;
