@@ -32,12 +32,15 @@ class LiveTradeLONGFutureServiceEXP1
 
         $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
         $tradeHandler = [];
+        $delay = 500;
         if ($openSymbols) {
+            $delay = 300;
             $openSymbolsAll = DB::table('live_trades_future_results')->where('trade_status', 'open')->pluck('symbol');
             $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->whereIn('symbol', $openSymbolsAll)->where('isActive', 1)->get();
         } else {
             $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
         }
+
         foreach ($tradeHandler as $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
@@ -106,7 +109,7 @@ class LiveTradeLONGFutureServiceEXP1
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (LONG)');
                     }
                 }
-                CommonHelpers::delayMS(1000);
+                CommonHelpers::delayMS($delay);
             } catch (\Exception $e) {
                 Log::error('FutureTraderLongEXP1: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
