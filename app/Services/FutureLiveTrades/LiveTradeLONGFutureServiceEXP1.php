@@ -199,9 +199,9 @@ class LiveTradeLONGFutureServiceEXP1
 
 
         foreach ($coins as $coin) {
-            $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
-            $idealBuying = IdealTradeService::getIdealBuyingCandles($data);
-            $averages = IdealTradeService::getAverages($idealBuying);
+            // $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
+            // $idealBuying = IdealTradeService::getIdealBuyingCandles($data);
+            // $averages = IdealTradeService::getAverages($idealBuying);
 
             // Dumping Trade Handler data
 
@@ -231,9 +231,9 @@ class LiveTradeLONGFutureServiceEXP1
                 'buyPrice' => CommonHelpers::getMetaValue($user_id, 'buy_price' . $meta_prefix, 6),
                 'tradeAccount' => $user_id,
                 'targetProfit' => CommonHelpers::getMetaValue($user_id, 'target_profit' . $meta_prefix, 0.4),
-                'rsiThreshold' => $averages['rsi6'],
-                'obvLimit' => $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100,
-                'stochLimit' =>  $averages['stoch_rsi'] * 2,
+                'rsiThreshold' => 0,
+                'obvLimit' => 0,
+                'stochLimit' => 0,
                 'isActive' => 1
             ];
             $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('market', $market)->where('position', 'LONG')->where('interval', $interval)->where('symbol', $coin)->first();
@@ -267,9 +267,9 @@ class LiveTradeLONGFutureServiceEXP1
                 'buyPrice' => CommonHelpers::getMetaValue($user_id, 'buy_price' . $meta_prefix, 6),
                 'tradeAccount' => $user_id,
                 'targetProfit' => CommonHelpers::getMetaValue($user_id, 'target_profit' . $meta_prefix, 0.4),
-                'rsiThreshold' => $averages['rsi6'],
-                'obvLimit' => $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100,
-                'stochLimit' =>  $averages['stoch_rsi'] * 2,
+                'rsiThreshold' => 0,
+                'obvLimit' => 0,
+                'stochLimit' => 0,
                 'isActive' => 1
             ];
 
