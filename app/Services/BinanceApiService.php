@@ -73,7 +73,7 @@ class BinanceApiService
 
     public static function fetchBinanceUSDTPairs()
     {
-        $url = config('binance.api.base_url') . config('binance.endpoints.exchange_info');
+        $url = config('binance.api.future_base_url') . config('binance.endpoints.exchange_info');
 
         $binanceResponse = self::getHttpClient()->get($url);
         $data = $binanceResponse->json();
