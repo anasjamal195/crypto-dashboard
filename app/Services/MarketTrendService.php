@@ -254,44 +254,42 @@ class MarketTrendService
         $market = 'SPOT',
         $candleSpan = 10,
         $timestamp = null,
-    ){
+    ) {
         try {
             $limit = 100;
-            
+
             $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
             $lastSupport = null;
             $lastResistance = null;
             $supportIndex = 0;
             $resistanceIndex = 0;
-            foreach($data as &$candle){
+            foreach ($data as &$candle) {
                 $candle['marketTrend'] = 'blue';
             }
-            for($i = $limit - 1;$i >= 0;$i--){
-                $resistance = self::calculatePivotHighAtIndex($data,$i,$candleSpan,$candleSpan);
-                $support = self::calculatePivotLowAtIndex($data,$i,$candleSpan,$candleSpan);
-                if ($supportIndex != 0 && $resistanceIndex != 0){
+            for ($i = $limit - 1; $i >= 0; $i--) {
+                $resistance = self::calculatePivotHighAtIndex($data, $i, $candleSpan, $candleSpan);
+                $support = self::calculatePivotLowAtIndex($data, $i, $candleSpan, $candleSpan);
+                if ($supportIndex != 0 && $resistanceIndex != 0) {
                     break;
                 }
-                if($support && $supportIndex == 0){
+                if ($support && $supportIndex == 0) {
                     $supportIndex = $i;
                     $lastSupport = $support;
                 }
-                if($resistance && $resistanceIndex == 0){
+                if ($resistance && $resistanceIndex == 0) {
                     $resistanceIndex = $i;
                     $lastResistance = $resistance;
                 }
-               
             }
 
             // dd($lastSupport,$lastResistance);
-            for($i = min($supportIndex,$resistanceIndex); $i < $limit; $i++){
+            for ($i = min($supportIndex, $resistanceIndex); $i < $limit; $i++) {
                 $data[$i]['support'] = $lastSupport;
                 $data[$i]['resistance'] = $lastResistance;
-                
             }
-            
-    
-           
+
+
+
             return $data;
         } catch (\Throwable $th) {
             Log::error('DataDumper: Error - ' . $th->getMessage());
@@ -307,42 +305,43 @@ class MarketTrendService
         $market = 'SPOT',
         $candleSpan = [10],
         $timestamp = null,
-    ){
+    ) {
         try {
-            $limit = 100;
+            $limit = 300;
             $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
             $supportResistances = [];
-            foreach($candleSpan as $span){
+            foreach ($candleSpan as $span) {
                 $lastSupport = null;
                 $lastResistance = null;
                 $supportIndex = 0;
                 $resistanceIndex = 0;
-                for($i = $limit - 1;$i >= 0;$i--){
-                    $resistance = self::calculatePivotHighAtIndex($data,$i,$span,$span);
-                    $support = self::calculatePivotLowAtIndex($data,$i,$span,$span);
-                    if ($supportIndex != 0 && $resistanceIndex != 0){
+                for ($i = $limit - 1; $i >= 0; $i--) {
+                    $resistance = self::calculatePivotHighAtIndex($data, $i, $span, $span);
+                    $support = self::calculatePivotLowAtIndex($data, $i, $span, $span);
+                    if ($supportIndex != 0 && $resistanceIndex != 0) {
                         break;
                     }
-                    if($support && $supportIndex == 0){
+                    if ($support && $supportIndex == 0) {
                         $supportIndex = $i;
                         $lastSupport = $support;
                     }
-                    if($resistance && $resistanceIndex == 0){
+                    if ($resistance && $resistanceIndex == 0) {
                         $resistanceIndex = $i;
                         $lastResistance = $resistance;
                     }
-                   
                 }
-    
+
                 $supportResistances[$span] = [
-                    'support' => $lastSupport,    
-                    'resistance' => $lastResistance,    
-                    'supportCandle' => $data[$supportIndex],    
-                    'resistanceCandle' => $data[$resistanceIndex],    
+                    'support' => $lastSupport,
+                    'resistance' => $lastResistance,
+                    'supportCandle' => $data[$supportIndex],
+                    'resistanceCandle' => $data[$resistanceIndex],
+
                 ];
             }
+
+            $supportResistances['candleData'] = $data;
             return $supportResistances;
-           
         } catch (\Throwable $th) {
             Log::error('DataDumper: Error - ' . $th->getMessage());
             Log::error($th->getTraceAsString());
@@ -363,40 +362,40 @@ class MarketTrendService
             // Initialize variables to track last support and resistance levels
             $lastSupport = null;
             $lastResistance = null;
-    
+
             // Loop through the candles to calculate support and resistance
             foreach ($data as $index => &$candle) {
                 $close = $candle['close'];
                 $open = $candle['open'];
                 $high = $candle['high'];
                 $low = $candle['low'];
-    
+
                 // Default values for support and resistance
                 $candle['support'] = null;
                 $candle['resistance'] = null;
                 $candle['marketTrend'] = 'blue'; // Default trend
 
-    
+
                 // Check if we have enough data to calculate pivot points
                 if ($index >= $candleSpan && $index + $candleSpan < count($data)) {
                     // Use the pivot functions to calculate pivot high and low
                     $pivotHigh = self::calculatePivotHighAtIndex($data, $index, $candleSpan, $candleSpan);
                     $pivotLow = self::calculatePivotLowAtIndex($data, $index, $candleSpan, $candleSpan);
-    
+
                     // Update support and resistance levels only if valid pivots are found
                     if ($pivotHigh !== null) {
                         $lastResistance = $pivotHigh;
                     }
-                    
+
                     if ($pivotLow !== null) {
                         $lastSupport = $pivotLow;
                     }
                 }
-    
+
                 // Assign the last known support and resistance levels to the current candle
                 $candle['support'] = $lastSupport;
                 $candle['resistance'] = $lastResistance;
-    
+
                 // Detect trend based on breaking of support/resistance
                 if ($lastResistance !== null && $close > $lastResistance) {
                     // Resistance is broken, reset resistance level
@@ -411,7 +410,7 @@ class MarketTrendService
                     $candle['marketTrend'] = 'blue';
                 }
             }
-    
+
             return $data;
         } catch (\Throwable $th) {
             Log::error('DataDumper: Error - ' . $th->getMessage());
