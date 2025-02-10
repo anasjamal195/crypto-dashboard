@@ -54,7 +54,7 @@ class FutureCoinDumper extends Command
         while (true) {
 
 
-            
+
             $this->minPercentage = CommonHelpers::getSettingsValue('future_coin_worker_min_percentage', -5);
             $this->maxPercentage = CommonHelpers::getSettingsValue('future_coin_worker_max_percentage', 5);
             $this->quantity = CommonHelpers::getSettingsValue('future_coin_worker_quantity', 20);
@@ -79,15 +79,15 @@ class FutureCoinDumper extends Command
                     }
                 }
 
-                // // Coin Report Worker
-                // $this->interval = CommonHelpers::getSettingsValue('report_worker_interval_future', '1m');
-                // $this->limit = CommonHelpers::getSettingsValue('report_worker_limit_future', 1000);
-                // CoinReportService::updateCoinReport(
-                //     $this->interval,
-                //     $this->limit,
-                //     $this->market,
+                // Coin Report Worker
+                $this->interval = CommonHelpers::getSettingsValue('report_worker_interval_future', '1m');
+                $this->limit = CommonHelpers::getSettingsValue('report_worker_limit_future', 1000);
+                CoinReportService::updateCoinReport(
+                    $this->interval,
+                    $this->limit,
+                    $this->market,
 
-                // );
+                );
 
 
                 // Setting Workers
