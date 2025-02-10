@@ -120,11 +120,9 @@ class LiveTradeLONGFutureServiceEXP1
     {
 
         Log::info('FutureTraderLongEXP1: Open order found for ' . $buy_order['symbol']);
-        $market = $tradeInstance->market;
         $targetProfit = $tradeInstance->target_profit;
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
-        $previousCandle = $candleData[count($candleData) - 2];
         $stopLoss = $buy_order['stopLoss'];
         $stopLossReductionPrecentage = $buy_order['stopLossReductionPrecentage'];
 
