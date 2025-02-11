@@ -135,7 +135,7 @@ class LiveTradeLONGFutureServiceEXP1
 
             if ($currentCandle['close'] < $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
-            } else if ($currentCandle['close'] > $buy_order['previousPrice'] && $currentProfit > $targetProfit) {
+            } else if ($currentProfit > $targetProfit) {
                 $targetProfit += 0.5;
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'stopLossReductionPrecentage' => $stopLossReductionPrecentage,
