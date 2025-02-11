@@ -131,6 +131,7 @@ class LiveTradeSHORTFutureServiceEXP1
         if ($targetProfit <= 1) {
             // Scenerio 1: If Current profit is less than 1%
             $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
+            Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);
 
             if ($currentCandle['close'] > $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
@@ -152,6 +153,8 @@ class LiveTradeSHORTFutureServiceEXP1
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
             } else if ($isCandleClosing) {
                 $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
+            Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);
+
                 if ($currentCandle['close'] < $buy_order['previousPrice'] && $currentProfit > $targetProfit) {
                     $targetProfit += 0.5;
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
