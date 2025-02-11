@@ -95,7 +95,7 @@ class FutureCoinDumper extends Command
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
-            CommonHelpers::delayMin(15);
+            CommonHelpers::delayMin(1);
         }
     }
 }

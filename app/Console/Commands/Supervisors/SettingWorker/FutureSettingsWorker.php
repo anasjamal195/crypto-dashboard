@@ -33,7 +33,7 @@ class FutureSettingsWorker extends Command
      */
     public function handle()
     {
-        Log::info("Future Trade Handler Started" );
+        Log::info("Future Trade Handler Started");
 
         while (true) {
 
@@ -42,8 +42,8 @@ class FutureSettingsWorker extends Command
                     $interval = CommonHelpers::getMetaValue($user->id, 'live_trade_worker_interval_future', '1m');
                     LiveTradeLONGFutureServiceEXP1::updateTradeHandler($interval, 'FUTURE', $user->id);
                     CommonHelpers::delayMS(500);
-                    LiveTradeSHORTFutureServiceEXP1::updateTradeHandler($interval, 'FUTURE', $user->id);
-                    CommonHelpers::delayMS(500);
+                    // LiveTradeSHORTFutureServiceEXP1::updateTradeHandler($interval, 'FUTURE', $user->id);
+                    // CommonHelpers::delayMS(500);
                 }
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
