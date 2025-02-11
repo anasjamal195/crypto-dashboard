@@ -102,7 +102,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
                     Log::info('FutureTraderShortEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
-                    if ($supportResistanceContition && $maCondition && $isCandleClosing) {
+                    if ($supportResistanceContition && $maCondition ) {
                         Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
 
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
