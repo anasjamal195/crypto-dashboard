@@ -55,7 +55,7 @@ class FutureReportWorker extends Command
                 Log::error($e);
             }
 
-            CommonHelpers::delayMS(500);
+            CommonHelpers::delayMin(1);
         }
     }
 }

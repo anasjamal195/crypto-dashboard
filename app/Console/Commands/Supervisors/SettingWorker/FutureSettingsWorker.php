@@ -47,7 +47,7 @@ class FutureSettingsWorker extends Command
                 }
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
-                CommonHelpers::delayMS(500);
+                CommonHelpers::delayMin(1);
             }
         }
     }
