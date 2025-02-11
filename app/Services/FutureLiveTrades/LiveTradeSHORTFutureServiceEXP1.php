@@ -121,7 +121,7 @@ class LiveTradeSHORTFutureServiceEXP1
     {
         Log::info('FutureTraderShortEXP1: Open order found for ' . $buy_order['symbol']);
         $market = $tradeInstance->market;
-        $targetProfit = $tradeInstance->targetProfit;
+        $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $previousCandle = $candleData[count($candleData) - 2];
@@ -142,16 +142,16 @@ class LiveTradeSHORTFutureServiceEXP1
                     'targetProfit' => $targetProfit,
                 ]);
             } else if ($currentProfit > $targetProfit) {
-                $targetProfit += 0.5;
+
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'stopLossReductionPrecentage' => $stopLossReductionPrecentage,
-                    'stopLoss' =>  $currentCandle['close'] * (1 + 0.003),
+                    'stopLoss' =>  $currentCandle['close'],
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
                     'currentSupport' => $supportResistance[5]['support'],
                     'currentResistance' => $supportResistance[5]['resistance'],
                     'currentProfit' => $currentProfit,
-                    'targetProfit' => $targetProfit,
+                    'targetProfit' => $targetProfit + 0.3,
                 ]);
             } else {
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -175,17 +175,17 @@ class LiveTradeSHORTFutureServiceEXP1
             } else if ($isCandleClosing) {
                 Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);
 
-                if ($currentCandle['close'] < $buy_order['previousPrice'] && $currentProfit > $targetProfit) {
-                    $targetProfit += 0.5;
+                if ( $currentProfit > $targetProfit) {
+
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                         'stopLossReductionPrecentage' => $stopLossReductionPrecentage,
-                        'stopLoss' =>  $currentCandle['close'] * (1 + 0.003),
+                        'stopLoss' =>  $currentCandle['close'],
                         'previousPrice' => $currentCandle['close'],
                         'currentPrice' => $currentCandle['close'],
                         'currentSupport' => $supportResistance[5]['support'],
                         'currentResistance' => $supportResistance[5]['resistance'],
                         'currentProfit' => $currentProfit,
-                        'targetProfit' => $targetProfit,
+                        'targetProfit' => $targetProfit + 0.3,
                     ]);
                 }
             }

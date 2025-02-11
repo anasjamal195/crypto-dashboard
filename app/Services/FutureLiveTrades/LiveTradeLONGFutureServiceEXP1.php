@@ -122,7 +122,7 @@ class LiveTradeLONGFutureServiceEXP1
     {
 
         Log::info('FutureTraderLongEXP1: Open order found for ' . $buy_order['symbol']);
-        $targetProfit = $tradeInstance->targetProfit;
+        $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $stopLoss = $buy_order['stopLoss'];
@@ -135,17 +135,23 @@ class LiveTradeLONGFutureServiceEXP1
 
             if ($currentCandle['close'] < $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+                DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                    'previousPrice' => $currentCandle['close'],
+                    'currentPrice' => $currentCandle['close'],
+                    'currentProfit' => $currentProfit,
+                    'targetProfit' => $targetProfit,
+                ]);
             } else if ($currentProfit > $targetProfit) {
-                $targetProfit += 0.5;
+                
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'stopLossReductionPrecentage' => $stopLossReductionPrecentage,
-                    'stopLoss' =>  $currentCandle['close'] * (1 - 0.003),
+                    'stopLoss' =>  $currentCandle['close'],
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
                     'currentSupport' => $supportResistance[5]['support'],
                     'currentResistance' => $supportResistance[5]['resistance'],
                     'currentProfit' => $currentProfit,
-                    'targetProfit' => $targetProfit,
+                    'targetProfit' => $targetProfit + 0.3,
                 ]);
             } else {
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -163,10 +169,10 @@ class LiveTradeLONGFutureServiceEXP1
                 Log::info('FutureTraderLongEXP1: Current profit ' . $currentProfit);
 
                 if ($currentCandle['close'] > $buy_order['previousPrice'] && $currentProfit > $targetProfit) {
-                    $targetProfit += 0.5;
+                 
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                         'stopLossReductionPrecentage' => $stopLossReductionPrecentage,
-                        'stopLoss' =>  $currentCandle['close'] * (1 - 0.003),
+                        'stopLoss' =>  $currentCandle['close'],
                         'previousPrice' => $currentCandle['close'],
                         'currentPrice' => $currentCandle['close'],
                         'currentSupport' => $supportResistance[5]['support'],
