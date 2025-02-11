@@ -121,7 +121,7 @@ class LiveTradeSHORTFutureServiceEXP1
     {
         Log::info('FutureTraderShortEXP1: Open order found for ' . $buy_order['symbol']);
         $market = $tradeInstance->market;
-        $targetProfit = $tradeInstance->target_profit;
+        $targetProfit = $tradeInstance->targetProfit;
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $previousCandle = $candleData[count($candleData) - 2];
