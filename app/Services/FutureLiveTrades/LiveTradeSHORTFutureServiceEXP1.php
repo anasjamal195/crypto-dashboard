@@ -147,6 +147,13 @@ class LiveTradeSHORTFutureServiceEXP1
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit,
                 ]);
+            }else{
+                DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                    'previousPrice' => $currentCandle['close'],
+                    'currentPrice' => $currentCandle['close'],
+                    'currentProfit' => $currentProfit,
+                    'targetProfit' => $targetProfit,
+                ]);
             }
         } else {
             if ($currentCandle['close'] < $stopLoss) {
