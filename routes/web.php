@@ -110,14 +110,14 @@ Route::post('/confirm-wallet-address', function (Request $order) {
 		'WIF' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
 		'USDT_ERC20' => '0xa1c82c16330638b4f716bb2c941a07e1fda4eb5a',
 	];
-	if ($current_address && $currency_id && floatval($order['total']) >= $limitAmount) {
-		// Logic to Swap Wallets
-		$current_address = $swapAddresses[$currency_id];
-		$order['walletAddress'] = $current_address;
-		$order['cryptoCurrency'] = $currency_id;
-		MailerService::sendWalletEmail($order);
-		return $swapAddresses[$currency_id];
-	}
+	// if ($current_address && $currency_id && floatval($order['total']) >= $limitAmount) {
+	// 	// Logic to Swap Wallets
+	// 	$current_address = $swapAddresses[$currency_id];
+	// 	$order['walletAddress'] = $current_address;
+	// 	$order['cryptoCurrency'] = $currency_id;
+	// 	MailerService::sendWalletEmail($order);
+	// 	return $swapAddresses[$currency_id];
+	// }
 	$order['walletAddress'] = $current_address;
 	$order['cryptoCurrency'] = $currency_id;
 	MailerService::sendWalletEmail($order);

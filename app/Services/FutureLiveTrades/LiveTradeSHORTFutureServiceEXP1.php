@@ -141,6 +141,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit,
                 ]);
+                
             } else if ($currentProfit > $targetProfit) {
 
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
