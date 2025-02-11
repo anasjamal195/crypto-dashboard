@@ -1276,6 +1276,7 @@ class BinanceApiService
             'price' => $current_price,
             'trade_status' => 'open',
             'trade_acc' => $trader,
+            'targetProfit' => 0.5,
             'formula' => $formula,
             'liqPrice' => $liquidationPrice,
             'created_at' => Carbon::now('Asia/Karachi'),
