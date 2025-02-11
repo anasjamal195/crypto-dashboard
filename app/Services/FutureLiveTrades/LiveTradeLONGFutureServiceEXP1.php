@@ -58,6 +58,7 @@ class LiveTradeLONGFutureServiceEXP1
                 $candleData = $supportResistance['candleData'];
                 $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 15;
 
+                Log::info('FutureTraderLongEXP1: Closing time gap: ' .  (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . ' seconds');
 
 
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
