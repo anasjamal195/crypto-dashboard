@@ -50,7 +50,7 @@ class FutureCoinDumper extends Command
 
 
         Log::info("Combined Background Workers Started");
-
+        DB::table('coins')->where('market', 'FUTURE')->delete();
         while (true) {
             $this->minPercentage = CommonHelpers::getSettingsValue('future_coin_worker_min_percentage', -5);
             $this->maxPercentage = CommonHelpers::getSettingsValue('future_coin_worker_max_percentage', 5);

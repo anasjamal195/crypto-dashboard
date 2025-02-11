@@ -6,6 +6,7 @@ use App\CommonHelpers;
 use App\Services\CoinReportService;
 use App\Services\MailerService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class FutureReportWorker extends Command
@@ -36,6 +37,8 @@ class FutureReportWorker extends Command
      */
     public function handle()
     {
+        DB::table('coin_reports')->where('market', 'FUTURE')->delete();
+
         while (true) {
 
             MailerService::sendWorkerEmail('future_report_worker');
