@@ -209,9 +209,9 @@ class LiveTradeLONGFutureServiceEXP1
 
 
         foreach ($coins as $coin) {
-            $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
-            $idealBuying = IdealTradeService::getIdealBuyingCandles($data);
-            $averages = IdealTradeService::getAverages($idealBuying);
+            // $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
+            // $idealBuying = IdealTradeService::getIdealBuyingCandles($data);
+            // $averages = IdealTradeService::getAverages($idealBuying);
 
             // Dumping Trade Handler data
 
