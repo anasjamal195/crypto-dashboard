@@ -63,7 +63,6 @@ class FutureCoinDumper extends Command
                             [
                                 'symbol' => $coin['symbol'],
                                 'market' => 'FUTURE',
-
                             ]
                         );
                     } else {
@@ -88,11 +87,11 @@ class FutureCoinDumper extends Command
 
 
                 // Setting Workers
-                foreach (User::all() as $user) {
-                    $interval = CommonHelpers::getMetaValue($user->id, 'live_trade_worker_interval_future', '1m');
-                    LiveTradeLONGFutureServiceEXP1::updateTradeHandler($interval, 'FUTURE', $user->id);
-                    CommonHelpers::delayMS(500);
-                }
+                // foreach (User::all() as $user) {
+                //     $interval = CommonHelpers::getMetaValue($user->id, 'live_trade_worker_interval_future', '1m');
+                //     LiveTradeLONGFutureServiceEXP1::updateTradeHandler($interval, 'FUTURE', $user->id);
+                //     CommonHelpers::delayMS(500);
+                // }
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
