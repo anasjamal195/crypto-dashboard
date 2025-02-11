@@ -72,8 +72,8 @@ class LiveTradeSHORTFutureServiceEXP1
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
 
-                    $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[5]['support'] &&
-                        $thirdLastCandle['close']  >  $supportResistance[5]['support'];
+                    $supportResistanceContition = $CurrentCandle['close']  <  $supportResistance[5]['support'] &&
+                        $secondLastCandle['close']  >  $supportResistance[5]['support'];
                     // && $CurrentCandle['close'] >= $supportResistance[5]['support'] * (1 - 0.002);
 
                     $maCondition = false;
@@ -135,6 +135,12 @@ class LiveTradeSHORTFutureServiceEXP1
 
             if ($currentCandle['close'] > $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+                DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                    'previousPrice' => $currentCandle['close'],
+                    'currentPrice' => $currentCandle['close'],
+                    'currentProfit' => $currentProfit,
+                    'targetProfit' => $targetProfit,
+                ]);
             } else if ($currentCandle['close'] < $buy_order['previousPrice'] && $currentProfit > $targetProfit) {
                 $targetProfit += 0.5;
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -147,7 +153,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit,
                 ]);
-            }else{
+            } else {
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
@@ -156,11 +162,18 @@ class LiveTradeSHORTFutureServiceEXP1
                 ]);
             }
         } else {
+            $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
+
             if ($currentCandle['close'] < $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+                DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                    'previousPrice' => $currentCandle['close'],
+                    'currentPrice' => $currentCandle['close'],
+                    'currentProfit' => $currentProfit,
+                    'targetProfit' => $targetProfit,
+                ]);
             } else if ($isCandleClosing) {
-                $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
-            Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);
+                Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);
 
                 if ($currentCandle['close'] < $buy_order['previousPrice'] && $currentProfit > $targetProfit) {
                     $targetProfit += 0.5;

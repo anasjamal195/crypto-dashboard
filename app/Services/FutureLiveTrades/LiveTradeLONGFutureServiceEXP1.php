@@ -73,8 +73,8 @@ class LiveTradeLONGFutureServiceEXP1
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
 
-                    $supportResistanceContition = $secondLastCandle['close']  >  $supportResistance[5]['resistance'] &&
-                        $thirdLastCandle['close']  <  $supportResistance[5]['resistance'];
+                    $supportResistanceContition = $CurrentCandle['close']  >  $supportResistance[5]['resistance'] &&
+                        $secondLastCandle['close']  <  $supportResistance[5]['resistance'];
                     // && $CurrentCandle['close'] <= $supportResistance[5]['resistance'] * 1.002;
 
                     $maCondition = false;
@@ -105,7 +105,7 @@ class LiveTradeLONGFutureServiceEXP1
                     Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
                     Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
-                    if ($supportResistanceContition && $maCondition && $isCandleClosing) {
+                    if ($supportResistanceContition && $maCondition) {
                         Log::info('FutureTraderLongEXP1: Conditions Staisfied, opening now : ' . $symbol);
 
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (LONG)');
