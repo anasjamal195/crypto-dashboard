@@ -55,7 +55,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5]);
                 $candleData = $supportResistance['candleData'];
-                $isCandleClosing = $candleData[count($candleData) - 1]['binance_timestamp'] - $candleData[count($candleData) - 2]['binance_timestamp'] <= 15000;
+                $isCandleClosing = $candleData[count($candleData) - 1]['binance_timestamp'] - $candleData[count($candleData) - 2]['binance_timestamp'] <= 30000;
 
 
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
