@@ -55,7 +55,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5]);
                 $candleData = $supportResistance['candleData'];
-                $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 30;
+                $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
                 Log::info('FutureTraderShortEXP1: Closing time gap: ' .  (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . ' seconds');
 
 
@@ -73,8 +73,8 @@ class LiveTradeSHORTFutureServiceEXP1
 
 
                     $supportResistanceContition = $secondLastCandle['close']  <  $supportResistance[5]['support'] &&
-                        $thirdLastCandle['close']  >  $supportResistance[5]['support'] &&
-                        $CurrentCandle['close'] >= $supportResistance[5]['support'] * (1 - 0.002);
+                        $thirdLastCandle['close']  >  $supportResistance[5]['support'];
+                    // && $CurrentCandle['close'] >= $supportResistance[5]['support'] * (1 - 0.002);
 
                     $maCondition = false;
                     $maCandleDistance = 0;
