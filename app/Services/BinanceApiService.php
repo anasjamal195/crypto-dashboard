@@ -182,6 +182,8 @@ class BinanceApiService
             $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($balancerServerSequence[$serverUrlKey + 1], $params);
         } else {
             // Choose the base URL based on the trade type
+            Log::info("Using Master Server: ($usedWeight/1200). Retaining...");
+
             $base_url = $market === 'FUTURE' ?
                 config('binance.api.future_base_url') . config('binance.endpoints.klines') :
                 config('binance.api.base_url') . config('binance.endpoints.klines');
