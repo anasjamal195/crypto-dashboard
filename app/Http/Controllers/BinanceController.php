@@ -143,8 +143,8 @@ class BinanceController extends Controller
         return view('IdealIndicators.index', ['averages' => $averages, 'pageSlug' => 'averageCandlesticks' . $market]);
     }
     public function liveTradeResults($market, Request $request)
-    { 
-        // dd(BinanceApiService::getCandleStickData('BTCUSDT','5m',20,null,'FUTURE'));
+    {
+
         if ($market === 'SPOT') {
             $pageSlug = 'liveTradeResults' . $market;
             $orders = DB::table('orders')->where('market', $market)->where('trade_acc', auth()->user()->id)

@@ -27,19 +27,33 @@ class LiveTradeLONGFutureServiceEXP1
      */
     public function __construct() {}
 
-    public static function performLiveTrades($market)
+    public static function performLiveTrades($market,$account = null)
     {
-
-        $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
-        $tradeHandler = [];
-        $delay = 500;
-        if (count($openSymbols) != 0) {
-            $delay = 300;
-            $openSymbolsAll = DB::table('live_trades_future_results')->where('trade_status', 'open')->pluck('symbol');
-            $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->whereIn('symbol', $openSymbolsAll)->where('isActive', 1)->get();
-        } else {
-            $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
+        // Handling trade account, open orders etc...
+        if($account){
+            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc',$account)->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
+            $tradeHandler = [];
+            $delay = 500;
+            if (count($openSymbols) != 0) {
+                $delay = 300;
+                $openSymbolsAll = DB::table('live_trades_future_results')->where('trade_acc',$account)->where('trade_status', 'open')->pluck('symbol');
+                $tradeHandler = DB::table('trade_handler')->where('tradeAccount',$account)->where('market', $market)->where('position', 'LONG')->whereIn('symbol', $openSymbolsAll)->where('isActive', 1)->get();
+            } else {
+                $tradeHandler = DB::table('trade_handler')->where('tradeAccount',$account)->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
+            }
+        }else{
+            $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
+            $tradeHandler = [];
+            $delay = 500;
+            if (count($openSymbols) != 0) {
+                $delay = 300;
+                $openSymbolsAll = DB::table('live_trades_future_results')->where('trade_status', 'open')->pluck('symbol');
+                $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->whereIn('symbol', $openSymbolsAll)->where('isActive', 1)->get();
+            } else {
+                $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
+            }
         }
+     
 
         foreach ($tradeHandler as $tradeInstance)
             try {
@@ -111,7 +125,7 @@ class LiveTradeLONGFutureServiceEXP1
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (LONG)');
                     }
                 }
-                CommonHelpers::delayMS($delay);
+                CommonHelpers::delayMS(10);
             } catch (\Exception $e) {
                 Log::error('FutureTraderLongEXP1: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
@@ -122,7 +136,7 @@ class LiveTradeLONGFutureServiceEXP1
     {
 
         Log::info('FutureTraderLongEXP1: Open order found for ' . $buy_order['symbol']);
-        $targetProfit = $buy_order['targetProfit']; 
+        $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $stopLoss = $buy_order['stopLoss'];
@@ -142,7 +156,7 @@ class LiveTradeLONGFutureServiceEXP1
                     'targetProfit' => $targetProfit,
                 ]);
             } else if ($currentProfit > $targetProfit) {
-                
+
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'stopLossReductionPrecentage' => $stopLossReductionPrecentage,
                     'stopLoss' =>  $currentCandle['close'],
@@ -169,7 +183,7 @@ class LiveTradeLONGFutureServiceEXP1
                 Log::info('FutureTraderLongEXP1: Current profit ' . $currentProfit);
 
                 if ($currentCandle['close'] > $buy_order['previousPrice'] && $currentProfit > $targetProfit) {
-                 
+
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                         'stopLossReductionPrecentage' => $stopLossReductionPrecentage,
                         'stopLoss' =>  $currentCandle['close'],

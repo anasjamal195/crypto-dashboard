@@ -6,6 +6,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Exception;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -144,41 +145,76 @@ class BinanceApiService
      */
     public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT')
     {
-        usleep(10000); // 10ms Sleep for safety
-        // Choose the base URL based on the trade type
-        $base_url = $market === 'FUTURE' ?
-            config('binance.api.future_base_url') . config('binance.endpoints.klines') :
-            config('binance.api.base_url') . config('binance.endpoints.klines');
+        $cacheKey = "binance_api_weight_klines";
+        $balancerServerSequence = [
+            'http://127.0.0.1:8000/', // Master Server (rocket.cryptoapis.store) 
+            'https://digitalfitnesshub.shop/load_balancer/',
+            // 'https://rx4less.shop/load_balancer/' ,   // Unavailable due to binance.com restrictions on its location
+            'http://127.0.0.1:8000/',
+        ];
+        static $serverUrlKey = 0;
 
-        // Prepare parameters for the HTTP request
+        $response = null; // Initialize a null response
+
+        // Retrieve stored weight usage from cache
+        $usedWeight = Cache::get($cacheKey, 0);
+        $remainingWeight = 1200 - $usedWeight;
+
+        // Prepare parameters
         $params = [
             'symbol' => $symbol,
             'interval' => $interval,
-            'limit' => $limit
+            'limit' => $limit,
+            'startTime' => $timestamp,
         ];
+        // if ($timestamp) {
+        //     $params['startTime'] = $timestamp;
+        // }
 
-        if ($timestamp) {
-            $params['startTime'] = $timestamp;
+        // Check if the remaining weight is too low to make another request to next available server
+        if (intval($remainingWeight) < 100 || true) {
+            Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
+
+            // Increment balancer index and loop if out of bounds
+            $params['balancerServerSequence'] = $balancerServerSequence;
+            $params['nextServer'] = $serverUrlKey + 1;
+            // dd($balancerServerSequence[$serverUrlKey+1]);/
+            $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($balancerServerSequence[$serverUrlKey + 1], $params);
+        } else {
+            // Choose the base URL based on the trade type
+            $base_url = $market === 'FUTURE' ?
+                config('binance.api.future_base_url') . config('binance.endpoints.klines') :
+                config('binance.api.base_url') . config('binance.endpoints.klines');
+
+            // Make the HTTP request
+            $response = Http::withOptions(['verify' => !app()->environment('local')])->get($base_url, $params);
+
+            $headers = $response->getHeaders();
+
+            if (isset($headers["x-mbx-used-weight-1m"][0])) {
+                $usedWeight = (int) $headers["x-mbx-used-weight-1m"][0];
+                Cache::put($cacheKey, $usedWeight, now()->addMinute());
+            }
         }
-
-
-
-        // Make the HTTP request using Laravel's Http facade with SSL verification disabled conditionally
-        $response = Http::withOptions(['verify' => !app()->environment('local')])->get($base_url, $params);
 
         // Handle the API response
         if (!$response->successful()) {
             $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('symbol', $symbol)->first();
-            if (!$openSymbols)
+            if (!$openSymbols) {
                 DB::table('coins')->where('symbol', $symbol)->delete();
-            else
+            } else {
                 Log::info('Error Delete Invalid Coin, Order Open for symbol: ' . $symbol);
-
+            }
             Log::error('Error Fetching Coin data: ' . $symbol);
+            dd($response->json());
         }
+
+        // Update API weight usage in cache
+
 
         return self::processData($response->json(), $market);
     }
+
 
     protected static function processData($data, $market = 'SPOT')
     {
@@ -1594,5 +1630,12 @@ class BinanceApiService
 
 
         return $data;
+    }
+
+
+    public static function getExchangeInfo()
+    {
+        $exchangeInfo = json_decode(file_get_contents(config('binance.api.future_base_url') . config('binance.endpoints.exchange_info')), true);
+        return $exchangeInfo;
     }
 }
