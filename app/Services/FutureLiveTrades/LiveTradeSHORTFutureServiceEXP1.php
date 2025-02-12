@@ -67,7 +67,7 @@ class LiveTradeSHORTFutureServiceEXP1
                 Log::info('FutureTraderShortEXP1: Invested: ' . $buy_coin_price . ' $');
 
 
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5]);
+                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [7]);
                 $candleData = $supportResistance['candleData'];
                 $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
                 Log::info('FutureTraderShortEXP1: Closing time gap: ' .  (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . ' seconds');
@@ -86,9 +86,9 @@ class LiveTradeSHORTFutureServiceEXP1
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
 
-                    $supportResistanceContition = $CurrentCandle['close']  <  $supportResistance[5]['support'] &&
-                        $secondLastCandle['close']  >  $supportResistance[5]['support'];
-                    // && $CurrentCandle['close'] >= $supportResistance[5]['support'] * (1 - 0.002);
+                    $supportResistanceContition = $CurrentCandle['close']  <  $supportResistance[7]['support'] &&
+                        $secondLastCandle['close']  >  $supportResistance[7]['support'];
+                    // && $CurrentCandle['close'] >= $supportResistance[7]['support'] * (1 - 0.002);
 
                     $maCondition = false;
                     $maCandleDistance = 0;
@@ -162,8 +162,8 @@ class LiveTradeSHORTFutureServiceEXP1
                     'stopLoss' =>  $currentCandle['close'],
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
-                    'currentSupport' => $supportResistance[5]['support'],
-                    'currentResistance' => $supportResistance[5]['resistance'],
+                    'currentSupport' => $supportResistance[7]['support'],
+                    'currentResistance' => $supportResistance[7]['resistance'],
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit + 0.3,
                 ]);
@@ -196,8 +196,8 @@ class LiveTradeSHORTFutureServiceEXP1
                         'stopLoss' =>  $currentCandle['close'],
                         'previousPrice' => $currentCandle['close'],
                         'currentPrice' => $currentCandle['close'],
-                        'currentSupport' => $supportResistance[5]['support'],
-                        'currentResistance' => $supportResistance[5]['resistance'],
+                        'currentSupport' => $supportResistance[7]['support'],
+                        'currentResistance' => $supportResistance[7]['resistance'],
                         'currentProfit' => $currentProfit,
                         'targetProfit' => $targetProfit + 0.3,
                     ]);

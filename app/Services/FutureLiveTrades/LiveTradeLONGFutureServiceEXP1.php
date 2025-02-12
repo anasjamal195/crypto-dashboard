@@ -27,21 +27,21 @@ class LiveTradeLONGFutureServiceEXP1
      */
     public function __construct() {}
 
-    public static function performLiveTrades($market,$account = null)
+    public static function performLiveTrades($market, $account = null)
     {
         // Handling trade account, open orders etc...
-        if($account){
-            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc',$account)->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
+        if ($account) {
+            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
             $tradeHandler = [];
             $delay = 500;
             if (count($openSymbols) != 0) {
                 $delay = 300;
-                $openSymbolsAll = DB::table('live_trades_future_results')->where('trade_acc',$account)->where('trade_status', 'open')->pluck('symbol');
-                $tradeHandler = DB::table('trade_handler')->where('tradeAccount',$account)->where('market', $market)->where('position', 'LONG')->whereIn('symbol', $openSymbolsAll)->where('isActive', 1)->get();
+                $openSymbolsAll = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
+                $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->whereIn('symbol', $openSymbolsAll)->where('isActive', 1)->get();
             } else {
-                $tradeHandler = DB::table('trade_handler')->where('tradeAccount',$account)->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
+                $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
             }
-        }else{
+        } else {
             $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
             $tradeHandler = [];
             $delay = 500;
@@ -53,7 +53,7 @@ class LiveTradeLONGFutureServiceEXP1
                 $tradeHandler = DB::table('trade_handler')->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
             }
         }
-     
+
 
         foreach ($tradeHandler as $tradeInstance)
             try {
@@ -68,7 +68,7 @@ class LiveTradeLONGFutureServiceEXP1
                 Log::info('FutureTraderLongEXP1: Account: ' . $trade_acc);
                 Log::info('FutureTraderLongEXP1: Invested: ' . $buy_coin_price . ' $');
 
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [5]);
+                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [7]);
                 $candleData = $supportResistance['candleData'];
                 $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
@@ -87,9 +87,9 @@ class LiveTradeLONGFutureServiceEXP1
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
 
-                    $supportResistanceContition = $CurrentCandle['close']  >  $supportResistance[5]['resistance'] &&
-                        $secondLastCandle['close']  <  $supportResistance[5]['resistance'];
-                    // && $CurrentCandle['close'] <= $supportResistance[5]['resistance'] * 1.002;
+                    $supportResistanceContition = $CurrentCandle['close']  >  $supportResistance[7]['resistance'] &&
+                        $secondLastCandle['close']  <  $supportResistance[7]['resistance'];
+                    // && $CurrentCandle['close'] <= $supportResistance[7]['resistance'] * 1.002;
 
                     $maCondition = false;
                     $maCandleDistance = 0;
@@ -162,8 +162,8 @@ class LiveTradeLONGFutureServiceEXP1
                     'stopLoss' =>  $currentCandle['close'],
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
-                    'currentSupport' => $supportResistance[5]['support'],
-                    'currentResistance' => $supportResistance[5]['resistance'],
+                    'currentSupport' => $supportResistance[7]['support'],
+                    'currentResistance' => $supportResistance[7]['resistance'],
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit + 0.3,
                 ]);
@@ -189,8 +189,8 @@ class LiveTradeLONGFutureServiceEXP1
                         'stopLoss' =>  $currentCandle['close'],
                         'previousPrice' => $currentCandle['close'],
                         'currentPrice' => $currentCandle['close'],
-                        'currentSupport' => $supportResistance[5]['support'],
-                        'currentResistance' => $supportResistance[5]['resistance'],
+                        'currentSupport' => $supportResistance[7]['support'],
+                        'currentResistance' => $supportResistance[7]['resistance'],
                         'currentProfit' => $currentProfit,
                         'targetProfit' => $targetProfit,
                     ]);
