@@ -148,6 +148,7 @@ class BinanceApiService
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
             'http://127.0.0.1:8000/', // Master Server (rocket.cryptoapis.store) 
+            // 'https://egeniuscare.com/load_balancer/',   // Unavailable due to binance.com restrictions on its location
             'https://digitalfitnesshub.shop/load_balancer/',
             // 'https://rx4less.shop/load_balancer/' ,   // Unavailable due to binance.com restrictions on its location
             'http://127.0.0.1:8000/',
@@ -172,7 +173,7 @@ class BinanceApiService
         // }
 
         // Check if the remaining weight is too low to make another request to next available server
-        if (intval($remainingWeight) < 100 || true) {
+        if (intval($remainingWeight) < 100) {
             Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
 
             // Increment balancer index and loop if out of bounds
