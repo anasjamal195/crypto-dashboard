@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 Auth::routes();
 
 
+
 Route::get('/', function () {
 	if (auth()->user())
 		return view('welcome', ['pageSlug' => 'Dashboard']);
