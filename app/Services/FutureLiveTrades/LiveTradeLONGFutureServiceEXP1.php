@@ -125,7 +125,7 @@ class LiveTradeLONGFutureServiceEXP1
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (LONG)');
                     }
                 }
-                CommonHelpers::delayMS(10);
+                CommonHelpers::delayMS(100);
             } catch (\Exception $e) {
                 Log::error('FutureTraderLongEXP1: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
