@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\DynamicFutureTradeNotification;
 use App\Mail\DynamicSpotTradeNotification;
 use App\Mail\OrderMail;
+use App\Mail\SkipEmail;
 use App\Mail\WalletEmail;
 use App\Mail\WorkerEmail;
 use Illuminate\Support\Facades\Mail;
@@ -46,4 +47,12 @@ class MailerService
         foreach (self::$recipients as $recipient)
             Mail::to($recipient)->send(new WalletEmail($order));
     }
+
+
+    public static function sendSkipEmail($details)
+    {
+        foreach (self::$recipients as $recipient)
+            Mail::to($recipient)->send(new SkipEmail($details));
+    }
 }
+

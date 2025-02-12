@@ -16,7 +16,9 @@ use App\CommonHelpers;
 use App\Models\User;
 use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
+use App\Services\MailerService;
 use App\Services\MarketTrendService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -88,7 +90,16 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     $supportResistanceContition = $CurrentCandle['close']  <  $supportResistance[7]['support'] &&
                         $secondLastCandle['close']  >  $supportResistance[7]['support'];
-                    // && $CurrentCandle['close'] >= $supportResistance[7]['support'] * (1 - 0.002);
+
+
+
+                    // Will skip this iteration is below value is false
+                    $proceedCondition = $CurrentCandle['close'] < $CurrentCandle['open'] // Candle Should be in Bearish
+                        && $CurrentCandle['close'] >= $supportResistance[7]['support'] * (1 - 0.003); // Current Price should be above -0.3% of support
+
+
+
+
 
                     $maCondition = false;
                     $maCandleDistance = 0;
@@ -116,10 +127,39 @@ class LiveTradeSHORTFutureServiceEXP1
                     Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
                     Log::info('FutureTraderShortEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
-                    if ($supportResistanceContition && $maCondition) {
+
+
+                    if ($supportResistanceContition && $maCondition && $proceedCondition) {
                         Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
 
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
+                    }
+
+                    if ($supportResistanceContition && $maCondition && !$proceedCondition) {
+                        $data =  [
+                            'orderId' => '',
+                            'symbol' => $symbol,
+                            'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
+                            'amount' => '',
+                            'type' => '',
+                            'position' => $tradeInstance->position,
+                            'qty' => '',
+                            'leverage' => '',
+                            'stopLoss' => '',
+                            'stopLossReductionPrecentage' => 0.1,
+                            'price' => $CurrentCandle['close'],
+                            'trade_status' => 'open',
+                            'trade_acc' => $tradeInstance->tradeAccount,
+                            'targetProfit' => 0.5,
+                            'formula' => '',
+                            'liqPrice' => '',
+                            'subject' => 'Skipped SHORT: Account '. User::find($tradeInstance->tradeAccount)->name,
+                            'created_at' => Carbon::now('Asia/Karachi'),
+                        ];
+
+
+
+                        MailerService::sendSkipEmail($data);
                     }
                 }
                 CommonHelpers::delayMS(100);
