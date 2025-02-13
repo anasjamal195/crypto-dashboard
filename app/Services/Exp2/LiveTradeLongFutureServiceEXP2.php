@@ -180,12 +180,10 @@ class LiveTradeLongFutureServiceEXP2
                     'targetProfit' => $targetProfit,
                 ]);
 
-                if($currentProfit < 0){
+                if ($currentProfit < 0) {
                     Log::info('FutureTraderLongEXP2: Placing new order to recover from loss of previous order: ' . $tradeInstance->symbol);
                     BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'SELL' : 'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support Resistance Fake Break and Order reversal (SHORT)');
-
                 }
-
             } else if ($currentProfit > $targetProfit) {
 
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -341,4 +339,3 @@ class LiveTradeLongFutureServiceEXP2
         return $coins;
     }
 }
-
