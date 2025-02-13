@@ -55,4 +55,3 @@ class MailerService
             Mail::to($recipient)->send(new SkipEmail($details));
     }
 }
-
