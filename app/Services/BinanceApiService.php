@@ -176,6 +176,7 @@ class BinanceApiService
             $params['balancerServerSequence'] = $balancerServerSequence;
             $params['nextServer'] = $serverUrlKey;
             $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($balancerServerSequence[$serverUrlKey], $params);
+            $response->getHeaders();
         } else {
             // Choose the base URL based on the trade type
             Log::info("Using Master Server: ($usedWeight/1200). Retaining...");
@@ -203,7 +204,7 @@ class BinanceApiService
             } else {
                 Log::info('Error Delete Invalid Coin, Order Open for symbol: ' . $symbol);
             }
-            Log::error('Error Fetching Coin data: ' . $symbol);
+            Log::error('Error Fetching Coin data: ' . $symbol . ' ' . json_encode($response->json()));
             // dd($response->json());
         }
 
