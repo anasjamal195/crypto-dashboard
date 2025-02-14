@@ -1380,6 +1380,12 @@ class BinanceApiService
             throw new Exception("Order failed: " . $response['msg']);
         }
 
+        $currentProfit = 0;
+        if ($position === 'BUY') {
+            $currentProfit = (($openOrder->price - $current_price) / $openOrder->price) * 100;
+        } else {
+            $currentProfit = (($current_price - $openOrder->price) / $openOrder->price) * 100;
+        }
         $data =  [
             'orderId' => $response['orderId'],
             'pairId' => $openOrder->pairId,
@@ -1392,7 +1398,7 @@ class BinanceApiService
             'trade_status' => 'close',
             'leverage' => 0,
             'price' => $current_price,
-            'currentProfit' => $openOrder->currentProfit,
+            'currentProfit' => $currentProfit,
             'trade_acc' => $trader,
             'liqPrice' => 0,
             'created_at' => Carbon::now('Asia/Karachi'),
