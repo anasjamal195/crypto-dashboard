@@ -124,7 +124,7 @@ class LiveTradeShortFutureServiceEXP2
                         if ($lastOrderClose) {
                             $lastOrderClose = $lastOrderClose->created_at;
                             $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose);
-                            if ($timeDiff < 20 && $lastOrderClose->currentProfit < 0) {
+                            if ($timeDiff < 20) {
                                 Log::info('FutureTraderShortEXP2: Skipped due to last order close time: ' . $symbol);
                                 continue;
                             }
