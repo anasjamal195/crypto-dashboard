@@ -2,6 +2,8 @@
 
 namespace App;
 
+use App\Services\SupervisorService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class CommonHelpers
@@ -95,6 +97,29 @@ class CommonHelpers
                 ->where('currentProfit', '<= ', 1)
                 ->where('trade_status', 'open')
                 ->count();
+    }
+    public static function checkLosses($symbol, $market, $trade_acc, $formula)
+    {
+        $totalLoss = DB::table('live_trades_future_results')
+            ->where('symbol', $symbol)
+            ->where('trade_acc', $trade_acc)
+            ->where('trade_status', 'close')
+            ->where('created_at', '>=', Carbon::now()->subHours(12)->format('Y-m-d H:i:s'))
+            ->sum('currentProfit', '<=', $formula);
+        $open_orders = DB::table('live_trades_future_results')
+            ->where('symbol', $symbol)
+            ->where('trade_acc', $trade_acc)
+            ->where('trade_status', 'open')
+            ->first();
+        if ($totalLoss >= 2.5 && !$open_orders) {
+            if ($formula === 'RSI Formula') {
+                SupervisorService::stop('acc_2_rsi_short_worker');
+                SupervisorService::stop('acc_2_rsi_short_worker');
+            } else if ($formula === 'VSA Formula') {
+                SupervisorService::stop('acc_2_vsa_short_worker');
+                SupervisorService::stop('acc_2_vsa_short_worker');
+            }
+        }
     }
     public static function checkOpenOrder($symbol, $interval, $market, $trade_acc)
     {

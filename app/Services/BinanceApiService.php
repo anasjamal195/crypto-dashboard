@@ -203,7 +203,7 @@ class BinanceApiService
                 Log::info('Error Delete Invalid Coin, Order Open for symbol: ' . $symbol);
             }
             Log::error('Error Fetching Coin data: ' . $symbol);
-            dd($response->json());
+            // dd($response->json());
         }
 
         // Update API weight usage in cache
@@ -1309,7 +1309,7 @@ class BinanceApiService
             'price' => $current_price,
             'trade_status' => 'open',
             'trade_acc' => $trader,
-            'targetProfit' => 0.5,
+            'targetProfit' => 0.4,
             'formula' => $formula,
             'liqPrice' => $liquidationPrice,
             'created_at' => Carbon::now('Asia/Karachi'),
@@ -1389,6 +1389,7 @@ class BinanceApiService
             'trade_status' => 'close',
             'leverage' => 0,
             'price' => $current_price,
+            'currentProfit' => $openOrder->currentProfit,
             'trade_acc' => $trader,
             'liqPrice' => 0,
             'created_at' => Carbon::now('Asia/Karachi'),
