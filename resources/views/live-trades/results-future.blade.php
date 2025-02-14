@@ -85,10 +85,12 @@
                     <select name="formula" id="formula" class="form-select select2 w-100">
                         <option value="">Select Formula</option>
                         @foreach ($formulas as $item)
-                            <option value="{{ $item->formula }}"
-                                {{ request()->get('formula') == $item->formula ? 'selected' : '' }}>
-                                {{ $item->formula }}
-                            </option>
+                            @if(!is_null($item->formula))
+                                <option value="{{ $item->formula }}"
+                                    {{ request()->get('formula') == $item->formula ? 'selected' : '' }}>
+                                    {{ $item->formula }}
+                                </option>
+                            @endif
                         @endforeach
                     </select>
                 </div>
