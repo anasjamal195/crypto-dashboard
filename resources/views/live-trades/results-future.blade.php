@@ -85,7 +85,7 @@
                     <select name="formula" id="formula" class="form-select select2 w-100">
                         <option value="">Select Formula</option>
                         @foreach ($formulas as $item)
-                            @if(!is_null($item->formula))
+                            @if (!is_null($item->formula))
                                 <option value="{{ $item->formula }}"
                                     {{ request()->get('formula') == $item->formula ? 'selected' : '' }}>
                                     {{ $item->formula }}
@@ -158,8 +158,8 @@
     </form>
 
     <div class="table-container">
-        <table class="table dataTable">
-            <thead class="">
+        <table class="table">
+            <thead>
                 <tr>
                     <th>Coin</th>
                     <th>Amount</th>
@@ -177,7 +177,6 @@
                     <th>Take Profit</th>
                     <th>Time</th>
                     <th>Action</th>
-
                 </tr>
             </thead>
             <tbody>
@@ -192,7 +191,6 @@
                         $orderClose = DB::table('live_trades_future_results')
                             ->where('orderId', $order->pairId)
                             ->first();
-
                     @endphp
 
                     <tr>
@@ -207,26 +205,32 @@
                         {{-- <td>{{ $order->currentSupport ?? '-' }}</td>
                             <td>{{ $order->currentResistance ?? '-' }}</td>
                             <td>{{ $order->stopLoss ?? '-' }}</td> --}}
-                        <td
-                            style="color:{{ isset($order->currentProfit) ? ($order->currentProfit > 0 ? 'green' : ($order->currentProfit < 0 ? 'red' : '')) : '' }} !important">
+                        <td style="color:{{ isset($order->currentProfit) ? ($order->currentProfit > 0 ? 'green' : ($order->currentProfit < 0 ? 'red' : '')) : '' }} !important">
                             {{ isset($order->currentProfit) ? round($order->currentProfit, 2) . '%' : '0' }}
                         </td>
                         <td>
-                            <span
-                                class="badge {{ $order->trade_status == 'open' ? 'bg-info' : 'bg-secondary text-dark' }}">
+                            <span class="badge {{ $order->trade_status == 'open' ? 'bg-info' : 'bg-secondary text-dark' }}">
                                 {{ ucfirst($order->trade_status ?? '-') }}
                             </span>
                         </td>
                         <td>{{ $order->targetProfit ? $order->targetProfit . '%' : '-' }}</td>
-                        <td>{{ isset($date) ? $date->setTimezone('Asia/Karachi')->format('H:i:s , M d, Y') : '-' }}
-                        </td>
+                        <td>{{ $date->setTimezone('Asia/Karachi')->format('H:i:s') }}<br>{{ $date->format('M d, Y') }}</td>
                         <td>
                             @if (!$orderClose)
-                                <a href="{{ route('live.trades.future.close', $order->orderId ?? 0) }}"
-                                    class="btn btn-primary btn-sm" role="button">
+                                <a href="{{ route('live.trades.future.close', $order->orderId ?? 0) }}" class="btn btn-primary btn-sm" role="button">
                                     <i class="fas fa-times"></i>
                                 </a>
                             @endif
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="13" class="text-center py-2">
+                            <span class="fw-bold"></span>{{ $order->formula ?? '-' }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="13" class="text-center py-2">
+                            &nbsp;
                         </td>
                     </tr>
                 @endforeach

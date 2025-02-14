@@ -147,11 +147,10 @@ class BinanceApiService
     {
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
-            'http://127.0.0.1:8000/', // Master Server (rocket.cryptoapis.store) 
-            // 'https://egeniuscare.com/load_balancer/',   // Unavailable due to binance.com restrictions on its location
-            'https://digitalfitnesshub.shop/load_balancer/',
-            // 'https://rx4less.shop/load_balancer/' ,   // Unavailable due to binance.com restrictions on its location
-            'http://127.0.0.1:8000/',
+            'https://digitalfitnesshub.shop/load_balancer/',            // Chain Server I
+            // 'https://pompsplace.cc/load_balancer/',                  // Unavailable due to binance.com restrictions on its location
+            // 'https://egeniuscare.com/load_balancer/',                // Unavailable due to binance.com restrictions on its location
+            // 'https://rx4less.shop/load_balancer/' ,                  // Unavailable due to binance.com restrictions on its location                                 
         ];
         static $serverUrlKey = 0;
 
@@ -168,19 +167,14 @@ class BinanceApiService
             'limit' => $limit,
             'startTime' => $timestamp,
         ];
-        // if ($timestamp) {
-        //     $params['startTime'] = $timestamp;
-        // }
-
         // Check if the remaining weight is too low to make another request to next available server
         if (intval($remainingWeight) < 100) {
             Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
 
             // Increment balancer index and loop if out of bounds
             $params['balancerServerSequence'] = $balancerServerSequence;
-            $params['nextServer'] = $serverUrlKey + 1;
-            // dd($balancerServerSequence[$serverUrlKey+1]);/
-            $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($balancerServerSequence[$serverUrlKey + 1], $params);
+            $params['nextServer'] = $serverUrlKey;
+            $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($balancerServerSequence[$serverUrlKey], $params);
         } else {
             // Choose the base URL based on the trade type
             Log::info("Using Master Server: ($usedWeight/1200). Retaining...");
