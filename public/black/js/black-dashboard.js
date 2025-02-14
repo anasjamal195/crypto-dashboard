@@ -28,9 +28,8 @@ var seq2 = 0,
   durations2 = 500;
 
 /*!
-
  =========================================================
- * Black Dashboard - v1.0.0
+ * Black Dashboard - v1.0.0 (PerfectScrollbar Disabled Version)
  =========================================================
 
  * Product Page: https://www.creative-tim.com/product/black-dashboard
@@ -40,8 +39,7 @@ var seq2 = 0,
 
  =========================================================
 
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
+ * PerfectScrollbar functionality has been disabled in this version.
  */
 var ps = null;
 var isScrolling = false;
@@ -73,7 +71,7 @@ var isScrolling = false;
 
     if ($('.sidebar .sidebar-wrapper').length != 0) {
 
-      var ps1 = new PerfectScrollbar('.sidebar .sidebar-wrapper');
+      // var ps1 = new PerfectScrollbar('.sidebar .sidebar-wrapper');
       $('.table-responsive').each(function () {
         var ps2 = new PerfectScrollbar($(this)[0]);
       });
@@ -81,9 +79,9 @@ var isScrolling = false;
 
 
 
-    $html.addClass('perfect-scrollbar-on');
+    // $html.addClass('perfect-scrollbar-on');
   } else {
-    $html.addClass('perfect-scrollbar-off');
+   
   }
 })();
 

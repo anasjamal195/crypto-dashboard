@@ -94,7 +94,8 @@ body {
   line-height: 1.5;
   color: #525f7f;
   text-align: left;
-  background-image: url('http://127.0.0.1:8000/black/img/login-bg.jpg');
+  /* background-image: url('http://127.0.0.1:8000/black/img/login-bg.jpg'); */
+  background-color: #1E1E24;
   background-size: cover;
   background-position: center;
 }
