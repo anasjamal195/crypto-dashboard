@@ -107,7 +107,7 @@ class LiveTradeService
                         }
                     }
                 }
-                usleep(300000); // 300 ms
+                CommonHelpers::delayMS(100);
             } catch (\Exception $e) {
                 Log::error('AutoTraderSpot: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
