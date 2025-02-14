@@ -16,10 +16,11 @@
 @section('content')
     <div class="container">
         <h1 class="text-center mb-4">Trade Statistics Future</h1>
-        @if(request()->get('start_date') || request()->get('end_date'))
+        @if (request()->get('start_date') || request()->get('end_date'))
             <div class="alert alert-info">
-                @if(request()->get('start_date') && request()->get('end_date'))
-                    Showing results from {{ \Carbon\Carbon::parse(request()->get('start_date'))->format('M d, Y') }} to {{ \Carbon\Carbon::parse(request()->get('end_date'))->format('M d, Y') }}
+                @if (request()->get('start_date') && request()->get('end_date'))
+                    Showing results from {{ \Carbon\Carbon::parse(request()->get('start_date'))->format('M d, Y') }} to
+                    {{ \Carbon\Carbon::parse(request()->get('end_date'))->format('M d, Y') }}
                 @elseif(request()->get('start_date'))
                     Showing results from {{ \Carbon\Carbon::parse(request()->get('start_date'))->format('M d, Y') }} onward
                 @elseif(request()->get('end_date'))
@@ -80,6 +81,30 @@
         <form method="GET" action="{{ route('live.trades.result', 'FUTURE') }}">
             <input type="hidden" name="interval" value="{{ request()->get('interval') }}">
             <div class="row mb-4">
+                <div class="col-md-6">
+                    <select name="formula" id="formula" class="form-select select2 w-100">
+                        <option value="">Select Formula</option>
+                        @foreach ($formulas as $item)
+                            <option value="{{ $item->formula }}"
+                                {{ request()->get('formula') == $item->formula ? 'selected' : '' }}>
+                                {{ $item->formula }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <select name="symbol" id="symbol" class="form-select select2 w-100">
+                        <option value="">Select Symbol</option>
+                        @foreach ($symbols as $symbol)
+                            <option value="{{ $symbol }}"
+                                {{ request()->get('symbol') == $symbol ? 'selected' : '' }}>
+                                {{ $symbol }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-4">
                 <div class="col-md-4">
                     <label for="start_date" class="form-label">Start Date</label>
                     <input type="date" name="start_date" id="start_date" class="form-control"
@@ -90,7 +115,6 @@
                     <input type="date" name="end_date" id="end_date" class="form-control"
                         value="{{ request()->get('end_date') }}">
                 </div>
-
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary">Filter</button>
                 </div>

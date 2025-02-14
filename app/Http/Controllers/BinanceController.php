@@ -168,6 +168,14 @@ class BinanceController extends Controller
                 ->distinct()
                 ->where('trade_acc', auth()->user()->id)
                 ->get();
+
+            $formulas = DB::table('live_trades_future_results')
+                ->select('formula')
+                ->distinct()
+                ->where('trade_acc', auth()->user()->id)
+                ->get();
+
+                
             $orders = DB::table('live_trades_future_results')
                 ->where('trade_acc', auth()->user()->id)
                 ->where('type', 'open');
@@ -216,7 +224,7 @@ class BinanceController extends Controller
                     $tradeStatistics['total_loss'] += abs($order->currentProfit);
             }
             // dd($orders);
-            return view('live-trades.results-future', compact('orders', 'tradeStatistics', 'pageSlug', 'symbols'));
+            return view('live-trades.results-future', compact('orders', 'tradeStatistics', 'pageSlug', 'symbols','formulas'));
         }
     }
 
