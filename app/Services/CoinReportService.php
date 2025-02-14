@@ -53,7 +53,7 @@ class CoinReportService
             } catch (\Exception $e) {
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
-            CommonHelpers::delayS(30);
+            CommonHelpers::delayMS(200);
         }
         return $tradesTotal;
     }
@@ -224,5 +224,4 @@ class CoinReportService
 
         return $trades;
     }
-    
 }
