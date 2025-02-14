@@ -103,25 +103,25 @@
             <!-- Hard coded time range buttons -->
             <div class="row mb-4">
                 <div class="col-md-3">
-                    <a href="{{ route('live.trades.result', 'FUTURE') }}?interval=1m&start_date={{ \Carbon\Carbon::now()->subHour()->format('Y-m-d H:i:s') }}&end_date={{ \Carbon\Carbon::now()->format('Y-m-d H:i:s') }}"
+                    <a href="{{ route('live.trades.result', 'FUTURE') }}?interval=1m&start_date={{ \Carbon\Carbon::now('Asia/Karachi')->subHour()->format('Y-m-d H:i:s') }}&end_date={{ \Carbon\Carbon::now('Asia/Karachi')->format('Y-m-d H:i:s') }}"
                         class="btn btn-primary btn-block">
                         Last 1 Hr
                     </a>
                 </div>
                 <div class="col-md-3">
-                    <a href="{{ route('live.trades.result', 'FUTURE') }}?interval=1m&start_date={{ \Carbon\Carbon::now()->subDay()->format('Y-m-d H:i:s') }}&end_date={{ \Carbon\Carbon::now()->format('Y-m-d H:i:s') }}"
+                    <a href="{{ route('live.trades.result', 'FUTURE') }}?interval=1m&start_date={{ \Carbon\Carbon::now('Asia/Karachi')->subDay()->format('Y-m-d H:i:s') }}&end_date={{ \Carbon\Carbon::now('Asia/Karachi')->format('Y-m-d H:i:s') }}"
                         class="btn btn-success btn-block">
                         Last 24 Hr
                     </a>
                 </div>
                 <div class="col-md-3">
-                    <a href="{{ route('live.trades.result', 'FUTURE') }}?interval=1m&start_date={{ \Carbon\Carbon::now()->subWeek()->format('Y-m-d H:i:s') }}&end_date={{ \Carbon\Carbon::now()->format('Y-m-d H:i:s') }}"
+                    <a href="{{ route('live.trades.result', 'FUTURE') }}?interval=1m&start_date={{ \Carbon\Carbon::now('Asia/Karachi')->subWeek()->format('Y-m-d H:i:s') }}&end_date={{ \Carbon\Carbon::now('Asia/Karachi')->format('Y-m-d H:i:s') }}"
                         class="btn btn-warning btn-block">
                         Last Week
                     </a>
                 </div>
                 <div class="col-md-3">
-                    <a href="{{ route('live.trades.result', 'FUTURE') }}?interval=1m&start_date={{ \Carbon\Carbon::now()->subMonth()->format('Y-m-d H:i:s') }}&end_date={{ \Carbon\Carbon::now()->format('Y-m-d H:i:s') }}"
+                    <a href="{{ route('live.trades.result', 'FUTURE') }}?interval=1m&start_date={{ \Carbon\Carbon::now('Asia/Karachi')->subMonth()->format('Y-m-d H:i:s') }}&end_date={{ \Carbon\Carbon::now('Asia/Karachi')->format('Y-m-d H:i:s') }}"
                         class="btn btn-danger btn-block">
                         Last Month
                     </a>
