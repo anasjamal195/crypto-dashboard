@@ -161,6 +161,7 @@ class BinanceController extends Controller
             return view('live-trades.results', compact('orders', 'pageSlug'));
         } else if ($market === 'FUTURE') {
 
+
             $pageSlug = 'liveTradeResults' . $market;
             $symbols = DB::table('live_trades_future_results')
                 ->select('symbol')
@@ -174,25 +175,25 @@ class BinanceController extends Controller
                 ->where('trade_acc', auth()->user()->id)
                 ->get();
 
-                
+
             $orders = DB::table('live_trades_future_results')
                 ->where('trade_acc', auth()->user()->id)
                 ->where('type', 'open');
-                if ($request->filled('start_date'))
-                    $orders = $orders->where(
-                        'created_at',
-                        '>=',
-                        Carbon::parse($request->start_date)->format('Y-m-d H:i:s')
-                    );
-                if ($request->filled('end_date'))
-                    $orders = $orders->where(
-                        'created_at',
-                        '<=',
-                        Carbon::parse($request->end_date)->format('Y-m-d H:i:s')
-                    );
-                if ($request->filled('symbol')) {
-                    $orders = $orders->where('symbol', $request->symbol);
-                }
+            if ($request->filled('start_date'))
+                $orders = $orders->where(
+                    'created_at',
+                    '>=',
+                    Carbon::parse($request->start_date)->format('Y-m-d H:i:s')
+                );
+            if ($request->filled('end_date'))
+                $orders = $orders->where(
+                    'created_at',
+                    '<=',
+                    Carbon::parse($request->end_date)->format('Y-m-d H:i:s')
+                );
+            if ($request->filled('symbol')) {
+                $orders = $orders->where('symbol', $request->symbol);
+            }
 
             $orders = $orders->orderBy('created_at', 'desc')->get();
 
@@ -223,7 +224,7 @@ class BinanceController extends Controller
                     $tradeStatistics['total_loss'] += abs($order->currentProfit);
             }
             // dd($orders);
-            return view('live-trades.results-future', compact('orders', 'tradeStatistics', 'pageSlug', 'symbols','formulas'));
+            return view('live-trades.results-future', compact('orders', 'tradeStatistics', 'pageSlug', 'symbols', 'formulas'));
         }
     }
 

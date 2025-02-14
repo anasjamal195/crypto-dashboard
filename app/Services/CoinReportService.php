@@ -53,7 +53,7 @@ class CoinReportService
             } catch (\Exception $e) {
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
-            usleep(100000); // 100ms Sleep after each iteration
+            CommonHelpers::delayS(30);
         }
         return $tradesTotal;
     }

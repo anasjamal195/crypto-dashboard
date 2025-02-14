@@ -160,7 +160,7 @@ class LiveTradeLongFutureServiceEXP2
                         MailerService::sendSkipEmail($data);
                     }
                 }
-                CommonHelpers::delayMS(100);
+                CommonHelpers::delayMS(200);
             } catch (\Exception $e) {
                 Log::error('FutureTraderLongEXP2: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
