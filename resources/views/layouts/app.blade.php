@@ -441,20 +441,30 @@
                     }
                 });
 
-                $('.dataTable').DataTable({
-                    "pagingType": "full_numbers",
-                    "lengthMenu": [
-                        [10, 25, 50, -1],
-                        [10, 25, 50, "All"]
-                    ],
-                    "order": [], // Remove initial order, if necessary
-                    "responsive": true // Enable responsiveness
-                });
+               
+
+
 
                 $('.select2').select2({
                     theme: 'bootstrap'
                 });
-
+                $(document).ready(function() {
+                    var table = $('.dataTable').DataTable({
+                        "paging": true,
+                        "ordering": false,
+                        "info": true,
+                        "rowCallback": function(row, data) {
+                            var formula = $(row).data('formula');
+                            $(row).insertAfter(`
+                                <tr class="formula-row">
+                                    <td colspan="13" class="text-center py-2">
+                                        <strong>Formula:</strong> ${formula?formula:'No formula found'}
+                                    </td>
+                                </tr>
+                            `);
+                        }
+                    });
+                });
 
             });
 
