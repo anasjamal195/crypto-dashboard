@@ -33,7 +33,7 @@ class DynamicFutureTradeNotification extends Mailable
      */
     public function build()
     {
-        return $this->subject(ucwords($this->details['type']) . ' ' . $this->details['position'] . ' Txn Alert:: Account ' . User::find($this->details['trade_acc'])->name . 'Profit: ' . $this->details['currentProfit'] . ' ' . $this->details['currentProfit'] >= 0 ? '(Profit)' : '(Loss)' . ' Amount: ' . $this->details['amount'] . '$')
+        return $this->subject(ucwords($this->details['subject']))
             ->view('Emails.new-order-dynamic-future');
     }
     /**
