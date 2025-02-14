@@ -23,7 +23,7 @@ class LiveTradeLongFutureServiceEXP2
     {
         // Handling trade account, open orders etc...
         if ($account) {
-            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
+            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->where('targetProfit', '<', 0.7)->pluck('symbol');
             $tradeHandler = [];
             $delay = 500;
             if (count($openSymbols) != 0) {
@@ -34,7 +34,7 @@ class LiveTradeLongFutureServiceEXP2
                 $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->where('isActive', 1)->get();
             }
         } else {
-            $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
+            $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('targetProfit', '<', 0.7)->pluck('symbol');
             $tradeHandler = [];
             $delay = 500;
             if (count($openSymbols) != 0) {
@@ -117,12 +117,23 @@ class LiveTradeLongFutureServiceEXP2
                     Log::info('FutureTraderLongEXP2: MA MACandleDistance: ' . $maCandleDistance);
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition) {
+
+                        $lastOrderClose = DB::table('live_trades_future_results')->where('position','LONG')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
+                        if($lastOrderClose){
+                            $lastOrderClose = $lastOrderClose->created_at;
+                            $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose);
+                            if($timeDiff < 20){
+                                Log::info('FutureTraderLongEXP2: Skipped due to last order close time: ' . $symbol);
+                                continue;
+                            }
+                        }
                         Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
 
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support Resistance Fake Break and Order reversal (SHORT)');
                     }
 
                     if ($supportResistanceContition && $maCondition && !$proceedCondition) {
+
                         $data =  [
                             'orderId' => '',
                             'symbol' => $symbol,
