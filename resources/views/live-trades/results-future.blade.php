@@ -178,6 +178,7 @@
                     <th>Take Profit</th>
                     <th>Time</th>
                     <th>Action</th>
+                    <th>Formula</th>
 
                 </tr>
             </thead>
@@ -230,8 +231,7 @@
                             @endif
                         </td>
 
-                    </tr>
-                    <tr>
+                   
                         <td colspan="13" class="text-center  py-2">
                             <span class="fw-bold"> </span>{{ $order->formula ?? '-' }}
                         </td>
