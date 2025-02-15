@@ -41,24 +41,21 @@ class FutureReportWorker extends Command
     {
         DB::table('coin_reports')->where('market', 'FUTURE')->delete();
 
-        while (true) {
 
-            DB::table('coin_reports')->where('market', 'FUTURE')->delete();
-            while (true) {
-                try {
-                    ShortReportService::updateCoinReport(
-                        '5m',
-                        1000,
-                        'FUTURE'
-                    );
-                    LongReportService::updateCoinReport(
-                        '5m',
-                        1000,
-                        'FUTURE'
-                    );
-                } catch (\Exception $e) {
-                    Log::error($e);
-                }
+        while (true) {
+            try {
+                ShortReportService::updateCoinReport(
+                    '5m',
+                    1000,
+                    'FUTURE'
+                );
+                LongReportService::updateCoinReport(
+                    '5m',
+                    1000,
+                    'FUTURE'
+                );
+            } catch (\Exception $e) {
+                Log::error($e);
             }
         }
     }
