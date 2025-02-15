@@ -18,8 +18,8 @@
                                 <thead class="text-primary">
                                     <tr>
                                         <th>No</th>
-                                        <th>Symbol</th>
                                         <th>Position</th>
+                                        <th>Symbol</th>
                                         <th>Total Duration (min)</th>
                                         <th>Total Trades</th>
                                         <th>Total Profit (%)</th>
