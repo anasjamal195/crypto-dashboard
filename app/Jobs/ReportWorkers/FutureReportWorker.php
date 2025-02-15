@@ -42,6 +42,7 @@ class FutureReportWorker implements ShouldQueue
      */
     public function handle(): void
     {
+        DB::table('coin_reports')->where('market', 'FUTURE')->delete();
         while (true) {
             try {
                 ShortReportService::updateCoinReport(
