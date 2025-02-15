@@ -21,7 +21,7 @@ class BinanceController extends Controller
         $tradeData = DB::table('coin_reports')
             ->select(
                 'symbol',
-                'position',
+                DB::raw('ANY_VALUE(position) as position'),
                 DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
                 DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
                 DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
@@ -31,7 +31,7 @@ class BinanceController extends Controller
                 DB::raw('MIN(profit) as min_profit'),                          // Minimum profit per symbol
                 DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),                // Maximum of lowestPrice per symbol
                 DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),                 // Minimum of lowestPrice per symbol
-                DB::raw('MAX(created_at) as last_updated'),                 // Minimum of lowestPrice per symbol
+                DB::raw('MAX(created_at) as last_updated')                 // Last updated timestamp
             )
             ->where('market', $market)
             ->where('interval', $interval)
