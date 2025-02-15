@@ -5,6 +5,8 @@ namespace App\Console\Commands\Supervisors\ReportWorkers;
 use App\CommonHelpers;
 use App\Services\CoinReportService;
 use App\Services\MailerService;
+use App\Services\ReportService\LongReportService;
+use App\Services\ReportService\ShortReportService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -41,24 +43,23 @@ class FutureReportWorker extends Command
 
         while (true) {
 
-            MailerService::sendWorkerEmail('future_report_worker');
-
-            $this->market = 'FUTURE';
-            $this->interval = CommonHelpers::getSettingsValue('report_worker_interval_future', '1m');
-            $this->limit = CommonHelpers::getSettingsValue('report_worker_limit_future', 1000);
-
-            try {
-                CoinReportService::updateCoinReport(
-                    $this->interval,
-                    $this->limit,
-                    $this->market,
-
-                );
-            } catch (\Exception $e) {
-                Log::error($e);
+            DB::table('coin_reports')->where('market', 'FUTURE')->delete();
+            while (true) {
+                try {
+                    ShortReportService::updateCoinReport(
+                        '5m',
+                        1000,
+                        'FUTURE'
+                    );
+                    LongReportService::updateCoinReport(
+                        '5m',
+                        1000,
+                        'FUTURE'
+                    );
+                } catch (\Exception $e) {
+                    Log::error($e);
+                }
             }
-
-            CommonHelpers::delayMin(1);
         }
     }
 }
