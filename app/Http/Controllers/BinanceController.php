@@ -21,6 +21,7 @@ class BinanceController extends Controller
         $tradeData = DB::table('coin_reports')
             ->select(
                 'symbol',
+                'position',
                 DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
                 DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
                 DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
