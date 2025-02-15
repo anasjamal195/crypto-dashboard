@@ -71,6 +71,7 @@ class CommonHelpers
             )
             ->where('main.market', $market)
             ->where('main.interval', $interval)
+            ->where('position', 'LONG')
             ->groupBy('main.symbol')
             ->orderBy('total_duration', 'ASC')
             ->orderBy('average_profit', 'ASC')
@@ -165,5 +166,19 @@ class CommonHelpers
     public static function delayMin($m)
     {
         usleep($m * 60 * 1000 * 1000);
+    }
+
+    public static function prettyEcho(...$data)
+    {
+        echo "<pre>";
+        foreach ($data as $item) {
+            if (is_array($item) || is_object($item)) {
+                print_r($item);
+            } else {
+                echo $item;
+            }
+            echo "\n";
+        }
+        echo "</pre>";
     }
 }

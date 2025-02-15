@@ -117,8 +117,6 @@ class LiveTradeShortFutureServiceEXP2
                     Log::info('FutureTraderShortEXP2: MA Condition: ' . $maCondition);
                     Log::info('FutureTraderShortEXP2: MA MACandleDistance: ' . $maCandleDistance);
 
-
-
                     if ($supportResistanceContition && $maCondition && $proceedCondition) {
                         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
                         if ($lastOrderClose) {
@@ -156,8 +154,6 @@ class LiveTradeShortFutureServiceEXP2
                             'created_at' => Carbon::now('Asia/Karachi'),
                         ];
 
-
-
                         MailerService::sendSkipEmail($data);
                     }
                 }
@@ -194,10 +190,10 @@ class LiveTradeShortFutureServiceEXP2
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit,
                 ]);
-                if ($currentProfit < 0) {
-                    Log::info('FutureTraderShortEXP2: Placing new order to recover from loss of previous order: ' . $tradeInstance->symbol);
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'SELL' : 'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support Resistance Fake Break and Order reversal (SHORT)');
-                }
+                // if ($currentProfit < 0) {
+                //     Log::info('FutureTraderShortEXP2: Placing new order to recover from loss of previous order: ' . $tradeInstance->symbol);
+                //     BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'SELL' : 'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support Resistance Fake Break and Order reversal (SHORT)');
+                // }
             } else if ($currentProfit > $targetProfit) {
 
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Services\BinanceApiService;
+use App\Services\IdealTradeService;
 use App\Services\MarketTrendService;
+use App\Services\ReportService\LongReportService;
 use Carbon\Carbon;
 use DateTime;
 use Illuminate\Http\Request;

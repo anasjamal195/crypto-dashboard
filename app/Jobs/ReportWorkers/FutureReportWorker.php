@@ -4,6 +4,8 @@ namespace App\Jobs\ReportWorkers;
 
 use App\CommonHelpers;
 use App\Services\CoinReportService;
+use App\Services\ReportService\LongReportService;
+use App\Services\ReportService\ShortReportService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -34,7 +36,6 @@ class FutureReportWorker implements ShouldQueue
         $this->market = 'FUTURE';
         $this->interval = CommonHelpers::getSettingsValue('report_worker_interval_future', '1m');
         $this->limit = CommonHelpers::getSettingsValue('report_worker_limit_future', 1000);
-      
     }
     /**
      * Execute the job.
@@ -43,10 +44,15 @@ class FutureReportWorker implements ShouldQueue
     {
         while (true) {
             try {
-                CoinReportService::updateCoinReport(
-                    $this->interval,
-                    $this->limit,
-                    $this->market
+                ShortReportService::updateCoinReport(
+                    '5m',
+                    1000,
+                    'FUTURE'
+                );
+                LongReportService::updateCoinReport(
+                    '5m',
+                    1000,
+                    'FUTURE'
                 );
             } catch (\Exception $e) {
                 Log::error($e);

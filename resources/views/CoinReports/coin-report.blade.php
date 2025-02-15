@@ -19,6 +19,7 @@
                                     <tr>
                                         <th>No</th>
                                         <th>Symbol</th>
+                                        <th>Position</th>
                                         <th>Total Duration (min)</th>
                                         <th>Total Trades</th>
                                         <th>Total Profit (%)</th>
@@ -42,6 +43,7 @@
                                                 in_array($interval, $liquidatedIntervals) &&
                                                 in_array($market, $liquidatedMarkets)) class="bg-danger" @endif>
                                             <td>{{ $index + 1 }}</td>
+                                            <td>{{ $trade->position }}</td>
                                             <td>{{ $trade->symbol }}</td>
                                             <td>{{ $trade->total_duration }}</td>
                                             <td>{{ $trade->total_entries }}</td>

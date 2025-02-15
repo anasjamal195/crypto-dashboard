@@ -4,6 +4,7 @@
 
 namespace App\Services;
 
+use App\CommonHelpers;
 use DateTime;
 use Carbon\Carbon;
 
@@ -12,6 +13,7 @@ use DateTimeZone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use PhpParser\PrettyPrinter;
 
 class IdealTradeService
 {
@@ -92,6 +94,96 @@ class IdealTradeService
 
 
 
+        return $requiredCandles;
+    }
+
+    public static function getIdealOpeningCandlesLong($data)
+    {
+
+        $requiredCandles = [];
+        $priceLock = $data[0]['open'];
+        $priceLockIndex = 0;
+        $skipIndex = 0;
+
+        foreach ($data as $index => &$candle) {
+
+            if ($index < $skipIndex + 10 || $index < 20) {
+                continue;
+            } else {
+                $skipIndex == 0;
+            }
+
+            if ($priceLock > $candle['open']) {
+                // Above condition Check for lowest price
+                $priceLock = $candle['open'];
+                $priceLockIndex = $index;
+               
+            } else if ($index < $priceLockIndex + 10) {
+                if ($candle['open'] > $priceLock * (1 + 0.5 / 100)) {
+                    $previousObvHigh = 0;   
+
+                    $obvIndex = $priceLockIndex - 15;
+                    if ($obvIndex < 0)
+                        $obvIndex = 0;
+                    for ($i = $obvIndex; $i <= $priceLockIndex; $i++) {
+
+                        if ($data[$priceLockIndex]['obv'] > $previousObvHigh) {
+                            $previousObvHigh = $data[$i]['obv'];
+                        }
+                    }
+                    $candle['previousObvHigh'] = $previousObvHigh;
+                    $requiredCandles[] = $data[$priceLockIndex];
+                    $skipIndex = $index;
+                }
+            } else if ($index >= $priceLockIndex + 30) {
+                $priceLock = $candle['open'];
+            }
+        }
+        return $requiredCandles;
+    }
+
+    public static function getIdealOpeningCandlesShort($data)
+    {
+
+        $requiredCandles = [];
+        $priceLock = $data[0]['open'];
+        $priceLockIndex = 0;
+        $skipIndex = 0;
+
+        foreach ($data as $index => &$candle) {
+
+            if ($index < $skipIndex + 10 || $index < 20) {
+                continue;
+            } else {
+                $skipIndex == 0;
+            }
+
+            if ($priceLock < $candle['open']) {
+                // Above condition Check for lowest price
+                $priceLock = $candle['open'];
+                $priceLockIndex = $index;
+                
+            } else if ($index < $priceLockIndex + 10) {
+                if ($candle['open'] < $priceLock * (1 - 0.5 / 100)) {
+                    $previousObvHigh = 0;   
+
+                    $obvIndex = $priceLockIndex - 15;
+                    if ($obvIndex < 0)
+                        $obvIndex = 0;
+                    for ($i = $obvIndex; $i <= $priceLockIndex; $i++) {
+
+                        if ($data[$priceLockIndex]['obv'] > $previousObvHigh) {
+                            $previousObvHigh = $data[$i]['obv'];
+                        }
+                    }
+                    $candle['previousObvHigh'] = $previousObvHigh;
+                    $requiredCandles[] = $data[$priceLockIndex];
+                    $skipIndex = $index;
+                }
+            } else if ($index >= $priceLockIndex + 30) {
+                $priceLock = $candle['open'];
+            }
+        }
         return $requiredCandles;
     }
     public static function getMedian($values)
