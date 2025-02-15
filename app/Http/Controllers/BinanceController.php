@@ -21,7 +21,7 @@ class BinanceController extends Controller
         $tradeData = DB::table('coin_reports')
             ->select(
                 'symbol',
-                DB::raw('ANY_VALUE(position) as position'),
+                'position',
                 DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
                 DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
                 DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
@@ -36,6 +36,7 @@ class BinanceController extends Controller
             ->where('market', $market)
             ->where('interval', $interval)
             ->groupBy('symbol')
+            ->groupBy('position')
             ->orderBy('total_entries', 'DESC')
             ->orderBy('last_updated', 'DESC')
             ->get();
