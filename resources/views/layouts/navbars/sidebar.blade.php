@@ -15,12 +15,12 @@
             <a href="{{ route('home') }}" class="simple-text logo-mini">{{ __('C') }}</a>
             <a href="{{ route('home') }}" class="simple-text logo-normal">{{ __('Crypto Api Store') }}</a>
         </div>
-        {{-- 1m-CandleSticks Parent Tab --}}
+        {{-- 5m-CandleSticks Parent Tab --}}
         <ul class="nav">
-            <li class="{{ request()->is('1m-candlesticks/*') ? 'active' : '' }}">
+            <li class="{{ request()->is('5m-candlesticks/*') ? 'active' : '' }}">
                 <a data-toggle="collapse" href="#candlesticksMenu" aria-expanded="true">
                     <i class="tim-icons icon-bank"></i>
-                    <p>{{ __('1m-CandleSticks') }}
+                    <p>{{ __('5m-CandleSticks') }}
                         <b class="caret"></b>
                     </p>
                 </a>
@@ -38,19 +38,19 @@
                             <div class="collapse" id="spotMenu">
                                 <ul class="nav">
                                     <li @if ($pageSlug == 'CoinReportSPOT') class="active" @endif>
-                                        <a href="{{ route('coinReport', 'SPOT') . '?interval=1m' }}">
+                                        <a href="{{ route('coinReport', 'SPOT') . '?interval=5m' }}">
                                             <i class="tim-icons icon-coins"></i>
                                             <p>{{ __('Coin Reports') }}</p>
                                         </a>
                                     </li>
                                     <li @if ($pageSlug == 'MarketTrendsSPOT') class="active" @endif>
-                                        <a href="{{ route('marketTrends', 'SPOT') . '?interval=1m' }}">
+                                        <a href="{{ route('marketTrends', 'SPOT') . '?interval=5m' }}">
                                             <i class="tim-icons icon-chart-bar-32"></i>
                                             <p>{{ __('Market Trends') }}</p>
                                         </a>
                                     </li>
                                     {{-- <li @if ($pageSlug == 'averageCandlesticksSPOT') class="active" @endif>
-                                        <a href="{{ route('candle.averages', 'SPOT') . '?interval=1m' }}">
+                                        <a href="{{ route('candle.averages', 'SPOT') . '?interval=5m' }}">
                                             <i class="tim-icons icon-bell-55"></i>
                                             <p>{{ __('Ideal Indicators') }}</p>
                                         </a>
@@ -58,7 +58,7 @@
 
 
                                     <li @if ($pageSlug == 'liveTradeResultsSPOT') class="active" @endif>
-                                        <a href="{{ route('live.trades.result', 'SPOT') . '?interval=1m' }}">
+                                        <a href="{{ route('live.trades.result', 'SPOT') . '?interval=5m' }}">
                                             <i class="tim-icons icon-bell-55"></i>
                                             <p>{{ __('Live Trades') }}</p>
                                         </a>
@@ -79,32 +79,32 @@
                             <div class="collapse" id="futureMenu">
                                 <ul class="nav">
                                     <li @if ($pageSlug == 'CoinReportFUTURE') class="active" @endif>
-                                        <a href="{{ route('coinReport', 'FUTURE') . '?interval=1m' }}">
+                                        <a href="{{ route('coinReport', 'FUTURE') . '?interval=5m' }}">
                                             <i class="tim-icons icon-coins"></i>
                                             <p>{{ __('Coin Reports') }}</p>
                                         </a>
                                     </li>
                                     <li @if ($pageSlug == 'MarketTrendsFUTURE') class="active" @endif>
-                                        <a href="{{ route('marketTrends', 'FUTURE') . '?interval=1m' }}">
+                                        <a href="{{ route('marketTrends', 'FUTURE') . '?interval=5m' }}">
                                             <i class="tim-icons icon-chart-bar-32"></i>
                                             <p>{{ __('Market Trends') }}</p>
                                         </a>
                                     </li>
                                     {{-- <li @if ($pageSlug == 'averageCandlesticksFUTURE') class="active" @endif>
-                                        <a href="{{ route('candle.averages', 'FUTURE') . '?interval=1m' }}">
+                                        <a href="{{ route('candle.averages', 'FUTURE') . '?interval=5m' }}">
                                             <i class="tim-icons icon-bell-55"></i>
                                             <p>{{ __('Ideal Indicators') }}</p>
                                         </a>
                                     </li> --}}
 
                                     <li @if ($pageSlug == 'liveTradeResultsFUTURE') class="active" @endif>
-                                        <a href="{{ route('live.trades.result', 'FUTURE') . '?interval=1m' }}">
+                                        <a href="{{ route('live.trades.result', 'FUTURE') . '?interval=5m' }}">
                                             <i class="tim-icons icon-bell-55"></i>
                                             <p>{{ __('Live Trades') }}</p>
                                         </a>
                                     </li>
                                     <li @if ($pageSlug == 'coinsFUTURE') class="active" @endif>
-                                        <a href="{{ route('live.trades.coins', 'FUTURE') . '?interval=1m' }}">
+                                        <a href="{{ route('live.trades.coins', 'FUTURE') . '?interval=5m' }}">
                                             <i class="tim-icons icon-bell-55"></i>
                                             <p>{{ __('Coins') }}</p>
                                         </a>
