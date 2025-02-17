@@ -11,14 +11,14 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class FutureReportWorker extends Command
+class FutureReportWorkerStochFormula extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'app:future-report-worker';
+    protected $signature = 'app:future-report-worker-stock-formula';
     public $interval;
     public $limit;
     public $rsiThreshold;
@@ -39,16 +39,16 @@ class FutureReportWorker extends Command
      */
     public function handle()
     {
-        DB::table('coin_reports')->where('market', 'FUTURE')->delete();
+        DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', 'StochRsi')->truncate();
 
 
         while (true) {
             try {
-                ShortReportService::updateCoinReport(
-                    '5m',
-                    1000,
-                    'FUTURE'
-                );
+                // ShortReportService::updateCoinReport(
+                //     '5m',
+                //     1000,
+                //     'FUTURE'
+                // );
                 LongReportService::updateCoinReport(
                     '5m',
                     1000,

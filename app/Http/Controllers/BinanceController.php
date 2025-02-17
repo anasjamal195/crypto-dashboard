@@ -16,6 +16,9 @@ class BinanceController extends Controller
 {
     public function getCoinReport($market, Request $request)
     {
+
+
+       
         // Fetch all unique symbols from the database
         $interval = $request->interval;
         $tradeData = DB::table('coin_reports')
@@ -58,6 +61,7 @@ class BinanceController extends Controller
     }
     public function getCoinReportDetails($market, Request $request)
     {
+
         // Get the symbol from the request
         $symbol = $request->query('symbol');
         $interval = $request->query('interval');

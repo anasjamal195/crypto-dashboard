@@ -348,6 +348,53 @@ class MarketTrendService
             throw $th;
         }
     }
+
+    // For internal trader use only
+    public static function getCurrentSupportResistanceValueFromData(
+        $data,
+        $candleSpan = [10],
+
+    ) {
+        try {
+            $limit = count($data);
+            $supportResistances = [];
+            foreach ($candleSpan as $span) {
+                $lastSupport = null;
+                $lastResistance = null;
+                $supportIndex = 0;
+                $resistanceIndex = 0;
+                for ($i = $limit - 1; $i >= 0; $i--) {
+                    $resistance = self::calculatePivotHighAtIndex($data, $i, $span, $span);
+                    $support = self::calculatePivotLowAtIndex($data, $i, $span, $span);
+                    if ($supportIndex != 0 && $resistanceIndex != 0) {
+                        break;
+                    }
+                    if ($support && $supportIndex == 0) {
+                        $supportIndex = $i;
+                        $lastSupport = $support;
+                    }
+                    if ($resistance && $resistanceIndex == 0) {
+                        $resistanceIndex = $i;
+                        $lastResistance = $resistance;
+                    }
+                }
+
+                $supportResistances[$span] = [
+                    'support' => $lastSupport,
+                    'resistance' => $lastResistance,
+                    'supportCandle' => $data[$supportIndex],
+                    'resistanceCandle' => $data[$resistanceIndex],
+
+                ];
+            }
+
+            return $supportResistances;
+        } catch (\Throwable $th) {
+            Log::error('DataDumper: Error - ' . $th->getMessage());
+            Log::error($th->getTraceAsString());
+            throw $th;
+        }
+    }
     public static function getSymbolHistoricalTrendsSet3(
         $symbol = 'BTCUSDT',
         $interval = '1m',

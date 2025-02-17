@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\ReportService;
+namespace App\Services\ReportServiceStochFormula;
 
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
@@ -10,8 +10,9 @@ use DateTime;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class ShortReportService
+class LongReportService
 {
+    public static $priceLock = 0;
     /**
      * Updates the coin report data by fetching the latest from the Binance API.
      * 
@@ -38,11 +39,12 @@ class ShortReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.5;
+            $targetProfit = 0.4;
 
             try {
                 $symbol = $coin->symbol;
                 $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
+
 
                 $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
 
@@ -55,7 +57,7 @@ class ShortReportService
             } catch (\Exception $e) {
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
-            CommonHelpers::delayMS(200);
+            CommonHelpers::delayMS(10);
         }
         return $tradesTotal;
     }
@@ -96,7 +98,7 @@ class ShortReportService
     {
         $buy_price = 0;
         $buy_triggers = [];
-        $priceLock = $data[0]['close'];
+        $priceLock = $data[0]['open'];
         $priceLockIndex = 0;
         $skipIndex = 0;
         $counter = 0;
@@ -124,67 +126,89 @@ class ShortReportService
             if ($index < 1000) {
                 continue;
             }
-
-
-
             $obvCandles = 15;
-            $idealBuying = IdealTradeService::getIdealOpeningCandlesShort(array_slice($data, $index - 1000, 1000));
+            $idealBuying = IdealTradeService::getIdealOpeningCandlesLong(array_slice($data, $index - 1000, 1000));
             // dd($symbol,$index,$idealBuying);
             if (empty($idealBuying))
                 continue;
             $averages = IdealTradeService::getAverages($idealBuying);
 
+            $supportResistanceData = array_slice($data, $index - 300, 300);
+
+            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [7]);
+
 
             $rsiThreshold = $averages['rsi6'];
-            $stochDLimit = $averages['stoch_rsi'] * 2;
-            $obvLimit = $averages['previousObvHigh'] ? abs((($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100) : 100;
+            $stochDLimit = $averages['stoch_rsi'] * 4;
+            $obvLimit = $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100;
             if ($buy_price == 0) {
-                if ($candle['rsi6'] > $rsiThreshold && ($candle['ma7'] > $candle['ma25'] && $candle['ma25'] > $candle['ma99'])) {
+                if ($candle['rsi6'] < $rsiThreshold && ($candle['ma7'] < $candle['ma25'] && $candle['ma25'] < $candle['ma99'])) {
 
                     if ($index > $obvCandles) {
-                        $previousLowObv = $candle['obv'];
+                        $previousHighObv = $candle['obv'];
                         for ($i = $index - $obvCandles; $i <= $index; $i++) {
-                            if ($data[$i]['obv'] < $previousLowObv) {
-                                $previousLowObv = $data[$i]['obv'];
+                            if ($data[$i]['obv'] > $previousHighObv) {
+                                $previousHighObv = $data[$i]['obv'];
                             }
                         }
 
 
-                        $stochCondition =   ($candle['stoch_d'] >=  $stochDLimit);
-                        $obvCondition = ($candle['obv'] >= ($previousLowObv * (1 + $obvLimit / 100)));
+                        $stochCondition =   ($candle['stoch_d'] <=  $stochDLimit);
+                        $obvCondition = ($candle['obv'] <= ($previousHighObv * (1 - $obvLimit / 100)));
 
 
+                        // Additional Conditions
+                        $currentCandle = $data[$index];
+                        $secondLastCandle = $data[$index - 1];
+                        $thirdLastCandle = $data[$index - 2];
 
-                        if ($obvCondition && $stochCondition) {
-                            $candle['should_buy'] = true;
-                            $candle['previousObvHigh'] = $previousLowObv;
-                            $candle['previousObvHighReduced'] = $previousLowObv * (1 + $obvLimit / 100);
-                            $buy_price = $candle['close'];
-                            $buy_triggers[] = $candle;
-                            $currentTrade['buyingCandle'] = json_encode($candle);
-                            $currentTrade['buyingAverages'] = json_encode($averages);
-                            $lowestPrice = $buy_price;
+
+                        // $supportResistanceBand = $currentCandle['close'] >= ($supportResistance[7]['support'] * (1 - 0 / 100)) && $currentCandle['close'] <= ($supportResistance[7]['support'] * (1 + 0.3 / 100));
+                        $supportResistanceBand =  $currentCandle['close'] >= ($supportResistance[7]['support'] * (1 + 0.3 / 100));
+                        $candleTrend = $currentCandle['close'] > $currentCandle['open'] && $secondLastCandle['close'] < $secondLastCandle['open'];
+                        $priceThreshold = abs($secondLastCandle['close'] - $secondLastCandle['open']);
+                        $finalThresholdCondition = $currentCandle['close'] > ($secondLastCandle['low'] + ($priceThreshold * 0.4));
+
+
+                        if ($priceLock) {
+                            if ($finalThresholdCondition && $candleTrend) {
+                                $priceLock = 0;
+                                $candle['should_buy'] = true;
+                                $candle['previousObvHigh'] = $previousHighObv;
+                                $candle['previousObvHighReduced'] = $previousHighObv * (1 - $obvLimit / 100);
+                                $buy_price = $candle['open'];
+                                $buy_triggers[] = $candle;
+                                $currentTrade['buyingCandle'] = json_encode($candle);
+                                $currentTrade['buyingAverages'] = json_encode($averages);
+                                $lowestPrice = $buy_price;
+                                continue;
+                            }
+                        }
+
+                        if ($stochCondition && $obvCondition  && $supportResistanceBand) {
+                            $priceLock = $candle['close'];
                         }
                     }
                 }
             } else {
-                if ($lowestPrice < $candle['low'])
+                if ($lowestPrice > $candle['low'])
                     $lowestPrice = $candle['low'];
-                if ($candle['low'] <= $buy_price * (1 - $targetProfit / 100)) {
-                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, 2, 'short');
+                if ($candle['open'] >= $buy_price * (1 + $targetProfit / 100)) {
+                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, 2, 'long');
                     $candle['should_sell'] = true;
                     $buy_triggers[] = $candle;
                     $currentTrade['sellingCandle'] = json_encode($candle);
                     $currentTrade['buyingPrice'] = $buy_price;
                     $currentTrade['market'] = $market;
-                    $currentTrade['sellingPrice'] = $candle['high'];
+                    $currentTrade['sellingPrice'] = $candle['open'];
                     $currentTrade['symbol'] = $symbol;
                     $currentTrade['interval'] = $interval;
-                    $currentTrade['profit'] = abs(round(($candle['low'] - $buy_price) / $buy_price * 100, 2));
+                    $currentTrade['profit'] = round(($candle['open'] - $buy_price) / $buy_price * 100, 2);
                     $currentTrade['lowestPrice'] = $lowestPrice;
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
-                    $currentTrade['lowestPricePercentage'] = abs((($buy_price - $lowestPrice) / $buy_price) * 100);
-                    $currentTrade['position'] = 'SHORT';
+                    $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
+                    $currentTrade['position'] = 'LONG';
+                    $currentTrade['formula'] = 'StochRsi';
                     $lowestPrice = 0;
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
