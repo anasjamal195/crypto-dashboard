@@ -61,11 +61,13 @@ class BinanceController extends Controller
         // Get the symbol from the request
         $symbol = $request->query('symbol');
         $interval = $request->query('interval');
+        $position = $request->query('position');
 
         // Fetch the trades for the given symbol
         $trades = DB::table('coin_reports')
             ->where('symbol', $symbol)
             ->where('market', $market)
+            ->where('position', $position)
             ->where('interval', $interval)
             ->orderBy('id', 'ASC')
             ->get()

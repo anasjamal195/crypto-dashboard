@@ -57,7 +57,7 @@
                                             <td>{{ \Carbon\Carbon::parse($trade->last_updated)->timezone('Asia/Karachi')->format('h:i A') }}
                                             </td>
                                             <td>
-                                                <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'interval' => '5m']) }}"
+                                                <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol,'position' => $trade->position, 'interval' => '5m']) }}"
                                                     class="btn btn-info btn-sm">
                                                     <i class="fa fa-eye"></i>
                                                 </a>
