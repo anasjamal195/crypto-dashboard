@@ -18,7 +18,7 @@ class BinanceController extends Controller
     {
 
 
-       
+
         // Fetch all unique symbols from the database
         $interval = $request->interval;
         $tradeData = DB::table('coin_reports')
@@ -48,16 +48,20 @@ class BinanceController extends Controller
         $liquidatedCoins = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market')
             ->distinct()
-            ->whereRaw('liquidationPrice >= lowestPrice')  // Using whereRaw for correct column comparison
+            ->whereRaw('liquidationPrice >= lowestPrice')
             ->get();
 
-
+        $stopLosses = DB::table('coin_reports')
+            ->select('symbol', 'interval', 'market')
+            ->distinct()
+            ->whereRaw('lowestPricePercentage > 1')
+            ->count();
         // Extracting unique symbols, intervals, and markets
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
 
-        return view('CoinReports.coin-report', compact('tradeData', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', compact('tradeData','stopLosses', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {

@@ -66,11 +66,41 @@
                                 </tbody>
                             </table>
                             <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill "><strong>Grand Total:</strong></div>
+                                <div class="flex-fill "><strong>Total Profit:</strong></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill ">{{ $totalTrades }}</div>
                                 <div class="flex-fill ">{{ $totalProfit }} %</div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                            </div>
+                            <div class="d-flex flex-row text-center text-white">
+                                <div class="flex-fill "><strong>Total Stop Losses:</strong></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill ">{{ $stopLosses }} %</div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                            </div>
+                            <div class="d-flex flex-row text-center text-white">
+                                <div class="flex-fill "><strong>Grand Total:</strong></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill ">{{ $totalTrades }}</div>
+                                <div class="flex-fill ">{{ $totalProfit - $stopLosses }} %</div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>

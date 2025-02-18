@@ -38,7 +38,7 @@ class ShortReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.5;
+            $targetProfit = 0.4;
 
             try {
                 $symbol = $coin->symbol;
@@ -55,7 +55,7 @@ class ShortReportService
             } catch (\Exception $e) {
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
-            CommonHelpers::delayMS(200);
+            CommonHelpers::delayMS(10);
         }
         return $tradesTotal;
     }
@@ -133,43 +133,57 @@ class ShortReportService
             if (empty($idealBuying))
                 continue;
             $averages = IdealTradeService::getAverages($idealBuying);
+            $supportResistanceData = array_slice($data, $index - 300, 300);
+
+            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [15]);
 
 
-            $rsiThreshold = $averages['rsi6'];
-            $stochDLimit = $averages['stoch_rsi'] * 2;
             $obvLimit = $averages['previousObvHigh'] ? abs((($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100) : 100;
             if ($buy_price == 0) {
-                if ($candle['rsi6'] > $rsiThreshold && ($candle['ma7'] > $candle['ma25'] && $candle['ma25'] > $candle['ma99'])) {
 
-                    if ($index > $obvCandles) {
-                        $previousLowObv = $candle['obv'];
-                        for ($i = $index - $obvCandles; $i <= $index; $i++) {
-                            if ($data[$i]['obv'] < $previousLowObv) {
-                                $previousLowObv = $data[$i]['obv'];
-                            }
-                        }
+                $breakoutCondition = $candle['close'] < $supportResistance[15]['support'] && $candle['open'] > $supportResistance[15]['support'];
 
-
-                        $stochCondition =   ($candle['stoch_d'] >=  $stochDLimit);
-                        $obvCondition = ($candle['obv'] >= ($previousLowObv * (1 + $obvLimit / 100)));
-
-
-
-                        if ($obvCondition && $stochCondition) {
-                            $candle['should_buy'] = true;
-                            $candle['previousObvHigh'] = $previousLowObv;
-                            $candle['previousObvHighReduced'] = $previousLowObv * (1 + $obvLimit / 100);
-                            $buy_price = $candle['close'];
-                            $buy_triggers[] = $candle;
-                            $currentTrade['buyingCandle'] = json_encode($candle);
-                            $currentTrade['buyingAverages'] = json_encode($averages);
-                            $lowestPrice = $buy_price;
-                        }
+                $averageTrailingVolume = 0;
+                $volumeCandlesCount = 0;
+                $indexCounter = $index;
+                $loopVolume = true;
+                while ($loopVolume) {
+                    if ($data[$indexCounter]['close'] < $data[$indexCounter]['open']) {
+                        $averageTrailingVolume += $data[$indexCounter]['volume'];
+                        $volumeCandlesCount++;
+                        $indexCounter--;
+                    } else {
+                        $loopVolume = false;
                     }
                 }
+
+                $averageTrailingVolume = $averageTrailingVolume && $volumeCandlesCount ? $averageTrailingVolume / $volumeCandlesCount :  0;
+                $volumeMultiplier = 2;
+                $volumeCondition = $candle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
+
+
+                if ($breakoutCondition && $volumeCondition) {
+
+                    $supportResistanceDataSecond = array_slice($data, $index - 300 - $supportResistance[15]['supportDistance'], 300);
+                    $secondSupportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceDataSecond, [15]);
+
+
+                    if ($candle['close'] < $secondSupportResistance[15]['support']) {
+
+                        $candle['should_buy'] = true;
+                        $candle['previousObvHigh'] = 0;
+                        $candle['previousObvHighReduced'] = 0 * (1 - $obvLimit / 100);
+                        $buy_price = $candle['close'];
+                        $buy_triggers[] = $candle;
+                        $currentTrade['buyingCandle'] = json_encode($candle);
+                        $currentTrade['buyingAverages'] = json_encode($averages);
+                        $lowestPrice = $buy_price;
+                    }
+                    continue;
+                }
             } else {
-                if ($lowestPrice < $candle['low'])
-                    $lowestPrice = $candle['low'];
+                if ($lowestPrice < $candle['high'])
+                    $lowestPrice = $candle['high'];
                 if ($candle['low'] <= $buy_price * (1 - $targetProfit / 100)) {
                     $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, 2, 'short');
                     $candle['should_sell'] = true;
@@ -177,7 +191,7 @@ class ShortReportService
                     $currentTrade['sellingCandle'] = json_encode($candle);
                     $currentTrade['buyingPrice'] = $buy_price;
                     $currentTrade['market'] = $market;
-                    $currentTrade['sellingPrice'] = $candle['high'];
+                    $currentTrade['sellingPrice'] = $candle['low'];
                     $currentTrade['symbol'] = $symbol;
                     $currentTrade['interval'] = $interval;
                     $currentTrade['profit'] = abs(round(($candle['low'] - $buy_price) / $buy_price * 100, 2));

@@ -153,9 +153,16 @@
                                                     $candle['binance_timestamp'] > $buyCandle['binance_timestamp'] &&
                                                     $candle['binance_timestamp'] <= $sellCandle['binance_timestamp']
                                                 ) {
-                                                    if ($lowestPrice > $candle['close']) {
-                                                        $lowestPrice = $candle['close'];
-                                                        $lowestIndex = $index;
+                                                    if ($trade->position == 'LONG') {
+                                                        if ($lowestPrice > $candle['low']) {
+                                                            $lowestPrice = $candle['low'];
+                                                            $lowestIndex = $index;
+                                                        }
+                                                    } elseif ($trade->position == 'SHORT') {
+                                                        if ($lowestPrice < $candle['high']) {
+                                                            $lowestPrice = $candle['high'];
+                                                            $lowestIndex = $index;
+                                                        }
                                                     }
                                                 }
                                             }
