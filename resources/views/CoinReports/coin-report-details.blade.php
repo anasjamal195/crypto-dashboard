@@ -271,7 +271,7 @@
                                                                     }
                                                                 @endphp
                                                                 <li>Percentage Diff:
-                                                                    {{ round($percentageDecrease, 2) }}
+                                                                    {{-- {{ round($percentageDecrease, 2) }} --}}
                                                                 </li>
 
 

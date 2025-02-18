@@ -381,6 +381,8 @@ class MarketTrendService
 
                 $supportResistances[$span] = [
                     'support' => $lastSupport,
+                    'supportDistance' => (count($data) - 1) - $supportIndex,
+                    'resistanceDistance' => (count($data) - 1) - $resistanceIndex,
                     'resistance' => $lastResistance,
                     'supportCandle' => $data[$supportIndex],
                     'resistanceCandle' => $data[$resistanceIndex],

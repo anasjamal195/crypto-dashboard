@@ -39,9 +39,7 @@
                                             $totalProfit += number_format($trade->total_profit, 2);
                                             $totalTrades += $trade->total_entries;
                                         @endphp
-                                        <tr @if (in_array($trade->symbol, $liquidatedSymbols) &&
-                                                in_array($interval, $liquidatedIntervals) &&
-                                                in_array($market, $liquidatedMarkets)) class="" @endif>
+                                        <tr @if ($trade->max_lowestPrice > 1) class="bg-danger" @endif>
                                             <td>{{ $index + 1 }}</td>
                                             <td>{{ $trade->position }}</td>
                                             <td>{{ $trade->symbol }}</td>
@@ -57,7 +55,7 @@
                                             <td>{{ \Carbon\Carbon::parse($trade->last_updated)->timezone('Asia/Karachi')->format('h:i A') }}
                                             </td>
                                             <td>
-                                                <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol,'position' => $trade->position, 'interval' => '5m']) }}"
+                                                <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'interval' => '5m']) }}"
                                                     class="btn btn-info btn-sm">
                                                     <i class="fa fa-eye"></i>
                                                 </a>
