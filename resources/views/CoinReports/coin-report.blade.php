@@ -12,6 +12,26 @@
                         <h4 class="card-title ">Internal Trades Report (Recent 1000 Candles)</h4>
                         <p class="card-category"> Here is a list of the latest trades across all coins</p>
                     </div>
+                    <form method="GET" action="{{ url()->current() }}" class="p-3">
+                        <input type="hidden" name="interval" value="{{ request()->get('interval') }}">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="position">Filter by Position</label>
+                                    <select name="position" id="position" class="form-control select2">
+                                        <option value="">All Positions</option>
+                                        <option value="LONG" {{ request('position') == 'LONG' ? 'selected' : '' }}>LONG
+                                        </option>
+                                        <option value="SHORT" {{ request('position') == 'SHORT' ? 'selected' : '' }}>SHORT
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2 align-self-end">
+                                <button type="submit" class="btn btn-primary">Apply</button>
+                            </div>
+                        </div>
+                    </form>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table">

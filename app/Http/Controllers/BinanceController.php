@@ -21,41 +21,57 @@ class BinanceController extends Controller
 
         // Fetch all unique symbols from the database
         $interval = $request->interval;
-        $tradeData = DB::table('coin_reports')
+        $query = DB::table('coin_reports')
             ->select(
-                'symbol',
-                'position',
-                DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
-                DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
-                DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
-                DB::raw('AVG(duration) as average_duration'),                  // Average duration per symbol
-                DB::raw('SUM(duration) as total_duration'),                    // Total duration per symbol
-                DB::raw('MAX(profit) as max_profit'),                          // Maximum profit per symbol
-                DB::raw('MIN(profit) as min_profit'),                          // Minimum profit per symbol
-                DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),                // Maximum of lowestPrice per symbol
-                DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),                 // Minimum of lowestPrice per symbol
-                DB::raw('MAX(created_at) as last_updated')                 // Last updated timestamp
+            'symbol',
+            'position',
+            DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
+            DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
+            DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
+            DB::raw('AVG(duration) as average_duration'),                  // Average duration per symbol
+            DB::raw('SUM(duration) as total_duration'),                    // Total duration per symbol
+            DB::raw('MAX(profit) as max_profit'),                          // Maximum profit per symbol
+            DB::raw('MIN(profit) as min_profit'),                          // Minimum profit per symbol
+            DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),       // Maximum of lowestPrice per symbol
+            DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),       // Minimum of lowestPrice per symbol
+            DB::raw('MAX(created_at) as last_updated')                     // Last updated timestamp
             )
             ->where('market', $market)
-            ->where('interval', $interval)
-            ->groupBy('symbol')
-            ->groupBy('position')
+            ->where('interval', $interval);
+
+        // Request based filter for position in tradeData query
+        if ($request->filled('position')) {
+            $query->where('position', $request->position);
+        }
+
+        $tradeData = $query->groupBy('symbol', 'position')
             ->orderBy('total_entries', 'DESC')
             ->orderBy('last_updated', 'DESC')
             ->get();
+
         $pageSlug = 'CoinReport' . $market;
 
-        $liquidatedCoins = DB::table('coin_reports')
+        // Liquidated coins query with position filter if provided
+        $liquidatedCoinsQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market')
             ->distinct()
-            ->whereRaw('liquidationPrice >= lowestPrice')
-            ->get();
+            ->whereRaw('liquidationPrice >= lowestPrice');
 
-        $stopLosses = DB::table('coin_reports')
+        if ($request->filled('position')) {
+            $liquidatedCoinsQuery->where('position', $request->position);
+        }
+        $liquidatedCoins = $liquidatedCoinsQuery->get();
+
+        // Stop losses query with position filter if provided
+        $stopLossesQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market')
             ->distinct()
-            ->whereRaw('lowestPricePercentage > 1')
-            ->count();
+            ->whereRaw('lowestPricePercentage > 1');
+
+        if ($request->filled('position')) {
+            $stopLossesQuery->where('position', $request->position);
+        }
+        $stopLosses = $stopLossesQuery->count();
         // Extracting unique symbols, intervals, and markets
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
