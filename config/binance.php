@@ -30,7 +30,7 @@ return [
         'default_limit' => 100        // Default limit for data fetches
     ],
     'cmcApi' => [
-        'api_key' => 'ee205fc9-713c-49de-a142-049c00c5ab79', // anasdev5749@gmail.com's api key (Free 10,000 calls per month)
+        'api_key' => 'e942c633-e3be-4a5d-8b9c-42d389b3511b', // anasdev355@gmail.com's api key (Free 10,000 calls per month)
         'base_url' => 'https://pro-api.coinmarketcap.com/v1',
         'trending_coins' => '/cryptocurrency/trending/latest',
         'latest_coins' => '/cryptocurrency/listings/latest'
