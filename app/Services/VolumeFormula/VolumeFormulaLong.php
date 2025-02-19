@@ -63,7 +63,7 @@ class VolumeFormulaLong
                 $data =  BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
                 $supportResistanceData = array_slice($data, count($data) - 1 - 300, 300);
 
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData);
+                $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [15]);
                 $candleData = $data;
                 $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
