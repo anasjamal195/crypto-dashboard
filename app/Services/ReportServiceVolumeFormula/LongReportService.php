@@ -135,7 +135,7 @@ class LongReportService
 
             $supportResistanceData = array_slice($data, $index - 300, 300);
 
-            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [15]);
+            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [10]);
 
 
             $obvLimit = $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100;
@@ -145,7 +145,7 @@ class LongReportService
 
 
 
-                $breakoutCondition = $candle['close'] > $supportResistance[15]['resistance'] && $candle['open'] < $supportResistance[15]['resistance'];
+                $breakoutCondition = $candle['close'] > $supportResistance[10]['resistance'] && $candle['open'] < $supportResistance[10]['resistance'];
 
                 $averageTrailingVolume = 0;
                 $volumeCandlesCount = 0;
@@ -168,11 +168,11 @@ class LongReportService
 
                 if ($breakoutCondition && $volumeCondition) {
 
-                    $supportResistanceDataSecond = array_slice($data, $index - 300 - $supportResistance[15]['resistanceDistance'], 300);
-                    $secondSupportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceDataSecond, [15]);
+                    $supportResistanceDataSecond = array_slice($data, $index - 300 - $supportResistance[10]['resistanceDistance'], 300);
+                    $secondSupportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceDataSecond, [10]);
 
 
-                    if ($candle['close'] > $secondSupportResistance[15]['resistance']) {
+                    if ($candle['close'] > $secondSupportResistance[10]['resistance']) {
 
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;

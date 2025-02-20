@@ -63,7 +63,7 @@ class VolumeFormulaLong
                 $data =  BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
                 $supportResistanceData = array_slice($data, count($data) - 1 - 300, 300);
 
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [15]);
+                $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [10]);
                 $candleData = $data;
                 $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
@@ -79,7 +79,7 @@ class VolumeFormulaLong
 
                     $candle = $data[count($data) - 1];
                     $secondCandle = $data[count($data) - 2];
-                    $breakoutCondition = $secondCandle['close'] > $supportResistance[15]['resistance'] && $secondCandle['open'] < $supportResistance[15]['resistance'];
+                    $breakoutCondition = $secondCandle['close'] > $supportResistance[10]['resistance'] && $secondCandle['open'] < $supportResistance[10]['resistance'];
 
                     $averageTrailingVolume = 0;
                     $volumeCandlesCount = 0;
@@ -99,10 +99,10 @@ class VolumeFormulaLong
                     $volumeMultiplier = 1.3;
                     $volumeCondition = $candle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
-                    $supportResistanceDataSecond = array_slice($data, count($data) - 1  - 300 - $supportResistance[15]['resistanceDistance'], 300);
-                    $secondSupportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceDataSecond, [15]);
+                    $supportResistanceDataSecond = array_slice($data, count($data) - 1  - 300 - $supportResistance[10]['resistanceDistance'], 300);
+                    $secondSupportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceDataSecond, [10]);
 
-                    if ($breakoutCondition && $volumeCondition && $secondCandle['close'] > $secondSupportResistance[15]['resistance']) {
+                    if ($breakoutCondition && $volumeCondition && $secondCandle['close'] > $secondSupportResistance[10]['resistance']) {
 
                         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
                         if ($lastOrderClose) {
@@ -156,8 +156,8 @@ class VolumeFormulaLong
                     'stopLoss' =>  $currentCandle['close'],
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
-                    'currentSupport' => $supportResistance[15]['support'],
-                    'currentResistance' => $supportResistance[15]['resistance'],
+                    'currentSupport' => $supportResistance[10]['support'],
+                    'currentResistance' => $supportResistance[10]['resistance'],
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit + 0.3,
                 ]);
@@ -183,8 +183,8 @@ class VolumeFormulaLong
                         'stopLoss' =>  $currentCandle['close'],
                         'previousPrice' => $currentCandle['close'],
                         'currentPrice' => $currentCandle['close'],
-                        'currentSupport' => $supportResistance[15]['support'],
-                        'currentResistance' => $supportResistance[15]['resistance'],
+                        'currentSupport' => $supportResistance[10]['support'],
+                        'currentResistance' => $supportResistance[10]['resistance'],
                         'currentProfit' => $currentProfit,
                         'targetProfit' => $targetProfit,
                     ]);
