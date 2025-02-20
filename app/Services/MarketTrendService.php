@@ -387,7 +387,10 @@ class MarketTrendService
                     'supportCandle' => $data[$supportIndex],
                     'resistanceCandle' => $data[$resistanceIndex],
 
+
                 ];
+
+                $supportResistances['candleData'] = $data;
             }
 
             return $supportResistances;
