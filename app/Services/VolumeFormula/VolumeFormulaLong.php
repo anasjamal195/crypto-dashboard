@@ -73,7 +73,7 @@ class VolumeFormulaLong
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
                 // dd($open_order);
                 if (isset($open_order['is_open']) && $open_order['is_open']) {
-                    self::manageOpenOrder($tradeInstance, $open_order['order'], $supportResistance, $isCandleClosing);
+                    self::manageOpenOrder($tradeInstance, $open_order['order'], $supportResistance,$candleData ,$isCandleClosing);
                 } else {
 
 
@@ -126,12 +126,11 @@ class VolumeFormulaLong
             }
         return true;
     }
-    private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance, $isCandleClosing): void
+    private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance,$candleData, $isCandleClosing): void
     {
 
         Log::info('VolumeFormulaLong: Open order found for ' . $buy_order['symbol']);
         $targetProfit = $buy_order['targetProfit'];
-        $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $stopLoss = $buy_order['stopLoss'];
         $stopLossReductionPrecentage = $buy_order['stopLossReductionPrecentage'];
