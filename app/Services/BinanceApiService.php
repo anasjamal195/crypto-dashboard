@@ -1290,10 +1290,10 @@ class BinanceApiService
 
         if ($position === 'BUY') {
             $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
-            $stopLoss = $current_price * (1 - 0.5 / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - 0.5 / 100);
+            $stopLoss = $current_price * (1 - 1 / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - 0.5 / 100);
         } else if ($position === 'SELL') {
             $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
-            $stopLoss = $current_price * (1 + 0.5 / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + 0.5 / 100);
+            $stopLoss = $current_price * (1 + 1 / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + 0.5 / 100);
         }
 
 
