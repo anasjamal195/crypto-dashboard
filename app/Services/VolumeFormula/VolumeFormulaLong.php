@@ -96,7 +96,7 @@ class VolumeFormulaLong
                     }
 
                     $averageTrailingVolume = $averageTrailingVolume && $volumeCandlesCount ? $averageTrailingVolume / $volumeCandlesCount :  0;
-                    $volumeMultiplier = 2;
+                    $volumeMultiplier = 1.3;
                     $volumeCondition = $candle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
                     $supportResistanceDataSecond = array_slice($data, count($data) - 1  - 300 - $supportResistance[15]['resistanceDistance'], 300);
