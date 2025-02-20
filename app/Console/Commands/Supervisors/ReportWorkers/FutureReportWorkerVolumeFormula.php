@@ -5,20 +5,20 @@ namespace App\Console\Commands\Supervisors\ReportWorkers;
 use App\CommonHelpers;
 use App\Services\CoinReportService;
 use App\Services\MailerService;
-use App\Services\ReportServiceStochFormula\LongReportService;
-use App\Services\ReportServiceStochFormula\ShortReportService;
+use App\Services\ReportServiceVolumeFormula\LongReportService;
+use App\Services\ReportServiceVolumeFormula\ShortReportService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class FutureReportWorkerStochFormula extends Command
+class FutureReportWorkerVolumeFormula extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'app:future-report-worker-stock-formula';
+    protected $signature = 'app:future-report-worker-volume-formula';
     public $interval;
     public $limit;
     public $rsiThreshold;
@@ -44,11 +44,11 @@ class FutureReportWorkerStochFormula extends Command
 
         while (true) {
             try {
-                ShortReportService::updateCoinReport(
-                    '5m',
-                    1000,
-                    'FUTURE'
-                );
+                // ShortReportService::updateCoinReport(
+                //     '5m',
+                //     1000,
+                //     'FUTURE'
+                // );
                 LongReportService::updateCoinReport(
                     '5m',
                     1000,
