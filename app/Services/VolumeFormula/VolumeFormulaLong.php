@@ -156,8 +156,8 @@ class VolumeFormulaLong
                     'stopLoss' =>  $currentCandle['close'],
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
-                    'currentSupport' => $supportResistance[7]['support'],
-                    'currentResistance' => $supportResistance[7]['resistance'],
+                    'currentSupport' => $supportResistance[15]['support'],
+                    'currentResistance' => $supportResistance[15]['resistance'],
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit + 0.3,
                 ]);
@@ -183,8 +183,8 @@ class VolumeFormulaLong
                         'stopLoss' =>  $currentCandle['close'],
                         'previousPrice' => $currentCandle['close'],
                         'currentPrice' => $currentCandle['close'],
-                        'currentSupport' => $supportResistance[7]['support'],
-                        'currentResistance' => $supportResistance[7]['resistance'],
+                        'currentSupport' => $supportResistance[15]['support'],
+                        'currentResistance' => $supportResistance[15]['resistance'],
                         'currentProfit' => $currentProfit,
                         'targetProfit' => $targetProfit,
                     ]);
