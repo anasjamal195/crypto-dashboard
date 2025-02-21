@@ -119,7 +119,16 @@ class RsiBreakoutFormulaShort
 
                     $supportResistanceCondition = $candle['close'] < $supportResistance[6]['resistance'] && $candle['close'] > $supportResistance[6]['support'];
 
-
+                    Log::info('RsiBreakoutFormulaLong: Condition Values:');
+                    Log::info('RsiBreakoutFormulaLong: isCandleClosing = ' . var_export($isCandleClosing, true));
+                    Log::info('RsiBreakoutFormulaLong: basicRsiCondition = ' . var_export($basicRsiCondition, true));
+                    Log::info('RsiBreakoutFormulaLong: obvCondition = ' . var_export($obvCondition, true));
+                    Log::info('RsiBreakoutFormulaLong: stochCondition = ' . var_export($stochCondition, true));
+                    Log::info('RsiBreakoutFormulaLong: wrCondition = ' . var_export($wrCondition, true));
+                    Log::info('RsiBreakoutFormulaLong: obvPositiveCondition = ' . var_export($obvPositiveCondition, true));
+                    Log::info('RsiBreakoutFormulaLong: difCondition = ' . var_export($difCondition, true));
+                    Log::info('RsiBreakoutFormulaLong: supportResistanceCondition = ' . var_export($supportResistanceCondition, true));
+                    
                     if ($isCandleClosing && $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition) {
 
                         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
