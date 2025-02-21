@@ -47,7 +47,7 @@ class ShortReportService
                 $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
 
                 // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->delete();
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position','LONG')->delete();
                 DB::table('coin_reports')->insert($trades);
                 $tradesTotal[$symbol] = $trades;
 
