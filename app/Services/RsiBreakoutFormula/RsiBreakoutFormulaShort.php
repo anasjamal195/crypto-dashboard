@@ -119,16 +119,33 @@ class RsiBreakoutFormulaShort
 
                     $supportResistanceCondition = $candle['close'] < $supportResistance[6]['resistance'] && $candle['close'] > $supportResistance[6]['support'];
 
-                    Log::info('RsiBreakoutFormulaLong: Condition Values:');
-                    Log::info('RsiBreakoutFormulaLong: isCandleClosing = ' . var_export($isCandleClosing, true));
-                    Log::info('RsiBreakoutFormulaLong: basicRsiCondition = ' . var_export($basicRsiCondition, true));
-                    Log::info('RsiBreakoutFormulaLong: obvCondition = ' . var_export($obvCondition, true));
-                    Log::info('RsiBreakoutFormulaLong: stochCondition = ' . var_export($stochCondition, true));
-                    Log::info('RsiBreakoutFormulaLong: wrCondition = ' . var_export($wrCondition, true));
-                    Log::info('RsiBreakoutFormulaLong: obvPositiveCondition = ' . var_export($obvPositiveCondition, true));
-                    Log::info('RsiBreakoutFormulaLong: difCondition = ' . var_export($difCondition, true));
-                    Log::info('RsiBreakoutFormulaLong: supportResistanceCondition = ' . var_export($supportResistanceCondition, true));
-                    
+                if (!($isCandleClosing && $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition)) {
+                    if (!$isCandleClosing) {
+                        Log::info("RsiBreakoutFormulaShort: Condition false: isCandleClosing. Time gap: " . (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . " seconds");
+                    }
+                    if (!$basicRsiCondition) {
+                        Log::info("RsiBreakoutFormulaShort: Condition false: basicRsiCondition. rsi6: " . $candle['rsi6'] . ", threshold: " . $rsiThreshold . ", MA7: " . $candle['ma7'] . ", MA25: " . $candle['ma25'] . ", MA99: " . $candle['ma99']);
+                    }
+                    if (!$obvCondition) {
+                        Log::info("RsiBreakoutFormulaShort: Condition false: obvCondition. OBV: " . $candle['obv'] . ", lowest OBV in last {$obvCandles} candles: " . $previousLowObv . ", OBV limit: " . $obvLimit);
+                    }
+                    if (!$stochCondition) {
+                        Log::info("RsiBreakoutFormulaShort: Condition false: stochCondition. stoch_d: " . $candle['stoch_d'] . ", limit: " . $stochDLimit);
+                    }
+                    if (!$wrCondition) {
+                        Log::info("RsiBreakoutFormulaShort: Condition false: wrCondition evaluated to false.");
+                    }
+                    if (!$obvPositiveCondition) {
+                        Log::info("RsiBreakoutFormulaShort: Condition false: obvPositiveCondition evaluated to false.");
+                    }
+                    if (!$difCondition) {
+                        Log::info("RsiBreakoutFormulaShort: Condition false: difCondition evaluated to false.");
+                    }
+                    if (!$supportResistanceCondition) {
+                        Log::info("RsiBreakoutFormulaShort: Condition false: supportResistanceCondition. close: " . $candle['close'] . ", resistance: " . $supportResistance[6]['resistance'] . ", support: " . $supportResistance[6]['support']);
+                    }
+                }
+
                     if ($isCandleClosing && $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition) {
 
                         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
