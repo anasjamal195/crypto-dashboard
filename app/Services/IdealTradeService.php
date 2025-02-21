@@ -222,7 +222,7 @@ class IdealTradeService
         $results = [];
 
         // List of keys to calculate averages and medians
-        $keys = ['ma7', 'ma14', 'ma25', 'ma99', 'rsi6', 'per', 'dif', 'dea', 'histogram', 'sar', 'stoch_rsi', 'obv', 'stoch_k', 'stoch_d', 'wr', 'K', 'D', 'J', 'previousObvHigh'];
+        $keys = ['ma7', 'ma14', 'ma25', 'ma99', 'rsi6', 'per', 'dif', 'dea', 'histogram', 'sar', 'stoch_rsi', 'obv', 'stoch_k', 'stoch_d', 'wr', 'K', 'D', 'J', 'previousObvHigh','previousObvLow'];
 
         // Loop over each key and calculate the average and median
         foreach ($keys as $key) {

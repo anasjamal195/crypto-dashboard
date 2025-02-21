@@ -473,6 +473,18 @@ class BinanceApiService
                     }
                 }
             }
+
+
+            $previousObvLow = 0;
+            if ($index > 15) {
+                $previousObvLow = $candlesticks[$index - 15]['obv'];
+
+                for ($i = $index - 15; $i < $index; $i++) {
+                    if ($previousObvLow > $candlesticks[$i]['obv']) {
+                        $previousObvLow = $candlesticks[$i]['obv'];
+                    }
+                }
+            }
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp' => $timestamp,
@@ -504,6 +516,7 @@ class BinanceApiService
                 'D' => $D,
                 'J' => $J,
                 'previousObvHigh' => $previousObvHigh,
+                'previousObvLow' => $previousObvLow,
             ];
         }
 

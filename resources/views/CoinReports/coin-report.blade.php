@@ -59,7 +59,7 @@
                                             $totalProfit += number_format($trade->total_profit, 2);
                                             $totalTrades += $trade->total_entries;
                                         @endphp
-                                        <tr @if ($trade->max_lowestPrice > 1) class="bg-danger" @endif>
+                                        <tr @if ($trade->max_lowestPrice > 0.5) class="bg-danger" @endif>
                                             <td>{{ $index + 1 }}</td>
                                             <td>{{ $trade->position }}</td>
                                             <td>{{ $trade->symbol }}</td>

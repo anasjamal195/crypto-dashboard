@@ -23,18 +23,18 @@ class BinanceController extends Controller
         $interval = $request->interval;
         $query = DB::table('coin_reports')
             ->select(
-            'symbol',
-            'position',
-            DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
-            DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
-            DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
-            DB::raw('AVG(duration) as average_duration'),                  // Average duration per symbol
-            DB::raw('SUM(duration) as total_duration'),                    // Total duration per symbol
-            DB::raw('MAX(profit) as max_profit'),                          // Maximum profit per symbol
-            DB::raw('MIN(profit) as min_profit'),                          // Minimum profit per symbol
-            DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),       // Maximum of lowestPrice per symbol
-            DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),       // Minimum of lowestPrice per symbol
-            DB::raw('MAX(created_at) as last_updated')                     // Last updated timestamp
+                'symbol',
+                'position',
+                DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
+                DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
+                DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
+                DB::raw('AVG(duration) as average_duration'),                  // Average duration per symbol
+                DB::raw('SUM(duration) as total_duration'),                    // Total duration per symbol
+                DB::raw('MAX(profit) as max_profit'),                          // Maximum profit per symbol
+                DB::raw('MIN(profit) as min_profit'),                          // Minimum profit per symbol
+                DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),       // Maximum of lowestPrice per symbol
+                DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),       // Minimum of lowestPrice per symbol
+                DB::raw('MAX(created_at) as last_updated')                     // Last updated timestamp
             )
             ->where('market', $market)
             ->where('interval', $interval);
@@ -66,18 +66,18 @@ class BinanceController extends Controller
         $stopLossesQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market')
             ->distinct()
-            ->whereRaw('lowestPricePercentage > 1');
+            ->whereRaw('lowestPricePercentage > 0.5');
 
         if ($request->filled('position')) {
             $stopLossesQuery->where('position', $request->position);
         }
-        $stopLosses = $stopLossesQuery->count();
+        $stopLosses = $stopLossesQuery->count() / 2;
         // Extracting unique symbols, intervals, and markets
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
 
-        return view('CoinReports.coin-report', compact('tradeData','stopLosses', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', compact('tradeData', 'stopLosses', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {
