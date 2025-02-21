@@ -176,7 +176,7 @@ class ShortReportService
                     }
                 }
             } else {
-                if ($lowestPrice > $candle['high'])
+                if ($lowestPrice < $candle['high'])
                     $lowestPrice = $candle['high'];
                 if ($candle['low'] <= $buy_price * (1 - $targetProfit / 100)) {
                     $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'short');
