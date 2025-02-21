@@ -120,7 +120,7 @@ class RsiBreakoutFormulaLong
                             Log::info("RsiBreakoutFormulaLong: Condition false: basicRsiCondition. rsi6: " . $candle['rsi6'] . ", threshold: " . $rsiThreshold . ", MA7: " . $candle['ma7'] . ", MA25: " . $candle['ma25'] . ", MA99: " . $candle['ma99']);
                         }
                         if (!$obvCondition) {
-                            Log::info("RsiBreakoutFormulaLong: Condition false: obvCondition. OBV: " . $candle['obv'] . ", lowest OBV in last {$obvCandles} candles: " . $previousLowObv . ", OBV limit: " . $obvLimit);
+                            Log::info("RsiBreakoutFormulaLong: Condition false: obvCondition. OBV: " . $candle['obv'] . ", Highest OBV in last {$obvCandles} candles: " . $previousHighObv . ", OBV limit: " . $obvLimit);
                         }
                         if (!$stochCondition) {
                             Log::info("RsiBreakoutFormulaLong: Condition false: stochCondition. stoch_d: " . $candle['stoch_d'] . ", limit: " . $stochDLimit);
