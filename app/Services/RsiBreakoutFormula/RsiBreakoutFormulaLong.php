@@ -112,10 +112,10 @@ class RsiBreakoutFormulaLong
                     $supportResistanceCondition = $candle['close'] < $supportResistance[6]['resistance'] && $candle['close'] > $supportResistance[6]['support'];
 
 
-                    if (!($isCandleClosing && $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition)) {
-                        if (!$isCandleClosing) {
-                            Log::info("RsiBreakoutFormulaLong: Condition false: isCandleClosing. Time gap: " . (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . " seconds");
-                        }
+                    if (!( $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition)) {
+                        // if (!$isCandleClosing) {
+                        //     Log::info("RsiBreakoutFormulaLong: Condition false: isCandleClosing. Time gap: " . (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . " seconds");
+                        // }
                         if (!$basicRsiCondition) {
                             Log::info("RsiBreakoutFormulaLong: Condition false: basicRsiCondition. rsi6: " . $candle['rsi6'] . ", threshold: " . $rsiThreshold . ", MA7: " . $candle['ma7'] . ", MA25: " . $candle['ma25'] . ", MA99: " . $candle['ma99']);
                         }
