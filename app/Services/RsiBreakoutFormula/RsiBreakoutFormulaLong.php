@@ -142,7 +142,7 @@ class RsiBreakoutFormulaLong
                         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
                         if ($lastOrderClose) {
                             $lastOrderClose = $lastOrderClose->created_at;
-                            $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose);
+                            $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
                             if ($timeDiff < 20) {
                                 Log::info('RsiBreakoutFormulaLong: Skipped due to last order close time: ' . $symbol);
                                 continue;
