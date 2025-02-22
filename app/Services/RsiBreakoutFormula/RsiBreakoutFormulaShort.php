@@ -74,7 +74,7 @@ class RsiBreakoutFormulaShort
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
                 // dd($open_order);
                 if (isset($open_order['is_open']) && $open_order['is_open']) {
-                    self::manageOpenOrder($tradeInstance, $open_order['order'], $supportResistance, $isCandleClosing);
+                    self::manageOpenOrder($tradeInstance, $open_order['order'], $supportResistance, $data, $isCandleClosing);
                 } else {
 
 
@@ -170,12 +170,11 @@ class RsiBreakoutFormulaShort
             }
         return true;
     }
-    private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance, $isCandleClosing): void
+    private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance, $candleData, $isCandleClosing): void
     {
         Log::info('RsiBreakoutFormulaShort: Open order found for ' . $buy_order['symbol']);
         $market = $tradeInstance->market;
         $targetProfit = $buy_order['targetProfit'];
-        $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $previousCandle = $candleData[count($candleData) - 2];
         $stopLoss = $buy_order['stopLoss'];
