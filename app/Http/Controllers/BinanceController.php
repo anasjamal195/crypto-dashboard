@@ -17,8 +17,6 @@ class BinanceController extends Controller
     public function getCoinReport($market, Request $request)
     {
 
-        dd(BinanceApiService::getCandleStickData('BTCUSDT', '5m', 50, null, 'FUTURE'));
-
         // Fetch all unique symbols from the database
         $interval = $request->interval;
         $query = DB::table('coin_reports')
