@@ -87,7 +87,7 @@ class RsiBreakoutFormulaLong
                     $idealBuying = IdealTradeService::getIdealOpeningCandlesLong($data);
                     $averages = IdealTradeService::getAverages($idealBuying);
                     $rsiThreshold = $averages['rsi6'];
-                    $stochDLimit = $averages['stoch_rsi'] * 2;
+                    $stochDLimit = $averages['stoch_d'] * 2;
                     $obvLimit = $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100;
 
                     // dd($symbol,$index,$idealBuying);
