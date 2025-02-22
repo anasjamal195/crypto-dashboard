@@ -79,7 +79,7 @@ class RsiBreakoutFormulaLong
                 } else {
 
 
-                    $candle = $data[count($data) - 1];
+                    $candle = $data[count($data) - 2];
                     $secondCandle = $data[count($data) - 2];
                     $index =  count($data) - 1;
 
@@ -138,7 +138,7 @@ class RsiBreakoutFormulaLong
                             Log::info("RsiBreakoutFormulaLong: Condition false: supportResistanceCondition. close: " . $candle['close'] . ", resistance: " . $supportResistance[6]['resistance'] . ", support: " . $supportResistance[6]['support']);
                         }
                     }
-                    if ($isCandleClosing && $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition) {
+                    if ($basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition) {
                         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
                         if ($lastOrderClose) {
                             $lastOrderClose = $lastOrderClose->created_at;
