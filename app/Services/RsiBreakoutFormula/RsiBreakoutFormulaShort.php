@@ -190,7 +190,7 @@ class RsiBreakoutFormulaShort
                         }
                         Log::info('RsiBreakoutFormulaShort: Conditions Staisfied, opening now : ' . $symbol);
 
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSIBreakout Formula', true);
+                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSIBreakout Formula');
                     }
                 }
                 CommonHelpers::delayMS(200);
