@@ -70,7 +70,7 @@ class RsiBreakoutFormulaLong
 
 
                 Log::info('RsiBreakoutFormulaLong: Closing time gap: ' .  (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . ' seconds');
-                CommonHelpers::checkLosses($symbol, 'LONG', $tradeInstance->tradeAccount, 'Volume Formula');
+                CommonHelpers::checkLosses($symbol, 'LONG', $tradeInstance->tradeAccount, 'RSIBreakout Formula');
 
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
                 // dd($open_order);
@@ -112,7 +112,7 @@ class RsiBreakoutFormulaLong
                     $supportResistanceCondition = $candle['close'] < $supportResistance[6]['resistance'] && $candle['close'] > $supportResistance[6]['support'];
 
 
-                    if (!( $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition)) {
+                    if (!($basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition)) {
                         // if (!$isCandleClosing) {
                         //     Log::info("RsiBreakoutFormulaLong: Condition false: isCandleClosing. Time gap: " . (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . " seconds");
                         // }
@@ -150,7 +150,7 @@ class RsiBreakoutFormulaLong
                         }
                         Log::info('RsiBreakoutFormulaLong: Conditions Staisfied, opening now : ' . $symbol);
 
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Volume Formula');
+                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSIBreakout Formula', true);
                     }
                 }
 
@@ -167,6 +167,7 @@ class RsiBreakoutFormulaLong
         Log::info('RsiBreakoutFormulaLong: Open order found for ' . $buy_order['symbol']);
         $targetProfit = $buy_order['targetProfit'];
         $currentCandle = $candleData[count($candleData) - 1];
+        $secondCandle = $candleData[count($candleData) - 2];
         $stopLoss = $buy_order['stopLoss'];
         $stopLossReductionPrecentage = $buy_order['stopLossReductionPrecentage'];
 
@@ -175,7 +176,7 @@ class RsiBreakoutFormulaLong
             $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
             Log::info('RsiBreakoutFormulaLong: Current profit ' . $currentProfit);
 
-            if ($currentCandle['close'] < $stopLoss) {
+            if ($secondCandle['close'] < $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'previousPrice' => $currentCandle['close'],
@@ -204,7 +205,7 @@ class RsiBreakoutFormulaLong
                 ]);
             }
         } else {
-            if ($currentCandle['close'] < $stopLoss) {
+            if ($secondCandle['close'] < $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
             } else if ($isCandleClosing) {
                 $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;

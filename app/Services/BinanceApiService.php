@@ -1190,7 +1190,7 @@ class BinanceApiService
 
 
     // Future Api's
-    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '')
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $isDummy = false)
     {
 
         $market = 'FUTURE';
@@ -1262,6 +1262,10 @@ class BinanceApiService
         $url = $base_url . config('binance.endpoints.order');
 
         $timestamp =  round(microtime(true) * 1000);
+
+
+
+
         // Prepare query string for signature
         $queryString = http_build_query([
             'symbol' => $symbol,
@@ -1276,6 +1280,61 @@ class BinanceApiService
 
         // Append signature to the query string
         $queryString .= '&signature=' . $signature;
+
+
+        // For Dummy Trades
+        if ($isDummy) {
+
+            $orderId = random_int(100000, 999999);
+            $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
+            // Calculate liquidation price
+            $entryPrice = $current_price; // Assuming trade executed at provided price
+            $accountMargin = $tradeAmount; // User's margin
+            $liquidationPrice = 0;
+            $stopLoss = 0;
+
+            if ($position === 'BUY') {
+                $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
+                $stopLoss = $current_price * (1 - 0.5 / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - 0.5 / 100);
+            } else if ($position === 'SELL') {
+                $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
+                $stopLoss = $current_price * (1 + 0.5 / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + 0.5 / 100);
+            }
+
+
+            while ($exists) {
+                $orderId = random_int(100000, 999999);
+                $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
+            }
+            $data =  [
+                'orderId' => $orderId,
+                'symbol' => $symbol,
+                'side' => $position,
+                'amount' => $tradeAmount,
+                'type' => 'open',
+                'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
+                'qty' => $quantity,
+                'leverage' => $leverage,
+                'stopLoss' => $stopLoss,
+                'stopLossReductionPrecentage' => 0.1,
+                'price' => $current_price,
+                'trade_status' => 'open',
+                'trade_acc' => $trader,
+                'targetProfit' => 0.4,
+                'formula' => 'Dummy: ' . $formula,
+                'isDummy' => true,
+                'liqPrice' => $liquidationPrice,
+                'created_at' => Carbon::now('Asia/Karachi'),
+            ];
+
+            DB::table('live_trades_future_results')->insert(
+                $data
+            );
+            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' Dummy Txn Alert:: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+            MailerService::sendFutureTradeDynamicEmail($data);
+
+            return $data;
+        }
 
         $response = self::getHttpClient()->withHeaders([
             'X-MBX-APIKEY' => $apiKey,
@@ -1375,6 +1434,53 @@ class BinanceApiService
         // Append signature to the query string
         $queryString .= '&signature=' . $signature;
 
+
+        if ($openOrder->isDummy) {
+
+            $orderId = random_int(100000, 999999);
+            $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
+            while ($exists) {
+                $orderId = random_int(100000, 999999);
+                $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
+            }
+            $currentProfit = 0;
+            if ($position === 'BUY') {
+                $currentProfit = (($openOrder->price - $current_price) / $openOrder->price) * 100;
+            } else {
+                $currentProfit = (($current_price - $openOrder->price) / $openOrder->price) * 100;
+            }
+            $data =  [
+                'orderId' => $orderId,
+                'pairId' => $openOrder->pairId,
+                'symbol' => $symbol,
+                'side' => $position,
+                'amount' => $openOrder->amount,
+                'qty' => $quantity,
+                'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
+                'type' => 'close',
+                'trade_status' => 'close',
+                'leverage' => 0,
+                'price' => $current_price,
+                'currentProfit' => $currentProfit,
+                'isDummy' => $openOrder->isDummy,
+                'trade_acc' => $trader,
+                'liqPrice' => 0,
+                'created_at' => Carbon::now('Asia/Karachi'),
+            ];
+
+            DB::table('live_trades_future_results')->insert(
+                $data
+            );
+            DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
+                'trade_status' => 'close',
+                'pairId' => $orderId,
+
+            ]);
+            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' Dummy Txn Alert:: Account ' . User::find($data['trade_acc'])->name . ' ' . $data['currentProfit'] . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+
+            MailerService::sendFutureTradeDynamicEmail($data);
+            return $data;
+        }
         $response = self::getHttpClient()->withHeaders([
             'X-MBX-APIKEY' => $apiKey,
         ])->asForm()->post($url, [

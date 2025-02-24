@@ -58,7 +58,7 @@ class RsiBreakoutFormulaShort
                 Log::info('RsiBreakoutFormulaShort: Account: ' . $trade_acc);
                 Log::info('RsiBreakoutFormulaShort: Invested: ' . $buy_coin_price . ' $');
 
-                CommonHelpers::checkLosses($symbol, 'SHORT', $tradeInstance->tradeAccount, 'Volume Formula');
+                CommonHelpers::checkLosses($symbol, 'SHORT', $tradeInstance->tradeAccount, 'RSIBreakout Formula');
 
 
                 $data =  BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
@@ -158,7 +158,7 @@ class RsiBreakoutFormulaShort
                         }
                         Log::info('RsiBreakoutFormulaShort: Conditions Staisfied, opening now : ' . $symbol);
 
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Volume Formula');
+                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSIBreakout Formula',true);
                     }
                 }
                 CommonHelpers::delayMS(200);
@@ -195,7 +195,7 @@ class RsiBreakoutFormulaShort
                 ]);
                 if ($currentProfit < 0) {
                     Log::info('RsiBreakoutFormulaShort: Placing new order to recover from loss of previous order: ' . $tradeInstance->symbol);
-                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'SELL' : 'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Volume Formula');
+                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'SELL' : 'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSIBreakout Formula');
                 }
             } else if ($currentProfit > $targetProfit) {
 
