@@ -158,7 +158,7 @@ class RsiBreakoutFormulaShort
                         }
                         Log::info('RsiBreakoutFormulaShort: Conditions Staisfied, opening now : ' . $symbol);
 
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSIBreakout Formula',true);
+                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSIBreakout Formula', true);
                     }
                 }
                 CommonHelpers::delayMS(200);
@@ -185,7 +185,7 @@ class RsiBreakoutFormulaShort
             $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
             Log::info('RsiBreakoutFormulaShort: Current profit ' . $currentProfit);
 
-            if ($currentCandle['close'] > $stopLoss) {
+            if ($previousCandle['close'] > $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'previousPrice' => $currentCandle['close'],
@@ -220,7 +220,7 @@ class RsiBreakoutFormulaShort
         } else {
             $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
 
-            if ($currentCandle['close'] < $stopLoss) {
+            if ($previousCandle['close'] < $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'previousPrice' => $currentCandle['close'],
