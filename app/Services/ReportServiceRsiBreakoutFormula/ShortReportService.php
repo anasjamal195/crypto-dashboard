@@ -47,7 +47,7 @@ class ShortReportService
                 $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
 
                 // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position','SHORT')->delete();
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'SHORT')->delete();
                 DB::table('coin_reports')->insert($trades);
                 $tradesTotal[$symbol] = $trades;
 
@@ -131,14 +131,14 @@ class ShortReportService
             // dd($symbol,$index,$idealBuying);
             if (empty($idealBuying))
                 continue;
-            $averages = IdealTradeService::getAverages($idealBuying);
+            $averages = IdealTradeService::getAverages($idealBuying,'SHORT');
 
             $rsiThreshold = $averages['rsi6'];
-            $stochDLimit = 100 - $averages['stoch_rsi'] * 2;
+            $stochDLimit =  $averages['stoch_d'];
             $obvLimit = $averages['previousObvLow'] ? (($averages['previousObvLow'] - $averages['obv']) / $averages['previousObvLow']) * 100 : 0;
 
             if ($buy_price == 0) {
-                if ($candle['rsi6'] > $rsiThreshold && ($candle['ma7'] > $candle['ma25'] && $candle['ma25'] > $candle['ma99'])) {
+                if ($candle['rsi6'] > $rsiThreshold) {
 
 
                     if ($index > $obvCandles) {
@@ -153,16 +153,47 @@ class ShortReportService
                         $stochCondition =   ($candle['stoch_d'] >=  $stochDLimit);
                         $obvCondition = ($candle['obv'] >= ($previousLowObv * (1 + $obvLimit / 100)));
 
-                        $wrCondition  = true;
 
-                        $obvPositiveCondition = true;
-                        $difCondition = true;
 
                         $supportResistanceData = array_slice($data, $index - 300, 300);
                         $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [6]);
 
                         $supportResistanceCondition = $candle['close'] < $supportResistance[6]['resistance'] && $candle['close'] > $supportResistance[6]['support'];
-                        if ($obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition) {
+
+                        $maCrossoverCondition = false;
+                        $loop = true;
+                        $loopIndex = $index;
+                        while ($loop && $loopIndex > 0) {
+
+                            // MA7 crosses MA25 from below
+                            if ($data[$loopIndex]['ma7'] < $data[$loopIndex]['ma25'] && $data[$loopIndex - 1]['ma7'] > $data[$loopIndex - 1]['ma25']) {
+                                $maCrossoverCondition = true;
+                                $loop = false;
+                            }
+                            // MA7 crosses MA99 from below
+                            if ($data[$loopIndex]['ma7'] < $data[$loopIndex]['ma99'] && $data[$loopIndex - 1]['ma7'] > $data[$loopIndex - 1]['ma99']) {
+                                $maCrossoverCondition = true;
+                                $loop = false;
+                            }
+
+                            // MA7 crosses MA25 from above
+                            if ($data[$loopIndex]['ma7'] > $data[$loopIndex]['ma25'] && $data[$loopIndex - 1]['ma7'] < $data[$loopIndex - 1]['ma25']) {
+                                // $maCrossoverCondition = true;
+                                $loop = false;
+                            }
+                            // MA7 crosses MA99 from below
+                            if ($data[$loopIndex]['ma7'] > $data[$loopIndex]['ma99'] && $data[$loopIndex - 1]['ma7'] < $data[$loopIndex - 1]['ma99']) {
+                                // $maCrossoverCondition = true;
+                                $loop = false;
+                            }
+
+
+                            $loopIndex--;
+                        }
+
+
+
+                        if ($stochCondition && $maCrossoverCondition) {
                             $candle['should_buy'] = true;
                             $candle['previousObvHigh'] = $previousLowObv;
                             $candle['previousObvLow'] = $previousLowObv;

@@ -130,6 +130,23 @@
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                             </div>
+
+                            <div class="d-flex flex-row text-center text-white">
+                                <div class="flex-fill "><strong>Formula Accuracy:</strong></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill ">{{ $totalTrades ? round(100 - (($stopLosses * 2) / $totalTrades) * 100, 2) : 0 }} %
+                                </div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                            </div>
                         </div>
                     </div>
                 </div>

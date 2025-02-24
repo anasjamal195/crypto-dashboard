@@ -5,6 +5,7 @@ namespace App;
 use App\Services\SupervisorService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CommonHelpers
 {
@@ -180,5 +181,19 @@ class CommonHelpers
             echo "\n";
         }
         echo "</pre>";
+    }
+
+    public static function prettyLog(...$data)
+    {
+        $log = "";
+        foreach ($data as $item) {
+            if (is_array($item) || is_object($item)) {
+            $log .= print_r($item, true);
+            } else {
+            $log .= $item;
+            }
+            $log .= "\n";
+        }
+        Log::info($log);
     }
 }

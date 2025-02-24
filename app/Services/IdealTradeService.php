@@ -117,10 +117,9 @@ class IdealTradeService
                 // Above condition Check for lowest price
                 $priceLock = $candle['open'];
                 $priceLockIndex = $index;
-               
             } else if ($index < $priceLockIndex + 10) {
                 if ($candle['open'] > $priceLock * (1 + 0.5 / 100)) {
-                    $previousObvHigh = 0;   
+                    $previousObvHigh = 0;
 
                     $obvIndex = $priceLockIndex - 15;
                     if ($obvIndex < 0)
@@ -162,10 +161,9 @@ class IdealTradeService
                 // Above condition Check for lowest price
                 $priceLock = $candle['open'];
                 $priceLockIndex = $index;
-                
             } else if ($index < $priceLockIndex + 10) {
                 if ($candle['open'] < $priceLock * (1 - 0.5 / 100)) {
-                    $previousObvHigh = 0;   
+                    $previousObvHigh = 0;
 
                     $obvIndex = $priceLockIndex - 15;
                     if ($obvIndex < 0)
@@ -215,14 +213,14 @@ class IdealTradeService
         return array_sum($trimmedValues) / $trimmedCount;
     }
 
-    public static function getAverages($idealBuyingCandles)
+    public static function getAverages($idealBuyingCandles, $position = 'LONG')
     {
 
         // Initialize an array to hold our results
         $results = [];
 
         // List of keys to calculate averages and medians
-        $keys = ['ma7', 'ma14', 'ma25', 'ma99', 'rsi6', 'per', 'dif', 'dea', 'histogram', 'sar', 'stoch_rsi', 'obv', 'stoch_k', 'stoch_d', 'wr', 'K', 'D', 'J', 'previousObvHigh','previousObvLow'];
+        $keys = ['ma7', 'ma14', 'ma25', 'ma99', 'rsi6', 'per', 'dif', 'dea', 'histogram', 'sar', 'stoch_rsi', 'obv', 'stoch_k', 'stoch_d', 'wr', 'K', 'D', 'J', 'previousObvHigh', 'previousObvLow'];
 
         // Loop over each key and calculate the average and median
         foreach ($keys as $key) {
@@ -236,9 +234,17 @@ class IdealTradeService
                 return $value !== null;
             });
 
+
+
+
             // Calculate the median
             $median = self::getMedian($filteredValues);
-
+            if (in_array($key, ['rsi6', 'stoch_d'])) {
+                if ($position == 'LONG')
+                    $median = count($filteredValues) ? min($filteredValues) : $median;
+                else if ($position == 'SHORT')
+                    $median = count($filteredValues) ? max($filteredValues) : $median;
+            }
             // Store the results
             $results[$key] = $median;
         }

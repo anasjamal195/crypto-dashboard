@@ -86,7 +86,7 @@ class RsiBreakoutFormulaShort
 
                     $obvCandles = 15;
                     $idealBuying = IdealTradeService::getIdealOpeningCandlesShort($data);
-                    $averages = IdealTradeService::getAverages($idealBuying);
+                    $averages = IdealTradeService::getAverages($idealBuying, 'SHORT');
                     $rsiThreshold = $averages['rsi6'];
                     // $stochDLimit = 100 - $averages['stoch_rsi'] * 2;
                     $stochDLimit = $averages['stoch_d'];
@@ -104,7 +104,7 @@ class RsiBreakoutFormulaShort
                         }
                     }
 
-                    $basicRsiCondition = $candle['rsi6'] > $rsiThreshold && ($candle['ma7'] > $candle['ma25'] && $candle['ma25'] > $candle['ma99']);
+                    $basicRsiCondition = $candle['rsi6'] > $rsiThreshold;
                     $stochCondition =   ($candle['stoch_d'] >=  $stochDLimit);
                     $obvCondition = ($candle['obv'] >= ($previousLowObv * (1 + $obvLimit / 100)));
 
@@ -118,34 +118,66 @@ class RsiBreakoutFormulaShort
 
                     $supportResistanceCondition = $candle['close'] < $supportResistance[6]['resistance'] && $candle['close'] > $supportResistance[6]['support'];
 
-                    if (!($isCandleClosing && $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition)) {
-                        // if (!$isCandleClosing) {
-                        //     Log::info("RsiBreakoutFormulaShort: Condition false: isCandleClosing. Time gap: " . (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . " seconds");
-                        // }
-                        if (!$basicRsiCondition) {
-                            Log::info("RsiBreakoutFormulaShort: Condition false: basicRsiCondition. rsi6: " . $candle['rsi6'] . ", threshold: " . $rsiThreshold . ", MA7: " . $candle['ma7'] . ", MA25: " . $candle['ma25'] . ", MA99: " . $candle['ma99']);
+                    $maCrossoverCondition = false;
+                    $loop = true;
+                    $loopIndex = $index;
+                    while ($loop && $loopIndex > 0) {
+
+                        // MA7 crosses MA25 from below
+                        if ($data[$loopIndex]['ma7'] < $data[$loopIndex]['ma25'] && $data[$loopIndex - 1]['ma7'] > $data[$loopIndex - 1]['ma25']) {
+                            $maCrossoverCondition = true;
+                            $loop = false;
                         }
-                        if (!$obvCondition) {
-                            Log::info("RsiBreakoutFormulaShort: Condition false: obvCondition. OBV: " . $candle['obv'] . ", lowest OBV in last {$obvCandles} candles: " . $previousLowObv . ", OBV limit: " . $obvLimit);
+                        // MA7 crosses MA99 from below
+                        if ($data[$loopIndex]['ma7'] < $data[$loopIndex]['ma99'] && $data[$loopIndex - 1]['ma7'] > $data[$loopIndex - 1]['ma99']) {
+                            $maCrossoverCondition = true;
+                            $loop = false;
                         }
-                        if (!$stochCondition) {
-                            Log::info("RsiBreakoutFormulaShort: Condition false: stochCondition. stoch_d: " . $candle['stoch_d'] . ", limit: " . $stochDLimit);
+
+                        // MA7 crosses MA25 from above
+                        if ($data[$loopIndex]['ma7'] > $data[$loopIndex]['ma25'] && $data[$loopIndex - 1]['ma7'] < $data[$loopIndex - 1]['ma25']) {
+                            // $maCrossoverCondition = true;
+                            $loop = false;
                         }
-                        if (!$wrCondition) {
-                            Log::info("RsiBreakoutFormulaShort: Condition false: wrCondition evaluated to false.");
+                        // MA7 crosses MA99 from below
+                        if ($data[$loopIndex]['ma7'] > $data[$loopIndex]['ma99'] && $data[$loopIndex - 1]['ma7'] < $data[$loopIndex - 1]['ma99']) {
+                            // $maCrossoverCondition = true;
+                            $loop = false;
                         }
-                        if (!$obvPositiveCondition) {
-                            Log::info("RsiBreakoutFormulaShort: Condition false: obvPositiveCondition evaluated to false.");
-                        }
-                        if (!$difCondition) {
-                            Log::info("RsiBreakoutFormulaShort: Condition false: difCondition evaluated to false.");
-                        }
-                        if (!$supportResistanceCondition) {
-                            Log::info("RsiBreakoutFormulaShort: Condition false: supportResistanceCondition. close: " . $candle['close'] . ", resistance: " . $supportResistance[6]['resistance'] . ", support: " . $supportResistance[6]['support']);
-                        }
+
+
+                        $loopIndex--;
                     }
 
-                    if ($basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition) {
+
+                    // if (!($isCandleClosing && $basicRsiCondition && $obvCondition && $stochCondition && $wrCondition && $obvPositiveCondition && $difCondition && $supportResistanceCondition)) {
+                    //     // if (!$isCandleClosing) {
+                    //     //     Log::info("RsiBreakoutFormulaShort: Condition false: isCandleClosing. Time gap: " . (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) . " seconds");
+                    //     // }
+                    //     if (!$basicRsiCondition) {
+                    //         Log::info("RsiBreakoutFormulaShort: Condition false: basicRsiCondition. rsi6: " . $candle['rsi6'] . ", threshold: " . $rsiThreshold . ", MA7: " . $candle['ma7'] . ", MA25: " . $candle['ma25'] . ", MA99: " . $candle['ma99']);
+                    //     }
+                    //     if (!$obvCondition) {
+                    //         Log::info("RsiBreakoutFormulaShort: Condition false: obvCondition. OBV: " . $candle['obv'] . ", lowest OBV in last {$obvCandles} candles: " . $previousLowObv . ", OBV limit: " . $obvLimit);
+                    //     }
+                    //     if (!$stochCondition) {
+                    //         Log::info("RsiBreakoutFormulaShort: Condition false: stochCondition. stoch_d: " . $candle['stoch_d'] . ", limit: " . $stochDLimit);
+                    //     }
+                    //     if (!$wrCondition) {
+                    //         Log::info("RsiBreakoutFormulaShort: Condition false: wrCondition evaluated to false.");
+                    //     }
+                    //     if (!$obvPositiveCondition) {
+                    //         Log::info("RsiBreakoutFormulaShort: Condition false: obvPositiveCondition evaluated to false.");
+                    //     }
+                    //     if (!$difCondition) {
+                    //         Log::info("RsiBreakoutFormulaShort: Condition false: difCondition evaluated to false.");
+                    //     }
+                    //     if (!$supportResistanceCondition) {
+                    //         Log::info("RsiBreakoutFormulaShort: Condition false: supportResistanceCondition. close: " . $candle['close'] . ", resistance: " . $supportResistance[6]['resistance'] . ", support: " . $supportResistance[6]['support']);
+                    //     }
+                    // }
+
+                    if ($basicRsiCondition  && $stochCondition && $maCrossoverCondition) {
 
                         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
                         if ($lastOrderClose) {
@@ -184,6 +216,7 @@ class RsiBreakoutFormulaShort
             // Scenerio 1: If Current profit is less than 1%
             $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
             Log::info('RsiBreakoutFormulaShort: Current profit ' . $currentProfit);
+
 
             if ($previousCandle['close'] > $stopLoss) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
