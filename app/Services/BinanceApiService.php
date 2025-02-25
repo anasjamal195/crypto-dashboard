@@ -1532,7 +1532,7 @@ class BinanceApiService
             'pairId' => $response['orderId'],
 
         ]);
-        $data['subject'] = $data['type'] . ' ' . $data['position'] . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'],2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'],2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
         return $data;
