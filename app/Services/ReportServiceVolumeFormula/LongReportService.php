@@ -141,10 +141,6 @@ class LongReportService
             $obvLimit = $averages['previousObvHigh'] ? (($averages['previousObvHigh'] - $averages['obv']) / $averages['previousObvHigh']) * 100 : 100;
             if ($buy_price == 0) {
 
-
-
-
-
                 $breakoutCondition = $candle['close'] > $supportResistance[10]['resistance'] && $candle['open'] < $supportResistance[10]['resistance'];
 
                 $averageTrailingVolume = 0;

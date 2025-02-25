@@ -122,13 +122,30 @@ class LiveTradeLONGFutureServiceEXP1
                     }
 
 
+                    $averageTrailingVolume = 0;
+                    $volumeCandlesCount = 0;
+                    $indexCounter = count($candleData) - 1;
+                    $loopVolume = true;
+                    while ($loopVolume) {
+                        if ($candleData[$indexCounter]['close'] > $candleData[$indexCounter]['open']) {
+                            $averageTrailingVolume += $candleData[$indexCounter]['volume'];
+                            $volumeCandlesCount++;
+                            $indexCounter--;
+                        } else {
+                            $loopVolume = false;
+                        }
+                    }
+
+                    $averageTrailingVolume = $averageTrailingVolume && $volumeCandlesCount ? $averageTrailingVolume / $volumeCandlesCount :  0;
+                    $volumeMultiplier = 1.3;
+                    $volumeCondition = $CurrentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
+
                     Log::info('FutureTraderShortEXP1: Resistance: ' . $supportResistanceContition);
                     Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
                     Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
-                    if ($supportResistanceContition && $maCondition && $proceedCondition) {
+                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
                         Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
-
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'MA7/MA25 Crossover with Support Resistance Break (SHORT)');
                     }
 
@@ -153,8 +170,6 @@ class LiveTradeLONGFutureServiceEXP1
                             'subject' => 'Skipped LONG: Account ' . User::find($tradeInstance->tradeAccount)->name,
                             'created_at' => Carbon::now('Asia/Karachi'),
                         ];
-
-
 
                         MailerService::sendSkipEmail($data);
                     }

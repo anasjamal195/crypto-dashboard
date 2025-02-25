@@ -83,13 +83,14 @@ class RSIFormulaShort
                     $candleTrend = $currentCandle['close'] < $currentCandle['open'] && $secondLastCandle['close'] > $secondLastCandle['open'];
                     $priceThreshold = abs($secondLastCandle['close'] - $secondLastCandle['open']);
                     $finalThresholdCondition = $currentCandle['close'] < ($secondLastCandle['high'] - ($priceThreshold * 0.4));
-                    $stochCondition = $secondLastCandle['stoch_d'] >= 92;
+                    $rsiCondition = $secondLastCandle['rsi6'] <= 73;
 
-                    if ($supportResistanceBand && $candleTrend && $finalThresholdCondition && $stochCondition) {
+
+                    if ($supportResistanceBand && $candleTrend && $finalThresholdCondition && $rsiCondition) {
                         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
                         if ($lastOrderClose) {
                             $lastOrderClose = $lastOrderClose->created_at;
-                            $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose);
+                            $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
                             if ($timeDiff < 20) {
                                 Log::info('RSIFormulaShort: Skipped due to last order close time: ' . $symbol);
                                 continue;
@@ -97,7 +98,7 @@ class RSIFormulaShort
                         }
                         Log::info('RSIFormulaShort: Conditions Staisfied, opening now : ' . $symbol);
 
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSI Formula');
+                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'RSI Formula',true);
                     }
                 }
                 CommonHelpers::delayMS(200);

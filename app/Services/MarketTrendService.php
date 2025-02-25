@@ -354,7 +354,7 @@ class MarketTrendService
                         $lastHigh = $candle['close'];
                         $count = 0;
                         for ($i = $index - 1; $i > 0; $i--) {
-                            if ($data[$i]['marketTrendVsa'] === 'green' && $count <= 3) {
+                            if ($data[$i]['marketTrendVsa'] === 'green' && $count <= 5) {
 
                                 if ($data[$i]['close'] > $lastHigh) {
                                     $lastHigh = $data[$i]['close'];
@@ -399,9 +399,7 @@ class MarketTrendService
                             // dd($waitingOn);
                         }
                     } else {
-
-
-                        if ($candle['close'] < $secondLastLow) {
+                        if ($candle['close'] < $secondLastLow )  {
                             $candle['marketTrend'] = 'green';
                             $waitingOn = 0;
                             $openPrice = $candle['close'];

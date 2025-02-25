@@ -168,7 +168,7 @@ class BinanceApiService
             'limit' => $limit,
             'startTime' => $timestamp,
         ];
-        
+
         // Check if the remaining weight is too low to make another request to next available server
         if (intval($remainingWeight) < 100) {
             Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
@@ -1331,7 +1331,7 @@ class BinanceApiService
             DB::table('live_trades_future_results')->insert(
                 $data
             );
-            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' Txn Alert:: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
             MailerService::sendFutureTradeDynamicEmail($data);
 
             return $data;
@@ -1477,7 +1477,7 @@ class BinanceApiService
                 'pairId' => $orderId,
 
             ]);
-            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' Txn Alert:: Account ' . User::find($data['trade_acc'])->name . ' ' . $data['currentProfit'] . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
             MailerService::sendFutureTradeDynamicEmail($data);
             return $data;
