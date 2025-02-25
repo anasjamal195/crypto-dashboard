@@ -151,7 +151,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
                         Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
 
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
+                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout',true);
                     }
 
                     if ($supportResistanceContition && $maCondition && !$proceedCondition) {
