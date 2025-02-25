@@ -269,6 +269,7 @@ class MarketTrendService
             for ($i = $limit - 1; $i >= 0; $i--) {
                 $resistance = self::calculatePivotHighAtIndex($data, $i, $candleSpan, $candleSpan);
                 $support = self::calculatePivotLowAtIndex($data, $i, $candleSpan, $candleSpan);
+
                 if ($supportIndex != 0 && $resistanceIndex != 0) {
                     break;
                 }
@@ -291,6 +292,147 @@ class MarketTrendService
 
 
             return $data;
+        } catch (\Throwable $th) {
+            Log::error('DataDumper: Error - ' . $th->getMessage());
+            Log::error($th->getTraceAsString());
+            throw $th;
+        }
+    }
+    public static function getCurrentVsaGraph(
+        $symbol = 'BTCUSDT',
+        $interval = '1m',
+        $market = 'SPOT',
+        $candleSpan = 10,
+        $timestamp = null,
+    ) {
+        // $timestamp = 1740474000000;
+        try {
+            $limit = 1000;
+
+            $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, 'FUTURE');
+
+            $lastSupport = null;
+            $lastResistance = null;
+            $supportIndex = 0;
+            $resistanceIndex = 0;
+            foreach ($data as &$candle) {
+                $candle['marketTrend'] = 'blue';
+                $candle['marketTrendVsa'] = 'blue';
+            }
+            for ($i = $limit - 1; $i >= 0; $i--) {
+
+                $resistance = self::calculatePivotHighAtIndex($data, $i, $candleSpan, $candleSpan, 'close');
+                $support = self::calculatePivotLowAtIndex($data, $i, $candleSpan, $candleSpan, 'close');
+
+                if ($support) {
+                    $data[$i]['marketTrendVsa'] = 'red';
+                }
+                if ($resistance) {
+                    $data[$i]['marketTrendVsa'] = 'green';
+                }
+            }
+
+            $recentHigh = null;
+            $secondLastLow = null;
+            $waitingOn = 0;
+
+            $openPrice = 0;
+            $stopLoss = 0;
+            $takeProfit = 0;
+            $totalProfitPercentage = 0;
+            // Swing Detection
+            foreach ($data as $index => &$candle) {
+
+
+                if (!$openPrice) {
+
+
+
+                    if (!$waitingOn) {
+                        // Check market trend if viable for trade
+                        $trend = true;
+                        $lastHigh = $candle['close'];
+                        $count = 0;
+                        for ($i = $index - 1; $i > 0; $i--) {
+                            if ($data[$i]['marketTrendVsa'] === 'green' && $count <= 3) {
+
+                                if ($data[$i]['close'] > $lastHigh) {
+                                    $lastHigh = $data[$i]['close'];
+                                    $count++;
+                                } else {
+                                    $trend = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!$trend) {
+                            continue;
+                        }
+
+
+                        $recentHigh = null;
+                        $secondLastLow = null;
+                        // Calculate Recent high and previous low
+                        $counter = 1;
+                        for ($i = $index - 1; $i > 0; $i--) {
+                            if ($data[$i]['marketTrendVsa'] === 'green' && !$recentHigh) {
+                                $recentHigh = $data[$i]['close'];
+                                // $recentHigh = $i;
+                            }
+
+                            if ($data[$i]['marketTrendVsa'] === 'red' && !$secondLastLow) {
+                                if (!$counter) {
+                                    $secondLastLow = $data[$i]['close'];
+                                    // $secondLastLow = $i;
+                                }
+                                $counter--;
+                            }
+                        }
+
+
+
+                        if ($candle['close'] > $secondLastLow  && ($secondLastLow && $recentHigh)) {
+
+                            // $candle['marketTrend'] = 'yellow';
+                            $waitingOn = $index;
+                            // dd($waitingOn);
+                        }
+                    } else {
+
+
+                        if ($candle['close'] < $secondLastLow) {
+                            $candle['marketTrend'] = 'green';
+                            $waitingOn = 0;
+                            $openPrice = $candle['close'];
+                            $stopLoss = $recentHigh;
+                            $takeProfit = $candle['close'] - ($stopLoss - $candle['close']);
+                        } else if ($candle['close'] > $recentHigh) {
+                            $waitingOn = 0;
+                        };
+                    }
+                } else {
+                    if ($candle['close'] <= $takeProfit || $candle['close'] > $stopLoss) {
+                        if ($candle['close'] > $stopLoss) {
+                            $candle['marketTrend'] = 'orange';
+                        } else {
+                            $candle['marketTrend'] = 'red';
+                        }
+                        $totalProfitPercentage += (($openPrice - $candle['close']) / $openPrice) * 100;
+                        $openPrice = 0;
+                        $stopLoss = 0;
+                        $takeProfit = 0;
+                    }
+                }
+            }
+
+
+
+
+            return [
+                'data' => $data,
+                'totalProfit' => $totalProfitPercentage,
+            ];
         } catch (\Throwable $th) {
             Log::error('DataDumper: Error - ' . $th->getMessage());
             Log::error($th->getTraceAsString());
@@ -431,8 +573,8 @@ class MarketTrendService
                 // Check if we have enough data to calculate pivot points
                 if ($index >= $candleSpan && $index + $candleSpan < count($data)) {
                     // Use the pivot functions to calculate pivot high and low
-                    $pivotHigh = self::calculatePivotHighAtIndex($data, $index, $candleSpan, $candleSpan);
-                    $pivotLow = self::calculatePivotLowAtIndex($data, $index, $candleSpan, $candleSpan);
+                    $pivotHigh = self::calculatePivotHighAtIndex($data, $index, $candleSpan, $candleSpan, 'close');
+                    $pivotLow = self::calculatePivotLowAtIndex($data, $index, $candleSpan, $candleSpan, 'close');
 
                     // Update support and resistance levels only if valid pivots are found
                     if ($pivotHigh !== null) {
@@ -481,7 +623,7 @@ class MarketTrendService
      * @param int $rightBars Number of candles to the right to compare
      * @return float|null The pivot high value, or null if no pivot is found
      */
-    private static function calculatePivotHighAtIndex(array $data, int $index, int $leftBars, int $rightBars): ?float
+    private static function calculatePivotHighAtIndex(array $data, int $index, int $leftBars, int $rightBars, $mode = 'high'): ?float
     {
         $length = count($data);
 
@@ -490,12 +632,12 @@ class MarketTrendService
             return null; // Not enough candles to calculate pivot
         }
 
-        $currentHigh = $data[$index]['high'];
+        $currentHigh = $data[$index][$mode];
         $isPivotHigh = true;
 
         // Check candles to the left
         for ($j = 1; $j <= $leftBars; $j++) {
-            if ($currentHigh <= $data[$index - $j]['high']) {
+            if ($currentHigh <= $data[$index - $j][$mode]) {
                 $isPivotHigh = false;
                 break;
             }
@@ -504,7 +646,7 @@ class MarketTrendService
         // Check candles to the right
         if ($isPivotHigh) {
             for ($j = 1; $j <= $rightBars; $j++) {
-                if ($currentHigh <= $data[$index + $j]['high']) {
+                if ($currentHigh <= $data[$index + $j][$mode]) {
                     $isPivotHigh = false;
                     break;
                 }
@@ -523,7 +665,7 @@ class MarketTrendService
      * @param int $rightBars Number of candles to the right to compare
      * @return float|null The pivot low value, or null if no pivot is found
      */
-    private static function calculatePivotLowAtIndex(array $data, int $index, int $leftBars, int $rightBars): ?float
+    private static function calculatePivotLowAtIndex(array $data, int $index, int $leftBars, int $rightBars, $mode = 'low'): ?float
     {
         $length = count($data);
 
@@ -532,12 +674,12 @@ class MarketTrendService
             return null; // Not enough candles to calculate pivot
         }
 
-        $currentLow = $data[$index]['low'];
+        $currentLow = $data[$index][$mode];
         $isPivotLow = true;
 
         // Check candles to the left
         for ($j = 1; $j <= $leftBars; $j++) {
-            if ($currentLow >= $data[$index - $j]['low']) {
+            if ($currentLow >= $data[$index - $j][$mode]) {
                 $isPivotLow = false;
                 break;
             }
@@ -546,7 +688,7 @@ class MarketTrendService
         // Check candles to the right
         if ($isPivotLow) {
             for ($j = 1; $j <= $rightBars; $j++) {
-                if ($currentLow >= $data[$index + $j]['low']) {
+                if ($currentLow >= $data[$index + $j][$mode]) {
                     $isPivotLow = false;
                     break;
                 }

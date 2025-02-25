@@ -3,7 +3,16 @@
 @section('content')
     <div class="container-fluid">
         <div class="row">
+
             <div class="col-md-12">
+                <div class="row">
+                    <div class="card text-white bg-primary mb-3 col-md-2 mx-3">
+                        <div class="card-header">Total Profit</div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ $totalProfit }} %</h5>
+                        </div>
+                    </div>
+                </div>
                 <div class="card">
                     <div class="card-header card-header-primary">
                         <h4 class="card-title ">Market Trends Report</h4>

@@ -168,6 +168,7 @@ class BinanceApiService
             'limit' => $limit,
             'startTime' => $timestamp,
         ];
+        
         // Check if the remaining weight is too low to make another request to next available server
         if (intval($remainingWeight) < 100) {
             Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
