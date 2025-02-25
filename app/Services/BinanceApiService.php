@@ -1393,7 +1393,7 @@ class BinanceApiService
         DB::table('live_trades_future_results')->insert(
             $data
         );
-        $data['subject'] = $data['type'] . ' ' . $data['position'] . ' Txn Alert:: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = $data['type'] . ' ' . $data['position'] . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
 
         return $data;
@@ -1532,7 +1532,7 @@ class BinanceApiService
             'pairId' => $response['orderId'],
 
         ]);
-        $data['subject'] = $data['type'] . ' ' . $data['position'] . ' Txn Alert:: Account ' . User::find($data['trade_acc'])->name . ' ' . $data['currentProfit'] . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = $data['type'] . ' ' . $data['position'] . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'],2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
         return $data;
