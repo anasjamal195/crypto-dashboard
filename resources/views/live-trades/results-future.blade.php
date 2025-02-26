@@ -224,7 +224,7 @@
                         </td>
                         <td
                             style="color:{{ isset($order->realizedPnl) ? ($order->realizedPnl > 0 ? 'green' : ($order->realizedPnl < 0 ? 'red' : '')) : '' }} !important">
-                            {{ isset($order->realizedPnl) ? round($order->realizedPnl, 8) . '%' : '0' }}
+                           $ {{ isset($order->realizedPnl) ? round($order->realizedPnl, 8) . '' : '0' }}
                         </td>
                         <td>
                             <span
