@@ -49,14 +49,12 @@ class FutureDynamicTradeWorker extends Command
             }
 
             // For close order
-            $feeDetails = self::getFeeDetails($closeOrder->orderId);
+            $feeDetails = BinanceApiService::getFeeDetails($closeOrder->orderId);
 
             foreach ($feeDetails as $fee) {
                 $feeUsdt += floatval($fee['commission']);
                 $realizedPnl += floatval($fee['realizedPnl']);
             }
-
-
 
             // Update this data in db
             DB::table('live_trades_future_results')->where('orderId', $openOrder->orderId)->update([
