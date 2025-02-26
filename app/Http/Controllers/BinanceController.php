@@ -127,7 +127,7 @@ class BinanceController extends Controller
         // $historicalTrends = MarketTrendService::getCurrentSupportResistanceValue($request->symbol,$request->interval,'FUTURE',[5,10,15]);
         // dd($historicalTrends);
 
-        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'totalProfit'=> round($historicalTrends['totalProfit'],2 )]);
+        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'totalProfit' => round($historicalTrends['totalProfit'], 2)]);
     }
     public function getAvailableBalance(Request $request)
     {
@@ -184,6 +184,8 @@ class BinanceController extends Controller
                 $orders = $orders->where('created_at', '<=', Carbon::parse($_GET['end_date'])->format('Y-m-d H:i:s'));
             if ($request->filled('symbol'))
                 $orders = $orders->where('symbol', $_GET['symbol']);
+            if ($request->filled('formula'))
+                $orders = $orders->where('formula', 'LIKE', $_GET['formula']);
             $orders = $orders->orderBy('created_at', 'desc')->get();
             // dd($orders);
             return view('live-trades.results', compact('orders', 'pageSlug'));
