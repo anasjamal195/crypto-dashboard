@@ -179,13 +179,13 @@ class BinanceController extends Controller
                 ->where('side', 'BUY');
 
             if ($request->filled('start_date'))
-                $orders = $orders->where('created_at', '>=', Carbon::parse($_GET['start_date'])->format('Y-m-d H:i:s'));
+                $orders = $orders->where('created_at', '>=', Carbon::parse($request('start_date'))->format('Y-m-d H:i:s'));
             if ($request->filled('end_date'))
-                $orders = $orders->where('created_at', '<=', Carbon::parse($_GET['end_date'])->format('Y-m-d H:i:s'));
+                $orders = $orders->where('created_at', '<=', Carbon::parse($request->input('end_date'))->format('Y-m-d H:i:s'));
             if ($request->filled('symbol'))
-                $orders = $orders->where('symbol', $_GET['symbol']);
+                $orders = $orders->where('symbol', $request->input('symbol'));
             if ($request->filled('formula'))
-                $orders = $orders->where('formula', 'LIKE', $_GET['formula']);
+                $orders = $orders->where('formula', 'LIKE', $request->input('formula'));
             $orders = $orders->orderBy('created_at', 'desc')->get();
             // dd($orders);
             return view('live-trades.results', compact('orders', 'pageSlug'));
@@ -224,6 +224,8 @@ class BinanceController extends Controller
             if ($request->filled('symbol')) {
                 $orders = $orders->where('symbol', $request->symbol);
             }
+            if ($request->filled('formula'))
+                $orders = $orders->where('formula', 'LIKE', $request->input('formula'));
 
             $orders = $orders->orderBy('created_at', 'desc')->get();
 
