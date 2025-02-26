@@ -36,11 +36,13 @@ class FutureDynamicTradeWorker extends Command
         foreach ($openTrades as $trade) {
 
             $openOrder = $trade;
-            $closeOrder = DB::table('live_trades_future_results')->where('orderId', $trade->pairId)->get();
+            $closeOrder = DB::table('live_trades_future_results')->where('orderId', $trade->pairId)->first();
             if (!$closeOrder)
                 continue;
             // For close order
+
             $feeDetails = BinanceApiService::getFeeDetails($openOrder->orderId);
+
             $feeUsdt = 0;
             $realizedPnl = 0;
             foreach ($feeDetails as $fee) {
@@ -68,6 +70,7 @@ class FutureDynamicTradeWorker extends Command
             ]);
             CommonHelpers::delayMS(100);
         }
+        dd("Dump Complete");
 
 
 

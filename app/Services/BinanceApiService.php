@@ -1586,7 +1586,7 @@ class BinanceApiService
         $signature = hash_hmac('sha256', $queryString, $secretKey);
 
         // Make the API request
-        $response = Http::withHeaders([
+        $response = self::getHttpClient()->withHeaders([
             'X-MBX-APIKEY' => $apiKey,
         ])->get("https://fapi.binance.com/fapi/v1/userTrades", [
             'symbol' => $symbol,

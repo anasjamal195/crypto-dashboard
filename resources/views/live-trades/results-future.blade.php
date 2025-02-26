@@ -81,7 +81,7 @@
             <div class="card text-white bg-warning mb-3 col-md-2 mx-3">
                 <div class="card-header">Realized PnL</div>
                 <div class="card-body">
-                    <h5 class="card-title">$ {{ round($tradeStatistics['realizedPnl'], 8) }}</h5>
+                    <h5 class="card-title">$ {{ round($tradeStatistics['realizedPnl'], 4) }}</h5>
 
                 </div>
             </div>
@@ -224,7 +224,7 @@
                         </td>
                         <td
                             style="color:{{ isset($order->realizedPnl) ? ($order->realizedPnl > 0 ? 'green' : ($order->realizedPnl < 0 ? 'red' : '')) : '' }} !important">
-                           $ {{ isset($order->realizedPnl) ? round($order->realizedPnl, 8) . '' : '0' }}
+                           $ {{ isset($order->realizedPnl) ? round($order->realizedPnl, 4) . '' : '0' }}
                         </td>
                         <td>
                             <span
