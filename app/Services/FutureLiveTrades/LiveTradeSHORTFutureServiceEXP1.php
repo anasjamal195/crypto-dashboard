@@ -156,28 +156,7 @@ class LiveTradeSHORTFutureServiceEXP1
                             BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
                         } else {
                             Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
-                            $data =  [
-                                'orderId' => '',
-                                'symbol' => $symbol,
-                                'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
-                                'amount' => '',
-                                'type' => '',
-                                'position' => $tradeInstance->position,
-                                'qty' => '',
-                                'leverage' => '',
-                                'stopLoss' => '',
-                                'stopLossReductionPrecentage' => 0.1,
-                                'price' => $CurrentCandle['close'],
-                                'trade_status' => 'open',
-                                'trade_acc' => $tradeInstance->tradeAccount,
-                                'targetProfit' => 0.5,
-                                'formula' => '',
-                                'liqPrice' => '',
-                                'subject' => 'Skipped opening SHORT Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
-                                'created_at' => Carbon::now('Asia/Karachi'),
-                            ];
-
-                            MailerService::sendSkipEmail($data);
+                            MailerService::sendSkipEmail($tradeInstance,'Skipped opening SHORT Due to Wick formation');
                         }
                     }
                 }
@@ -219,28 +198,8 @@ class LiveTradeSHORTFutureServiceEXP1
                     ]);
                 } else {
                     Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
-                    $data =  [
-                        'orderId' => '',
-                        'symbol' => $tradeInstance->symbol,
-                        'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
-                        'amount' => '',
-                        'type' => '',
-                        'position' => $tradeInstance->position,
-                        'qty' => '',
-                        'leverage' => '',
-                        'stopLoss' => '',
-                        'stopLossReductionPrecentage' => 0.1,
-                        'price' => $currentCandle['close'],
-                        'trade_status' => 'open',
-                        'trade_acc' => $tradeInstance->tradeAccount,
-                        'targetProfit' => 0.5,
-                        'formula' => '',
-                        'liqPrice' => '',
-                        'subject' => 'Skipped closing SHORT Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
-                        'created_at' => Carbon::now('Asia/Karachi'),
-                    ];
-
-                    MailerService::sendSkipEmail($data);
+                    MailerService::sendSkipEmail($tradeInstance,'Skipped closing SHORT Due to Wick formation');
+                   
                 }
             } else if ($currentProfit > $targetProfit) {
 
@@ -278,28 +237,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     ]);
                 } else {
                     Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
-                    $data =  [
-                        'orderId' => '',
-                        'symbol' => $tradeInstance->symbol,
-                        'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
-                        'amount' => '',
-                        'type' => '',
-                        'position' => $tradeInstance->position,
-                        'qty' => '',
-                        'leverage' => '',
-                        'stopLoss' => '',
-                        'stopLossReductionPrecentage' => 0.1,
-                        'price' => $currentCandle['close'],
-                        'trade_status' => 'open',
-                        'trade_acc' => $tradeInstance->tradeAccount,
-                        'targetProfit' => 0.5,
-                        'formula' => '',
-                        'liqPrice' => '',
-                        'subject' => 'Skipped closing SHORT Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
-                        'created_at' => Carbon::now('Asia/Karachi'),
-                    ];
-
-                    MailerService::sendSkipEmail($data);
+                    MailerService::sendSkipEmail($tradeInstance,'Skipped closing SHORT Due to Wick formation');
                 }
             } else if ($isCandleClosing) {
                 Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);

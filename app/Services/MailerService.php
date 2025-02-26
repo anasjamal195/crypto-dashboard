@@ -8,6 +8,8 @@ use App\Mail\OrderMail;
 use App\Mail\SkipEmail;
 use App\Mail\WalletEmail;
 use App\Mail\WorkerEmail;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 
 class MailerService
@@ -49,9 +51,29 @@ class MailerService
     }
 
 
-    public static function sendSkipEmail($details)
+    public static function sendSkipEmail($tradeInstance,$subject)
     {
+        $data =  [
+            'orderId' => '',
+            'symbol' => $tradeInstance->symbol,
+            'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
+            'amount' => '',
+            'type' => '',
+            'position' => $tradeInstance->position,
+            'qty' => '',
+            'leverage' => '',
+            'stopLoss' => '',
+            'stopLossReductionPrecentage' => 0.1,
+            'price' => BinanceApiService::getCurrentPrice($tradeInstance->symbol,$tradeInstance->market),
+            'trade_status' => 'open',
+            'trade_acc' => $tradeInstance->tradeAccount,
+            'targetProfit' => 0.5,
+            'formula' => '',
+            'liqPrice' => '',
+            'subject' => $subject. ' :Account ' . User::find($tradeInstance->tradeAccount)->name,
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
         foreach (self::$recipients as $recipient)
-            Mail::to($recipient)->send(new SkipEmail($details));
+            Mail::to($recipient)->send(new SkipEmail($data));
     }
 }

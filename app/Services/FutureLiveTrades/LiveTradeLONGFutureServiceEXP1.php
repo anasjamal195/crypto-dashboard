@@ -153,30 +153,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                             BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
                         } else {
-
-                            $data =  [
-                                'orderId' => '',
-                                'symbol' => $symbol,
-                                'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
-                                'amount' => '',
-                                'type' => '',
-                                'position' => $tradeInstance->position,
-                                'qty' => '',
-                                'leverage' => '',
-                                'stopLoss' => '',
-                                'stopLossReductionPrecentage' => 0.1,
-                                'price' => $CurrentCandle['close'],
-                                'trade_status' => 'open',
-                                'trade_acc' => $tradeInstance->tradeAccount,
-                                'targetProfit' => 0.5,
-                                'formula' => '',
-                                'liqPrice' => '',
-                                'subject' => 'Skipped opening LONG Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
-                                'created_at' => Carbon::now('Asia/Karachi'),
-                            ];
-
-                            MailerService::sendSkipEmail($data);
-
+                            MailerService::sendSkipEmail($tradeInstance,'Skipped opening LONG Due to Wick formation');
                             Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                         }
                     }
@@ -217,29 +194,7 @@ class LiveTradeLONGFutureServiceEXP1
                     ]);
                 } else {
 
-                    $data =  [
-                        'orderId' => '',
-                        'symbol' => $tradeInstance->symbol,
-                        'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
-                        'amount' => '',
-                        'type' => '',
-                        'position' => $tradeInstance->position,
-                        'qty' => '',
-                        'leverage' => '',
-                        'stopLoss' => '',
-                        'stopLossReductionPrecentage' => 0.1,
-                        'price' => $currentCandle['close'],
-                        'trade_status' => 'open',
-                        'trade_acc' => $tradeInstance->tradeAccount,
-                        'targetProfit' => 0.5,
-                        'formula' => '',
-                        'liqPrice' => '',
-                        'subject' => 'Skipped closing LONG Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
-                        'created_at' => Carbon::now('Asia/Karachi'),
-                    ];
-
-                    MailerService::sendSkipEmail($data);
-
+                    MailerService::sendSkipEmail($tradeInstance,'Skipped closing LONG Due to Wick formation');
                     Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                 }
             } else if ($currentProfit > $targetProfit) {
@@ -276,30 +231,7 @@ class LiveTradeLONGFutureServiceEXP1
                         'targetProfit' => $targetProfit,
                     ]);
                 } else {
-
-                    $data =  [
-                        'orderId' => '',
-                        'symbol' => $tradeInstance->symbol,
-                        'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
-                        'amount' => '',
-                        'type' => '',
-                        'position' => $tradeInstance->position,
-                        'qty' => '',
-                        'leverage' => '',
-                        'stopLoss' => '',
-                        'stopLossReductionPrecentage' => 0.1,
-                        'price' => $currentCandle['close'],
-                        'trade_status' => 'open',
-                        'trade_acc' => $tradeInstance->tradeAccount,
-                        'targetProfit' => 0.5,
-                        'formula' => '',
-                        'liqPrice' => '',
-                        'subject' => 'Skipped closing LONG Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
-                        'created_at' => Carbon::now('Asia/Karachi'),
-                    ];
-
-                    MailerService::sendSkipEmail($data);
-
+                    MailerService::sendSkipEmail($tradeInstance,'Skipped closing LONG Due to Wick formation');
                     Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                 }
             } else if ($isCandleClosing) {
