@@ -81,7 +81,7 @@
             <div class="card text-white bg-warning mb-3 col-md-2 mx-3">
                 <div class="card-header">Realized PnL</div>
                 <div class="card-body">
-                    <h5 class="card-title">$ {{ round($tradeStatistics['realisedPnl'], 8) }}</h5>
+                    <h5 class="card-title">$ {{ round($tradeStatistics['realizedPnl'], 8) }}</h5>
 
                 </div>
             </div>
