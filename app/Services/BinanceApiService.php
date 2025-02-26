@@ -1393,7 +1393,7 @@ class BinanceApiService
         DB::table('live_trades_future_results')->insert(
             $data
         );
-        $data['subject'] = $data['type'] . ' ' . $data['position'] . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
 
         return $data;
@@ -1495,7 +1495,6 @@ class BinanceApiService
         $response = $response->json();
 
 
-
         if (isset($response['code']) && $response['code'] < 0) {
             throw new Exception("Order failed: " . $response['msg']);
         }
@@ -1506,6 +1505,28 @@ class BinanceApiService
         } else {
             $currentProfit = (($current_price - $openOrder->price) / $openOrder->price) * 100;
         }
+        // Fee Details
+
+        $feeUsdt = 0;
+        $realizedPnl = 0;
+
+        // For close order
+        $feeDetails = self::getFeeDetails($response['orderId']);
+
+        foreach ($feeDetails as $fee) {
+            $feeUsdt += floatval($fee['commission']);
+            $realizedPnl += floatval($fee['realizedPnl']);
+        }
+
+        // For close order
+        $feeDetails = self::getFeeDetails($openOrderId);
+
+        foreach ($feeDetails as $fee) {
+            $feeUsdt += floatval($fee['commission']);
+            $realizedPnl += floatval($fee['realizedPnl']);
+        }
+
+
         $data =  [
             'orderId' => $response['orderId'],
             'pairId' => $openOrder->pairId,
@@ -1521,6 +1542,8 @@ class BinanceApiService
             'currentProfit' => $currentProfit,
             'trade_acc' => $trader,
             'liqPrice' => 0,
+            'feeUsdt' => $feeUsdt,
+            'realizedPnl' => $realizedPnl,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
@@ -1530,15 +1553,51 @@ class BinanceApiService
         DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
             'trade_status' => 'close',
             'pairId' => $response['orderId'],
+            'feeUsdt' => $feeUsdt,
+            'realizedPnl' => $realizedPnl,
 
         ]);
-        $data['subject'] = $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'],2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
         return $data;
     }
 
+    public static function getFeeDetails($orderId)
+    {
 
+        $openOrder = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
+
+        if (!$openOrder) {
+            return false;
+        }
+
+        $market = 'FUTURE';
+        $trader = $openOrder->trade_acc;
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+
+        $symbol = $openOrder->symbol;
+        $timestamp = round(microtime(true) * 1000);
+
+        // Generate the signature
+        $queryString = "symbol=$symbol&orderId=$orderId&timestamp=$timestamp";
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
+        // Make the API request
+        $response = Http::withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->get("https://fapi.binance.com/fapi/v1/userTrades", [
+            'symbol' => $symbol,
+            'orderId' => $orderId,
+            'timestamp' => $timestamp,
+            'signature' => $signature,
+        ]);
+
+        $trades = $response->json();
+        return $trades;
+    }
     public static function openMarketPosition($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $trade)
     {
 

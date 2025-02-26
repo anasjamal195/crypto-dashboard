@@ -237,12 +237,14 @@ class BinanceController extends Controller
                 'total_profit' => 0,
                 'total_loss' => 0,
                 'net_total' => 0,
+                'realizedPnl' => 0,
 
             ];
 
             foreach ($orders as $order) {
                 $tradeStatistics['total_orders'] += 1;
                 $tradeStatistics['net_total'] += $order->currentProfit;
+                $tradeStatistics['realizedPnl'] += $order->realizedPnl;
 
                 if ($order->position === 'LONG')
                     $tradeStatistics['total_long'] += 1;

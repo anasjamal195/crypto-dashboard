@@ -77,6 +77,15 @@
                 </div>
             </div>
 
+            <!-- Realized Pnl -->
+            <div class="card text-white bg-warning mb-3 col-md-2 mx-3">
+                <div class="card-header">Realized PnL</div>
+                <div class="card-body">
+                    <h5 class="card-title">$ {{ round($tradeStatistics['realisedPnl'], 8) }}</h5>
+
+                </div>
+            </div>
+
         </div>
         <form method="GET" action="{{ route('live.trades.result', 'FUTURE') }}">
             <input type="hidden" name="interval" value="{{ request()->get('interval') }}">
@@ -174,6 +183,7 @@
                         <th>Current Resistance</th>
                         <th>Stop Loss</th> --}}
                     <th>Current Profit</th>
+                    <th>Realized Pnl</th>
                     <th>Status</th>
                     <th>Take Profit</th>
                     <th>Time</th>
@@ -212,6 +222,10 @@
                             style="color:{{ isset($order->currentProfit) ? ($order->currentProfit > 0 ? 'green' : ($order->currentProfit < 0 ? 'red' : '')) : '' }} !important">
                             {{ isset($order->currentProfit) ? round($order->currentProfit, 2) . '%' : '0' }}
                         </td>
+                        <td
+                            style="color:{{ isset($order->realizedPnl) ? ($order->realizedPnl > 0 ? 'green' : ($order->realizedPnl < 0 ? 'red' : '')) : '' }} !important">
+                            {{ isset($order->realizedPnl) ? round($order->realizedPnl, 8) . '%' : '0' }}
+                        </td>
                         <td>
                             <span
                                 class="badge {{ $order->trade_status == 'open' ? 'bg-info' : 'bg-secondary text-dark' }}">
@@ -231,7 +245,7 @@
                             @endif
                         </td>
 
-                   
+
                         <td colspan="13" class="text-center  py-2">
                             <span class="fw-bold"> </span>{{ $order->formula ?? '-' }}
                         </td>
