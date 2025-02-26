@@ -171,7 +171,7 @@ class LiveTradeLONGFutureServiceEXP1
                                 'targetProfit' => 0.5,
                                 'formula' => '',
                                 'liqPrice' => '',
-                                'subject' => 'Skipped LONG Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
+                                'subject' => 'Skipped opening LONG Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
                                 'created_at' => Carbon::now('Asia/Karachi'),
                             ];
 
@@ -204,13 +204,44 @@ class LiveTradeLONGFutureServiceEXP1
             Log::info('FutureTraderLongEXP1: Current profit ' . $currentProfit);
 
             if ($currentCandle['close'] < $stopLoss) {
-                BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
-                DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
-                    'previousPrice' => $currentCandle['close'],
-                    'currentPrice' => $currentCandle['close'],
-                    'currentProfit' => $currentProfit,
-                    'targetProfit' => $targetProfit,
-                ]);
+                // Checking Upper Wick Formation
+                $currentPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
+                $lower_wick = $currentPrice < min($currentCandle['open'], $currentCandle['close']);
+                if (!$lower_wick) {
+                    BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+                    DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                        'previousPrice' => $currentCandle['close'],
+                        'currentPrice' => $currentCandle['close'],
+                        'currentProfit' => $currentProfit,
+                        'targetProfit' => $targetProfit,
+                    ]);
+                } else {
+
+                    $data =  [
+                        'orderId' => '',
+                        'symbol' => $tradeInstance->symbol,
+                        'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
+                        'amount' => '',
+                        'type' => '',
+                        'position' => $tradeInstance->position,
+                        'qty' => '',
+                        'leverage' => '',
+                        'stopLoss' => '',
+                        'stopLossReductionPrecentage' => 0.1,
+                        'price' => $currentCandle['close'],
+                        'trade_status' => 'open',
+                        'trade_acc' => $tradeInstance->tradeAccount,
+                        'targetProfit' => 0.5,
+                        'formula' => '',
+                        'liqPrice' => '',
+                        'subject' => 'Skipped closing LONG Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
+                        'created_at' => Carbon::now('Asia/Karachi'),
+                    ];
+
+                    MailerService::sendSkipEmail($data);
+
+                    Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
+                }
             } else if ($currentProfit > $targetProfit) {
 
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -233,7 +264,44 @@ class LiveTradeLONGFutureServiceEXP1
             }
         } else {
             if ($currentCandle['close'] < $stopLoss) {
-                BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+                $currentPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
+                $lower_wick = $currentPrice < min($currentCandle['open'], $currentCandle['close']);
+                if (!$lower_wick) {
+                    $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
+                    BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+                    DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                        'previousPrice' => $currentCandle['close'],
+                        'currentPrice' => $currentCandle['close'],
+                        'currentProfit' => $currentProfit,
+                        'targetProfit' => $targetProfit,
+                    ]);
+                } else {
+
+                    $data =  [
+                        'orderId' => '',
+                        'symbol' => $tradeInstance->symbol,
+                        'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
+                        'amount' => '',
+                        'type' => '',
+                        'position' => $tradeInstance->position,
+                        'qty' => '',
+                        'leverage' => '',
+                        'stopLoss' => '',
+                        'stopLossReductionPrecentage' => 0.1,
+                        'price' => $currentCandle['close'],
+                        'trade_status' => 'open',
+                        'trade_acc' => $tradeInstance->tradeAccount,
+                        'targetProfit' => 0.5,
+                        'formula' => '',
+                        'liqPrice' => '',
+                        'subject' => 'Skipped closing LONG Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
+                        'created_at' => Carbon::now('Asia/Karachi'),
+                    ];
+
+                    MailerService::sendSkipEmail($data);
+
+                    Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
+                }
             } else if ($isCandleClosing) {
                 $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
                 Log::info('FutureTraderLongEXP1: Current profit ' . $currentProfit);
