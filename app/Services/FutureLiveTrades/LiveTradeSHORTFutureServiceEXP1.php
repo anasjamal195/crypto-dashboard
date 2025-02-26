@@ -150,8 +150,13 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
                         Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
-
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
+                        $currentPrice = BinanceApiService::getCurrentPrice($symbol, $market);
+                        $lower_wick = $currentPrice < min($CurrentCandle['open'], $CurrentCandle['close']);
+                        if (!$lower_wick) {
+                            BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
+                        } else {
+                            Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
+                        }
                     }
 
                     if ($supportResistanceContition && $maCondition && !$proceedCondition) {
@@ -172,7 +177,7 @@ class LiveTradeSHORTFutureServiceEXP1
                             'targetProfit' => 0.5,
                             'formula' => '',
                             'liqPrice' => '',
-                            'subject' => 'Skipped SHORT: Account '. User::find($tradeInstance->tradeAccount)->name,
+                            'subject' => 'Skipped SHORT: Account ' . User::find($tradeInstance->tradeAccount)->name,
                             'created_at' => Carbon::now('Asia/Karachi'),
                         ];
 

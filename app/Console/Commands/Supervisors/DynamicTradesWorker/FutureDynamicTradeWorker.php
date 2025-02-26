@@ -31,68 +31,63 @@ class FutureDynamicTradeWorker extends Command
     public function handle()
     {
 
-        // Test command to fill in profit losses of previous trades
-        $openTrades = DB::table('live_trades_future_results')->where('type', 'open')->orderBy('created_at', 'DESC')->get();
-        foreach ($openTrades as $trade) {
-            try {
-                //code...
-
-                $openOrder = $trade;
-                $closeOrder = DB::table('live_trades_future_results')->where('orderId', $trade->pairId)->first();
-                if (!$closeOrder)
-                    continue;
-                // For close order
-
-                $feeDetails = BinanceApiService::getFeeDetails($openOrder->orderId);
-
-                $feeUsdt = 0;
-                $realizedPnl = 0;
-                foreach ($feeDetails as $fee) {
-                    $feeUsdt += floatval($fee['commission']);
-                    $realizedPnl += floatval($fee['realizedPnl']);
-                }
-
-                // For close order
-                $feeDetails = BinanceApiService::getFeeDetails($closeOrder->orderId);
-
-                foreach ($feeDetails as $fee) {
-                    $feeUsdt += floatval($fee['commission']);
-                    $realizedPnl += floatval($fee['realizedPnl']);
-                }
-
-                // Update this data in db
-                DB::table('live_trades_future_results')->where('orderId', $openOrder->orderId)->update([
-                    'feeUsdt' => $feeUsdt,
-                    'realizedPnl' => $realizedPnl,
-
-                ]);
-                DB::table('live_trades_future_results')->where('orderId', $closeOrder->orderId)->update([
-                    'feeUsdt' => $feeUsdt,
-                    'realizedPnl' => $realizedPnl,
-                ]);
-            } catch (\Exception $e) {
-                $this->info($e);
-            }
-            CommonHelpers::delayMS(100);
-        }
-        dd("Dump Complete");
-
-
-
-
-
-
-
-
-
-
-        // while (true) {
+        // // Test command to fill in profit losses of previous trades
+        // $openTrades = DB::table('live_trades_future_results')->where('type', 'open')->orderBy('created_at', 'DESC')->get();
+        // foreach ($openTrades as $trade) {
         //     try {
-        //         DynamicTradeService::checkDynamicTradesFUTURE();
-        //         usleep(10000); // 10ms delay
-        //     } catch (\Exception $th) {
-        //         Log::error('An error occured: ' . $th);
+        //         //code...
+
+        //         $openOrder = $trade;
+        //         $closeOrder = DB::table('live_trades_future_results')->where('orderId', $trade->pairId)->first();
+        //         if (!$closeOrder)
+        //             continue;
+        //         // For close order
+
+        //         $feeDetails = BinanceApiService::getFeeDetails($openOrder->orderId);
+        //         if (!$feeDetails) {
+        //             continue;
+        //         }
+        //         $feeUsdt = 0;
+        //         $realizedPnl = 0;
+        //         foreach ($feeDetails as $fee) {
+        //             $feeUsdt += floatval($fee['commission']);
+        //             $realizedPnl += floatval($fee['realizedPnl']);
+        //         }
+
+        //         // For close order
+        //         $feeDetails = BinanceApiService::getFeeDetails($closeOrder->orderId);
+        //         if (!$feeDetails) {
+        //             continue;
+        //         }
+        //         foreach ($feeDetails as $fee) {
+        //             $feeUsdt += floatval($fee['commission']);
+        //             $realizedPnl += floatval($fee['realizedPnl']);
+        //         }
+
+        //         // Update this data in db
+        //         DB::table('live_trades_future_results')->where('orderId', $openOrder->orderId)->update([
+        //             'feeUsdt' => $feeUsdt,
+        //             'realizedPnl' => $realizedPnl,
+
+        //         ]);
+        //         DB::table('live_trades_future_results')->where('orderId', $closeOrder->orderId)->update([
+        //             'feeUsdt' => $feeUsdt,
+        //             'realizedPnl' => $realizedPnl,
+        //         ]);
+        //     } catch (\Exception $e) {
+        //         $this->info($e);
         //     }
+        //     CommonHelpers::delayMS(100);
         // }
+        // dd("Dump Complete");
+
+        while (true) {
+            try {
+                DynamicTradeService::checkDynamicTradesFUTURE();
+                usleep(10000); // 10ms delay
+            } catch (\Exception $th) {
+                Log::error('An error occured: ' . $th);
+            }
+        }
     }
 }

@@ -140,13 +140,21 @@ class LiveTradeLONGFutureServiceEXP1
                     $volumeMultiplier = 1.3;
                     $volumeCondition = $CurrentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
-                    Log::info('FutureTraderShortEXP1: Resistance: ' . $supportResistanceContition);
+                    Log::info('FutureTraderLongEXP1: Resistance: ' . $supportResistanceContition);
                     Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
                     Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
-                        Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
+                        // Checking Upper Wick Formation
+                        $currentPrice = BinanceApiService::getCurrentPrice($symbol, $market);
+                        $upper_wick = $currentPrice > max($CurrentCandle['open'], $CurrentCandle['close']);
+                        if (!$upper_wick) {
+                            Log::info('FutureTraderLongEXP1: Conditions Staisfied, opening now : ' . $symbol);
+
+                            BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
+                        } else {
+                            Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
+                        }
                     }
 
                     if ($supportResistanceContition && $maCondition && !$proceedCondition) {
