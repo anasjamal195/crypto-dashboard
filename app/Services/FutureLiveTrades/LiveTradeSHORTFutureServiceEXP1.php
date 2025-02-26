@@ -156,34 +156,29 @@ class LiveTradeSHORTFutureServiceEXP1
                             BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
                         } else {
                             Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
+                            $data =  [
+                                'orderId' => '',
+                                'symbol' => $symbol,
+                                'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
+                                'amount' => '',
+                                'type' => '',
+                                'position' => $tradeInstance->position,
+                                'qty' => '',
+                                'leverage' => '',
+                                'stopLoss' => '',
+                                'stopLossReductionPrecentage' => 0.1,
+                                'price' => $CurrentCandle['close'],
+                                'trade_status' => 'open',
+                                'trade_acc' => $tradeInstance->tradeAccount,
+                                'targetProfit' => 0.5,
+                                'formula' => '',
+                                'liqPrice' => '',
+                                'subject' => 'Skipped SHORT Due to Wick formation: Account ' . User::find($tradeInstance->tradeAccount)->name,
+                                'created_at' => Carbon::now('Asia/Karachi'),
+                            ];
+
+                            MailerService::sendSkipEmail($data);
                         }
-                    }
-
-                    if ($supportResistanceContition && $maCondition && !$proceedCondition) {
-                        $data =  [
-                            'orderId' => '',
-                            'symbol' => $symbol,
-                            'side' =>  $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL',
-                            'amount' => '',
-                            'type' => '',
-                            'position' => $tradeInstance->position,
-                            'qty' => '',
-                            'leverage' => '',
-                            'stopLoss' => '',
-                            'stopLossReductionPrecentage' => 0.1,
-                            'price' => $CurrentCandle['close'],
-                            'trade_status' => 'open',
-                            'trade_acc' => $tradeInstance->tradeAccount,
-                            'targetProfit' => 0.5,
-                            'formula' => '',
-                            'liqPrice' => '',
-                            'subject' => 'Skipped SHORT: Account ' . User::find($tradeInstance->tradeAccount)->name,
-                            'created_at' => Carbon::now('Asia/Karachi'),
-                        ];
-
-
-
-                        MailerService::sendSkipEmail($data);
                     }
                 }
                 CommonHelpers::delayMS(100);
