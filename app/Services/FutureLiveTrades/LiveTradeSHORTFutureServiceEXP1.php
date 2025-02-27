@@ -99,7 +99,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     // Will skip this iteration is below value is false
                     $proceedCondition = $CurrentCandle['close'] < $CurrentCandle['open'] // Candle Should be in Bearish
-                        && $CurrentCandle['close'] >= $supportResistance[7]['support'] * (1 - 0.003); // Current Price should be above -0.3% of support
+                        && $CurrentCandle['close'] >= $supportResistance[7]['support'] * (1 - 0.0035); // Current Price should be above -0.3% of support
 
 
 
@@ -154,7 +154,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
                         Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
-                        $lower_wick = CommonHelpers::isCandleWick($CurrentCandle, 'lower', 20);
+                        $lower_wick = CommonHelpers::isCandleWick($CurrentCandle, 'lower', 5, $supportResistance[7]['support'], $symbol);
                         if (!$lower_wick) {
                             BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
                         } else {
@@ -189,7 +189,7 @@ class LiveTradeSHORTFutureServiceEXP1
             Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);
 
             if ($currentCandle['close'] > $stopLoss) {
-                $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 20);
+                $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
                 if (!$upper_wick) {
                     BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -226,7 +226,7 @@ class LiveTradeSHORTFutureServiceEXP1
             $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
 
             if ($currentCandle['close'] < $stopLoss) {
-                $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 20);
+                $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
                 if (!$upper_wick) {
                     BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([

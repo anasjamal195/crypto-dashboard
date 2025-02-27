@@ -39,7 +39,6 @@ class LiveTradeLONGFutureServiceEXP1
                 $openSymbols = [];
             }
 
-
             $tradeHandler = [];
             $delay = 500;
             if (count($openSymbols) != 0) {
@@ -101,7 +100,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                     // Will skip this iteration is below value is false
                     $proceedCondition = $CurrentCandle['close'] > $CurrentCandle['open'] // Candle Should be in Bullish
-                        && $CurrentCandle['close'] <= $supportResistance[7]['resistance'] * (1 + 0.003); // Current Price should be Below +0.3% of resistance
+                        && $CurrentCandle['close'] <= $supportResistance[7]['resistance'] * (1 + 0.0035); // Current Price should be Below +0.3% of resistance
 
 
                     $maCondition = false;
@@ -153,7 +152,7 @@ class LiveTradeLONGFutureServiceEXP1
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
                         // Checking Upper Wick Formation
 
-                        $upper_wick = CommonHelpers::isCandleWick($CurrentCandle, 'upper', 20);
+                        $upper_wick = CommonHelpers::isCandleWick($CurrentCandle, 'upper', 5, $supportResistance[7]['resistance'], $symbol);
                         if (!$upper_wick) {
                             Log::info('FutureTraderLongEXP1: Conditions Staisfied, opening now : ' . $symbol);
 
@@ -189,7 +188,7 @@ class LiveTradeLONGFutureServiceEXP1
             if ($currentCandle['close'] < $stopLoss) {
                 // Checking Upper Wick Formation
 
-                $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 20);
+                $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 5, $stopLoss, $tradeInstance->symbol);
 
                 if (!$lower_wick) {
                     BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
@@ -226,7 +225,7 @@ class LiveTradeLONGFutureServiceEXP1
             }
         } else {
             if ($currentCandle['close'] < $stopLoss) {
-                $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 20);
+                $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 5, $stopLoss, $tradeInstance->symbol);
                 if (!$lower_wick) {
                     $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
                     BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);

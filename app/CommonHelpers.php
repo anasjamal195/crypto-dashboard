@@ -2,6 +2,7 @@
 
 namespace App;
 
+use App\Services\BinanceApiService;
 use App\Services\SupervisorService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -158,7 +159,7 @@ class CommonHelpers
     }
 
     // Check if current instance falls under wick category for a specific percentage
-    public static function isCandleWick($candle, $type = 'upper', $wickBuffer = 20)
+    public static function isCandleWick($candle, $type = 'upper', $wickBuffer = 20, $thresholdPrice, $symbol)
     {
 
         if ($type === 'upper') {
@@ -168,6 +169,11 @@ class CommonHelpers
             $diffPercentage = $difference * $wickBuffer / 100;
 
             if ($candle['close'] <= $candle['high'] && $candle['close'] >= ($candle['high'] - $diffPercentage)) {
+                self::delayS(5);
+                $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
+                if ($currentPrice < $thresholdPrice) {
+                    return false;
+                }
                 return true;
             } else {
                 return false;
@@ -179,6 +185,11 @@ class CommonHelpers
             $diffPercentage = $difference * $wickBuffer / 100;
 
             if ($candle['close'] >= $candle['low'] && $candle['close'] <= ($candle['low'] + $diffPercentage)) {
+                self::delayS(5);
+                $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
+                if ($currentPrice > $thresholdPrice) {
+                    return false;
+                }
                 return true;
             } else {
                 return false;
