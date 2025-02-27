@@ -156,6 +156,35 @@ class CommonHelpers
             }
         }
     }
+
+    // Check if current instance falls under wick category for a specific percentage
+    public static function isCandleWick($candle, $type = 'upper', $wickBuffer = 20)
+    {
+
+        if ($type === 'upper') {
+
+            $difference = $candle['high'] - $candle['low'];
+
+            $diffPercentage = $difference * $wickBuffer / 100;
+
+            if ($candle['close'] <= $candle['high'] && $candle['close'] >= ($candle['high'] - $diffPercentage)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else if ($type === 'lower') {
+
+            $difference = $candle['high'] - $candle['low'];
+
+            $diffPercentage = $difference * $wickBuffer / 100;
+
+            if ($candle['close'] >= $candle['low'] && $candle['close'] <= ($candle['low'] + $diffPercentage)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
     public static function delayMS($ms)
     {
         usleep($ms * 1000);
@@ -188,9 +217,9 @@ class CommonHelpers
         $log = "";
         foreach ($data as $item) {
             if (is_array($item) || is_object($item)) {
-            $log .= print_r($item, true);
+                $log .= print_r($item, true);
             } else {
-            $log .= $item;
+                $log .= $item;
             }
             $log .= "\n";
         }

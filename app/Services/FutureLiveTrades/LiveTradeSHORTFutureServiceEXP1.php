@@ -33,7 +33,11 @@ class LiveTradeSHORTFutureServiceEXP1
     {
         // Handling trade account, open orders etc...
         if ($account) {
-            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
+            // $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->where('targetProfit', '<', 0.3)->pluck('symbol');
+            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
+            if (count($openSymbols) <= 3) {
+                $openSymbols = [];
+            }
             $tradeHandler = [];
             $delay = 500;
             if (count($openSymbols) != 0) {
@@ -150,13 +154,12 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
                         Log::info('FutureTraderShortEXP1: Conditions Staisfied, opening now : ' . $symbol);
-                        $currentPrice = BinanceApiService::getCurrentPrice($symbol, $market);
-                        $lower_wick = $currentPrice < min($CurrentCandle['open'], $CurrentCandle['close']);
+                        $lower_wick = CommonHelpers::isCandleWick($CurrentCandle, 'lower', 20);
                         if (!$lower_wick) {
                             BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
                         } else {
                             Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
-                            MailerService::sendSkipEmail($tradeInstance,'Skipped opening SHORT Due to Wick formation');
+                            MailerService::sendSkipEmail($tradeInstance, 'Skipped opening SHORT Due to Wick formation');
                         }
                     }
                 }
@@ -186,8 +189,7 @@ class LiveTradeSHORTFutureServiceEXP1
             Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);
 
             if ($currentCandle['close'] > $stopLoss) {
-                $currentPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $market);
-                $upper_wick = $currentPrice > max($currentCandle['open'], $currentCandle['close']);
+                $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 20);
                 if (!$upper_wick) {
                     BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -198,8 +200,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     ]);
                 } else {
                     Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
-                    MailerService::sendSkipEmail($tradeInstance,'Skipped closing SHORT Due to Wick formation');
-                   
+                    MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation');
                 }
             } else if ($currentProfit > $targetProfit) {
 
@@ -225,8 +226,7 @@ class LiveTradeSHORTFutureServiceEXP1
             $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
 
             if ($currentCandle['close'] < $stopLoss) {
-                $currentPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $market);
-                $upper_wick = $currentPrice > max($currentCandle['open'], $currentCandle['close']);
+                $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 20);
                 if (!$upper_wick) {
                     BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -237,7 +237,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     ]);
                 } else {
                     Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
-                    MailerService::sendSkipEmail($tradeInstance,'Skipped closing SHORT Due to Wick formation');
+                    MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation');
                 }
             } else if ($isCandleClosing) {
                 Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);

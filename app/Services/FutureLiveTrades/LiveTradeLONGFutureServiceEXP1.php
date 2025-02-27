@@ -33,7 +33,13 @@ class LiveTradeLONGFutureServiceEXP1
     {
         // Handling trade account, open orders etc...
         if ($account) {
-            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
+            // $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->where('targetProfit', '<', 1)->pluck('symbol');
+            $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
+            if (count($openSymbols) <= 3) {
+                $openSymbols = [];
+            }
+
+
             $tradeHandler = [];
             $delay = 500;
             if (count($openSymbols) != 0) {
@@ -146,14 +152,14 @@ class LiveTradeLONGFutureServiceEXP1
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
                         // Checking Upper Wick Formation
-                        $currentPrice = BinanceApiService::getCurrentPrice($symbol, $market);
-                        $upper_wick = $currentPrice > max($CurrentCandle['open'], $CurrentCandle['close']);
+
+                        $upper_wick = CommonHelpers::isCandleWick($CurrentCandle, 'upper', 20);
                         if (!$upper_wick) {
                             Log::info('FutureTraderLongEXP1: Conditions Staisfied, opening now : ' . $symbol);
 
                             BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
                         } else {
-                            MailerService::sendSkipEmail($tradeInstance,'Skipped opening LONG Due to Wick formation');
+                            MailerService::sendSkipEmail($tradeInstance, 'Skipped opening LONG Due to Wick formation');
                             Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                         }
                     }
@@ -182,8 +188,9 @@ class LiveTradeLONGFutureServiceEXP1
 
             if ($currentCandle['close'] < $stopLoss) {
                 // Checking Upper Wick Formation
-                $currentPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
-                $lower_wick = $currentPrice < min($currentCandle['open'], $currentCandle['close']);
+
+                $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 20);
+
                 if (!$lower_wick) {
                     BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                     DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
@@ -194,7 +201,7 @@ class LiveTradeLONGFutureServiceEXP1
                     ]);
                 } else {
 
-                    MailerService::sendSkipEmail($tradeInstance,'Skipped closing LONG Due to Wick formation');
+                    MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation');
                     Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                 }
             } else if ($currentProfit > $targetProfit) {
@@ -219,8 +226,7 @@ class LiveTradeLONGFutureServiceEXP1
             }
         } else {
             if ($currentCandle['close'] < $stopLoss) {
-                $currentPrice = BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market);
-                $lower_wick = $currentPrice < min($currentCandle['open'], $currentCandle['close']);
+                $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 20);
                 if (!$lower_wick) {
                     $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
                     BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
@@ -231,7 +237,7 @@ class LiveTradeLONGFutureServiceEXP1
                         'targetProfit' => $targetProfit,
                     ]);
                 } else {
-                    MailerService::sendSkipEmail($tradeInstance,'Skipped closing LONG Due to Wick formation');
+                    MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation');
                     Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                 }
             } else if ($isCandleClosing) {
