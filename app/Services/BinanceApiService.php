@@ -1507,6 +1507,34 @@ class BinanceApiService
         }
         // Fee Details
 
+
+
+
+        $data =  [
+            'orderId' => $response['orderId'],
+            'pairId' => $openOrder->pairId,
+            'symbol' => $response['symbol'],
+            'side' => $response['side'],
+            'amount' => $openOrder->amount,
+            'qty' => $quantity,
+            'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
+            'type' => 'close',
+            'trade_status' => 'close',
+            'leverage' => 0,
+            'price' => $current_price,
+            'currentProfit' => $currentProfit,
+            'trade_acc' => $trader,
+            'liqPrice' => 0,
+
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+        DB::table('live_trades_future_results')->insert(
+            $data
+        );
+
+
+
         $feeUsdt = 0;
         $realizedPnl = 0;
 
@@ -1526,30 +1554,14 @@ class BinanceApiService
             $realizedPnl += floatval($fee['realizedPnl']);
         }
 
-
-        $data =  [
-            'orderId' => $response['orderId'],
-            'pairId' => $openOrder->pairId,
-            'symbol' => $response['symbol'],
-            'side' => $response['side'],
-            'amount' => $openOrder->amount,
-            'qty' => $quantity,
-            'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
-            'type' => 'close',
+        DB::table('live_trades_future_results')->where('orderId', $response['orderId'])->update([
             'trade_status' => 'close',
-            'leverage' => 0,
-            'price' => $current_price,
-            'currentProfit' => $currentProfit,
-            'trade_acc' => $trader,
-            'liqPrice' => 0,
             'feeUsdt' => $feeUsdt,
             'realizedPnl' => $realizedPnl,
-            'created_at' => Carbon::now('Asia/Karachi'),
-        ];
 
-        DB::table('live_trades_future_results')->insert(
-            $data
-        );
+        ]);
+
+
         DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
             'trade_status' => 'close',
             'pairId' => $response['orderId'],
@@ -1598,7 +1610,7 @@ class BinanceApiService
         $trades = $response->json();
         return $trades;
     }
-    public static function openMarketPosition($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $trade)
+    public static function openMarketPosition($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $trade = null)
     {
 
         $market = 'FUTURE';
@@ -1718,7 +1730,7 @@ class BinanceApiService
 
         $data =  [
             'orderId' => $response['orderId'],
-            'tradeId' => $trade->id,
+            'tradeId' => $trade ? $trade->id : null,
             'symbol' => $response['symbol'],
             'side' => $response['side'],
             'amount' => $tradeAmount,
@@ -1812,7 +1824,7 @@ class BinanceApiService
         DB::table('dynamic_trades_future_results')->insert(
             $data
         );
-
+        $data['subject'] = 
         MailerService::sendFutureTradeDynamicEmail($data);
 
 
