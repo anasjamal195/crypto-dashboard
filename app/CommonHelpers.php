@@ -183,13 +183,13 @@ class CommonHelpers
 
             // Check if the last entry is an extrema
 
-            if ($thresholdPrice - $median > $threshold || $thresholdPrice - $mode > $threshold) {
+            if ($median >= $thresholdPrice) {
                 return false;
             } else {
                 return true;
             }
         } else if ($type === 'lower') {
-            if ($median - $thresholdPrice   > $threshold ||   $mode - $thresholdPrice > $threshold) {
+            if ($median <= $thresholdPrice) {
                 return false;
             } else {
                 return true;
