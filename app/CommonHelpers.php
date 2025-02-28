@@ -161,40 +161,117 @@ class CommonHelpers
     // Check if current instance falls under wick category for a specific percentage
     public static function isCandleWick($candle, $type = 'upper', $wickBuffer = 20, $thresholdPrice, $symbol)
     {
+        $prices = [];
+        $priceCount = 20;
 
+        for ($i = 0; $i < $priceCount; $i++) {
+            $prices[] = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
+            self::delayS(1);
+        }
+
+        $median = self::calculateMedian($prices);
+        $mode = self::calculateMode($prices);
+
+        // Define a threshold for the concentrated zone (e.g., 0.3% of the median)
+        $threshold = 0.003 * $median;
+
+
+
+        // New Strategy using centeral values and candle weights average
         if ($type === 'upper') {
 
-            $difference = $candle['high'] - $candle['low'];
 
-            $diffPercentage = $difference * $wickBuffer / 100;
+            // Check if the last entry is an extrema
 
-            if ($candle['close'] <= $candle['high'] && $candle['close'] >= ($candle['high'] - $diffPercentage)) {
-                self::delayS(5);
-                $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
-                if ($currentPrice < $thresholdPrice) {
-                    return false;
-                }
-                return true;
-            } else {
+            if ($thresholdPrice - $median > $threshold || $thresholdPrice - $mode > $threshold) {
                 return false;
+            } else {
+                return true;
             }
         } else if ($type === 'lower') {
-
-            $difference = $candle['high'] - $candle['low'];
-
-            $diffPercentage = $difference * $wickBuffer / 100;
-
-            if ($candle['close'] >= $candle['low'] && $candle['close'] <= ($candle['low'] + $diffPercentage)) {
-                self::delayS(5);
-                $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
-                if ($currentPrice > $thresholdPrice) {
-                    return false;
-                }
-                return true;
-            } else {
+            if ($median - $thresholdPrice   > $threshold ||   $mode - $thresholdPrice > $threshold) {
                 return false;
+            } else {
+                return true;
             }
         }
+
+
+        // if ($type === 'upper') {
+
+        //     $difference = $candle['high'] - $candle['low'];
+
+        //     $diffPercentage = $difference * $wickBuffer / 100;
+
+        //     if ($candle['close'] <= $candle['high'] && $candle['close'] >= ($candle['high'] - $diffPercentage)) {
+        //         self::delayS(5);
+        //         $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
+        //         if ($currentPrice < $thresholdPrice) {
+        //             return false;
+        //         }
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // } else if ($type === 'lower') {
+
+        //     $difference = $candle['high'] - $candle['low'];
+
+        //     $diffPercentage = $difference * $wickBuffer / 100;
+
+        //     if ($candle['close'] >= $candle['low'] && $candle['close'] <= ($candle['low'] + $diffPercentage)) {
+        //         self::delayS(5);
+        //         $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
+        //         if ($currentPrice > $thresholdPrice) {
+        //             return false;
+        //         }
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
+    }
+
+    /**
+     * Calculate the median of an array.
+     *
+     * @param array $arr
+     * @return float
+     */
+    public static function calculateMedian($arr)
+    {
+        if (empty($arr)) {
+            return 0;
+        }
+
+        sort($arr);
+        $count = count($arr);
+
+        if ($count % 2 == 0) {
+            $middle1 = $arr[($count / 2) - 1];
+            $middle2 = $arr[$count / 2];
+            return ($middle1 + $middle2) / 2;
+        } else {
+            return $arr[floor($count / 2)];
+        }
+    }
+
+    /**
+     * Calculate the mode of an array.
+     *
+     * @param array $arr
+     * @return float
+     */
+    public static function calculateMode($arr)
+    {
+        if (empty($arr)) {
+            return 0;
+        }
+
+        $frequency = array_count_values($arr);
+        $maxFrequency = max($frequency);
+        $modes = array_keys($frequency, $maxFrequency);
+        return $modes[0];
     }
     public static function delayMS($ms)
     {
