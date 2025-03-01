@@ -153,7 +153,15 @@ class LiveTradeLONGFutureServiceEXP1
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
                         // Checking Upper Wick Formation
-
+                        $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
+                        if ($lastOrderClose) {
+                            $lastOrderClose = $lastOrderClose->created_at;
+                            $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose);
+                            if ($timeDiff < 20) {
+                                Log::info('FutureTraderLongEXP1: Skipped due to last order close time: ' . $symbol);
+                                continue;
+                            }
+                        }
                         $upper_wick = CommonHelpers::isCandleWick($CurrentCandle, 'upper', 5, $supportResistance[7]['resistance'], $symbol);
                         if (!$upper_wick) {
                             Log::info('FutureTraderLongEXP1: Conditions Staisfied, opening now : ' . $symbol);
