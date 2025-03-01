@@ -88,9 +88,10 @@ class LiveTradeLONGFutureServiceEXP1
                     self::manageOpenOrder($tradeInstance, $open_order['order'], $supportResistance, $isCandleClosing);
                 } else {
 
-                    if (DB::table('live_trades_future_results')->where('trade_status', 'open')->count() != 0) {
+                    if (DB::table('live_trades_future_results')->where('trade_status', 'open')->count() >= 1) {
                         continue;
                     }
+
                     $CurrentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
                     $thirdLastCandle = $candleData[count($candleData) - 3];
