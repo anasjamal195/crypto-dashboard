@@ -88,7 +88,7 @@ class LiveTradeLONGFutureServiceEXP1
                     self::manageOpenOrder($tradeInstance, $open_order['order'], $supportResistance, $isCandleClosing);
                 } else {
 
-                    if(DB::table('live_trades_future_results')->where('trade_status','open')->count() != 0){
+                    if (DB::table('live_trades_future_results')->where('trade_status', 'open')->count() != 0) {
                         continue;
                     }
                     $CurrentCandle = $candleData[count($candleData) - 1];
@@ -160,7 +160,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                             BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, 'Support/Resistance Breakout');
                         } else {
-                            MailerService::sendSkipEmail($tradeInstance, 'Skipped opening LONG Due to Wick formation');
+                            MailerService::sendSkipEmail($tradeInstance, 'Skipped opening LONG Due to Wick formation ' . $symbol);
                             Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                         }
                     }
@@ -202,7 +202,7 @@ class LiveTradeLONGFutureServiceEXP1
                     ]);
                 } else {
 
-                    MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation');
+                    MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation ' . $tradeInstance->symbol);
                     Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                 }
             } else if ($currentProfit > $targetProfit) {
@@ -238,7 +238,7 @@ class LiveTradeLONGFutureServiceEXP1
                         'targetProfit' => $targetProfit,
                     ]);
                 } else {
-                    MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation');
+                    MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation ' . $tradeInstance->symbol);
                     Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
                 }
             } else if ($isCandleClosing) {
