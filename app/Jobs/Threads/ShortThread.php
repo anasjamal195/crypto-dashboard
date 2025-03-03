@@ -139,17 +139,18 @@ class ShortThread implements ShouldQueue
             ]);
         } else {
 
-           
+
             $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $tradeInstance->trade_acc)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
-         
+
             if ($lastOrderOpen) {
                 $lastOrderOpen = $lastOrderOpen->created_at;
                 $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen);
                 if ($timeDiff > 5 && $timeDiff < 10) {
                     $diff = $secondLastCandle['open'] - $secondLastCandle['close'];
-                    if($currentCandle['close'] > $currentCandle['open']  && $currentCandle['close'] >= (min($secondLastCandle['close'],$secondLastCandle['open']) + ($diff * 0.6))
+                    if (
+                        $currentCandle['close'] > $currentCandle['open']  && $currentCandle['close'] >= (min($secondLastCandle['close'], $secondLastCandle['open']) + ($diff * 0.6))
                         && $currentCandle['rsi6'] > $secondLastCandle['rsi6'] * 1.3
-                    ){
+                    ) {
 
                         // Closing due to early detection
                         $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
@@ -164,7 +165,7 @@ class ShortThread implements ShouldQueue
                                 'currentResistance' => $supportResistance[7]['resistance'],
                             ]);
                             return false;
-
+                        }
                     }
                 }
             }
