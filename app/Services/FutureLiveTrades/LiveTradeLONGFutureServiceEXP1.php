@@ -34,16 +34,17 @@ class LiveTradeLONGFutureServiceEXP1
     {
         $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
         $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
+        Log::info('FutureTraderLongEXP1: Worker Started');
 
         foreach ($tradeHandler as $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
-                $buy_coin_price = $tradeInstance->buyPrice;
-                Log::info('FutureTraderLongEXP1: Current Trade');
-                Log::info('FutureTraderLongEXP1: Coin: ' . $symbol);
-                Log::info('FutureTraderLongEXP1: Account: ' . $trade_acc);
-                Log::info('FutureTraderLongEXP1: Invested: ' . $buy_coin_price . ' $');
+       
+                // Log::info('FutureTraderLongEXP1: Current Trade');
+                // Log::info('FutureTraderLongEXP1: Coin: ' . $symbol);
+                // Log::info('FutureTraderLongEXP1: Account: ' . $trade_acc);
+                // Log::info('FutureTraderLongEXP1: Invested: ' . $buy_coin_price . ' $');
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
 
                 if (isset($open_order['is_open']) && $open_order['is_open']) {
@@ -106,12 +107,12 @@ class LiveTradeLONGFutureServiceEXP1
                     $volumeMultiplier = 1.3;
                     $volumeCondition = $CurrentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
-                    Log::info('FutureTraderLongEXP1: Resistance: ' . $supportResistanceContition);
-                    Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
-                    Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
+                    // Log::info('FutureTraderLongEXP1: Resistance: ' . $supportResistanceContition);
+                    // Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
+                    // Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
-                        Log::info('FutureTraderShortEXP1: Dispatching Long Thread... ');
+                        Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
 
                         LongThread::dispatch($tradeInstance, $supportResistance);
                     }

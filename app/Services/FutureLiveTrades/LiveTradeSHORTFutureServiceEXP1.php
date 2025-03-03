@@ -34,17 +34,18 @@ class LiveTradeSHORTFutureServiceEXP1
     {
         $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
         $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'SHORT')->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
+                Log::info('FutureTraderShortEXP1: Worker Started');
 
         foreach ($tradeHandler as $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
-                $buy_coin_price = $tradeInstance->buyPrice;
+                
 
-                Log::info('FutureTraderShortEXP1: Current Trade');
-                Log::info('FutureTraderShortEXP1: Coin: ' . $symbol);
-                Log::info('FutureTraderShortEXP1: Account: ' . $trade_acc);
-                Log::info('FutureTraderShortEXP1: Invested: ' . $buy_coin_price . ' $');
+                // Log::info('FutureTraderShortEXP1: Current Trade');
+                // Log::info('FutureTraderShortEXP1: Coin: ' . $symbol);
+                // Log::info('FutureTraderShortEXP1: Account: ' . $trade_acc);
+                // Log::info('FutureTraderShortEXP1: Invested: ' . $buy_coin_price . ' $');
 
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
                 // dd($open_order);
@@ -116,12 +117,12 @@ class LiveTradeSHORTFutureServiceEXP1
                     $volumeCondition = $CurrentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
 
-                    Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
-                    Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
-                    Log::info('FutureTraderShortEXP1: MA MACandleDistance: ' . $maCandleDistance);
+                    // Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
+                    // Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
+                    // Log::info('FutureTraderShortEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
-                    Log::info('FutureTraderShortEXP1: Dispatching Short Thread... ' );
+                    Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: '. $symbol );
 
                         ShortThread::dispatch($tradeInstance, $supportResistance);
                     }

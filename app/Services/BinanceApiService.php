@@ -171,7 +171,7 @@ class BinanceApiService
 
         // Check if the remaining weight is too low to make another request to next available server
         if (intval($remainingWeight) < 100) {
-            Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
+            // Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
 
             // Increment balancer index and loop if out of bounds
             $params['balancerServerSequence'] = $balancerServerSequence;
@@ -180,7 +180,7 @@ class BinanceApiService
             $response->getHeaders();
         } else {
             // Choose the base URL based on the trade type
-            Log::info("Using Master Server: ($usedWeight/1200). Retaining...");
+            // Log::info("Using Master Server: ($usedWeight/1200). Retaining...");
 
             $base_url = $market === 'FUTURE' ?
                 config('binance.api.future_base_url') . config('binance.endpoints.klines') :
