@@ -69,18 +69,22 @@ class ShortThread implements ShouldQueue
             $openTrade = false;
         }
         if ($openTrade) {
-            $openOrder = BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula);
+            $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
+            if (!(isset($open_order['is_open']) && $open_order['is_open']))
+                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula);
 
 
             $tradeLoop = true;
             // Proceed trade until the position is closed
             while ($tradeLoop) {
-
+                $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
+                if (!(isset($open_order['is_open']) && $open_order['is_open']))
+                    $tradeLoop = false;
                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
                 $candleData = $supportResistance['candleData'];
                 $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
-                $tradeLoop = self::manageOpenOrder($this->tradeInstance, $openOrder['order'], $supportResistance, $this->profitIncrementPercentage);
+                $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
 
                 CommonHelpers::delayS(1);
             }
