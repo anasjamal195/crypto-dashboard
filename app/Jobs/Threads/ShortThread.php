@@ -149,23 +149,20 @@ class ShortThread implements ShouldQueue
                     $diff = $secondLastCandle['open'] - $secondLastCandle['close'];
                     if (
                         $currentCandle['close'] > $currentCandle['open']  && $currentCandle['close'] >= (min($secondLastCandle['close'], $secondLastCandle['open']) + ($diff * 0.6))
-                        && $currentCandle['rsi6'] > $secondLastCandle['rsi6'] * 1.3
+                        && $currentCandle['rsi6'] > $secondLastCandle['rsi6'] * 1.25
                     ) {
 
                         // Closing due to early detection
-                        $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
-                        if (!$upper_wick) {
-                            BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
-                            DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
-                                'previousPrice' => $currentCandle['close'],
-                                'currentPrice' => $currentCandle['close'],
-                                'currentProfit' => $currentProfit,
-                                'targetProfit' => $targetProfit,
-                                'currentSupport' => $supportResistance[7]['support'],
-                                'currentResistance' => $supportResistance[7]['resistance'],
-                            ]);
-                            return false;
-                        }
+                        BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+                        DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                            'previousPrice' => $currentCandle['close'],
+                            'currentPrice' => $currentCandle['close'],
+                            'currentProfit' => $currentProfit,
+                            'targetProfit' => $targetProfit,
+                            'currentSupport' => $supportResistance[7]['support'],
+                            'currentResistance' => $supportResistance[7]['resistance'],
+                        ]);
+                        return false;
                     }
                 }
             }
