@@ -100,6 +100,7 @@ class ShortThread implements ShouldQueue
         $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
+        $secondLastCandle = $candleData[count($candleData) - 2];
 
         $stopLoss = $buy_order['stopLoss'];
 
@@ -137,6 +138,36 @@ class ShortThread implements ShouldQueue
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
             ]);
         } else {
+
+           
+            $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $tradeInstance->trade_acc)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
+         
+            if ($lastOrderOpen) {
+                $lastOrderOpen = $lastOrderOpen->created_at;
+                $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen);
+                if ($timeDiff > 5 && $timeDiff < 10) {
+                    $diff = $secondLastCandle['open'] - $secondLastCandle['close'];
+                    if($currentCandle['close'] > $currentCandle['open']  && $currentCandle['close'] >= (min($secondLastCandle['close'],$secondLastCandle['open']) + ($diff * 0.6))
+                        && $currentCandle['rsi6'] > $secondLastCandle['rsi6'] * 1.3
+                    ){
+
+                        // Closing due to early detection
+                        $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
+                        if (!$upper_wick) {
+                            BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+                            DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                                'previousPrice' => $currentCandle['close'],
+                                'currentPrice' => $currentCandle['close'],
+                                'currentProfit' => $currentProfit,
+                                'targetProfit' => $targetProfit,
+                                'currentSupport' => $supportResistance[7]['support'],
+                                'currentResistance' => $supportResistance[7]['resistance'],
+                            ]);
+                            return false;
+
+                    }
+                }
+            }
             DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
