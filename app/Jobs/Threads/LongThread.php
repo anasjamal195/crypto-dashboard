@@ -75,6 +75,8 @@ class LongThread implements ShouldQueue
         $candle1m = $data1m[count($data1m) - 1];
         if ($candle1m['close'] < $candle1m['open']) {
             $openTrade = false;
+            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to 1m candle direction ' . $symbol);
+            Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
         }
 
         if ($openTrade) {
