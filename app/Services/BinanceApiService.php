@@ -209,6 +209,11 @@ class BinanceApiService
             // dd($response->json());
         }
 
+
+        if(!$response->json()){
+            Log::error('Error Fetching Coin data: ' . $symbol . ' ' . $response->body());
+        }
+
         // Update API weight usage in cache
 
 
