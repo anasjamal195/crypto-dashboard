@@ -52,7 +52,7 @@ class LongThread implements ShouldQueue
         $currentOpenOrders = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
         if ($lastOrderClose) {
             $lastOrderClose = $lastOrderClose->created_at;
-            $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose);
+            $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
             if ($timeDiff < 20) {
                 $openTrade = false;
                 Log::info('FutureTraderLongEXP1: Skipped due to last order close time: ' . $symbol);
@@ -151,7 +151,7 @@ class LongThread implements ShouldQueue
 
             if ($lastOrderOpen) {
                 $lastOrderOpen = $lastOrderOpen->created_at;
-                $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen);
+                $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen));
                 if ($timeDiff > 5 && $timeDiff < 10) {
                     $diff = $secondLastCandle['close'] - $secondLastCandle['open'];
                     if (
