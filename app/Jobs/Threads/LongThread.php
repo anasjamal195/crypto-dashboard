@@ -68,6 +68,15 @@ class LongThread implements ShouldQueue
         if ($currentOpenOrders >= 1) {
             $openTrade = false;
         }
+
+        // Check for candle direction on 1 min, if bearish than skip trade
+        $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
+
+        $candle1m = $data1m[count($data1m) - 1];
+        if ($candle1m['close'] < $candle1m['open']) {
+            $openTrade = false;
+        }
+
         if ($openTrade) {
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
             if (!(isset($open_order['is_open']) && $open_order['is_open']))
