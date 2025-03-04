@@ -77,13 +77,18 @@ class LongThread implements ShouldQueue
             $tradeLoop = true;
             // Proceed trade until the position is closed
             while ($tradeLoop) {
-                $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
-                if (!(isset($open_order['is_open']) && $open_order['is_open']))
-                    $tradeLoop = false;
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
-                $candleData = $supportResistance['candleData'];
-                $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
-                $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
+                try {
+                    $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
+                    if (!(isset($open_order['is_open']) && $open_order['is_open']))
+                        $tradeLoop = false;
+                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
+                    $candleData = $supportResistance['candleData'];
+                    $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
+                    $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
+                } catch (\Exception $e) {
+                    Log::error('LongThread: Error - ' . $e->getMessage());
+                    Log::error($e->getTraceAsString());
+                }
                 CommonHelpers::delayS(1);
             }
         } else {
