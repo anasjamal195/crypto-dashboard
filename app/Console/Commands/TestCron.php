@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\TestJob;
+use App\Services\BinanceApiService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -27,7 +28,8 @@ class TestCron extends Command
      */
     public function handle()
     {
-        TestJob::dispatch("This is queue 3");
-        TestJob::dispatch("This is queue 4");
+        dd(BinanceApiService::getCurrentPrice('BTCUSDT','FUTURE'));
+        // TestJob::dispatch("This is queue 3");
+        // TestJob::dispatch("This is queue 4");
     }
 }

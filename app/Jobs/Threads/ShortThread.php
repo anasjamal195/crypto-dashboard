@@ -55,14 +55,14 @@ class ShortThread implements ShouldQueue
             $timeDiff = Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose);
             if ($timeDiff < 20) {
                 $openTrade = false;
-                Log::info('FutureTraderShortEXP1: Skipped due to last order close time: ' . $symbol);
+                Log::info('ShortThread: Skipped due to last order close time: ' . $symbol);
             }
         }
         if ($isWick) {
             $openTrade = false;
 
             MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to Wick formation ' . $symbol);
-            Log::info('FutureTraderShortEXP1: Retreating Due to upper wick');
+            Log::info('ShortThread: Retreating Due to upper wick');
         }
         // Condition to limit open orders for a symbol in long or short
         if ($currentOpenOrders >= 1) {
@@ -77,25 +77,29 @@ class ShortThread implements ShouldQueue
             $tradeLoop = true;
             // Proceed trade until the position is closed
             while ($tradeLoop) {
-                $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
-                if (!(isset($open_order['is_open']) && $open_order['is_open']))
-                    $tradeLoop = false;
-                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
-                $candleData = $supportResistance['candleData'];
-                $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
+                try {
+                    $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
+                    if (!(isset($open_order['is_open']) && $open_order['is_open']))
+                        $tradeLoop = false;
+                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
+                    $candleData = $supportResistance['candleData'];
+                    $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
-                $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
-
+                    $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
+                } catch (\Exception $e) {
+                    Log::error('ShortThread: Error - ' . $e->getMessage());
+                    Log::error($e->getTraceAsString());
+                }
                 CommonHelpers::delayS(1);
             }
         } else {
-            Log::info('FutureTraderShortEXP1: Failed to open trade: ' . $symbol);
+            Log::info('ShortThread: Failed to open trade: ' . $symbol);
         }
     }
 
     private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
     {
-        Log::info('FutureTraderShortEXP1: Open order found for ' . $buy_order['symbol']);
+        Log::info('ShortThread: Open order found for ' . $buy_order['symbol']);
 
         $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
@@ -107,7 +111,7 @@ class ShortThread implements ShouldQueue
 
 
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
-        Log::info('FutureTraderShortEXP1: Current profit ' . $currentProfit);
+        Log::info('ShortThread: Current profit ' . $currentProfit);
 
         if ($currentCandle['close'] > $stopLoss) {
             $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
@@ -123,7 +127,7 @@ class ShortThread implements ShouldQueue
                 ]);
                 return false;
             } else {
-                Log::info('FutureTraderShortEXP1: Retreating Due to lower wick');
+                Log::info('ShortThread: Retreating Due to lower wick');
                 MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation ' . $tradeInstance->symbol);
             }
         } else if ($currentProfit > $targetProfit) {
@@ -140,7 +144,7 @@ class ShortThread implements ShouldQueue
         } else {
 
 
-            $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $tradeInstance->trade_acc)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
+            $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $tradeInstance->tradeAccount)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
 
             if ($lastOrderOpen) {
                 $lastOrderOpen = $lastOrderOpen->created_at;

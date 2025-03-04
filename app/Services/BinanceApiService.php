@@ -605,7 +605,7 @@ class BinanceApiService
 
         $ticker = self::getHttpClient()->get($url, $params);
 
-        Log::info('Price Response for ' . $symbol . ': ' . json_encode($ticker));
+        Log::info('Price Response for ' . $symbol . ': ' . json_encode(isset($ticker['price']) ? $ticker['price'] : '0'));
 
 
         return isset($ticker['price']) ? $ticker['price'] : '0';
