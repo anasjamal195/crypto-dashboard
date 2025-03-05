@@ -32,7 +32,7 @@ class TestCron extends Command
     {
         $candle = BinanceApiService::getCandleStickData("BTCUSDT",'1m',2,null,'FUTURE')[0];
 
-        dd(now()->format('s'));
+        dd($candle);
         // TestJob::dispatch("This is queue 3");
         // TestJob::dispatch("This is queue 4");
     }
