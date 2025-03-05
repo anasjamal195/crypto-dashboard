@@ -34,6 +34,11 @@
     <!-- Select 2  -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+
+
+
 
 </head>
 <style>
@@ -239,6 +244,10 @@
     .select2-container .select2-selection--single .select2-selection__rendered {
         padding-top: 10px;
     }
+
+    .flatpickr-input {
+        color: white !important;
+    }
 </style>
 
 <body class="{{ $class ?? '' }}">
@@ -297,7 +306,8 @@
     <script src="{{ asset('black') }}/js/core/bootstrap.min.js"></script>
     <script src="{{ asset('black') }}/js/plugins/perfect-scrollbar.jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
-
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <!--  Google Maps Plugin    -->
     <!-- Place this tag in your head or just before your close body tag. -->
     {{-- <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_KEY_HERE"></script> --}}
@@ -441,13 +451,20 @@
                     }
                 });
 
-               
+
 
 
 
                 $('.select2').select2({
                     theme: 'bootstrap'
                 });
+
+                $('.flatpickr-input').flatpickr({
+                    enableTime: true,
+                    dateFormat: "Y-m-d H:i", // Format: YYYY-MM-DD HH:MM
+                    time_24hr: true // Use 24-hour format
+                });
+
                 $(document).ready(function() {
                     var table = $('.dataTable').DataTable({
                         "paging": true,

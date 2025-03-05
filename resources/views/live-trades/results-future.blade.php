@@ -117,13 +117,14 @@
             </div>
             <div class="row mb-4">
                 <div class="col-md-4">
-                    <label for="start_date" class="form-label">Start Date</label>
-                    <input type="date" name="start_date" id="start_date" class="form-control"
+                    <label for="start_date" class="form-label ">Start Date</label>
+                    <input type="datetime-local" name="start_date" id="start_date" class="form-control flatpickr-input"
                         value="{{ request()->get('start_date') }}">
+
                 </div>
                 <div class="col-md-4">
-                    <label for="end_date" class="form-label">End Date</label>
-                    <input type="date" name="end_date" id="end_date" class="form-control"
+                    <label for="end_date" class="form-label ">End Date</label>
+                    <input type="datetime-local" name="end_date" id="end_date" class="form-control flatpickr-input"
                         value="{{ request()->get('end_date') }}">
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
@@ -224,7 +225,7 @@
                         </td>
                         <td
                             style="color:{{ isset($order->realizedPnl) ? ($order->realizedPnl > 0 ? 'green' : ($order->realizedPnl < 0 ? 'red' : '')) : '' }} !important">
-                           $ {{ isset($order->realizedPnl) ? round($order->realizedPnl, 4) . '' : '0' }}
+                            $ {{ isset($order->realizedPnl) ? round($order->realizedPnl, 4) . '' : '0' }}
                         </td>
                         <td>
                             <span
