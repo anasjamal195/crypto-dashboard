@@ -19,12 +19,12 @@
         @if (request()->get('start_date') || request()->get('end_date'))
             <div class="alert alert-info">
                 @if (request()->get('start_date') && request()->get('end_date'))
-                    Showing results from {{ \Carbon\Carbon::parse(request()->get('start_date'))->format('M d, Y') }} to
-                    {{ \Carbon\Carbon::parse(request()->get('end_date'))->format('M d, Y') }}
+                    Showing results from {{ \Carbon\Carbon::parse(request()->get('start_date'))->format('H:i A M d, Y ') }} to
+                    {{ \Carbon\Carbon::parse(request()->get('end_date'))->format('H:i A M d, Y') }}
                 @elseif(request()->get('start_date'))
-                    Showing results from {{ \Carbon\Carbon::parse(request()->get('start_date'))->format('M d, Y') }} onward
+                    Showing results from {{ \Carbon\Carbon::parse(request()->get('start_date'))->format('H:i A M d, Y') }} onward
                 @elseif(request()->get('end_date'))
-                    Showing results up to {{ \Carbon\Carbon::parse(request()->get('end_date'))->format('M d, Y') }}
+                    Showing results up to {{ \Carbon\Carbon::parse(request()->get('end_date'))->format('H:i A M d, Y') }}
                 @endif
             </div>
         @endif
