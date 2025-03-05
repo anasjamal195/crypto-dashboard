@@ -30,13 +30,9 @@ class TestCron extends Command
      */
     public function handle()
     {
+        $candle = BinanceApiService::getCandleStickData("BTCUSDT",'1m',2,null,'FUTURE')[0];
 
-        $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', 2)->where('symbol', 'PNUTUSDT')->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
-        $lastOrderClose = $lastOrderClose->created_at;
-        $timeDiff =abs( Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
-
-        dd($timeDiff/60);
-        dd(BinanceApiService::getCurrentPrice('BTCUSDT','FUTURE'));
+        dd(now()->format('s'));
         // TestJob::dispatch("This is queue 3");
         // TestJob::dispatch("This is queue 4");
     }

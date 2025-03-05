@@ -73,11 +73,50 @@ class LongThread implements ShouldQueue
         $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
 
         $candle1m = $data1m[count($data1m) - 1];
+        $secondLastcandle1m = $data1m[count($data1m) - 2];
+
+        // Check for 1m candle direction current candle
         if ($candle1m['close'] < $candle1m['open']) {
             $openTrade = false;
             MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to 1m candle direction ' . $symbol);
-            Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
         }
+
+
+        // Check for second last 1m candle direction
+        if ($secondLastcandle1m['close'] < $secondLastcandle1m['open']) {
+            $openTrade = false;
+            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to second Last 1m candle direction ' . $symbol);
+        }
+
+
+        $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
+
+        $upperWickDiff = $secondLastcandle1m['high'] - $secondLastcandle1m['close'];
+        // Candle wick condition for second last candle 1m 
+        if ($upperWickDiff > $candleDiff1m) {
+            $openTrade = false;
+        }
+
+        // Check for noticable % change in 1m candle value
+        $changePercentageLoop = true;
+        $counter = 0;
+        while ($changePercentageLoop) {
+            $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
+            $candle1m = $data1m[count($data1m) - 1];
+            $per = (($candle1m['close'] - $candle1m['open']) / $candle1m['open']) * 100;
+            if (now()->format('s') == '00' || $counter > 60) {
+                $openTrade = false;
+            }
+            if ($per > 0.05 && $counter > 10) {
+                $changePercentageLoop = false;
+            }
+
+            CommonHelpers::delayS(1);
+
+            $counter++;
+        }
+
+
 
         if ($openTrade) {
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);

@@ -62,21 +62,56 @@ class ShortThread implements ShouldQueue
             $openTrade = false;
             MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to Wick formation ' . $symbol);
             Log::info('ShortThread: Retreating Due to upper wick');
-        }   
+        }
         // Condition to limit open orders for a symbol in long or short
         if ($currentOpenOrders >= 1) {
             $openTrade = false;
         }
         // Check for candle direction on 1 min, if bullish than skip trade
         $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
-        
-        $candle1m = $data1m[count($data1m) -1 ];
-        if($candle1m['close'] > $candle1m['open']){
+
+        $candle1m = $data1m[count($data1m) - 1];
+        $secondLastcandle1m = $data1m[count($data1m) - 2];
+
+        if ($candle1m['close'] > $candle1m['open']) {
             $openTrade = false;
             MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to 1m candle direction ' . $symbol);
             Log::info('ShortThread: Retreating Due to upper wick');
         }
+        // Check for second last 1m candle direction
+        if ($secondLastcandle1m['close'] > $secondLastcandle1m['open']) {
+            $openTrade = false;
+            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to second Last 1m candle direction ' . $symbol);
+        }
 
+
+        $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
+
+        $lowerWickDiff = $secondLastcandle1m['close'] - $secondLastcandle1m['low'];
+        // Candle wick condition for second last candle 1m 
+        if ($lowerWickDiff > $candleDiff1m) {
+            $openTrade = false;
+        }
+
+        // Check for noticable % change in 1m candle value
+        $changePercentageLoop = true;
+        $counter = 0;
+        while ($changePercentageLoop) {
+            $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
+            $candle1m = $data1m[count($data1m) - 1];
+            $per = (($candle1m['open'] - $candle1m['close']) / $candle1m['open']) * 100;
+            if (now()->format('s') == '00' || $counter > 60) {
+                $openTrade = false;
+                $changePercentageLoop = false;
+            }
+            if ($per > 0.05 && $counter > 10) {
+                $changePercentageLoop = false;
+            }
+
+            CommonHelpers::delayS(1);
+
+            $counter++;
+        }
 
         if ($openTrade) {
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
@@ -158,7 +193,7 @@ class ShortThread implements ShouldQueue
 
             if ($lastOrderOpen) {
                 $lastOrderOpen = $lastOrderOpen->created_at;
-                $timeDiff =abs( Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen));
+                $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen));
                 if ($timeDiff > 5 && $timeDiff < 10) {
                     $diff = $secondLastCandle['open'] - $secondLastCandle['close'];
                     if (
