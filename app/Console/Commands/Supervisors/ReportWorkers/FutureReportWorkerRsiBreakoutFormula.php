@@ -50,7 +50,7 @@ class FutureReportWorkerRsiBreakoutFormula extends Command
                 //     'FUTURE'
                 // );
                 LongReportService::updateCoinReport(
-                    '5m',
+                    '3m',
                     1000,
                     'FUTURE'
                 );

@@ -170,7 +170,7 @@ class BinanceApiService
         ];
 
         // Check if the remaining weight is too low to make another request to next available server
-        if (intval($remainingWeight) < 100 ) {
+        if (intval($remainingWeight) < 100) {
             // Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
 
             // Increment balancer index and loop if out of bounds
@@ -210,7 +210,7 @@ class BinanceApiService
         }
 
 
-        if(!$response->json()){
+        if (!$response->json()) {
             Log::error('Error Fetching Coin data: ' . $symbol . ' ' . $response->body());
         }
 
@@ -1196,7 +1196,7 @@ class BinanceApiService
 
 
     // Future Api's
-    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $isDummy = false)
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $isDummy = false)
     {
 
         $market = 'FUTURE';
@@ -1336,7 +1336,15 @@ class BinanceApiService
             DB::table('live_trades_future_results')->insert(
                 $data
             );
-            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+            $data['support'] = $supportResistance['support'];
+            $data['resistance'] = $supportResistance['resistance'];
+            if ($position === 'BUY') {
+                $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
+            } else if ($position === 'SELL') {
+                $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
+            }
+            $data['supportResistanceChange'] =
+                $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
             MailerService::sendFutureTradeDynamicEmail($data);
 
             return $data;

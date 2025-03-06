@@ -39,12 +39,11 @@ class LongReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.4;
+            $targetProfit = 0.7;
 
             try {
                 $symbol = $coin->symbol;
                 $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
-
 
                 $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
 
@@ -147,17 +146,28 @@ class LongReportService
                 if ($index > $obvCandles) {
                     $openTrade = true;
 
-
-                    if ($secondLastCandle['rsi6'] > 28) {
-                        $openTrade = false;
+                    // Check for bearish in last 3 candles
+                    for ($i = $index - 1; $i >= $index - 3; $i--) {
+                        if ($data[$i]['close'] <= $data[$i]['open']) {
+                            $openTrade = false;
+                            break;
+                        }
                     }
 
-                    if ($candle['close'] <= $candle['open']) {
-                        $openTrade = false;
+                    $maCondition = false;
+                    // Check for bearish in last 3 candles
+                    for ($i = $index - 1; $i >= $index - 8; $i--) {
+                        if ($data[$i]['ma7'] > $data[$i]['ma25'] && $data[$i - 1]['ma7'] < $data[$i - 1]['ma25']) {
+                            $maCondition = true;
+                            break;
+                        }
                     }
 
+                    $openTrade = $openTrade && $maCondition;
 
-                    // if ($obvCondition && $stochCondition && $supportResistanceCondition && $maCrossoverCondition) {
+
+
+
                     if ($openTrade) {
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;
