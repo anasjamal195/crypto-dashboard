@@ -20,6 +20,7 @@ use App\Services\IdealTradeService;
 use App\Services\MailerService;
 use App\Services\MarketTrendService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -40,7 +41,7 @@ class LiveTradeLONGFutureServiceEXP1
             try {
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
-       
+
                 // Log::info('FutureTraderLongEXP1: Current Trade');
                 // Log::info('FutureTraderLongEXP1: Coin: ' . $symbol);
                 // Log::info('FutureTraderLongEXP1: Account: ' . $trade_acc);
@@ -66,28 +67,28 @@ class LiveTradeLONGFutureServiceEXP1
                         && $CurrentCandle['close'] <= $supportResistance[7]['resistance'] * (1 + 0.0035); // Current Price should be Below +0.3% of resistance
 
 
-                    $maCondition = false;
+                    $maCondition = $CurrentCandle['ma7'] > $CurrentCandle['ma25'] && $CurrentCandle['ma25'] > $CurrentCandle['ma99'];
                     $maCandleDistance = 0;
 
-                    // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
-                    for ($i = count($candleData) - 2; $i >= 1; $i--) {
-                        $maCondition =  ($candleData[$i + 1]['ma7'] > $candleData[$i + 1]['ma25']  && $candleData[$i - 1]['ma7'] < $candleData[$i - 1]['ma25']);
-                        if ($maCondition) {
-                            $maCandleDistance = (count($candleData) - 1) - $i;
-                            break;
-                        }
-                    }
+                    // // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
+                    // for ($i = count($candleData) - 2; $i >= 1; $i--) {
+                    //     $maCondition =  ($candleData[$i + 1]['ma7'] > $candleData[$i + 1]['ma25']  && $candleData[$i - 1]['ma7'] < $candleData[$i - 1]['ma25']);
+                    //     if ($maCondition) {
+                    //         $maCandleDistance = (count($candleData) - 1) - $i;
+                    //         break;
+                    //     }
+                    // }
 
-                    $maCondition =  $maCondition && $maCandleDistance <= 7;
+                    // $maCondition =  $maCondition && $maCandleDistance <= 7;
 
-                    if ($maCondition) {
-                        for ($i = count($candleData) - 2; $i >= (count($candleData) - 2) - $maCandleDistance; $i--) {
-                            if ($candleData[$i]['close'] < $candleData[$i]['open'] && $candleData[$i - 1]['close'] < $candleData[$i - 1]['open']) {
-                                $maCondition = false;
-                                break;
-                            }
-                        }
-                    }
+                    // if ($maCondition) {
+                    //     for ($i = count($candleData) - 2; $i >= (count($candleData) - 2) - $maCandleDistance; $i--) {
+                    //         if ($candleData[$i]['close'] < $candleData[$i]['open'] && $candleData[$i - 1]['close'] < $candleData[$i - 1]['open']) {
+                    //             $maCondition = false;
+                    //             break;
+                    //         }
+                    //     }
+                    // }
 
                     $averageTrailingVolume = 0;
                     $volumeCandlesCount = 0;
@@ -111,10 +112,11 @@ class LiveTradeLONGFutureServiceEXP1
                     // Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
                     // Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
-                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
+                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1)) {
                         Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
 
                         LongThread::dispatch($tradeInstance, $supportResistance);
+                        Cache::put($symbol . '_availability', 0, now()->addMinute());
                     }
                 }
                 CommonHelpers::delayMS(100);

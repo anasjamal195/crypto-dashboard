@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 class CandleWickDetection extends Command
 {
@@ -30,6 +31,8 @@ class CandleWickDetection extends Command
         $symbol = 'IPUSDT';
         $interval = '5m';
 
+        Cache::put($symbol. '_availability', 0, now()->addMinute());
+        exit;
         $prices = [];
         $candle = BinanceApiService::getCandleStickData($symbol, $interval, 10, null, 'FUTURE');
         $candle = $candle[count($candle) - 1];

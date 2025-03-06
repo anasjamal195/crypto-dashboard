@@ -20,6 +20,7 @@ use App\Services\IdealTradeService;
 use App\Services\MailerService;
 use App\Services\MarketTrendService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -34,13 +35,13 @@ class LiveTradeSHORTFutureServiceEXP1
     {
         $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
         $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'SHORT')->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
-                Log::info('FutureTraderShortEXP1: Worker Started');
+        Log::info('FutureTraderShortEXP1: Worker Started');
 
         foreach ($tradeHandler as $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
-                
+
 
                 // Log::info('FutureTraderShortEXP1: Current Trade');
                 // Log::info('FutureTraderShortEXP1: Coin: ' . $symbol);
@@ -76,27 +77,28 @@ class LiveTradeSHORTFutureServiceEXP1
 
 
 
-                    $maCondition = false;
+                    $maCondition = $CurrentCandle['ma7'] < $CurrentCandle['ma25'] && $CurrentCandle['ma25'] < $CurrentCandle['ma99'];
+
                     $maCandleDistance = 0;
 
                     // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
-                    for ($i = count($candleData) - 2; $i >= 1; $i--) {
-                        $maCondition =  ($candleData[$i + 1]['ma7'] < $candleData[$i + 1]['ma25']  && $candleData[$i - 1]['ma7'] > $candleData[$i - 1]['ma25']);
-                        if ($maCondition) {
-                            $maCandleDistance = (count($candleData) - 1) - $i;
-                            break;
-                        }
-                    }
+                    // for ($i = count($candleData) - 2; $i >= 1; $i--) {
+                    //     $maCondition =  ($candleData[$i + 1]['ma7'] < $candleData[$i + 1]['ma25']  && $candleData[$i - 1]['ma7'] > $candleData[$i - 1]['ma25']);
+                    //     if ($maCondition) {
+                    //         $maCandleDistance = (count($candleData) - 1) - $i;
+                    //         break;
+                    //     }
+                    // }
 
-                    $maCondition =  $maCondition && $maCandleDistance <= 10;
-                    if ($maCondition) {
-                        for ($i = count($candleData) - 2; $i >= (count($candleData) - 2) - $maCandleDistance; $i--) {
-                            if ($candleData[$i]['close'] > $candleData[$i]['open'] && $candleData[$i - 1]['close'] > $candleData[$i - 1]['open']) {
-                                $maCondition = false;
-                                break;
-                            }
-                        }
-                    }
+                    // $maCondition =  $maCondition && $maCandleDistance <= 10;
+                    // if ($maCondition) {
+                    //     for ($i = count($candleData) - 2; $i >= (count($candleData) - 2) - $maCandleDistance; $i--) {
+                    //         if ($candleData[$i]['close'] > $candleData[$i]['open'] && $candleData[$i - 1]['close'] > $candleData[$i - 1]['open']) {
+                    //             $maCondition = false;
+                    //             break;
+                    //         }
+                    //     }
+                    // }
 
                     $averageTrailingVolume = 0;
                     $volumeCandlesCount = 0;
@@ -121,10 +123,11 @@ class LiveTradeSHORTFutureServiceEXP1
                     // Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
                     // Log::info('FutureTraderShortEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
-                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition) {
-                    Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: '. $symbol );
+                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1)) {
+                        Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
 
                         ShortThread::dispatch($tradeInstance, $supportResistance);
+                        Cache::put($symbol . '_availability', 0, now()->addMinute());
                     }
                 }
                 CommonHelpers::delayMS(100);

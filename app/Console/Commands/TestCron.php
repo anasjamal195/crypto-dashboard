@@ -6,6 +6,7 @@ use App\Jobs\TestJob;
 use App\Services\BinanceApiService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -30,9 +31,10 @@ class TestCron extends Command
      */
     public function handle()
     {
-        $candle = BinanceApiService::getCandleStickData("BTCUSDT",'1m',2,null,'FUTURE')[0];
+        $candle = BinanceApiService::getCandleStickData("BTCUSDT", '1m', 2, null, 'FUTURE')[0];
+        // Cache::put('BTCUSDT_availability', 0, now()->addMinute());
 
-        dd($candle);
+        dd(Cache::get('IPUSDT_availability', 1));
         // TestJob::dispatch("This is queue 3");
         // TestJob::dispatch("This is queue 4");
     }

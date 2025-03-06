@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -120,6 +121,8 @@ class ShortThread implements ShouldQueue
         }
 
         if ($openTrade) {
+            Cache::put($symbol . '_availability', 0, now()->addMinute());
+
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
             if (!(isset($open_order['is_open']) && $open_order['is_open']))
                 BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula);
@@ -144,6 +147,8 @@ class ShortThread implements ShouldQueue
                 CommonHelpers::delayS(1);
             }
         } else {
+            Cache::put($symbol . '_availability', 1, now()->addMinute());
+
             Log::info('ShortThread: Failed to open trade: ' . $symbol);
         }
     }
