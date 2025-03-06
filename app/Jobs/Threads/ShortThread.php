@@ -69,25 +69,25 @@ class ShortThread implements ShouldQueue
             $openTrade = false;
         }
 
-        // Check for noticable % change in 1m candle value
-        $changePercentageLoop = true;
-        $counter = 0;
-        while ($changePercentageLoop) {
-            $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
-            $candle1m = $data1m[count($data1m) - 1];
-            $per = (($candle1m['open'] - $candle1m['close']) / $candle1m['open']) * 100;
-            if (now()->format('s') == '00' || $counter > 60) {
-                $openTrade = false;
-                $changePercentageLoop = false;
-            }
-            if ($per > 0.05 && $counter > 10) {
-                $changePercentageLoop = false;
-            }
+        // // Check for noticable % change in 1m candle value
+        // $changePercentageLoop = true;
+        // $counter = 0;
+        // while ($changePercentageLoop) {
+        //     $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
+        //     $candle1m = $data1m[count($data1m) - 1];
+        //     $per = (($candle1m['open'] - $candle1m['close']) / $candle1m['open']) * 100;
+        //     if (now()->format('s') == '00' || $counter > 60) {
+        //         $openTrade = false;
+        //         $changePercentageLoop = false;
+        //     }
+        //     if ($per > 0.05 && $counter > 10) {
+        //         $changePercentageLoop = false;
+        //     }
 
-            CommonHelpers::delayS(1);
+        //     CommonHelpers::delayS(1);
 
-            $counter++;
-        }
+        //     $counter++;
+        // }
         // Check for candle direction on 1 min, if bullish than skip trade
         $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
 
