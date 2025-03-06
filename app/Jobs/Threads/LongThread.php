@@ -135,13 +135,13 @@ class LongThread implements ShouldQueue
         if ($openTrade) {
             Cache::put($symbol . '_availability', 0, now()->addMinute());
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
-            if (!(isset($open_order['is_open']) && $open_order['is_open']))
+            if (!(isset($open_order['is_open']) && $open_order['is_open'])){
             $supportResistanceArr = [
                 'support' => $this->supportResistance[7]['support'],
                 'resistance' => $this->supportResistance[7]['resistance'],
             ];
                 BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount,$this->formula,$supportResistanceArr);
-
+        }
 
             $tradeLoop = true;
             // Proceed trade until the position is closed
