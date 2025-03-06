@@ -106,6 +106,10 @@ class LongThread implements ShouldQueue
         }
 
 
+        $secondLastper = (($secondLastcandle1m['close'] - $secondLastcandle1m['open']) / $secondLastcandle1m['open']) * 100;
+        if ($secondLastper < 0.08) {
+            $openTrade = false;
+        }
         // Check for second last 1m candle direction
         if ($secondLastcandle1m['close'] < $secondLastcandle1m['open']) {
             $openTrade = false;
@@ -135,13 +139,13 @@ class LongThread implements ShouldQueue
         if ($openTrade) {
             Cache::put($symbol . '_availability', 0, now()->addMinute());
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
-            if (!(isset($open_order['is_open']) && $open_order['is_open'])){
-            $supportResistanceArr = [
-                'support' => $this->supportResistance[7]['support'],
-                'resistance' => $this->supportResistance[7]['resistance'],
-            ];
-                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount,$this->formula,$supportResistanceArr);
-        }
+            if (!(isset($open_order['is_open']) && $open_order['is_open'])) {
+                $supportResistanceArr = [
+                    'support' => $this->supportResistance[7]['support'],
+                    'resistance' => $this->supportResistance[7]['resistance'],
+                ];
+                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr);
+            }
 
             $tradeLoop = true;
             // Proceed trade until the position is closed
