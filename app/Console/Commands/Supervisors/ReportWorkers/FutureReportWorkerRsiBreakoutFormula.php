@@ -44,11 +44,11 @@ class FutureReportWorkerRsiBreakoutFormula extends Command
 
         while (true) {
             try {
-                ShortReportService::updateCoinReport(
-                    '5m',
-                    1000,
-                    'FUTURE'
-                );
+                // ShortReportService::updateCoinReport(
+                //     '5m',
+                //     1000,
+                //     'FUTURE'
+                // );
                 LongReportService::updateCoinReport(
                     '5m',
                     1000,

@@ -177,7 +177,7 @@ class LiveTradeLONGFutureServiceEXP1
                 'symbol' => $coin,
                 'interval' => $interval,
                 'position' => 'LONG',
-                'leverage' => 3,
+                'leverage' => 5,
                 'buyPrice' => CommonHelpers::getMetaValue($user_id, 'buy_price' . $meta_prefix, 6),
                 'tradeAccount' => $user_id,
                 'targetProfit' => CommonHelpers::getMetaValue($user_id, 'target_profit' . $meta_prefix, 0.4),
