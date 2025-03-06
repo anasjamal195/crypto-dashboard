@@ -73,6 +73,12 @@ class ShortThread implements ShouldQueue
         $candle1m = $data1m[count($data1m) - 1];
         $secondLastcandle1m = $data1m[count($data1m) - 2];
 
+        // Check for current and last candle's high
+        if ($candle1m['low'] > $secondLastcandle1m['low']) {
+            $openTrade = false;
+            
+            Log::info('ShortThread: Retreating Due to upper wick');
+        }
         if ($candle1m['close'] > $candle1m['open']) {
             $openTrade = false;
             MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to 1m candle direction ' . $symbol);

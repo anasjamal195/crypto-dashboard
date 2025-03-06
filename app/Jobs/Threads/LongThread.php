@@ -74,7 +74,12 @@ class LongThread implements ShouldQueue
 
         $candle1m = $data1m[count($data1m) - 1];
         $secondLastcandle1m = $data1m[count($data1m) - 2];
+        // Check for current and last candle's high
+        if ($candle1m['high'] < $secondLastcandle1m['high']) {
+            $openTrade = false;
 
+            Log::info('ShortThread: Retreating Due to upper wick');
+        }
         // Check for 1m candle direction current candle
         if ($candle1m['close'] < $candle1m['open']) {
             $openTrade = false;
