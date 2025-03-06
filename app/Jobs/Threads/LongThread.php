@@ -69,12 +69,30 @@ class LongThread implements ShouldQueue
         if ($currentOpenOrders >= 1) {
             $openTrade = false;
         }
+        // Check for noticable % change in 1m candle value
+        $changePercentageLoop = true;
+        $counter = 0;
+        while ($changePercentageLoop) {
+            $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
+            $candle1m = $data1m[count($data1m) - 1];
+            $per = (($candle1m['close'] - $candle1m['open']) / $candle1m['open']) * 100;
+            if (now()->format('s') == '00' || $counter > 60) {
+                $openTrade = false;
+            }
+            if ($per > 0.05 && $counter > 10) {
+                $changePercentageLoop = false;
+            }
 
+            CommonHelpers::delayS(1);
+
+            $counter++;
+        }
         // Check for candle direction on 1 min, if bearish than skip trade
         $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
 
         $candle1m = $data1m[count($data1m) - 1];
         $secondLastcandle1m = $data1m[count($data1m) - 2];
+        $thirdLastcandle1m = $data1m[count($data1m) - 3];
         // Check for current and last candle's high
         if ($candle1m['high'] < $secondLastcandle1m['high']) {
             $openTrade = false;
@@ -94,6 +112,13 @@ class LongThread implements ShouldQueue
             MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to second Last 1m candle direction ' . $symbol);
         }
 
+        // Check for second last 1m candle direction
+        if ($thirdLastcandle1m['close'] < $thirdLastcandle1m['open']) {
+            $openTrade = false;
+            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to third Last 1m candle direction ' . $symbol);
+        }
+
+
 
         $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
 
@@ -103,24 +128,7 @@ class LongThread implements ShouldQueue
             $openTrade = false;
         }
 
-        // Check for noticable % change in 1m candle value
-        $changePercentageLoop = true;
-        $counter = 0;
-        while ($changePercentageLoop) {
-            $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
-            $candle1m = $data1m[count($data1m) - 1];
-            $per = (($candle1m['close'] - $candle1m['open']) / $candle1m['open']) * 100;
-            if (now()->format('s') == '00' || $counter > 60) {
-                $openTrade = false;
-            }
-            if ($per > 0.05 && $counter > 10) {
-                $changePercentageLoop = false;
-            }
 
-            CommonHelpers::delayS(1);
-
-            $counter++;
-        }
 
 
 
