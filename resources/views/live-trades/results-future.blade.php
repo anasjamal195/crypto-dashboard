@@ -180,6 +180,7 @@
                     <th>Entry Price</th>
                     <th>Close Price</th>
                     <th>Current Price</th>
+                    <th>Turnover Point</th>
                     {{-- <th>Current Support</th>
                         <th>Current Resistance</th>
                         <th>Stop Loss</th> --}}
@@ -216,6 +217,7 @@
                         <td>{{ $order->price ?? '-' }}</td>
                         <td>{{ $orderClose->price ?? '-' }}</td>
                         <td>{{ $order->previousPrice ?? '-' }}</td>
+                        <td>{{ $order->turnoverPoint ?? '-' }}</td>
                         {{-- <td>{{ $order->currentSupport ?? '-' }}</td>
                             <td>{{ $order->currentResistance ?? '-' }}</td>
                             <td>{{ $order->stopLoss ?? '-' }}</td> --}}
