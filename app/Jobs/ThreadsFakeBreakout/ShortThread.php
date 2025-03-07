@@ -25,15 +25,17 @@ class ShortThread implements ShouldQueue
     public $supportResistance;
     public $formula;
     public $profitIncrementPercentage;
+    public $turnoverPoint;
 
 
     /**
      * Create a new job instance.
      */
-    public function __construct($tradeInstance, $supportResistance)
+    public function __construct($tradeInstance, $supportResistance, $turnoverPoint)
     {
         $this->tradeInstance = $tradeInstance;
         $this->supportResistance = $supportResistance;
+        $this->turnoverPoint = $turnoverPoint;
         $this->formula = 'Support/Resistance Fake Breakout Multithread';
         $this->profitIncrementPercentage = 0.2;
     }
@@ -64,6 +66,18 @@ class ShortThread implements ShouldQueue
             $openTrade = false;
         }
 
+        // Wait for current 1m candle to complete
+        // while (true) {
+        //     $currentTime = now();
+        //     $seconds = $currentTime->second;
+
+        //     if ($seconds >= 1 || $seconds <= 2) {
+        //         break;
+        //     }
+        // }
+
+
+
         $fakeBreakoutLoop = true;
         $counter = 0;
         while ($fakeBreakoutLoop) {
@@ -75,7 +89,6 @@ class ShortThread implements ShouldQueue
 
             if ($candle1m['open'] > $candle1m['close'] && $secondLastcandle1m['open'] > $secondLastcandle1m['close']) {
                 Log::info('ShortThread::Candle Direction True on 1m ' . $symbol);
-
                 $fakeBreakoutLoop = false;
             } else if ($counter >= 240) {
                 Log::info('ShortThread::Candle Direction Timeout, No signal found ' . $symbol);
@@ -91,7 +104,7 @@ class ShortThread implements ShouldQueue
 
 
         if ($openTrade) {
-            Log::info('ShortThread::Going to open trade '. $symbol);
+            Log::info('ShortThread::Going to open trade ' . $symbol);
 
             Cache::put($symbol . '_availability', 0, now()->addMinute());
 
@@ -101,7 +114,7 @@ class ShortThread implements ShouldQueue
                     'support' => $this->supportResistance[7]['support'],
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
-                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr);
+                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, $this->turnoverPoint);
             }
             $tradeLoop = true;
             // Proceed trade until the position is closed

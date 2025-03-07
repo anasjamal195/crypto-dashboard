@@ -61,17 +61,46 @@ class SupportResistanceFakeBreakoutLiveTradesLong
                     // For Short Trader
 
                     $newSupport = $supportResistance[7]['support'] * (1 + 0.5 / 100);
+
+
+                    $index = count($candleData) - 1;
+                    $turnOverPoint = $candleData[$index]['low'];
+
+                    while (true) {
+                        if ($turnOverPoint >  $candleData[$index]['low']) {
+                            $turnoverPoint = $candleData[$index]['low'];
+                        }
+
+                        if ($candleData[$index]['low'] > $candleData[count($candleData) - 1]['low']) {
+                            break;
+                        }
+                        $index--;
+                    }
+
+                    // Check if same trend persist after turnover point
+                    $sameTrendTurnoverCondition = true;
+
+                    for ($i = $index; $i <= (count($candleData) - 1); $i++) {
+                        if ($candleData[$i]['close'] < $candleData[$i]['open']) {
+                            $sameTrendTurnoverCondition = false;
+                            break;
+                        }
+                    }
+
+
+
+
                     if (
                         $currentCandle['close'] > $currentCandle['open'] &&
                         $secondLastCandle['close'] > $secondLastCandle['open'] &&
                         $thirdLastCandle['close'] < $newSupport && $thirdLastCandle['open'] > $newSupport &&
                         $currentCandle['close'] >= $supportResistance[7]['support'] &&
-
+                        $sameTrendTurnoverCondition &&
                         ($currentCandle['J'] > $currentCandle['K'] || $currentCandle['J'] > $currentCandle['D'])
                     ) {
                         Log::info('SupportResistanceFakeBreakout: Dispatching Long Thread... Coin:  ' . $symbol);
 
-                        LongThread::dispatch($tradeInstance, $supportResistance);
+                        LongThread::dispatch($tradeInstance, $supportResistance, $turnOverPoint);
                         Cache::put($symbol . '_availability', 0, now()->addMinute());
                     }
                 }
@@ -82,6 +111,4 @@ class SupportResistanceFakeBreakoutLiveTradesLong
             }
         return true;
     }
-
-
 }

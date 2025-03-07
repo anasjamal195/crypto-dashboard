@@ -25,15 +25,17 @@ class LongThread implements ShouldQueue
     public $supportResistance;
     public $formula;
     public $profitIncrementPercentage;
+    public $turnOverPoint;
 
 
     /**
      * Create a new job instance.
      */
-    public function __construct($tradeInstance, $supportResistance)
+    public function __construct($tradeInstance, $supportResistance, $turnOverPoint)
     {
         $this->tradeInstance = $tradeInstance;
         $this->supportResistance = $supportResistance;
+        $this->turnOverPoint = $turnOverPoint;
         $this->formula = 'Support/Resistance Fake Breakout Multithread';
         $this->profitIncrementPercentage = 0.2;
     }
@@ -63,7 +65,20 @@ class LongThread implements ShouldQueue
         if ($currentOpenOrders >= 1) {
             $openTrade = false;
         }
-       
+
+        // Wait for current 1m candle to complete
+        // while (true) {
+        //     $currentTime = now();
+        //     $seconds = $currentTime->second;
+
+        //     if ($seconds >= 1 || $seconds <= 2) {
+        //         break;
+        //     }
+        // }
+
+
+
+
         $fakeBreakoutLoop = true;
         $counter = 0;
 
@@ -79,7 +94,6 @@ class LongThread implements ShouldQueue
                     Log::info('LongThread::Candle Direction True on 1m ' . $symbol);
                 } else if ($counter >= 240) {
                     Log::info('LongThread::Candle Direction Timeout, No signal found ' . $symbol);
-
                     $fakeBreakoutLoop = false;
                     $openTrade = false;
                 }
@@ -94,7 +108,7 @@ class LongThread implements ShouldQueue
 
 
         if ($openTrade) {
-            Log::info('LongThread::Going to open trade '. $symbol);
+            Log::info('LongThread::Going to open trade ' . $symbol);
 
             Cache::put($symbol . '_availability', 0, now()->addMinute());
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
@@ -103,7 +117,7 @@ class LongThread implements ShouldQueue
                     'support' => $this->supportResistance[7]['support'],
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
-                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr);
+                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, $this->turnOverPoint);
             }
 
             $tradeLoop = true;

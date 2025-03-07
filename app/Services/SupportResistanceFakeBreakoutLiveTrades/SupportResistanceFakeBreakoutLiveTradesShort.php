@@ -53,7 +53,6 @@ class SupportResistanceFakeBreakoutLiveTradesShort
                     $candleData = $supportResistance['candleData'];
 
 
-
                     $currentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
                     $thirdLastCandle = $candleData[count($candleData) - 3];
@@ -61,17 +60,42 @@ class SupportResistanceFakeBreakoutLiveTradesShort
                     // For Short Trader
 
                     $newResistance = $supportResistance[7]['resistance'] * (1 - 0.5 / 100);
+
+                    $index = count($candleData) - 1;
+                    $turnOverPoint = $candleData[$index]['high'];
+
+                    while (true) {
+                        if ($turnOverPoint <  $candleData[$index]['high']) {
+                            $turnoverPoint = $candleData[$index]['high'];
+                        }
+
+                        if ($candleData[$index]['high'] < $candleData[count($candleData) - 1]['high']) {
+                            break;
+                        }
+                        $index--;
+                    }
+
+                    // Check if same trend persist after turnover point
+                    $sameTrendTurnoverCondition = true;
+
+                    for($i = $index; $i <= (count($candleData) - 1); $i++){
+                        if($candleData[$i]['close'] > $candleData[$i]['open'] ){
+                            $sameTrendTurnoverCondition = false;
+                            break;
+                        }
+                    }
+
                     if (
                         $currentCandle['close'] < $currentCandle['open'] &&
                         $secondLastCandle['close'] < $secondLastCandle['open'] &&
                         $thirdLastCandle['close'] > $newResistance && $thirdLastCandle['open'] < $newResistance &&
                         $currentCandle['close'] <= $supportResistance[7]['resistance'] &&
-
+                        $sameTrendTurnoverCondition &&
                         ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D'])
                     ) {
                         Log::info('SupportResistanceFakeBreakout: Dispatching Short Thread... Coin: ' . $symbol);
 
-                        ShortThread::dispatch($tradeInstance, $supportResistance);
+                        ShortThread::dispatch($tradeInstance, $supportResistance, $turnoverPoint);
                         Cache::put($symbol . '_availability', 0, now()->addMinute());
                     }
                 }

@@ -32,7 +32,16 @@ class TestCron extends Command
      */
     public function handle()
     {
-      
+        while (true) {
+            $currentTime = now();
+            $seconds = $currentTime->second;
+
+            if ($seconds >= 58 || $seconds <= 2) {
+                dd("Round Minute",$seconds);
+            }
+
+            
+        }
 
         dd(BinanceApiService::getCandleStickData('BTCUSDT','1m',300,null,'FUTURE')[298]);
         // TestJob::dispatch("This is queue 3");

@@ -1196,7 +1196,7 @@ class BinanceApiService
 
 
     // Future Api's
-    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $isDummy = false)
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance,$turnoverPoint ,$isDummy = false)
     {
 
         $market = 'FUTURE';
@@ -1398,6 +1398,7 @@ class BinanceApiService
             'trade_acc' => $trader,
             'targetProfit' => 0.4,
             'formula' => $formula,
+            'turnoverPoint' => $turnoverPoint,
             'liqPrice' => $liquidationPrice,
             'currentSupport' => $supportResistance['support'],
             'currentResistance' => $supportResistance['resistance'],
@@ -1407,13 +1408,13 @@ class BinanceApiService
         DB::table('live_trades_future_results')->insert(
             $data
         );
-        $data['support'] = $supportResistance['support'];
-        $data['resistance'] = $supportResistance['resistance'];
-        if ($position === 'BUY') {
-            $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
-        } else if ($position === 'SELL') {
-            $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
-        }
+        // $data['support'] = $supportResistance['support'];
+        // $data['resistance'] = $supportResistance['resistance'];
+        // if ($position === 'BUY') {
+        //     $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
+        // } else if ($position === 'SELL') {
+        //     $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
+        // }
         $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
 
