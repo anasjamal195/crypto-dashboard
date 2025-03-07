@@ -198,8 +198,7 @@ class LongThread implements ShouldQueue
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
                     'currentProfit' => $currentProfit,
-                    'currentSupport' => $supportResistance[7]['support'],
-                    'currentResistance' => $supportResistance[7]['resistance'],
+                 
                     'targetProfit' => $targetProfit,
                 ]);
                 return false;
@@ -215,8 +214,7 @@ class LongThread implements ShouldQueue
                 'stopLoss' =>  $currentCandle['close'],
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
-                'currentSupport' => $supportResistance[7]['support'],
-                'currentResistance' => $supportResistance[7]['resistance'],
+              
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
             ]);
@@ -241,8 +239,7 @@ class LongThread implements ShouldQueue
                             'currentPrice' => $currentCandle['close'],
                             'currentProfit' => $currentProfit,
                             'targetProfit' => $targetProfit,
-                            'currentSupport' => $supportResistance[7]['support'],
-                            'currentResistance' => $supportResistance[7]['resistance'],
+                           
                         ]);
                         return false;
                     }
@@ -252,9 +249,7 @@ class LongThread implements ShouldQueue
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
-                'targetProfit' => $targetProfit,
-                'currentSupport' => $supportResistance[7]['support'],
-                'currentResistance' => $supportResistance[7]['resistance'],
+                'targetProfit' => $targetProfit
             ]);
         }
 

@@ -193,8 +193,7 @@ class ShortThread implements ShouldQueue
                     'currentPrice' => $currentCandle['close'],
                     'currentProfit' => $currentProfit,
                     'targetProfit' => $targetProfit,
-                    'currentSupport' => $supportResistance[7]['support'],
-                    'currentResistance' => $supportResistance[7]['resistance'],
+                 
                 ]);
                 return false;
             } else {
@@ -207,8 +206,6 @@ class ShortThread implements ShouldQueue
                 'stopLoss' =>  $currentCandle['close'],
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
-                'currentSupport' => $supportResistance[7]['support'],
-                'currentResistance' => $supportResistance[7]['resistance'],
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
             ]);
@@ -234,8 +231,7 @@ class ShortThread implements ShouldQueue
                             'currentPrice' => $currentCandle['close'],
                             'currentProfit' => $currentProfit,
                             'targetProfit' => $targetProfit,
-                            'currentSupport' => $supportResistance[7]['support'],
-                            'currentResistance' => $supportResistance[7]['resistance'],
+                           
                         ]);
                         return false;
                     }
@@ -246,8 +242,7 @@ class ShortThread implements ShouldQueue
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
-                'currentSupport' => $supportResistance[7]['support'],
-                'currentResistance' => $supportResistance[7]['resistance'],
+              
             ]);
         }
 

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\TestJob;
 use App\Services\BinanceApiService;
+use App\Services\MarketTrendService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -31,10 +32,15 @@ class TestCron extends Command
      */
     public function handle()
     {
-        $candle = BinanceApiService::getCandleStickData("ALGOUSDT", '1m', 300, null, 'FUTURE')[298];
+        $supportResistance = MarketTrendService::getCurrentSupportResistanceValue('XRPUSDT', '5m', 'FUTURE', [7]);
+        $supportResistanceArr = [
+            'support' => $supportResistance[7]['support'],
+            'resistance' => $supportResistance[7]['resistance'],
+        ];
         // Cache::put('BTCUSDT_availability', 0, now()->addMinute());
+        $openOrder = BinanceApiService::openMarketPositionLiveTrader('XRPUSDT',10,'BUY',1,2,'Test formula',$supportResistanceArr);
 
-        dd($candle);
+        dd($openOrder);
         // TestJob::dispatch("This is queue 3");
         // TestJob::dispatch("This is queue 4");
     }

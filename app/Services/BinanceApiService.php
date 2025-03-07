@@ -1399,12 +1399,21 @@ class BinanceApiService
             'targetProfit' => 0.4,
             'formula' => $formula,
             'liqPrice' => $liquidationPrice,
+            'currentSupport' => $supportResistance['support'],
+            'currentResistance' => $supportResistance['resistance'],
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
         DB::table('live_trades_future_results')->insert(
             $data
         );
+        $data['support'] = $supportResistance['support'];
+        $data['resistance'] = $supportResistance['resistance'];
+        if ($position === 'BUY') {
+            $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
+        } else if ($position === 'SELL') {
+            $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
+        }
         $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
 
