@@ -69,7 +69,7 @@ class SupportResistanceFakeBreakoutLiveTradesShort
                             $turnoverPoint = $candleData[$index]['high'];
                         }
 
-                        if ($candleData[$index]['high'] < $candleData[count($candleData) - 1]['high']) {
+                        if ($candleData[$index]['high'] < $candleData[count($candleData) - 1]['high'] && $index >= 0) {
                             break;
                         }
                         $index--;
@@ -78,8 +78,8 @@ class SupportResistanceFakeBreakoutLiveTradesShort
                     // Check if same trend persist after turnover point
                     $sameTrendTurnoverCondition = true;
 
-                    for($i = $index; $i <= (count($candleData) - 1); $i++){
-                        if($candleData[$i]['close'] > $candleData[$i]['open'] ){
+                    for ($i = $index; $i <= (count($candleData) - 1); $i++) {
+                        if ($candleData[$i]['close'] > $candleData[$i]['open']) {
                             $sameTrendTurnoverCondition = false;
                             break;
                         }

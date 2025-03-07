@@ -71,7 +71,7 @@ class SupportResistanceFakeBreakoutLiveTradesLong
                             $turnoverPoint = $candleData[$index]['low'];
                         }
 
-                        if ($candleData[$index]['low'] > $candleData[count($candleData) - 1]['low']) {
+                        if ($candleData[$index]['low'] > $candleData[count($candleData) - 1]['low'] && $index >= 0) {
                             break;
                         }
                         $index--;
