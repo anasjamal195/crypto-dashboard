@@ -1343,8 +1343,7 @@ class BinanceApiService
             } else if ($position === 'SELL') {
                 $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
             }
-            $data['supportResistanceChange'] =
-                $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
             MailerService::sendFutureTradeDynamicEmail($data);
 
             return $data;
