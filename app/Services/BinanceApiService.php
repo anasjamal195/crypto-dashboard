@@ -1196,7 +1196,7 @@ class BinanceApiService
 
 
     // Future Api's
-    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance,$turnoverPoint ,$isDummy = false)
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false)
     {
 
         $market = 'FUTURE';
@@ -1343,7 +1343,7 @@ class BinanceApiService
             } else if ($position === 'SELL') {
                 $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
             }
-            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
             MailerService::sendFutureTradeDynamicEmail($data);
 
             return $data;
@@ -1408,14 +1408,14 @@ class BinanceApiService
         DB::table('live_trades_future_results')->insert(
             $data
         );
-        // $data['support'] = $supportResistance['support'];
-        // $data['resistance'] = $supportResistance['resistance'];
-        // if ($position === 'BUY') {
-        //     $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
-        // } else if ($position === 'SELL') {
-        //     $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
-        // }
-        $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+        $data['support'] = $supportResistance['support'];
+        $data['resistance'] = $supportResistance['resistance'];
+        if ($position === 'BUY') {
+            $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
+        } else if ($position === 'SELL') {
+            $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
+        }
+        $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
 
         return $data;
@@ -1499,7 +1499,7 @@ class BinanceApiService
                 'pairId' => $orderId,
 
             ]);
-            $data['subject'] = $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
             MailerService::sendFutureTradeDynamicEmail($data);
             return $data;
@@ -1591,7 +1591,7 @@ class BinanceApiService
             'realizedPnl' => $realizedPnl,
 
         ]);
-        $data['subject'] = $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
         return $data;

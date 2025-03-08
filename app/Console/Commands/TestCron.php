@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\TestJob;
 use App\Services\BinanceApiService;
+use App\Services\MailerService;
 use App\Services\MarketTrendService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -32,6 +33,7 @@ class TestCron extends Command
      */
     public function handle()
     {
+       
         while (true) {
             $currentTime = now();
             $seconds = $currentTime->second;
