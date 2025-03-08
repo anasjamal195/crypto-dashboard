@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\CommonHelpers;
 use App\Services\SupervisorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,7 @@ class ProcessController extends Controller
     }
     public function performAction($action)
     {
+        CommonHelpers::clearLogs();
         if ($action == 'RESTART') {
             $currentlyRunning = SupervisorService::getStatus();
             foreach ($currentlyRunning['data'] as $process) {

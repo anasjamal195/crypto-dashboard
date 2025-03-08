@@ -34,9 +34,6 @@ class TestCron extends Command
      */
     public function handle()
     {
-       
-        dd(CommonHelpers::clearLogs());
-        // TestJob::dispatch("This is queue 3");
-        // TestJob::dispatch("This is queue 4");
+    
     }
 }
