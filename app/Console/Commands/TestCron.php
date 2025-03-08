@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\CommonHelpers;
 use App\Jobs\TestJob;
 use App\Services\BinanceApiService;
 use App\Services\MailerService;
@@ -34,18 +35,7 @@ class TestCron extends Command
     public function handle()
     {
        
-        while (true) {
-            $currentTime = now();
-            $seconds = $currentTime->second;
-
-            if ($seconds >= 58 || $seconds <= 2) {
-                dd("Round Minute",$seconds);
-            }
-
-            
-        }
-
-        dd(BinanceApiService::getCandleStickData('BTCUSDT','1m',300,null,'FUTURE')[298]);
+        dd(CommonHelpers::clearLogs());
         // TestJob::dispatch("This is queue 3");
         // TestJob::dispatch("This is queue 4");
     }

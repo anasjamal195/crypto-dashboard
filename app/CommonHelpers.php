@@ -313,4 +313,16 @@ class CommonHelpers
         }
         Log::info($log);
     }
+
+
+    public static function clearLogs()
+    {
+        // Execute the shell command to truncate the log file
+        $logFile = storage_path('logs/laravel.log');
+        if (file_exists($logFile)) {
+            exec("truncate -s 0 {$logFile}");
+            return response()->json(['message' => 'Log file cleared successfully']);
+        }
+        return response()->json(['message' => 'Log file does not exist'], 404);
+    }
 }
