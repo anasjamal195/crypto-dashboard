@@ -64,14 +64,15 @@ class LiveTradeSHORTFutureServiceEXP1
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
 
-                    $supportResistanceContition = $CurrentCandle['close']  <  $supportResistance[7]['support'] &&
-                        $secondLastCandle['close']  >  $supportResistance[7]['support'];
+                    $support = $supportResistance[7]['support'] * (1 + 1 / 100);
+                    $supportResistanceContition = $CurrentCandle['close']  <  $support &&
+                        $secondLastCandle['close']  >  $support;
 
 
 
                     // Will skip this iteration is below value is false
                     $proceedCondition = $CurrentCandle['close'] < $CurrentCandle['open'] // Candle Should be in Bearish
-                        && $CurrentCandle['close'] >= $supportResistance[7]['support'] * (1 - 0.0035); // Current Price should be above -0.3% of support
+                        && $CurrentCandle['close'] >= $support * (1 - 0.0035); // Current Price should be above -0.3% of support
 
 
 
@@ -125,7 +126,6 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1)) {
                         Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
-
                         ShortThread::dispatch($tradeInstance, $supportResistance);
                         Cache::put($symbol . '_availability', 0, now()->addMinute());
                     }

@@ -96,7 +96,6 @@ class LongThread implements ShouldQueue
         // Check for current and last candle's high
         if ($candle1m['high'] < $secondLastcandle1m['high']) {
             $openTrade = false;
-
             Log::info('ShortThread: Retreating Due to upper wick');
         }
         // Check for 1m candle direction current candle
@@ -104,8 +103,6 @@ class LongThread implements ShouldQueue
             $openTrade = false;
             MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to 1m candle direction ' . $symbol);
         }
-
-
         $secondLastper = (($secondLastcandle1m['close'] - $secondLastcandle1m['open']) / $secondLastcandle1m['open']) * 100;
         if ($secondLastper < 0.08) {
             $openTrade = false;
@@ -135,6 +132,28 @@ class LongThread implements ShouldQueue
 
 
 
+        // Check if it is allowed to open trade
+        $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
+        if ($lastOpenTrade) {
+
+            if ($lastOpenTrade->currentProfit < 0.2) {
+                $openTrade = false;
+                Log::info('FutureTraderLongEXP1: Skipped due to current open order in loss: ' . $symbol);
+                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to current open order in loss ' . $symbol);
+            }
+        } else {
+
+            $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
+
+            if ($lastClosed) {
+                $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));
+                if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
+                    $openTrade = false;
+                    Log::info('FutureTraderLongEXP1: Skipped due to last order closed in loss: ' . $symbol);
+                    MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to last order closed in loss ' . $symbol);
+                }
+            }
+        }
 
         if ($openTrade) {
             Cache::put($symbol . '_availability', 0, now()->addMinute());
@@ -144,7 +163,7 @@ class LongThread implements ShouldQueue
                     'support' => $this->supportResistance[7]['support'],
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
-                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr);
+                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0);
             }
 
             $tradeLoop = true;
@@ -166,7 +185,6 @@ class LongThread implements ShouldQueue
             }
         } else {
             Cache::put($symbol . '_availability', 1, now()->addMinute());
-
             Log::info('FutureTraderLongEXP1: Failed to open trade: ' . $symbol);
         }
     }
@@ -198,7 +216,7 @@ class LongThread implements ShouldQueue
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
                     'currentProfit' => $currentProfit,
-                 
+
                     'targetProfit' => $targetProfit,
                 ]);
                 return false;
@@ -214,7 +232,7 @@ class LongThread implements ShouldQueue
                 'stopLoss' =>  $currentCandle['close'],
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
-              
+
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
             ]);
@@ -239,7 +257,7 @@ class LongThread implements ShouldQueue
                             'currentPrice' => $currentCandle['close'],
                             'currentProfit' => $currentProfit,
                             'targetProfit' => $targetProfit,
-                           
+
                         ]);
                         return false;
                     }
