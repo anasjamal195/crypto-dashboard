@@ -66,7 +66,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                     // Will skip this iteration is below value is false
                     $proceedCondition = $CurrentCandle['close'] > $CurrentCandle['open'] // Candle Should be in Bullish
-                        && $CurrentCandle['close'] <= $resistance * (1 + 0.0035); // Current Price should be Below +0.3% of resistance
+                        && $CurrentCandle['close'] <= $resistance * (1 + 1/100); // Current Price should be Below +0.3% of resistance
 
 
                     $maCondition = $CurrentCandle['ma7'] > $CurrentCandle['ma25'] && $CurrentCandle['ma25'] > $CurrentCandle['ma99'];

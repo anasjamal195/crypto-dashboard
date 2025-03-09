@@ -72,7 +72,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     // Will skip this iteration is below value is false
                     $proceedCondition = $CurrentCandle['close'] < $CurrentCandle['open'] // Candle Should be in Bearish
-                        && $CurrentCandle['close'] >= $support * (1 - 0.0035); // Current Price should be above -0.3% of support
+                        && $CurrentCandle['close'] >= $support * (1 - 1 / 100); // Current Price should be above -0.3% of support
 
 
 
