@@ -87,48 +87,65 @@ class LongThread implements ShouldQueue
 
         //     $counter++;
         // }
-        // Check for candle direction on 1 min, if bearish than skip trade
-        $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
 
-        $candle1m = $data1m[count($data1m) - 1];
-        $secondLastcandle1m = $data1m[count($data1m) - 2];
-        $thirdLastcandle1m = $data1m[count($data1m) - 3];
-        // Check for current and last candle's high
-        if ($candle1m['high'] < $secondLastcandle1m['high']) {
-            $openTrade = false;
-            Log::info('ShortThread: Retreating Due to upper wick');
+
+
+        // Repeat checking these conditions until true, or coin price is out of bound
+        while (true) {
+            Log::info('FutureTraderLongEXP1: Entering 1m Loop...');
+
+            $openTrade = true;
+            // Check for    candle direction on 1 min, if bearish than skip trade
+            $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
+
+            $candle1m = $data1m[count($data1m) - 1];
+            $secondLastcandle1m = $data1m[count($data1m) - 2];
+            $thirdLastcandle1m = $data1m[count($data1m) - 3];
+            // Check for current and last candle's high
+            // if ($candle1m['high'] < $secondLastcandle1m['high']) {
+            //     $openTrade = false;
+            //     Log::info('ShortThread: Retreating Due to upper wick');
+            // }
+            // Check for 1m candle direction current candle
+            if ($candle1m['close'] < $candle1m['open']) {
+                $openTrade = false;
+                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to 1m candle direction ' . $symbol);
+            }
+            $secondLastper = (($secondLastcandle1m['close'] - $secondLastcandle1m['open']) / $secondLastcandle1m['open']) * 100;
+            if ($secondLastper < 0.08) {
+                $openTrade = false;
+            }
+            // Check for second last 1m candle direction
+            if ($secondLastcandle1m['close'] < $secondLastcandle1m['open']) {
+                $openTrade = false;
+                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to second Last 1m candle direction ' . $symbol);
+            }
+
+            // Check for second last 1m candle direction
+            if ($thirdLastcandle1m['close'] < $thirdLastcandle1m['open']) {
+                $openTrade = false;
+                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to third Last 1m candle direction ' . $symbol);
+            }
+
+            $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
+
+            $upperWickDiff = $secondLastcandle1m['high'] - $secondLastcandle1m['close'];
+            // Candle wick condition for second last candle 1m 
+            if ($upperWickDiff > $candleDiff1m) {
+                $openTrade = false;
+            }
+
+            if (
+                $openTrade ||
+                $candle1m['close'] > ($this->supportResistance[7]['resistance'] * (1 + 0.3 / 100))  ||
+                $candle1m['close'] < ($this->supportResistance[7]['resistance'] * (1 - 1 / 100))
+            ) {
+                break;
+            }
+            // Update Cache to make this symbol unavailable
+            Cache::put($symbol . '_availability', 0, now()->addMinute());
+            CommonHelpers::delayS(5);
         }
-        // Check for 1m candle direction current candle
-        if ($candle1m['close'] < $candle1m['open']) {
-            $openTrade = false;
-            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to 1m candle direction ' . $symbol);
-        }
-        $secondLastper = (($secondLastcandle1m['close'] - $secondLastcandle1m['open']) / $secondLastcandle1m['open']) * 100;
-        if ($secondLastper < 0.08) {
-            $openTrade = false;
-        }
-        // Check for second last 1m candle direction
-        if ($secondLastcandle1m['close'] < $secondLastcandle1m['open']) {
-            $openTrade = false;
-            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to second Last 1m candle direction ' . $symbol);
-        }
-
-        // Check for second last 1m candle direction
-        if ($thirdLastcandle1m['close'] < $thirdLastcandle1m['open']) {
-            $openTrade = false;
-            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to third Last 1m candle direction ' . $symbol);
-        }
-
-
-
-        $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
-
-        $upperWickDiff = $secondLastcandle1m['high'] - $secondLastcandle1m['close'];
-        // Candle wick condition for second last candle 1m 
-        if ($upperWickDiff > $candleDiff1m) {
-            $openTrade = false;
-        }
-
 
 
 
@@ -154,6 +171,11 @@ class LongThread implements ShouldQueue
                 }
             }
         }
+
+
+        // Free cache with this worker on decision time
+        $dispatchedWorkers = Cache::get('dispatched_workers', 0);
+        Cache::put('dispatched_workers', $dispatchedWorkers ? $dispatchedWorkers-- : 0, now()->addDay());
 
         if ($openTrade) {
             Cache::put($symbol . '_availability', 0, now()->addMinute());
@@ -185,6 +207,8 @@ class LongThread implements ShouldQueue
             }
         } else {
             Cache::put($symbol . '_availability', 1, now()->addMinute());
+
+
             Log::info('FutureTraderLongEXP1: Failed to open trade: ' . $symbol);
         }
     }

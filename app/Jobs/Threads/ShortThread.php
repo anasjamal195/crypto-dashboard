@@ -89,46 +89,62 @@ class ShortThread implements ShouldQueue
         //     $counter++;
         // }
         // Check for candle direction on 1 min, if bullish than skip trade
-        $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
 
-        $candle1m = $data1m[count($data1m) - 1];
-        $secondLastcandle1m = $data1m[count($data1m) - 2];
-        $thirdLastcandle1m = $data1m[count($data1m) - 3];
+        while (true) {
+            Log::info('FutureTraderShortEXP1: Entering 1m Loop...');
 
-        // Check for current and last candle's high
-        if ($candle1m['low'] > $secondLastcandle1m['low']) {
-            $openTrade = false;
-            Log::info('ShortThread: Retreating Due to upper wick');
-        }
-        if ($candle1m['close'] > $candle1m['open']) {
-            $openTrade = false;
-            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to 1m candle direction ' . $symbol);
-            Log::info('ShortThread: Retreating Due to upper wick');
-        }
-        $secondLastper = (($secondLastcandle1m['open'] - $secondLastcandle1m['close']) / $secondLastcandle1m['open']) * 100;
-        if ($secondLastper < 0.08) {
-            $openTrade = false;
-        }
+            $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
 
-        // Check for second last 1m candle direction
-        if ($secondLastcandle1m['close'] > $secondLastcandle1m['open']) {
-            $openTrade = false;
-            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to second Last 1m candle direction ' . $symbol);
-        }
+            $candle1m = $data1m[count($data1m) - 1];
+            $secondLastcandle1m = $data1m[count($data1m) - 2];
+            $thirdLastcandle1m = $data1m[count($data1m) - 3];
 
-        // Check for second last 1m candle direction
-        if ($thirdLastcandle1m['close'] > $thirdLastcandle1m['open']) {
-            $openTrade = false;
-            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to third Last 1m candle direction ' . $symbol);
-        }
+            // // Check for current and last candle's high
+            // if ($candle1m['low'] > $secondLastcandle1m['low']) {
+            //     $openTrade = false;
+            //     Log::info('ShortThread: Retreating Due to upper wick');
+            // }
+            if ($candle1m['close'] > $candle1m['open']) {
+                $openTrade = false;
+                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to 1m candle direction ' . $symbol);
+                Log::info('ShortThread: Skipped opening SHORT Due to 1m candle direction ' . $symbol);
+            }
+            $secondLastper = (($secondLastcandle1m['open'] - $secondLastcandle1m['close']) / $secondLastcandle1m['open']) * 100;
+            if ($secondLastper < 0.08) {
+                $openTrade = false;
+            }
+
+            // Check for second last 1m candle direction
+            if ($secondLastcandle1m['close'] > $secondLastcandle1m['open']) {
+                $openTrade = false;
+                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to second Last 1m candle direction ' . $symbol);
+            }
+
+            // Check for second last 1m candle direction
+            if ($thirdLastcandle1m['close'] > $thirdLastcandle1m['open']) {
+                $openTrade = false;
+                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to third Last 1m candle direction ' . $symbol);
+            }
 
 
-        $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
+            $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
 
-        $lowerWickDiff = $secondLastcandle1m['close'] - $secondLastcandle1m['low'];
-        // Candle wick condition for second last candle 1m 
-        if ($lowerWickDiff > $candleDiff1m) {
-            $openTrade = false;
+            $lowerWickDiff = $secondLastcandle1m['close'] - $secondLastcandle1m['low'];
+            // Candle wick condition for second last candle 1m 
+            if ($lowerWickDiff > $candleDiff1m) {
+                $openTrade = false;
+            }
+
+            if (
+                $openTrade ||
+                $candle1m['close'] < ($this->supportResistance[7]['support'] * (1 - 0.3 / 100))  ||
+                $candle1m['close'] > ($this->supportResistance[7]['support'] * (1 + 1 / 100))
+            ) {
+                break;
+            }
+            // Update Cache to make this symbol unavailable
+            Cache::put($symbol . '_availability', 0, now()->addMinute());
+            CommonHelpers::delayS(5);
         }
 
 
@@ -154,6 +170,10 @@ class ShortThread implements ShouldQueue
                 }
             }
         }
+        // Free cache with this worker on decision time
+        $dispatchedWorkers = Cache::get('dispatched_workers', 0);
+        Cache::put('dispatched_workers', $dispatchedWorkers ? $dispatchedWorkers-- : 0, now()->addDay());
+
 
         if ($openTrade) {
             Cache::put($symbol . '_availability', 0, now()->addMinute());

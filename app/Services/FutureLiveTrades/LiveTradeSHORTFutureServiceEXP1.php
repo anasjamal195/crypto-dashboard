@@ -59,26 +59,26 @@ class LiveTradeSHORTFutureServiceEXP1
 
 
 
-                    $CurrentCandle = $candleData[count($candleData) - 1];
+                    $currentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
 
                     $support = $supportResistance[7]['support'] * (1 + 1 / 100);
-                    $supportResistanceContition = $CurrentCandle['close']  <  $support &&
+                    $supportResistanceContition = $currentCandle['close']  <  $support &&
                         $secondLastCandle['close']  >  $support;
 
 
 
                     // Will skip this iteration is below value is false
-                    $proceedCondition = $CurrentCandle['close'] < $CurrentCandle['open'] // Candle Should be in Bearish
-                        && $CurrentCandle['close'] >= $support * (1 - 1 / 100); // Current Price should be above -0.3% of support
+                    $proceedCondition = $currentCandle['close'] < $currentCandle['open'] // Candle Should be in Bearish
+                        && $currentCandle['close'] >= $support * (1 - 1 / 100); // Current Price should be above -0.3% of support
 
 
 
 
 
-                    $maCondition = $CurrentCandle['ma7'] < $CurrentCandle['ma25'] && $CurrentCandle['ma25'] < $CurrentCandle['ma99'];
+                    $maCondition = $currentCandle['ma7'] < $currentCandle['ma25'] && $currentCandle['ma25'] < $currentCandle['ma99'];
 
                     $maCandleDistance = 0;
 
@@ -117,17 +117,20 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     $averageTrailingVolume = $averageTrailingVolume && $volumeCandlesCount ? $averageTrailingVolume / $volumeCandlesCount :  0;
                     $volumeMultiplier = 1.3;
-                    $volumeCondition = $CurrentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
+                    $volumeCondition = $currentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
 
                     // Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
                     // Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
                     // Log::info('FutureTraderShortEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
-                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1)) {
+                    $dispatchedWorkers = Cache::get('dispatched_workers', 0);
+
+                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5) {
                         Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
-                        ShortThread::dispatch($tradeInstance, $supportResistance);
+                        Cache::put('dispatched_workers', $dispatchedWorkers++, now()->addDay());
                         Cache::put($symbol . '_availability', 0, now()->addMinute());
+                        ShortThread::dispatch($tradeInstance, $supportResistance);
                     }
                 }
                 CommonHelpers::delayMS(100);

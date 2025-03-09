@@ -55,21 +55,21 @@ class LiveTradeLONGFutureServiceEXP1
                     $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [7]);
                     $candleData = $supportResistance['candleData'];
 
-                    $CurrentCandle = $candleData[count($candleData) - 1];
+                    $currentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
 
                     $resistance = $supportResistance[7]['resistance'] * (1 - 1 / 100);
 
-                    $supportResistanceContition = $CurrentCandle['close']  >  $resistance &&
+                    $supportResistanceContition = $currentCandle['close']  >  $resistance &&
                         $secondLastCandle['close']  <  $resistance;
 
 
                     // Will skip this iteration is below value is false
-                    $proceedCondition = $CurrentCandle['close'] > $CurrentCandle['open'] // Candle Should be in Bullish
-                        && $CurrentCandle['close'] <= $resistance * (1 + 1/100); // Current Price should be Below +0.3% of resistance
+                    $proceedCondition = $currentCandle['close'] > $currentCandle['open'] // Candle Should be in Bullish
+                        && $currentCandle['close'] <= $resistance * (1 + 1 / 100); // Current Price should be Below +0.3% of resistance
 
 
-                    $maCondition = $CurrentCandle['ma7'] > $CurrentCandle['ma25'] && $CurrentCandle['ma25'] > $CurrentCandle['ma99'];
+                    $maCondition = $currentCandle['ma7'] > $currentCandle['ma25'] && $currentCandle['ma25'] > $currentCandle['ma99'];
                     $maCandleDistance = 0;
 
                     // // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
@@ -108,7 +108,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                     $averageTrailingVolume = $averageTrailingVolume && $volumeCandlesCount ? $averageTrailingVolume / $volumeCandlesCount :  0;
                     $volumeMultiplier = 1.3;
-                    $volumeCondition = $CurrentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
+                    $volumeCondition = $currentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
                     // Log::info('FutureTraderLongEXP1: Resistance: ' . $supportResistanceContition);
                     // Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
@@ -117,12 +117,13 @@ class LiveTradeLONGFutureServiceEXP1
 
 
 
-
-                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1)) {
+                    $dispatchedWorkers = Cache::get('dispatched_workers', 0);
+                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5) {
                         Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
+                        Cache::put('dispatched_workers', $dispatchedWorkers++, now()->addDay());
+                        Cache::put($symbol . '_availability', 0, now()->addMinute());
 
                         LongThread::dispatch($tradeInstance, $supportResistance);
-                        Cache::put($symbol . '_availability', 0, now()->addMinute());
                     }
                 }
                 CommonHelpers::delayMS(100);
