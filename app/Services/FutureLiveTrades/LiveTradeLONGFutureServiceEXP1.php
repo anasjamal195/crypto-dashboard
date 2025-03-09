@@ -69,7 +69,8 @@ class LiveTradeLONGFutureServiceEXP1
                         && $currentCandle['close'] <= $resistance * (1 + 1 / 100); // Current Price should be Below +0.3% of resistance
 
 
-                    $maCondition = $currentCandle['ma7'] > $currentCandle['ma25'] && $currentCandle['ma25'] > $currentCandle['ma99'];
+                    // $maCondition = $currentCandle['ma7'] > $currentCandle['ma25'] && $currentCandle['ma25'] > $currentCandle['ma99'];
+                    $maCondition = true;
                     $maCandleDistance = 0;
 
                     // // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
@@ -116,6 +117,8 @@ class LiveTradeLONGFutureServiceEXP1
 
 
                     $dispatchedWorkers = Cache::get('dispatched_workers', 0);
+
+
                     Log::info('Checking conditions for symbol: ' . $symbol, [
                         'supportResistanceContition' => $supportResistanceContition,
                         'maCondition' => $maCondition,
@@ -125,6 +128,9 @@ class LiveTradeLONGFutureServiceEXP1
                         'dispatchedWorkers' => $dispatchedWorkers,
                         'final_result' => $supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5,
                     ]);
+
+
+
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5) {
                         Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
                         Cache::put('dispatched_workers', $dispatchedWorkers++, now()->addDay());

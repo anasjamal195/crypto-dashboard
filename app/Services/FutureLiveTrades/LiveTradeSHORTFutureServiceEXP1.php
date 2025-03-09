@@ -78,7 +78,8 @@ class LiveTradeSHORTFutureServiceEXP1
 
 
 
-                    $maCondition = $currentCandle['ma7'] < $currentCandle['ma25'] && $currentCandle['ma25'] < $currentCandle['ma99'];
+                    // $maCondition = $currentCandle['ma7'] < $currentCandle['ma25'] && $currentCandle['ma25'] < $currentCandle['ma99'];
+                    $maCondition = true;
 
                     $maCandleDistance = 0;
 
