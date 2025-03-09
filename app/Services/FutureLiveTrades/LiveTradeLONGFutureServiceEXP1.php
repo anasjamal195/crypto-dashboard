@@ -119,15 +119,15 @@ class LiveTradeLONGFutureServiceEXP1
                     $dispatchedWorkers = Cache::get('dispatched_workers', 0);
 
 
-                    Log::info('Checking conditions for symbol: ' . $symbol, [
-                        'supportResistanceContition' => $supportResistanceContition,
-                        'maCondition' => $maCondition,
-                        'proceedCondition' => $proceedCondition,
-                        'volumeCondition' => $volumeCondition,
-                        'availability' => Cache::get($symbol . '_availability', 1),
-                        'dispatchedWorkers' => $dispatchedWorkers,
-                        'final_result' => $supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5,
-                    ]);
+                    // Log::info('Checking conditions for symbol: ' . $symbol, [
+                    //     'supportResistanceContition' => $supportResistanceContition,
+                    //     'maCondition' => $maCondition,
+                    //     'proceedCondition' => $proceedCondition,
+                    //     'volumeCondition' => $volumeCondition,
+                    //     'availability' => Cache::get($symbol . '_availability', 1),
+                    //     'dispatchedWorkers' => $dispatchedWorkers,
+                    //     'final_result' => $supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5,
+                    // ]);
 
 
 
