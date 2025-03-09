@@ -91,7 +91,8 @@ class SupportResistanceFakeBreakoutLiveTradesShort
                         $thirdLastCandle['close'] > $newResistance && $thirdLastCandle['open'] < $newResistance &&
                         $currentCandle['close'] <= $supportResistance[7]['resistance'] &&
                         $sameTrendTurnoverCondition &&
-                        ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D'])
+                        ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D']) && 
+                        Cache::get($symbol . '_availability', 1)
                     ) {
                         Log::info('SupportResistanceFakeBreakout: Dispatching Short Thread... Coin: ' . $symbol);
 
