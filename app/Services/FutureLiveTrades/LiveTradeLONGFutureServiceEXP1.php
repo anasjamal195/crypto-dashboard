@@ -115,9 +115,16 @@ class LiveTradeLONGFutureServiceEXP1
                     // Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
 
-
-
                     $dispatchedWorkers = Cache::get('dispatched_workers', 0);
+                    Log::info('Checking conditions for symbol: ' . $symbol, [
+                        'supportResistanceContition' => $supportResistanceContition,
+                        'maCondition' => $maCondition,
+                        'proceedCondition' => $proceedCondition,
+                        'volumeCondition' => $volumeCondition,
+                        'availability' => Cache::get($symbol . '_availability', 1),
+                        'dispatchedWorkers' => $dispatchedWorkers,
+                        'final_result' => $supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5,
+                    ]);
                     if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5) {
                         Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
                         Cache::put('dispatched_workers', $dispatchedWorkers++, now()->addDay());
