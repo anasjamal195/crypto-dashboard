@@ -108,6 +108,7 @@ class ShortThread implements ShouldQueue
             // }
 
 
+            
             // $secondLastper = (($secondLastcandle1m['open'] - $secondLastcandle1m['close']) / $secondLastcandle1m['open']) * 100;
             // if ($secondLastper < 0.08) {
             //     $openTrade = false;
