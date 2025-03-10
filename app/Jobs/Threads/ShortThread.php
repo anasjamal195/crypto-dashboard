@@ -70,7 +70,7 @@ class ShortThread implements ShouldQueue
         }
         if ($isWick) {
             $openTrade = false;
-            MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to Wick formation ' . $symbol);
+            // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to Wick formation ' . $symbol);
             Log::info('ShortThread: Retreating Due to upper wick');
         }
         // Condition to limit open orders for a symbol in long or short
