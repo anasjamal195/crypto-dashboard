@@ -91,6 +91,7 @@ class ShortThread implements ShouldQueue
             $secondLastcandle1m = $data1m[count($data1m) - 2];
             $thirdLastcandle1m = $data1m[count($data1m) - 3];
             $openTrade = true;
+
             if ($candle3m['close'] > $candle3m['open']) {
                 $openTrade = false;
                 Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to 3m candle direction ' . $symbol);
@@ -154,7 +155,7 @@ class ShortThread implements ShouldQueue
 
 
         // Check if it is allowed to open trade
-        $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
+        $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
         if ($lastOpenTrade) {
 
             if ($lastOpenTrade->currentProfit < 0.2) {
@@ -164,7 +165,7 @@ class ShortThread implements ShouldQueue
             }
         } else {
 
-            $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
+            $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
 
             if ($lastClosed) {
                 $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));

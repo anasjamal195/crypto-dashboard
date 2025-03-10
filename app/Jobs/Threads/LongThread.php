@@ -155,7 +155,7 @@ class LongThread implements ShouldQueue
 
 
         // Check if it is allowed to open trade
-        $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
+        $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
         if ($lastOpenTrade) {
 
             if ($lastOpenTrade->currentProfit < 0.2) {
@@ -165,7 +165,7 @@ class LongThread implements ShouldQueue
             }
         } else {
 
-            $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
+            $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
 
             if ($lastClosed) {
                 $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));
