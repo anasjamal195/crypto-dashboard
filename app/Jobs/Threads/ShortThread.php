@@ -78,61 +78,54 @@ class ShortThread implements ShouldQueue
             $openTrade = false;
         }
 
-        // // Check for noticable % change in 1m candle value
-        // $changePercentageLoop = true;
-        // $counter = 0;
-        // while ($changePercentageLoop) {
-        //     $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
-        //     $candle1m = $data1m[count($data1m) - 1];
-        //     $per = (($candle1m['open'] - $candle1m['close']) / $candle1m['open']) * 100;
-        //     if (now()->format('s') == '00' || $counter > 60) {
-        //         $openTrade = false;
-        //         $changePercentageLoop = false;
-        //     }
-        //     if ($per > 0.05 && $counter > 10) {
-        //         $changePercentageLoop = false;
-        //     }
 
-        //     CommonHelpers::delayS(1);
-
-        //     $counter++;
-        // }
-        // Check for candle direction on 1 min, if bullish than skip trade
 
         while (true) {
             Log::info('FutureTraderShortEXP1: Entering 1m Loop...');
 
             $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
-
+            $data3m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '3m', 5, null, 'FUTURE');
+            $candle3m = $data3m[count($data3m) - 1];
+            $secondLastcandle3m = $data3m[count($data3m) - 2];
             $candle1m = $data1m[count($data1m) - 1];
             $secondLastcandle1m = $data1m[count($data1m) - 2];
             $thirdLastcandle1m = $data1m[count($data1m) - 3];
 
-            // // Check for current and last candle's high
-            // if ($candle1m['low'] > $secondLastcandle1m['low']) {
-            //     $openTrade = false;
-            //     Log::info('ShortThread: Retreating Due to upper wick');
-            // }
+            if ($candle3m['close'] > $candle3m['open']) {
+                $openTrade = false;
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to 3m candle direction ' . $symbol);
+            }
+
+            if ($secondLastcandle3m['close'] > $secondLastcandle3m['open']) {
+                $openTrade = false;
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to second Last 3m candle direction ' . $symbol);
+            }
+
             if ($candle1m['close'] > $candle1m['open']) {
                 $openTrade = false;
-                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to 1m candle direction ' . $symbol);
+                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to 1m candle direction ' . $symbol);
                 Log::info('ShortThread: Skipped opening SHORT Due to 1m candle direction ' . $symbol);
             }
+
+
             $secondLastper = (($secondLastcandle1m['open'] - $secondLastcandle1m['close']) / $secondLastcandle1m['open']) * 100;
             if ($secondLastper < 0.08) {
                 $openTrade = false;
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to second Last 1m candle percentage ' . $symbol);
             }
 
             // Check for second last 1m candle direction
             if ($secondLastcandle1m['close'] > $secondLastcandle1m['open']) {
                 $openTrade = false;
-                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to second Last 1m candle direction ' . $symbol);
+                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to second Last 1m candle direction ' . $symbol);
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to second Last 1m candle direction ' . $symbol);
             }
 
             // Check for second last 1m candle direction
             if ($thirdLastcandle1m['close'] > $thirdLastcandle1m['open']) {
                 $openTrade = false;
-                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to third Last 1m candle direction ' . $symbol);
+                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to third Last 1m candle direction ' . $symbol);
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to third Last 1m candle direction ' . $symbol);
             }
 
 
@@ -142,6 +135,7 @@ class ShortThread implements ShouldQueue
             // Candle wick condition for second last candle 1m 
             if ($lowerWickDiff > $candleDiff1m) {
                 $openTrade = false;
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to 1m candle wick greated than solid region ' . $symbol);
             }
 
             if (
@@ -149,6 +143,7 @@ class ShortThread implements ShouldQueue
                 $candle1m['close'] < ($this->supportResistance[7]['support'] * (1 - 0.3 / 100))  ||
                 $candle1m['close'] > ($this->supportResistance[7]['support'] * (1 + 1 / 100))
             ) {
+                Log::info('FutureTraderShortEXP1: Timeout for 1m loop ' . $symbol . ' Trade status: ' . $openTrade);
                 break;
             }
             // Update Cache to make this symbol unavailable
@@ -163,7 +158,7 @@ class ShortThread implements ShouldQueue
 
             if ($lastOpenTrade->currentProfit < 0.2) {
                 $openTrade = false;
-                Log::info('FutureTraderLongEXP1: Skipped due to current open order in loss: ' . $symbol);
+                Log::info('FutureTraderShortEXP1: Skipped due to current open order in loss: ' . $symbol);
                 MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to current open order in loss ' . $symbol);
             }
         } else {
@@ -174,7 +169,7 @@ class ShortThread implements ShouldQueue
                 $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));
                 if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
                     $openTrade = false;
-                    Log::info('FutureTraderLongEXP1: Skipped due to last order closed in loss: ' . $symbol);
+                    Log::info('FutureTraderShortEXP1: Skipped due to last order closed in loss: ' . $symbol);
                     MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to last order closed in loss ' . $symbol);
                 }
             }
