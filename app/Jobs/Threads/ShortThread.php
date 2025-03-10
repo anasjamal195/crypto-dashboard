@@ -143,7 +143,7 @@ class ShortThread implements ShouldQueue
             if (
                 $openTrade ||
                 $candle1m['close'] < ($this->supportResistance[7]['support'] * (1 - 0.3 / 100))  ||
-                $candle1m['close'] > ($this->supportResistance[7]['support'] * (1 + 1 / 100))
+                $candle1m['close'] > ($this->supportResistance[7]['support'] * (1 + 1.5 / 100))
             ) {
                 Log::info('FutureTraderShortEXP1: Timeout for 1m loop ' . $symbol . ' Trade status: ' . $openTrade);
                 break;
@@ -161,7 +161,7 @@ class ShortThread implements ShouldQueue
             if ($lastOpenTrade->currentProfit < 0.2) {
                 $openTrade = false;
                 Log::info('FutureTraderShortEXP1: Skipped due to current open order in loss: ' . $symbol);
-                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to current open order in loss ' . $symbol);
+                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to current open order in loss ' . $symbol);
             }
         } else {
 
@@ -172,7 +172,7 @@ class ShortThread implements ShouldQueue
                 if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
                     $openTrade = false;
                     Log::info('FutureTraderShortEXP1: Skipped due to last order closed in loss: ' . $symbol);
-                    MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to last order closed in loss ' . $symbol);
+                    // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to last order closed in loss ' . $symbol);
                 }
             }
         }
@@ -246,7 +246,7 @@ class ShortThread implements ShouldQueue
                 return false;
             } else {
                 Log::info('ShortThread: Retreating Due to lower wick');
-                MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation ' . $tradeInstance->symbol);
+                // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation ' . $tradeInstance->symbol);
             }
         } else if ($currentProfit > $targetProfit) {
 

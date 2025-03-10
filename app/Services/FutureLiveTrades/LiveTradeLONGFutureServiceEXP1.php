@@ -67,7 +67,7 @@ class LiveTradeLONGFutureServiceEXP1
 
 
 
-                    $resistance = $supportResistance[7]['resistance'] * (1 - 1 / 100);
+                    $resistance = $supportResistance[7]['resistance'] * (1 - 1.5 / 100);
 
                     $supportResistanceContition = $currentCandle['close']  >  $resistance &&
                         $secondLastCandle['close']  <  $resistance;
@@ -75,7 +75,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                     // Will skip this iteration is below value is false
                     $proceedCondition = $currentCandle['close'] > $currentCandle['open'] // Candle Should be in Bullish
-                        && $currentCandle['close'] <= $resistance * (1 + 1 / 100); // Current Price should be Below +0.3% of resistance
+                        && $currentCandle['close'] <= $resistance * (1 + 1.5 / 100); // Current Price should be Below +0.3% of resistance
 
 
                     // $maCondition = $currentCandle['ma7'] > $currentCandle['ma25'] && $currentCandle['ma25'] > $currentCandle['ma99'];

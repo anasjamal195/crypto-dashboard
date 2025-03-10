@@ -142,7 +142,7 @@ class LongThread implements ShouldQueue
             if (
                 $openTrade ||
                 $candle1m['close'] > ($this->supportResistance[7]['resistance'] * (1 + 0.3 / 100))  ||
-                $candle1m['close'] < ($this->supportResistance[7]['resistance'] * (1 - 1 / 100))
+                $candle1m['close'] < ($this->supportResistance[7]['resistance'] * (1 - 1.5 / 100))
             ) {
                 Log::info('FutureTraderLongEXP1: Timeout for 1m loop ' . $symbol . ' Trade status: ' . $openTrade);
                 break;
@@ -161,7 +161,7 @@ class LongThread implements ShouldQueue
             if ($lastOpenTrade->currentProfit < 0.2) {
                 $openTrade = false;
                 Log::info('FutureTraderLongEXP1: Skipped due to current open order in loss: ' . $symbol);
-                MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to current open order in loss ' . $symbol);
+                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to current open order in loss ' . $symbol);
             }
         } else {
 
@@ -172,7 +172,7 @@ class LongThread implements ShouldQueue
                 if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
                     $openTrade = false;
                     Log::info('FutureTraderLongEXP1: Skipped due to last order closed in loss: ' . $symbol);
-                    MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to last order closed in loss ' . $symbol);
+                    // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to last order closed in loss ' . $symbol);
                 }
             }
         }
@@ -251,7 +251,7 @@ class LongThread implements ShouldQueue
                 return false;
             } else {
 
-                MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation ' . $tradeInstance->symbol);
+                // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation ' . $tradeInstance->symbol);
                 Log::info('FutureTraderLongEXP1: Retreating Due to upper wick');
             }
         } else if ($currentProfit > $targetProfit) {
