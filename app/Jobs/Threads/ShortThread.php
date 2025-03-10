@@ -90,7 +90,7 @@ class ShortThread implements ShouldQueue
             $candle1m = $data1m[count($data1m) - 1];
             $secondLastcandle1m = $data1m[count($data1m) - 2];
             $thirdLastcandle1m = $data1m[count($data1m) - 3];
-
+            $openTrade = true;
             if ($candle3m['close'] > $candle3m['open']) {
                 $openTrade = false;
                 Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to 3m candle direction ' . $symbol);
@@ -108,7 +108,7 @@ class ShortThread implements ShouldQueue
             // }
 
 
-            
+
             // $secondLastper = (($secondLastcandle1m['open'] - $secondLastcandle1m['close']) / $secondLastcandle1m['open']) * 100;
             // if ($secondLastper < 0.08) {
             //     $openTrade = false;
