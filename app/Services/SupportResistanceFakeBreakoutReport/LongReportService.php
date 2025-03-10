@@ -39,13 +39,13 @@ class LongReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.4;
+            $targetProfit = 0.5;
 
             try {
                 $symbol = $coin->symbol;
-                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
+                $data = BinanceApiService::getCandleStickData($symbol, '3m', 1000, null, 'FUTURE');
 
-                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
+                $trades = self::processCandles($symbol, '3m', 'FUTURE', $data, $targetProfit);
 
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'LONG')->delete();
@@ -67,11 +67,10 @@ class LongReportService
     ) {
 
         $tradesTotal = [];
-        $targetProfit = 0.4;
+        $targetProfit = 1;
         try {
-            $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
-
-            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
+            $data = BinanceApiService::getCandleStickData($symbol, '3m', 1000, null, 'FUTURE');
+            $trades = self::processCandles($symbol, '3m', 'FUTURE', $data, $targetProfit);
             $tradesTotal[$symbol] = $trades;
         } catch (\Exception $e) {
             Log::error("Failed to update coin reports: " . $e->getMessage());
@@ -144,12 +143,13 @@ class LongReportService
                 if (
                     $candle['close'] > $candle['open'] &&
                     $data[$index - 1]['close'] > $data[$index - 1]['open'] &&
-                    $data[$index - 2]['close'] < $newSupport && $data[$index - 2]['open'] > $newSupport &&
-                    $candle['close'] >= $supportResistance[7]['support'] &&
+                    $data[$index - 2]['close'] > $data[$index - 2]['open'] &&
 
-                    ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D'])
+                    ($candle['J'] > $candle['K'] && $candle['J'] > $candle['D']) &&
+
+                    $candle['dif'] < 0 && $candle['dea'] < 0 && $candle['histogram'] > 0
+
                 ) {
-
 
                     $candle['should_buy'] = true;
                     $candle['previousObvHigh'] = 0;
