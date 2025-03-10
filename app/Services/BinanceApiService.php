@@ -1432,6 +1432,9 @@ class BinanceApiService
         $trader = $openOrder->trade_acc;
         $quantity = $openOrder->qty;
 
+        if ($openOrder->trade_status === 'close') {
+            return false;
+        }
 
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 

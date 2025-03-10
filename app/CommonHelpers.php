@@ -159,10 +159,11 @@ class CommonHelpers
     }
 
     // Check if current instance falls under wick category for a specific percentage
-    public static function isCandleWick($candle, $type = 'upper', $wickBuffer = 20, $thresholdPrice, $symbol)
+    public static function isCandleWick($candle, $type = 'upper', $wickBuffer = 20, $thresholdPrice, $symbol,  $priceCount = 20)
     {
+
         $prices = [];
-        $priceCount = 20;
+      
 
         for ($i = 0; $i < $priceCount; $i++) {
             $prices[] = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');

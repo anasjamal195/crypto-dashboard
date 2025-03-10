@@ -44,12 +44,21 @@ class LongThread implements ShouldQueue
         $data = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '5m', 300, null, 'FUTURE');
         $symbol = $this->tradeInstance->symbol;
         $trade_acc = $this->tradeInstance->tradeAccount;
-
+        $data3m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '3m', 5, null, 'FUTURE');
+        $candle3m = $data3m[count($data3m) - 1];
+        $secondLastcandle3m = $data3m[count($data3m) - 2];
+        $priceCount = 20;
+        if (
+            $candle3m['close'] > $candle3m['open'] &&
+            $secondLastcandle3m['close'] > $secondLastcandle3m['open']
+        ) {
+            $priceCount = 5;
+        }
         // Wait for 20 sec for confirmation
         $openTrade = true;
 
         $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
-        $isWick = CommonHelpers::isCandleWick($data[count($data) - 1], 'upper', 5, $this->supportResistance[7]['resistance'], $this->tradeInstance->symbol);
+        $isWick = CommonHelpers::isCandleWick($data[count($data) - 1], 'upper', 5, $this->supportResistance[7]['resistance'], $this->tradeInstance->symbol, $priceCount);
         $currentOpenOrders = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
         if ($lastOrderClose) {
             $lastOrderClose = $lastOrderClose->created_at;
