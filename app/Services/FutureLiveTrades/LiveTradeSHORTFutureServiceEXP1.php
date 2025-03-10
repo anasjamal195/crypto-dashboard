@@ -68,7 +68,11 @@ class LiveTradeSHORTFutureServiceEXP1
                     $supportResistanceContition = $currentCandle['close']  <  $support &&
                         $secondLastCandle['close']  >  $support;
 
-
+                    // check if previous or current candle is below 1%
+                    $secondLastCandlePer = (($secondLastCandle['close'] - $secondLastCandle['open'])/ $secondLastCandle['open']) * 100;
+                    $thirdLastCandlePer = (($thirdLastCandle['close'] - $thirdLastCandle['open'])/ $thirdLastCandle['open']) * 100;
+                    
+                    $candlePercentageCondition = $secondLastCandlePer <= 1 && $thirdLastCandlePer <= 1;
 
                     // Will skip this iteration is below value is false
                     $proceedCondition = $currentCandle['close'] < $currentCandle['open'] // Candle Should be in Bearish
@@ -127,7 +131,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     $dispatchedWorkers = Cache::get('dispatched_workers', 0);
 
-                    if ($supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5) {
+                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5) {
                         Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
                         Cache::put('dispatched_workers', $dispatchedWorkers++, now()->addDay());
                         Cache::put($symbol . '_availability', 0, now()->addMinute());
