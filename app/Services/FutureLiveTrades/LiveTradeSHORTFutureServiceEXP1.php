@@ -121,13 +121,13 @@ class LiveTradeSHORTFutureServiceEXP1
                         break;
                     } else if (
                         // MACD Should be negative, downward candles
-                        $candleData[$index]['histogram'] > 0 && $candleData[$index - 1]['histogram'] > 0 && $candleData[$index - 2]['histogram'] > 0 &&
+                        $candleData[$index - 1]['histogram'] > 0 && $candleData[$index - 2]['histogram'] > 0 && $candleData[$index - 3]['histogram'] > 0 &&
 
                         // Current candle should be light green and increasing from previous
-                        $candleData[$index]['histogram'] < $candleData[$index - 1]['histogram'] && $candleData[$index]['per'] < 0 &&
+                        $candleData[$index - 1]['histogram'] < $candleData[$index - 2]['histogram'] && $candleData[$index - 1]['per'] < 0 &&
 
                         // second last should be lower than third last and solid red candles
-                        $candleData[$index - 1]['histogram'] > $candleData[$index - 2]['histogram'] && $candleData[$index - 1]['per'] > 0 && $candleData[$index - 2]['per'] > 0 &&
+                        $candleData[$index - 2]['histogram'] > $candleData[$index - 3]['histogram'] && $candleData[$index - 2]['per'] > 0 && $candleData[$index - 3]['per'] > 0 &&
 
                         ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D']) &&
 
