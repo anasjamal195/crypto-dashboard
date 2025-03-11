@@ -41,12 +41,11 @@ class LiveTradeSHORTFutureServiceEXP1
             try {
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
+                $openWorkersCount = DB::table('trade_handler')->where('isWorkerDispatched', true)->count();
+                if ($openWorkersCount >= 17) {
+                    continue;
+                }
 
-
-                // Log::info('FutureTraderShortEXP1: Current Trade');
-                // Log::info('FutureTraderShortEXP1: Coin: ' . $symbol);
-                // Log::info('FutureTraderShortEXP1: Account: ' . $trade_acc);
-                // Log::info('FutureTraderShortEXP1: Invested: ' . $buy_coin_price . ' $');
 
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
                 // dd($open_order);
@@ -69,9 +68,9 @@ class LiveTradeSHORTFutureServiceEXP1
                         $secondLastCandle['close']  >  $support;
 
                     // check if previous or current candle is below 1%
-                    $secondLastCandlePer = (($secondLastCandle['close'] - $secondLastCandle['open'])/ $secondLastCandle['open']) * 100;
-                    $thirdLastCandlePer = (($thirdLastCandle['close'] - $thirdLastCandle['open'])/ $thirdLastCandle['open']) * 100;
-                    
+                    $secondLastCandlePer = (($secondLastCandle['close'] - $secondLastCandle['open']) / $secondLastCandle['open']) * 100;
+                    $thirdLastCandlePer = (($thirdLastCandle['close'] - $thirdLastCandle['open']) / $thirdLastCandle['open']) * 100;
+
                     $candlePercentageCondition = $secondLastCandlePer <= 1 && $thirdLastCandlePer <= 1;
 
                     // Will skip this iteration is below value is false
@@ -87,24 +86,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     $maCandleDistance = 0;
 
-                    // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
-                    // for ($i = count($candleData) - 2; $i >= 1; $i--) {
-                    //     $maCondition =  ($candleData[$i + 1]['ma7'] < $candleData[$i + 1]['ma25']  && $candleData[$i - 1]['ma7'] > $candleData[$i - 1]['ma25']);
-                    //     if ($maCondition) {
-                    //         $maCandleDistance = (count($candleData) - 1) - $i;
-                    //         break;
-                    //     }
-                    // }
 
-                    // $maCondition =  $maCondition && $maCandleDistance <= 10;
-                    // if ($maCondition) {
-                    //     for ($i = count($candleData) - 2; $i >= (count($candleData) - 2) - $maCandleDistance; $i--) {
-                    //         if ($candleData[$i]['close'] > $candleData[$i]['open'] && $candleData[$i - 1]['close'] > $candleData[$i - 1]['open']) {
-                    //             $maCondition = false;
-                    //             break;
-                    //         }
-                    //     }
-                    // }
 
                     $averageTrailingVolume = 0;
                     $volumeCandlesCount = 0;
@@ -125,17 +107,17 @@ class LiveTradeSHORTFutureServiceEXP1
                     $volumeCondition = $currentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
 
-                    // Log::info('FutureTraderShortEXP1: Support: ' . $supportResistanceContition);
-                    // Log::info('FutureTraderShortEXP1: MA Condition: ' . $maCondition);
-                    // Log::info('FutureTraderShortEXP1: MA MACandleDistance: ' . $maCandleDistance);
 
-                    $dispatchedWorkers = Cache::get('dispatched_workers', 0);
+                    $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
 
-                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5) {
+
+                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && !$isWorkerDispatched) {
                         Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
-                        Cache::put('dispatched_workers', $dispatchedWorkers++, now()->addDay());
-                        Cache::put($symbol . '_availability', 0, now()->addMinute());
+                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                            'isWorkerDispatched' => true,
+                        ]);
                         ShortThread::dispatch($tradeInstance, $supportResistance);
+                        break;
                     }
                 }
                 CommonHelpers::delayMS(100);

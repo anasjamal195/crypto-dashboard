@@ -42,10 +42,11 @@ class LiveTradeLONGFutureServiceEXP1
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
 
-                // Log::info('FutureTraderLongEXP1: Current Trade');
-                // Log::info('FutureTraderLongEXP1: Coin: ' . $symbol);
-                // Log::info('FutureTraderLongEXP1: Account: ' . $trade_acc);
-                // Log::info('FutureTraderLongEXP1: Invested: ' . $buy_coin_price . ' $');
+                $openWorkersCount = DB::table('trade_handler')->where('isWorkerDispatched', true)->count();
+                if ($openWorkersCount >= 17) {
+                    continue;
+                }
+               
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
 
                 if (isset($open_order['is_open']) && $open_order['is_open']) {
@@ -104,7 +105,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                     $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
 
-                    if (true) {
+                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && !$isWorkerDispatched) {
                         Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'isWorkerDispatched' => true,

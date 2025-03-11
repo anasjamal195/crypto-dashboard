@@ -21,6 +21,7 @@ class LongThread implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public $timeout = 360000000;
+    public $tries = 1; // The job will only run once
     public $tradeInstance;
     public $supportResistance;
     public $formula;
@@ -190,26 +191,26 @@ class LongThread implements ShouldQueue
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
                 Log::info('FutureTraderLongEXP1: Opening Position: ' . $symbol);
-                
-                // BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0);
-            }
 
-            $tradeLoop = true;
-            // Proceed trade until the position is closed
-            while ($tradeLoop) {
-                try {
-                    $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
-                    if (!(isset($open_order['is_open']) && $open_order['is_open']))
-                        $tradeLoop = false;
-                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
-                    $candleData = $supportResistance['candleData'];
-                    $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
-                    $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
-                } catch (\Exception $e) {
-                    Log::error('LongThread: Error - ' . $e->getMessage());
-                    Log::error($e->getTraceAsString());
+                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0);
+
+                $tradeLoop = true;
+                // Proceed trade until the position is closed
+                while ($tradeLoop) {
+                    try {
+                        $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
+                        if (!(isset($open_order['is_open']) && $open_order['is_open']))
+                            $tradeLoop = false;
+                        $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
+                        $candleData = $supportResistance['candleData'];
+                        $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
+                        $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
+                    } catch (\Exception $e) {
+                        Log::error('LongThread: Error - ' . $e->getMessage());
+                        Log::error($e->getTraceAsString());
+                    }
+                    CommonHelpers::delayS(1);
                 }
-                CommonHelpers::delayS(1);
             }
         } else {
             DB::table('trade_handler')->where('id', $this->tradeInstance->id)->update([
