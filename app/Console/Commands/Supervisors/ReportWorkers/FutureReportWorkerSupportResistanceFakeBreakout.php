@@ -39,7 +39,7 @@ class FutureReportWorkerSupportResistanceFakeBreakout extends Command
      */
     public function handle()
     {
-        DB::table('coin_reports')->where('market', 'FUTURE')->where('interval','5m')->truncate();
+        DB::table('coin_reports')->where('market', 'FUTURE')->truncate();
      
 
         while (true) {

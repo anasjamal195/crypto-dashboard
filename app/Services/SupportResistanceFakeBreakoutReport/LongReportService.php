@@ -43,9 +43,9 @@ class LongReportService
 
             try {
                 $symbol = $coin->symbol;
-                $data = BinanceApiService::getCandleStickData($symbol, '3m', 1000, null, 'FUTURE');
+                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
-                $trades = self::processCandles($symbol, '3m', 'FUTURE', $data, $targetProfit);
+                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
 
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'LONG')->delete();
@@ -69,8 +69,8 @@ class LongReportService
         $tradesTotal = [];
         $targetProfit = 1;
         try {
-            $data = BinanceApiService::getCandleStickData($symbol, '3m', 1000, null, 'FUTURE');
-            $trades = self::processCandles($symbol, '3m', 'FUTURE', $data, $targetProfit);
+            $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
+            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
             $tradesTotal[$symbol] = $trades;
         } catch (\Exception $e) {
             Log::error("Failed to update coin reports: " . $e->getMessage());

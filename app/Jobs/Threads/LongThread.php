@@ -48,12 +48,12 @@ class LongThread implements ShouldQueue
         $candle3m = $data3m[count($data3m) - 1];
         $secondLastcandle3m = $data3m[count($data3m) - 2];
         $priceCount = 20;
-        if (
-            $candle3m['close'] > $candle3m['open'] &&
-            $secondLastcandle3m['close'] > $secondLastcandle3m['open']
-        ) {
-            $priceCount = 10;
-        }
+        // if (
+        //     $candle3m['close'] > $candle3m['open'] &&
+        //     $secondLastcandle3m['close'] > $secondLastcandle3m['open']
+        // ) {
+        //     $priceCount = 10;
+        // }
         // Wait for 20 sec for confirmation
         $openTrade = true;
 
