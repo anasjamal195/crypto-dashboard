@@ -143,7 +143,7 @@ class LongThread implements ShouldQueue
             if (
                 $openTrade ||
                 $candle1m['close'] > ($this->supportResistance[7]['resistance'] * (1 + 0.3 / 100))  ||
-                $candle1m['close'] < ($this->supportResistance[7]['resistance'] * (1 - 1 / 100))
+                $candle1m['close'] < ($this->supportResistance[7]['resistance'] * (1 - 1.2 / 100))
             ) {
                 Log::info('FutureTraderLongEXP1: Timeout for 1m loop ' . $symbol . ' Trade status: ' . $openTrade);
                 break;

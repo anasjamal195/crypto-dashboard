@@ -113,25 +113,25 @@ class ShortThread implements ShouldQueue
 
             // JUST FOR TESTING
 
-            // $secondLastper = (($secondLastcandle1m['open'] - $secondLastcandle1m['close']) / $secondLastcandle1m['open']) * 100;
-            // if ($secondLastper < 0.08) {
-            //     $openTrade = false;
-            //     Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to second Last 1m candle percentage ' . $symbol);
-            // }
-
-            // // Check for second last 1m candle direction
-            // if ($secondLastcandle1m['close'] > $secondLastcandle1m['open']) {
-            //     $openTrade = false;
-            //     // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to second Last 1m candle direction ' . $symbol);
-            //     Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to second Last 1m candle direction ' . $symbol);
-            // }
+            $secondLastper = (($secondLastcandle1m['open'] - $secondLastcandle1m['close']) / $secondLastcandle1m['open']) * 100;
+            if ($secondLastper < 0.08) {
+                $openTrade = false;
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to second Last 1m candle percentage ' . $symbol);
+            }
 
             // Check for second last 1m candle direction
-            // if ($thirdLastcandle1m['close'] > $thirdLastcandle1m['open']) {
-            //     $openTrade = false;
-            //     // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to third Last 1m candle direction ' . $symbol);
-            //     Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to third Last 1m candle direction ' . $symbol);
-            // }
+            if ($secondLastcandle1m['close'] > $secondLastcandle1m['open']) {
+                $openTrade = false;
+                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to second Last 1m candle direction ' . $symbol);
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to second Last 1m candle direction ' . $symbol);
+            }
+
+            // Check for second last 1m candle direction
+            if ($thirdLastcandle1m['close'] > $thirdLastcandle1m['open']) {
+                $openTrade = false;
+                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to third Last 1m candle direction ' . $symbol);
+                Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to third Last 1m candle direction ' . $symbol);
+            }
 
 
             $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
@@ -146,7 +146,7 @@ class ShortThread implements ShouldQueue
             if (
                 $openTrade ||
                 $candle1m['close'] < ($this->supportResistance[7]['support'] * (1 - 0.3 / 100))  ||
-                $candle1m['close'] > ($this->supportResistance[7]['support'] * (1 + 1 / 100))
+                $candle1m['close'] > ($this->supportResistance[7]['support'] * (1 + 1.2 / 100))
             ) {
                 Log::info('FutureTraderShortEXP1: Timeout for 1m loop ' . $symbol . ' Trade status: ' . $openTrade);
                 break;
