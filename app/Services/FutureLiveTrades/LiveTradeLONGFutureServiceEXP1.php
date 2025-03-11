@@ -14,6 +14,7 @@ namespace App\Services\FutureLiveTrades;
 
 use App\CommonHelpers;
 use App\Jobs\Threads\LongThread;
+use App\Jobs\ThreadsMACD\LongThread as ThreadsMACDLongThread;
 use App\Models\User;
 use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
@@ -37,7 +38,7 @@ class LiveTradeLONGFutureServiceEXP1
         $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->where('isWorkerDispatched', false)->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
         Log::info('FutureTraderLongEXP1: Worker Started');
 
-        foreach ($tradeHandler as $index => $tradeInstance)
+        foreach ($tradeHandler as  $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
@@ -46,7 +47,7 @@ class LiveTradeLONGFutureServiceEXP1
                 if ($openWorkersCount >= 17) {
                     continue;
                 }
-               
+
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
 
                 if (isset($open_order['is_open']) && $open_order['is_open']) {
@@ -55,7 +56,7 @@ class LiveTradeLONGFutureServiceEXP1
 
                     $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [7]);
                     $candleData = $supportResistance['candleData'];
-
+                    $index = count($candleData) - 1;
                     $currentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
 
@@ -111,6 +112,27 @@ class LiveTradeLONGFutureServiceEXP1
                             'isWorkerDispatched' => true,
                         ]);
                         LongThread::dispatch($tradeInstance, $supportResistance);
+                        break;
+                    } else if (
+                        // MACD Should be negative, downward candles
+                        $candleData[$index]['histogram'] < 0 && $candleData[$index - 1]['histogram'] < 0 && $candleData[$index - 2]['histogram'] < 0 &&
+
+                        // Current candle should be light red and increasing from previous
+                        $candleData[$index]['histogram'] > $candleData[$index - 1]['histogram'] && $candleData[$index]['per'] > 0 &&
+
+                        // second last should be lower than third last and solid red candles
+                        $candleData[$index - 1]['histogram'] < $candleData[$index - 2]['histogram'] && $candleData[$index - 1]['per'] < 0 && $candleData[$index - 2]['per'] < 0 &&
+
+                        ($currentCandle['J'] > $currentCandle['K'] || $currentCandle['J'] > $currentCandle['D']) &&
+
+                        !$isWorkerDispatched
+
+                    ) {
+                        Log::info('FutureTraderShortEXP1: Dispatching Long Thread MACD... Coin:  ' . $symbol);
+                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                            'isWorkerDispatched' => true,
+                        ]);
+                        ThreadsMACDLongThread::dispatch($tradeInstance, $supportResistance);
                         break;
                     }
                 }

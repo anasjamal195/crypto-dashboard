@@ -39,7 +39,7 @@ class LongReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.7;
+            $targetProfit = 0.4;
 
             try {
                 $symbol = $coin->symbol;
@@ -140,14 +140,30 @@ class LongReportService
 
             if ($buy_price == 0) {
 
+
                 if (
-                    $candle['close'] > $candle['open'] &&
-                    $data[$index - 1]['close'] > $data[$index - 1]['open'] &&
-                    $data[$index - 2]['close'] > $data[$index - 2]['open'] &&
-                    ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
-                    ($candle['dif'] < 0 || $candle['dea'] < 0) &&
-                    $candle['histogram'] > 0 &&
-                    $candle['wr'] > -10
+                    // $candle['close'] > $candle['open'] &&
+                    // $data[$index - 1]['close'] > $data[$index - 1]['open'] &&
+                    // $data[$index - 2]['close'] > $data[$index - 2]['open'] &&
+                    // ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
+                    // ($candle['dif'] < 0 || $candle['dea'] < 0) &&
+                    // $candle['histogram'] > 0 &&
+                    // $candle['wr'] > -10
+
+
+
+                    // MACD Should be negative, downward candles
+                    $data[$index]['histogram'] < 0 && $data[$index - 1]['histogram'] < 0 && $data[$index - 2]['histogram'] < 0 &&
+
+                    // Current candle should be light red and increasing from previous
+                    $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['per'] > 0 &&
+
+                    // second last should be lower than third last and solid red candles
+                    $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] < 0 &&
+
+                    ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D'])
+
+
 
                 ) {
 

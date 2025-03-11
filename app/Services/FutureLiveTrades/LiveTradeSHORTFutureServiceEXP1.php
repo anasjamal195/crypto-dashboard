@@ -14,6 +14,7 @@ namespace App\Services\FutureLiveTrades;
 
 use App\CommonHelpers;
 use App\Jobs\Threads\ShortThread;
+use App\Jobs\ThreadsMACD\ShortThread as ThreadsMACDShortThread;
 use App\Models\User;
 use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
@@ -57,7 +58,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     $candleData = $supportResistance['candleData'];
 
 
-
+                    $index = count($candleData) - 1;
                     $currentCandle = $candleData[count($candleData) - 1];
                     $secondLastCandle = $candleData[count($candleData) - 2];
                     $thirdLastCandle = $candleData[count($candleData) - 3];
@@ -117,6 +118,27 @@ class LiveTradeSHORTFutureServiceEXP1
                             'isWorkerDispatched' => true,
                         ]);
                         ShortThread::dispatch($tradeInstance, $supportResistance);
+                        break;
+                    } else if (
+                        // MACD Should be negative, downward candles
+                        $candleData[$index]['histogram'] > 0 && $candleData[$index - 1]['histogram'] > 0 && $candleData[$index - 2]['histogram'] > 0 &&
+
+                        // Current candle should be light green and increasing from previous
+                        $candleData[$index]['histogram'] < $candleData[$index - 1]['histogram'] && $candleData[$index]['per'] < 0 &&
+
+                        // second last should be lower than third last and solid red candles
+                        $candleData[$index - 1]['histogram'] > $candleData[$index - 2]['histogram'] && $candleData[$index - 1]['per'] > 0 && $candleData[$index - 2]['per'] > 0 &&
+
+                        ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D']) &&
+
+                        !$isWorkerDispatched
+
+                    ) {
+                        Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
+                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                            'isWorkerDispatched' => true,
+                        ]);
+                        ThreadsMACDShortThread::dispatch($tradeInstance, $supportResistance);
                         break;
                     }
                 }

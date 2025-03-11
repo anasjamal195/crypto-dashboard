@@ -34,7 +34,7 @@ class ShortReportService
 
 
         $tradesTotal = [];
-        $coins = DB::table('coins')->where('market', $market)->get();
+        $coins = DB::table('coins')->where('market', $market)->limit(20)->get();
 
         foreach ($coins as $coin) {
 
@@ -125,7 +125,6 @@ class ShortReportService
             }
 
 
-
             $obvCandles = 15;
             $idealBuying = IdealTradeService::getIdealOpeningCandlesShort(array_slice($data, $index - 1000, 1000));
             // dd($symbol,$index,$idealBuying);
@@ -146,10 +145,22 @@ class ShortReportService
                 if ($index > $obvCandles) {
 
                     if (
-                        $candle['close'] < $candle['open'] &&
-                        $data[$index - 1]['close'] < $data[$index - 1]['open'] &&
-                        $data[$index - 2]['close'] > $newResistance && $data[$index - 2]['open'] < $newResistance &&
-                        $candle['close'] <= $supportResistance[7]['resistance'] &&
+                        // $candle['close'] < $candle['open'] &&
+                        // $data[$index - 1]['close'] < $data[$index - 1]['open'] &&
+                        // $data[$index - 2]['close'] > $newResistance && $data[$index - 2]['open'] < $newResistance &&
+                        // $candle['close'] <= $supportResistance[7]['resistance'] &&
+
+                        // ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
+
+
+                        // MACD Should be negative, downward candles
+                        $data[$index]['histogram'] > 0 && $data[$index - 1]['histogram'] > 0 && $data[$index - 2]['histogram'] > 0 &&
+
+                        // Current candle should be light green and increasing from previous
+                        $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['per'] < 0 &&
+
+                        // second last should be lower than third last and solid red candles
+                        $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] > 0 &&
 
                         ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
                     ) {
@@ -163,7 +174,7 @@ class ShortReportService
                         $lowestPrice = $buy_price;
                     }
                 }
-            }  else {
+            } else {
                 if ($lowestPrice < $candle['high'])
                     $lowestPrice = $candle['high'];
                 if ($candle['low'] <= $buy_price * (1 - $targetProfit / 100)) {
