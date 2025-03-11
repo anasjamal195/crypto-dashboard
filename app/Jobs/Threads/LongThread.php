@@ -178,12 +178,11 @@ class LongThread implements ShouldQueue
         }
 
 
-        // Free cache with this worker on decision time
-        $dispatchedWorkers = Cache::get('dispatched_workers', 0);
-        Cache::put('dispatched_workers', $dispatchedWorkers ? $dispatchedWorkers-- : 0, now()->addDay());
+
+
 
         if ($openTrade) {
-            Cache::put($symbol . '_availability', 0, now()->addMinute());
+
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
             if (!(isset($open_order['is_open']) && $open_order['is_open'])) {
                 $supportResistanceArr = [
@@ -211,7 +210,9 @@ class LongThread implements ShouldQueue
                 CommonHelpers::delayS(1);
             }
         } else {
-            Cache::put($symbol . '_availability', 1, now()->addMinute());
+            DB::table('trade_handler')->where('id', $this->tradeInstance->id)->update([
+                'isWorkerDispatched' => false,
+            ]);
 
 
             Log::info('FutureTraderLongEXP1: Failed to open trade: ' . $symbol);
@@ -245,8 +246,10 @@ class LongThread implements ShouldQueue
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
                     'currentProfit' => $currentProfit,
-
                     'targetProfit' => $targetProfit,
+                ]);
+                DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                    'isWorkerDispatched' => false,
                 ]);
                 return false;
             } else {
@@ -261,7 +264,6 @@ class LongThread implements ShouldQueue
                 'stopLoss' =>  $currentCandle['close'],
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
-
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
             ]);
@@ -287,6 +289,9 @@ class LongThread implements ShouldQueue
                             'currentProfit' => $currentProfit,
                             'targetProfit' => $targetProfit,
 
+                        ]);
+                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                            'isWorkerDispatched' => false,
                         ]);
                         return false;
                     }

@@ -34,10 +34,10 @@ class LiveTradeLONGFutureServiceEXP1
     public static function performLiveTrades($market, $account = null)
     {
         $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
-        $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
+        $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->where('isWorkerDispatched', false)->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
         Log::info('FutureTraderLongEXP1: Worker Started');
 
-        foreach ($tradeHandler as $tradeInstance)
+        foreach ($tradeHandler as $index => $tradeInstance)
             try {
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
@@ -82,25 +82,7 @@ class LiveTradeLONGFutureServiceEXP1
                     $maCondition = true;
                     $maCandleDistance = 0;
 
-                    // // Find CROSSOVER in last N candles candles (MA7 from Below MA25)
-                    // for ($i = count($candleData) - 2; $i >= 1; $i--) {
-                    //     $maCondition =  ($candleData[$i + 1]['ma7'] > $candleData[$i + 1]['ma25']  && $candleData[$i - 1]['ma7'] < $candleData[$i - 1]['ma25']);
-                    //     if ($maCondition) {
-                    //         $maCandleDistance = (count($candleData) - 1) - $i;
-                    //         break;
-                    //     }
-                    // }
 
-                    // $maCondition =  $maCondition && $maCandleDistance <= 7;
-
-                    // if ($maCondition) {
-                    //     for ($i = count($candleData) - 2; $i >= (count($candleData) - 2) - $maCandleDistance; $i--) {
-                    //         if ($candleData[$i]['close'] < $candleData[$i]['open'] && $candleData[$i - 1]['close'] < $candleData[$i - 1]['open']) {
-                    //             $maCondition = false;
-                    //             break;
-                    //         }
-                    //     }
-                    // }
 
                     $averageTrailingVolume = 0;
                     $volumeCandlesCount = 0;
@@ -119,33 +101,16 @@ class LiveTradeLONGFutureServiceEXP1
                     $averageTrailingVolume = $averageTrailingVolume && $volumeCandlesCount ? $averageTrailingVolume / $volumeCandlesCount :  0;
                     $volumeMultiplier = 1.3;
                     $volumeCondition = $currentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
+                    
+                    $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
 
-                    // Log::info('FutureTraderLongEXP1: Resistance: ' . $supportResistanceContition);
-                    // Log::info('FutureTraderLongEXP1: MA Condition: ' . $maCondition);
-                    // Log::info('FutureTraderLongEXP1: MA MACandleDistance: ' . $maCandleDistance);
-
-
-                    $dispatchedWorkers = Cache::get('dispatched_workers', 0);
-
-
-                    // Log::info('Checking conditions for symbol: ' . $symbol, [
-                    //     'supportResistanceContition' => $supportResistanceContition,
-                    //     'maCondition' => $maCondition,
-                    //     'proceedCondition' => $proceedCondition,
-                    //     'volumeCondition' => $volumeCondition,
-                    //     'availability' => Cache::get($symbol . '_availability', 1),
-                    //     'dispatchedWorkers' => $dispatchedWorkers,
-                    //     'final_result' => $supportResistanceContition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5,
-                    // ]);
-
-
-
-                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && Cache::get($symbol . '_availability', 1) && $dispatchedWorkers < 5) {
+                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && !$isWorkerDispatched) {
                         Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
-                        Cache::put('dispatched_workers', $dispatchedWorkers++, now()->addDay());
-                        Cache::put($symbol . '_availability', 0, now()->addMinute());
-
+                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                            'isWorkerDispatched' => true,
+                        ]);
                         LongThread::dispatch($tradeInstance, $supportResistance);
+                        break;
                     }
                 }
                 CommonHelpers::delayMS(100);
