@@ -101,10 +101,10 @@ class LiveTradeLONGFutureServiceEXP1
                     $averageTrailingVolume = $averageTrailingVolume && $volumeCandlesCount ? $averageTrailingVolume / $volumeCandlesCount :  0;
                     $volumeMultiplier = 1.3;
                     $volumeCondition = $currentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
-                    
+
                     $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
 
-                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && !$isWorkerDispatched) {
+                    if (true) {
                         Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'isWorkerDispatched' => true,

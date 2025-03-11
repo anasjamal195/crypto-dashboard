@@ -189,7 +189,9 @@ class LongThread implements ShouldQueue
                     'support' => $this->supportResistance[7]['support'],
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
-                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0);
+                Log::info('FutureTraderLongEXP1: Opening Position: ' . $symbol);
+                
+                // BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0);
             }
 
             $tradeLoop = true;
