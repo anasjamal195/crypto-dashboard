@@ -152,7 +152,7 @@ class ShortThread implements ShouldQueue
                 break;
             }
             // Update Cache to make this symbol unavailable
-            Cache::put($symbol . '_availability', 0, now()->addMinute());
+           
             CommonHelpers::delayS(5);
         }
 
