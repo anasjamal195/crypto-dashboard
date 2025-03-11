@@ -52,7 +52,7 @@ class LongThread implements ShouldQueue
             $candle3m['close'] > $candle3m['open'] &&
             $secondLastcandle3m['close'] > $secondLastcandle3m['open']
         ) {
-            $priceCount = 5;
+            $priceCount = 10;
         }
         // Wait for 20 sec for confirmation
         $openTrade = true;
@@ -104,13 +104,13 @@ class LongThread implements ShouldQueue
                 $openTrade = false;
                 Log::info('FutureTraderLongEXP1: Skipped opening LONG Due to second Last 3m candle direction ' . $symbol);
             }
-           
+
             if ($candle1m['close'] < $candle1m['open']) {
                 $openTrade = false;
                 // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to 1m candle direction ' . $symbol);
                 Log::info('FutureTraderLongEXP1: Skipped opening LONG Due to 1m candle direction ' . $symbol);
             }
-            
+
             $secondLastper = (($secondLastcandle1m['close'] - $secondLastcandle1m['open']) / $secondLastcandle1m['open']) * 100;
             if ($secondLastper < 0.08) {
                 $openTrade = false;
@@ -142,7 +142,7 @@ class LongThread implements ShouldQueue
             if (
                 $openTrade ||
                 $candle1m['close'] > ($this->supportResistance[7]['resistance'] * (1 + 0.3 / 100))  ||
-                $candle1m['close'] < ($this->supportResistance[7]['resistance'] * (1 - 1.5 / 100))
+                $candle1m['close'] < ($this->supportResistance[7]['resistance'] * (1 - 1 / 100))
             ) {
                 Log::info('FutureTraderLongEXP1: Timeout for 1m loop ' . $symbol . ' Trade status: ' . $openTrade);
                 break;

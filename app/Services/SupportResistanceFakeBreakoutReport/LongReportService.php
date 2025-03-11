@@ -35,11 +35,11 @@ class LongReportService
 
 
         $tradesTotal = [];
-        $coins = DB::table('coins')->where('market', $market)->get();
+        $coins = DB::table('coins')->where('market', $market)->limit(20)->get();
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.5;
+            $targetProfit = 0.7;
 
             try {
                 $symbol = $coin->symbol;
@@ -144,10 +144,10 @@ class LongReportService
                     $candle['close'] > $candle['open'] &&
                     $data[$index - 1]['close'] > $data[$index - 1]['open'] &&
                     $data[$index - 2]['close'] > $data[$index - 2]['open'] &&
-
-                    ($candle['J'] > $candle['K'] && $candle['J'] > $candle['D']) &&
-
-                    $candle['dif'] < 0 && $candle['dea'] < 0 && $candle['histogram'] > 0
+                    ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
+                    ($candle['dif'] < 0 || $candle['dea'] < 0) &&
+                    $candle['histogram'] > 0 &&
+                    $candle['wr'] > -10
 
                 ) {
 

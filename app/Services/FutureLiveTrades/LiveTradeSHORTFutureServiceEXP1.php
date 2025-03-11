@@ -64,7 +64,7 @@ class LiveTradeSHORTFutureServiceEXP1
                     $thirdLastCandle = $candleData[count($candleData) - 3];
 
 
-                    $support = $supportResistance[7]['support'] * (1 + 1.5 / 100);
+                    $support = $supportResistance[7]['support'] * (1 + 1 / 100);
                     $supportResistanceContition = $currentCandle['close']  <  $support &&
                         $secondLastCandle['close']  >  $support;
 
@@ -76,7 +76,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     // Will skip this iteration is below value is false
                     $proceedCondition = $currentCandle['close'] < $currentCandle['open'] // Candle Should be in Bearish
-                        && $currentCandle['close'] >= $support * (1 - 1.5 / 100); // Current Price should be above -0.3% of support
+                        && $currentCandle['close'] >= $support * (1 - 1 / 100); // Current Price should be above -0.3% of support
 
 
 
