@@ -113,28 +113,29 @@ class LiveTradeLONGFutureServiceEXP1
                         ]);
                         LongThread::dispatch($tradeInstance, $supportResistance);
                         break;
-                    } else if (
-                        // MACD Should be negative, downward candles
-                        $candleData[$index - 1]['histogram'] < 0 && $candleData[$index - 2]['histogram'] < 0 && $candleData[$index - 3]['histogram'] < 0 &&
+                    } 
+                    // else if (
+                    //     // MACD Should be negative, downward candles
+                    //     $candleData[$index - 1]['histogram'] < 0 && $candleData[$index - 2]['histogram'] < 0 && $candleData[$index - 3]['histogram'] < 0 &&
 
-                        // Current candle should be light red and increasing from previous
-                        $candleData[$index - 1]['histogram'] > $candleData[$index - 2]['histogram'] && $candleData[$index - 1]['per'] > 0 &&
+                    //     // Current candle should be light red and increasing from previous
+                    //     $candleData[$index - 1]['histogram'] > $candleData[$index - 2]['histogram'] && $candleData[$index - 1]['per'] > 0 &&
 
-                        // second last should be lower than third last and solid red candles
-                        $candleData[$index - 2]['histogram'] < $candleData[$index - 3]['histogram'] && $candleData[$index - 2]['per'] < 0 && $candleData[$index - 3]['per'] < 0 &&
+                    //     // second last should be lower than third last and solid red candles
+                    //     $candleData[$index - 2]['histogram'] < $candleData[$index - 3]['histogram'] && $candleData[$index - 2]['per'] < 0 && $candleData[$index - 3]['per'] < 0 &&
 
-                        ($currentCandle['J'] > $currentCandle['K'] || $currentCandle['J'] > $currentCandle['D']) &&
+                    //     ($currentCandle['J'] > $currentCandle['K'] || $currentCandle['J'] > $currentCandle['D']) &&
 
-                        !$isWorkerDispatched
+                    //     !$isWorkerDispatched
 
-                    ) {
-                        Log::info('FutureTraderShortEXP1: Dispatching Long Thread MACD... Coin:  ' . $symbol);
-                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'isWorkerDispatched' => true,
-                        ]);
-                        ThreadsMACDLongThread::dispatch($tradeInstance, $supportResistance);
-                        break;
-                    }
+                    // ) {
+                    //     Log::info('FutureTraderShortEXP1: Dispatching Long Thread MACD... Coin:  ' . $symbol);
+                    //     DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                    //         'isWorkerDispatched' => true,
+                    //     ]);
+                    //     ThreadsMACDLongThread::dispatch($tradeInstance, $supportResistance);
+                    //     break;
+                    // }
                 }
                 CommonHelpers::delayMS(100);
             } catch (\Exception $e) {
