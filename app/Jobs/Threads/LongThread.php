@@ -124,6 +124,14 @@ class LongThread implements ShouldQueue
                 // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG Due to second Last 1m candle direction ' . $symbol);
             }
 
+
+            $thirdLastper = (($thirdLastcandle1m['close'] - $thirdLastcandle1m['open']) / $thirdLastcandle1m['open']) * 100;
+            if ($thirdLastper < 0.08) {
+                $openTrade = false;
+                Log::info('FutureTraderLongEXP1: Skipped opening LONG Due to third Last 1m candle percentage ' . $symbol);
+            }
+
+
             // Check for second last 1m candle direction
             if ($thirdLastcandle1m['close'] < $thirdLastcandle1m['open']) {
                 $openTrade = false;
