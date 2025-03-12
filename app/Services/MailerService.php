@@ -16,7 +16,7 @@ class MailerService
 {
     public static $recipients = [
         'anasj5749@gmail.com',
-        'drupalmind@gmail.com',
+        'hregeniuszone@gmail.com',
         // 'egeniuscare@gmail.com'
     ];
     /**
@@ -51,7 +51,7 @@ class MailerService
     }
 
 
-    public static function sendSkipEmail($tradeInstance,$subject)
+    public static function sendSkipEmail($tradeInstance, $subject)
     {
         $data =  [
             'orderId' => '',
@@ -64,13 +64,13 @@ class MailerService
             'leverage' => '',
             'stopLoss' => '',
             'stopLossReductionPrecentage' => 0.1,
-            'price' => BinanceApiService::getCurrentPrice($tradeInstance->symbol,$tradeInstance->market),
+            'price' => BinanceApiService::getCurrentPrice($tradeInstance->symbol, $tradeInstance->market),
             'trade_status' => 'open',
             'trade_acc' => $tradeInstance->tradeAccount,
             'targetProfit' => 0.5,
             'formula' => '',
             'liqPrice' => '',
-            'subject' => $subject. ' :Account ' . User::find($tradeInstance->tradeAccount)->name,
+            'subject' => $subject . ' :Account ' . User::find($tradeInstance->tradeAccount)->name,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
         foreach (self::$recipients as $recipient)

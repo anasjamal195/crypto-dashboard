@@ -111,7 +111,7 @@ class LiveTradeSHORTFutureServiceEXP1
 
                     $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
 
-
+                    $data = $candleData;
                     if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && !$isWorkerDispatched) {
                         Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
@@ -119,29 +119,29 @@ class LiveTradeSHORTFutureServiceEXP1
                         ]);
                         ShortThread::dispatch($tradeInstance, $supportResistance);
                         break;
-                    } 
-                    // else if (
-                    //     // MACD Should be negative, downward candles
-                    //     $candleData[$index - 1]['histogram'] > 0 && $candleData[$index - 2]['histogram'] > 0 && $candleData[$index - 3]['histogram'] > 0 &&
+                    } else if (
+                        $data[$index - 1]['histogram'] < 0 &&
 
-                    //     // Current candle should be light green and increasing from previous
-                    //     $candleData[$index - 1]['histogram'] < $candleData[$index - 2]['histogram'] && $candleData[$index - 1]['per'] < 0 &&
+                        $data[$index - 2]['histogram'] > 0 &&  $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] / 2 &&
+                        $data[$index - 3]['histogram'] > 0 &&  $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] / 2 &&
 
-                    //     // second last should be lower than third last and solid red candles
-                    //     $candleData[$index - 2]['histogram'] > $candleData[$index - 3]['histogram'] && $candleData[$index - 2]['per'] > 0 && $candleData[$index - 3]['per'] > 0 &&
+                        $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] &&
+                        ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D']) &&
 
-                    //     ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D']) &&
+                        $data[$index - 1]['rsi6'] < $data[$index - 2]['rsi6'] &&
 
-                    //     !$isWorkerDispatched
+                        $data[$index]['close'] < $data[$index]['open'] && 
 
-                    // ) {
-                    //     Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
-                    //     DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                    //         'isWorkerDispatched' => true,
-                    //     ]);
-                    //     ThreadsMACDShortThread::dispatch($tradeInstance, $supportResistance);
-                    //     break;
-                    // }
+                        !$isWorkerDispatched
+
+                    ) {
+                        Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
+                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                            'isWorkerDispatched' => true,
+                        ]);
+                        ThreadsMACDShortThread::dispatch($tradeInstance, $supportResistance);
+                        break;
+                    }
                 }
                 CommonHelpers::delayMS(100);
             } catch (\Exception $e) {

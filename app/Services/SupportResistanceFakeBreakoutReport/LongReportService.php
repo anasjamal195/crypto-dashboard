@@ -152,17 +152,29 @@ class LongReportService
 
 
 
-                    // MACD Should be negative, downward candles
-                    $data[$index]['histogram'] < 0 && $data[$index - 1]['histogram'] < 0 && $data[$index - 2]['histogram'] < 0 &&
+                    // // MACD Should be negative, downward candles
+                    // $data[$index]['histogram'] < 0 && $data[$index - 1]['histogram'] < 0 && $data[$index - 2]['histogram'] < 0 &&
 
-                    // Current candle should be light red and increasing from previous
-                    $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['per'] > 0 &&
+                    // // Current candle should be light red and increasing from previous
+                    // $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['per'] > 0 &&
 
-                    // second last should be lower than third last and solid red candles
-                    $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] < 0 &&
+                    // // second last should be lower than third last and solid red candles
+                    // $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] < 0 &&
 
-                    ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D'])
+                    // ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
 
+                    // $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+
+
+                    $data[$index]['histogram'] > 0 &&
+
+                    $data[$index - 1]['histogram'] < 0 &&  $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] / 2 &&
+                    $data[$index - 2]['histogram'] < 0 &&  $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] / 2 &&
+
+                    $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] &&
+                    ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
+
+                    $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
 
 
                 ) {

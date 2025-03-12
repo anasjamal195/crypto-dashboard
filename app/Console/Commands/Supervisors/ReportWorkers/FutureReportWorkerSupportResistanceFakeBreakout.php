@@ -42,13 +42,13 @@ class FutureReportWorkerSupportResistanceFakeBreakout extends Command
         DB::table('coin_reports')->where('market', 'FUTURE')->truncate();
      
 
-        while (true) {
+        // while (true) {
             try {
-                ShortReportService::updateCoinReport(
-                    '5m',
-                    1000,
-                    'FUTURE'
-                );
+                // ShortReportService::updateCoinReport(
+                //     '5m',
+                //     1000,
+                //     'FUTURE'
+                // );
                 LongReportService::updateCoinReport(
                     '5m',
                     1000,
@@ -57,6 +57,6 @@ class FutureReportWorkerSupportResistanceFakeBreakout extends Command
             } catch (\Exception $e) {
                 Log::error($e);
             }
-        }
+        // }
     }
 }
