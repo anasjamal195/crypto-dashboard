@@ -152,27 +152,27 @@ class LongThread implements ShouldQueue
 
         // Temporarily Disabled
         // Check if it is allowed to open trade
-        $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
-        if ($lastOpenTrade) {
+        // $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
+        // if ($lastOpenTrade) {
 
-            if ($lastOpenTrade->currentProfit < 0.5) {
-                $openTrade = false;
-                Log::info('LongThreadMACD: Skipped due to current open order in loss: ' . $symbol);
-                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to current open order in loss ' . $symbol);
-            }
-        } else {
+        //     if ($lastOpenTrade->currentProfit < 0.5) {
+        //         $openTrade = false;
+        //         Log::info('LongThreadMACD: Skipped due to current open order in loss: ' . $symbol);
+        //         // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to current open order in loss ' . $symbol);
+        //     }
+        // } else {
 
-            $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
+        //     $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
 
-            if ($lastClosed) {
-                $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));
-                if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
-                    $openTrade = false;
-                    Log::info('LongThreadMACD: Skipped due to last order closed in loss: ' . $symbol);
-                    // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to last order closed in loss ' . $symbol);
-                }
-            }
-        }
+        //     if ($lastClosed) {
+        //         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));
+        //         if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
+        //             $openTrade = false;
+        //             Log::info('LongThreadMACD: Skipped due to last order closed in loss: ' . $symbol);
+        //             // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to last order closed in loss ' . $symbol);
+        //         }
+        //     }
+        // }
 
 
         $openTrades = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->get();
