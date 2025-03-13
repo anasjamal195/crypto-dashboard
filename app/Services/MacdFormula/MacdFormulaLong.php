@@ -80,11 +80,30 @@ class MacdFormulaLong
                         $loopIndex--;
                     }
                     $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
+
+                    Log::info('LongWorkerMACD: Evaluating Trade Conditions', [
+                        'per_current' => $data[$index]['per'],
+                        'per_previous' => $data[$index - 1]['per'],
+                        'per_before_previous' => $data[$index - 2]['per'],
+                        'per_current_condition' => $data[$index]['per'] > 0,
+                        'per_previous_condition' => $data[$index - 1]['per'] > 0,
+                        'per_before_previous_condition' => $data[$index - 2]['per'] < 0,
+                        'histogram_current' => $data[$index]['histogram'],
+                        'histogram_previous' => $data[$index - 1]['histogram'],
+                        'histogram_condition' => ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0),
+                        'dif_current' => $data[$index]['dif'],
+                        'dif_previous' => $data[$index - 1]['dif'],
+                        'dif_condition' => $data[$index]['dif'] > $data[$index - 1]['dif'],
+                        'macdDarkRedDistance' => $macdDarkRedDistance,
+                        'macdDarkRedDistance_condition' => ($macdDarkRedDistance >= 6),
+                        'isWorkerDispatched' => $isWorkerDispatched,
+                        'isWorkerDispatched_condition' => !$isWorkerDispatched,
+                    ]);
                     if (
                         // Check for two bullish and one berish candles
                         $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0 &&
 
-                        ($data[$index]['histogram'] < 0 ||  $data[$index - 1]['histogram'] < 0) &&
+                        ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0) &&
 
                         $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 6 &&
 
