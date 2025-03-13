@@ -10,7 +10,7 @@ Will Target SHORT Trades with a profit limit of 0.4% and a stop loss of support 
 
 */
 
-namespace App\Services\FutureLiveTrades;
+namespace App\Services\MacdFormula;
 
 use App\CommonHelpers;
 use App\Jobs\Threads\ShortThread;
@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class LiveTradeSHORTFutureServiceEXP1
+class MacdFormulaShort
 {
     /**
      * Create a new class instance.

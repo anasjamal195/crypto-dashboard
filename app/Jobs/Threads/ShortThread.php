@@ -98,6 +98,7 @@ class ShortThread implements ShouldQueue
                 Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to 3m candle direction ' . $symbol);
             }
 
+            
             if ($secondLastcandle3m['close'] > $secondLastcandle3m['open']) {
                 $openTrade = false;
                 Log::info('FutureTraderShortEXP1: Skipped opening SHORT Due to second Last 3m candle direction ' . $symbol);

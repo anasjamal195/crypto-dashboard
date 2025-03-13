@@ -22,6 +22,8 @@ class LongThread implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public $timeout = 360000000;
     public $tries = 1; // The job will only run once
+    public $stopLoss = 0.5; 
+    public $targetProfit = 0.5; 
     public $tradeInstance;
     public $supportResistance;
     public $formula;
@@ -167,7 +169,7 @@ class LongThread implements ShouldQueue
         $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
         if ($lastOpenTrade) {
 
-            if ($lastOpenTrade->currentProfit < 0.2) {
+            if ($lastOpenTrade->currentProfit < 0.5) {
                 $openTrade = false;
                 Log::info('FutureTraderLongEXP1: Skipped due to current open order in loss: ' . $symbol);
                 // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening LONG due to current open order in loss ' . $symbol);
@@ -200,7 +202,7 @@ class LongThread implements ShouldQueue
                 ];
                 Log::info('FutureTraderLongEXP1: Opening Position: ' . $symbol);
 
-                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0);
+                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr,0,false,$this->stopLoss,$this->targetProfit);
 
                 $tradeLoop = true;
                 // Proceed trade until the position is closed

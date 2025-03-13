@@ -1196,7 +1196,7 @@ class BinanceApiService
 
 
     // Future Api's
-    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false)
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false,$stopLossPercentage = 0.5,$targetProfit = 0.5)
     {
 
         $market = 'FUTURE';
@@ -1375,10 +1375,10 @@ class BinanceApiService
 
         if ($position === 'BUY') {
             $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
-            $stopLoss = $current_price * (1 - 0.5 / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - 0.5 / 100);
+            $stopLoss = $current_price * (1 - $stopLossPercentage / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - $stopLossPercentage / 100);
         } else if ($position === 'SELL') {
             $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
-            $stopLoss = $current_price * (1 + 0.5 / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + 0.5 / 100);
+            $stopLoss = $current_price * (1 + $stopLossPercentage / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + $stopLossPercentage / 100);
         }
 
 
@@ -1396,7 +1396,7 @@ class BinanceApiService
             'price' => $current_price,
             'trade_status' => 'open',
             'trade_acc' => $trader,
-            'targetProfit' => 0.4,
+            'targetProfit' => $targetProfit,
             'formula' => $formula,
             'turnoverPoint' => $turnoverPoint,
             'liqPrice' => $liquidationPrice,
