@@ -22,6 +22,9 @@ class ShortThread implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public $timeout = 360000000;
     public $tries = 1; // The job will only run once
+    public $stopLoss = 1;
+    public $targetProfit = 0.5;
+
     public $tradeInstance;
     public $supportResistance;
     public $formula;
@@ -151,35 +154,49 @@ class ShortThread implements ShouldQueue
         // }
 
 
-        // Check if it is allowed to open trade
-        $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
-        if ($lastOpenTrade) {
+        // // Check if it is allowed to open trade
+        // $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
+        // if ($lastOpenTrade) {
 
-            if ($lastOpenTrade->currentProfit < 0.2) {
-                $openTrade = false;
-                Log::info('ShortThreadMACD: Skipped due to current open order in loss: ' . $symbol);
-                // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to current open order in loss ' . $symbol);
-            }
-        } else {
+        //     if ($lastOpenTrade->currentProfit < 0.2) {
+        //         $openTrade = false;
+        //         Log::info('ShortThreadMACD: Skipped due to current open order in loss: ' . $symbol);
+        //         // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to current open order in loss ' . $symbol);
+        //     }
+        // } else {
 
-            $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
+        //     $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
 
-            if ($lastClosed) {
-                $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));
-                if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
-                    $openTrade = false;
-                    Log::info('ShortThreadMACD: Skipped due to last order closed in loss: ' . $symbol);
-                    // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to last order closed in loss ' . $symbol);
-                }
+        //     if ($lastClosed) {
+        //         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));
+        //         if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
+        //             $openTrade = false;
+        //             Log::info('ShortThreadMACD: Skipped due to last order closed in loss: ' . $symbol);
+        //             // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to last order closed in loss ' . $symbol);
+        //         }
+        //     }
+        // }
+
+
+        $openTrades = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->get();
+        $openTradesCount = count($openTrades);
+        $allInProfit = true;
+
+        if ($openTradesCount == 0) {
+            $allInProfit = false;
+        }
+        foreach ($openTrades as $openTrade) {
+            if ($openTrade->currentProfit < 0.5) {
+                $allInProfit = false;
             }
         }
-        // Free cache with this worker on decision time
-        $dispatchedWorkers = Cache::get('dispatched_workers', 0);
-        Cache::put('dispatched_workers', $dispatchedWorkers ? $dispatchedWorkers-- : 0, now()->addDay());
 
+        if (!$allInProfit && $openTradesCount >= 2) {
+            $openTrade = false;
+        }
 
         if ($openTrade) {
-            Cache::put($symbol . '_availability', 0, now()->addMinute());
+
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
             if (!(isset($open_order['is_open']) && $open_order['is_open'])) {
                 $supportResistanceArr = [
@@ -187,7 +204,7 @@ class ShortThread implements ShouldQueue
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
                 Log::info('ShortThreadMACD: Opening Position: ' . $symbol);
-                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0);
+                BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
 
                 $tradeLoop = true;
                 // Proceed trade until the position is closed
@@ -266,32 +283,33 @@ class ShortThread implements ShouldQueue
 
             $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $tradeInstance->tradeAccount)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'open')->orderBy('created_at', 'desc')->first();
 
-            if ($lastOrderOpen) {
-                $lastOrderOpen = $lastOrderOpen->created_at;
-                $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen));
-                if ($timeDiff > 5 && $timeDiff < 10) {
-                    $diff = $secondLastCandle['open'] - $secondLastCandle['close'];
-                    if (
-                        $currentCandle['close'] > $currentCandle['open']  && $currentCandle['close'] >= (min($secondLastCandle['close'], $secondLastCandle['open']) + ($diff * 0.6))
-                        && $currentCandle['rsi6'] > $secondLastCandle['rsi6'] * 1.25
-                    ) {
+            // if ($lastOrderOpen) {
+            //     $lastOrderOpen = $lastOrderOpen->created_at;
+            //     $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen));
+            //     if ($timeDiff > 5 && $timeDiff < 10) {
+            //         $diff = $secondLastCandle['open'] - $secondLastCandle['close'];
+            //         if (
+            //             $currentCandle['close'] > $currentCandle['open']  && $currentCandle['close'] >= (min($secondLastCandle['close'], $secondLastCandle['open']) + ($diff * 0.6))
+            //             && $currentCandle['rsi6'] > $secondLastCandle['rsi6'] * 1.25
+            //         ) {
 
-                        // Closing due to early detection
-                        BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
-                        DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
-                            'previousPrice' => $currentCandle['close'],
-                            'currentPrice' => $currentCandle['close'],
-                            'currentProfit' => $currentProfit,
-                            'targetProfit' => $targetProfit,
+            //             // Closing due to early detection
+            //             BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+            //             DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+            //                 'previousPrice' => $currentCandle['close'],
+            //                 'currentPrice' => $currentCandle['close'],
+            //                 'currentProfit' => $currentProfit,
+            //                 'targetProfit' => $targetProfit,
 
-                        ]);
-                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'isWorkerDispatched' => false,
-                        ]);
-                        return false;
-                    }
-                }
-            }
+            //             ]);
+            //             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+            //                 'isWorkerDispatched' => false,
+            //             ]);
+            //             return false;
+            //         }
+            //     }
+            // }
+
             DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],

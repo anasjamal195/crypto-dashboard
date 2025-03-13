@@ -202,7 +202,6 @@ class LongThread implements ShouldQueue
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
                 Log::info('LongThreadMACD: Opening Position: ' . $symbol);
-
                 BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
 
                 $tradeLoop = true;

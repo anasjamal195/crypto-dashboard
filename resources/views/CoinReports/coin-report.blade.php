@@ -1,8 +1,7 @@
 @extends('layouts.app')
 @php
-    $grandTotal = 0;
+    $totalProfit = 0;
     $totalTrades = 0;
-
 @endphp
 @section('content')
     <div class="container-fluid">
@@ -57,11 +56,10 @@
                                 <tbody>
                                     @foreach ($tradeData as $index => $trade)
                                         @php
-                                            $grandTotal += number_format($trade->total_profit, 2);
+                                            $totalProfit += number_format($trade->total_profit, 2);
                                             $totalTrades += $trade->total_entries;
-
                                         @endphp
-                                        <tr @if ($trade->total_profit < 0) class="bg-danger" @endif>
+                                        <tr @if ($trade->max_lowestPrice > 0.5) class="bg-danger" @endif>
                                             <td>{{ $index + 1 }}</td>
                                             <td>{{ $trade->position }}</td>
                                             <td>{{ $trade->symbol }}</td>
@@ -88,25 +86,10 @@
                                 </tbody>
                             </table>
                             <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill w-50"><strong>Grand Total:</strong></div>
+                                <div class="flex-fill "><strong>Total Profit:</strong></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill ">{{ $totalTrades }}</div>
-                                <div class="flex-fill ">{{ $grandTotal }} %</div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                            </div>
-                            <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill w-50"><strong>Total Profits:</strong></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $profitableTrades }}</div>
                                 <div class="flex-fill ">{{ $totalProfit }} %</div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
@@ -118,11 +101,26 @@
                                 <div class="flex-fill "></div>
                             </div>
                             <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill w-50"><strong>Total Loss:</strong></div>
+                                <div class="flex-fill "><strong>Total Stop Losses:</strong></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $lossTrades }}</div>
-                                <div class="flex-fill ">{{ $totalLosses }} %</div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill ">{{ $stopLosses }} %</div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                            </div>
+                            <div class="d-flex flex-row text-center text-white">
+                                <div class="flex-fill "><strong>Grand Total:</strong></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill ">{{ $totalTrades }}</div>
+                                <div class="flex-fill ">{{ $totalProfit - $stopLosses }} %</div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
@@ -134,32 +132,11 @@
                             </div>
 
                             <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill w-50"><strong>Frequency Ratio:</strong></div>
+                                <div class="flex-fill "><strong>Formula Accuracy:</strong></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
-                                <div class="flex-fill ">
-                                    {{ $totalTrades ? round(100 - ($lossTrades / $totalTrades) * 100, 2) : 0 }} %
-                                </div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                            </div>
-
-
-
-                            <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill w-50"><strong>Pnl Ratio:</strong></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">
-                                    {{ $totalTrades ? round((abs($totalLosses) / $totalProfit) * 100, 2) : 0 }} %
+                                <div class="flex-fill ">{{ $totalTrades ? round(100 - (($stopLosses) / $totalTrades) * 100, 2) : 0 }} %
                                 </div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>

@@ -38,7 +38,7 @@ class ShortReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 2;
+            $targetProfit = 0.5;
 
             try {
                 $symbol = $coin->symbol;

@@ -237,8 +237,8 @@ class LongReportService
                     $stopLossPrice = 0;
                 }
                 if ($candle['close'] >= $buy_price * (1 + $targetProfit / 100)) {
-                    $targetProfit += 1;
-                    $stopLossPrice = $candle['close'] * (1 - $stopLoss / 100);
+                    $targetProfit += 0.5;
+                    $stopLossPrice = $candle['close'] * (1 - 0.25 / 100);
                 }
             }
         }
