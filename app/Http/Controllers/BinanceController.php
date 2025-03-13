@@ -64,12 +64,12 @@ class BinanceController extends Controller
         $stopLossesQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market')
             ->distinct()
-            ->whereRaw('lowestPricePercentage > 0.5');
+            ->whereRaw('lowestPricePercentage > 1');
 
         if ($request->filled('position')) {
             $stopLossesQuery->where('position', $request->position);
         }
-        $stopLosses = $stopLossesQuery->count() / 2;
+        $stopLosses = $stopLossesQuery->count() ;
         // Extracting unique symbols, intervals, and markets
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);

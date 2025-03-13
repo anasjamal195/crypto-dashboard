@@ -104,38 +104,43 @@ class LiveTradeLONGFutureServiceEXP1
                     $volumeMultiplier = 1.3;
                     $volumeCondition = $currentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
+                    $macdCondition = $secondLastCandle['histogram'] > 0 && $thirdLastCandle['histogram'] > 0  && $secondLastCandle['histogram'] > $thirdLastCandle['histogram']; 
                     $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
                     $data = $candleData;
-                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && !$isWorkerDispatched) {
+
+
+
+                    if ($supportResistanceContition && $candlePercentageCondition && $maCondition && $proceedCondition && $volumeCondition && $macdCondition && !$isWorkerDispatched) {
                         Log::info('FutureTraderShortEXP1: Dispatching Long Thread... Coin:  ' . $symbol);
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'isWorkerDispatched' => true,
                         ]);
                         LongThread::dispatch($tradeInstance, $supportResistance);
                         break;
-                    } else if (
-                        $data[$index - 1]['histogram'] > 0 &&
+                    } 
+                    // else if (
+                    //     $data[$index - 1]['histogram'] > 0 &&
 
-                        $data[$index - 2]['histogram'] < 0 &&  $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] / 2 &&
-                        $data[$index - 3]['histogram'] < 0 &&  $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] / 2 &&
+                    //     $data[$index - 2]['histogram'] < 0 &&  $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] / 2 &&
+                    //     $data[$index - 3]['histogram'] < 0 &&  $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] / 2 &&
 
-                        $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] &&
-                        ($currentCandle['J'] > $currentCandle['K'] || $currentCandle['J'] > $currentCandle['D']) &&
+                    //     $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] &&
+                    //     ($currentCandle['J'] > $currentCandle['K'] || $currentCandle['J'] > $currentCandle['D']) &&
 
-                        $data[$index - 1]['rsi6'] > $data[$index - 2]['rsi6'] &&
+                    //     $data[$index - 1]['rsi6'] > $data[$index - 2]['rsi6'] &&
 
-                        $data[$index]['close'] > $data[$index]['open'] &&
+                    //     $data[$index]['close'] > $data[$index]['open'] &&
 
-                        !$isWorkerDispatched
+                    //     !$isWorkerDispatched
 
-                    ) {
-                        Log::info('FutureTraderShortEXP1: Dispatching Long Thread MACD... Coin:  ' . $symbol);
-                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'isWorkerDispatched' => true,
-                        ]);
-                        ThreadsMACDLongThread::dispatch($tradeInstance, $supportResistance);
-                        break;
-                    }
+                    // ) {
+                    //     Log::info('FutureTraderShortEXP1: Dispatching Long Thread MACD... Coin:  ' . $symbol);
+                    //     DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                    //         'isWorkerDispatched' => true,
+                    //     ]);
+                    //     ThreadsMACDLongThread::dispatch($tradeInstance, $supportResistance);
+                    //     break;
+                    // }
                 }
                 CommonHelpers::delayMS(100);
             } catch (\Exception $e) {

@@ -35,11 +35,11 @@ class LongReportService
 
 
         $tradesTotal = [];
-        $coins = DB::table('coins')->where('market', $market)->limit(20)->get();
+        $coins = DB::table('coins')->where('market', $market)->get();
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.4;
+            $targetProfit = 2;
 
             try {
                 $symbol = $coin->symbol;
@@ -140,6 +140,20 @@ class LongReportService
 
             if ($buy_price == 0) {
 
+                $macdDarkRedDistance = 0;
+                $loopIndex = $index;
+
+                while (true) {
+
+                    if ($data[$loopIndex]['histogram'] >= $data[$loopIndex - 1]['histogram']) {
+                        $macdDarkRedDistance++;
+                    } else {
+                        break;
+                    }
+
+                    $loopIndex--;
+                }
+
 
                 if (
                     // $candle['close'] > $candle['open'] &&
@@ -166,15 +180,12 @@ class LongReportService
                     // $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
 
 
-                    $data[$index]['histogram'] > 0 &&
+                    // Check for two bullish and one berish candles
+                    $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0 &&
 
-                    $data[$index - 1]['histogram'] < 0 &&  $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] / 2 &&
-                    $data[$index - 2]['histogram'] < 0 &&  $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] / 2 &&
+                    ($data[$index]['histogram'] < 0 ||  $data[$index - 1]['histogram'] < 0) &&
 
-                    $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] &&
-                    ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
-
-                    $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+                    $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 6
 
 
                 ) {

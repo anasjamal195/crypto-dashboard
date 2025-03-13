@@ -34,11 +34,11 @@ class ShortReportService
 
 
         $tradesTotal = [];
-        $coins = DB::table('coins')->where('market', $market)->limit(20)->get();
+        $coins = DB::table('coins')->where('market', $market)->get();
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.4;
+            $targetProfit = 2;
 
             try {
                 $symbol = $coin->symbol;
@@ -67,7 +67,7 @@ class ShortReportService
     ) {
 
         $tradesTotal = [];
-        $targetProfit = 0.4;
+        $targetProfit = 2;
         try {
             $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
@@ -142,6 +142,20 @@ class ShortReportService
 
 
             if ($buy_price == 0) {
+
+                $macdLightGreenDistance = 0;
+                $loopIndex = $index;
+
+                while (true) {
+                    if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
+                        $macdLightGreenDistance++;
+                    } else {
+                        break;
+                    }
+
+                    $loopIndex--;
+                }
+
                 if ($index > $obvCandles) {
 
                     if (
@@ -154,15 +168,22 @@ class ShortReportService
 
 
                         // MACD Should be negative, downward candles
-                        $data[$index]['histogram'] > 0 && $data[$index - 1]['histogram'] > 0 && $data[$index - 2]['histogram'] > 0 &&
+                        // $data[$index]['histogram'] > 0 && $data[$index - 1]['histogram'] > 0 && $data[$index - 2]['histogram'] > 0 &&
 
-                        // Current candle should be light green and increasing from previous
-                        $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['per'] < 0 &&
+                        // // Current candle should be light green and increasing from previous
+                        // $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['per'] < 0 &&
 
-                        // second last should be lower than third last and solid red candles
-                        $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] > 0 &&
+                        // // second last should be lower than third last and solid red candles
+                        // $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] > 0 &&
 
-                        ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
+                        // ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
+
+                    
+                        $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] > 0 &&
+
+                        ($data[$index]['histogram'] > 0 ||  $data[$index - 1]['histogram'] > 0) &&
+
+                        $data[$index]['dif'] < $data[$index - 1]['dif'] && $macdLightGreenDistance >= 6
                     ) {
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;

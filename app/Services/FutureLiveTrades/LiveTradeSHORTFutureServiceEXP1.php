@@ -119,29 +119,30 @@ class LiveTradeSHORTFutureServiceEXP1
                         ]);
                         ShortThread::dispatch($tradeInstance, $supportResistance);
                         break;
-                    } else if (
-                        $data[$index - 1]['histogram'] < 0 &&
+                    } 
+                    // else if (
+                    //     $data[$index - 1]['histogram'] < 0 &&
 
-                        $data[$index - 2]['histogram'] > 0 &&  $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] / 2 &&
-                        $data[$index - 3]['histogram'] > 0 &&  $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] / 2 &&
+                    //     $data[$index - 2]['histogram'] > 0 &&  $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] / 2 &&
+                    //     $data[$index - 3]['histogram'] > 0 &&  $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] / 2 &&
 
-                        $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] &&
-                        ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D']) &&
+                    //     $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] &&
+                    //     ($currentCandle['J'] < $currentCandle['K'] || $currentCandle['J'] < $currentCandle['D']) &&
 
-                        $data[$index - 1]['rsi6'] < $data[$index - 2]['rsi6'] &&
+                    //     $data[$index - 1]['rsi6'] < $data[$index - 2]['rsi6'] &&
 
-                        $data[$index]['close'] < $data[$index]['open'] && 
+                    //     $data[$index]['close'] < $data[$index]['open'] && 
 
-                        !$isWorkerDispatched
+                    //     !$isWorkerDispatched
 
-                    ) {
-                        Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
-                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'isWorkerDispatched' => true,
-                        ]);
-                        ThreadsMACDShortThread::dispatch($tradeInstance, $supportResistance);
-                        break;
-                    }
+                    // ) {
+                    //     Log::info('FutureTraderShortEXP1: Dispatching Short Thread... Coin: ' . $symbol);
+                    //     DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                    //         'isWorkerDispatched' => true,
+                    //     ]);
+                    //     ThreadsMACDShortThread::dispatch($tradeInstance, $supportResistance);
+                    //     break;
+                    // }
                 }
                 CommonHelpers::delayMS(100);
             } catch (\Exception $e) {

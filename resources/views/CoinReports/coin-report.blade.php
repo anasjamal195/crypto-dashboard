@@ -136,7 +136,7 @@
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $totalTrades ? round(100 - (($stopLosses * 2) / $totalTrades) * 100, 2) : 0 }} %
+                                <div class="flex-fill ">{{ $totalTrades ? round(100 - (($stopLosses) / $totalTrades) * 100, 2) : 0 }} %
                                 </div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
