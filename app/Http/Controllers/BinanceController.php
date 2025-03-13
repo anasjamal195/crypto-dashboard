@@ -53,29 +53,67 @@ class BinanceController extends Controller
         $liquidatedCoinsQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market')
             ->distinct()
-            ->whereRaw('liquidationPrice >= lowestPrice');
+            ->whereRaw('profit < 0');
 
         if ($request->filled('position')) {
             $liquidatedCoinsQuery->where('position', $request->position);
         }
         $liquidatedCoins = $liquidatedCoinsQuery->get();
 
-        // Stop losses query with position filter if provided
-        $stopLossesQuery = DB::table('coin_reports')
-            ->select('symbol', 'interval', 'market')
-            ->distinct()
-            ->whereRaw('lowestPricePercentage > 1');
+
+
+
+
+        // Profitable Trades
+        $allProfitableTrades = DB::table('coin_reports')
+
+            ->whereRaw('profit >= 0');
 
         if ($request->filled('position')) {
-            $stopLossesQuery->where('position', $request->position);
+            $allProfitableTrades->where('position', $request->position);
         }
-        $stopLosses = $stopLossesQuery->count() ;
+
+        $profitableTrades = $allProfitableTrades->count();
+        $totalProfit = $allProfitableTrades->sum('profit');
+
+        $allLossTrades = DB::table('coin_reports')
+
+            ->whereRaw('profit < 0');
+
+        if ($request->filled('position')) {
+            $allLossTrades->where('position', $request->position);
+        }
+
+        $lossTrades = $allLossTrades->count();
+        $totalLosses = $allLossTrades->sum('profit');
+
+
+
+
+
+
+
+
+
+
         // Extracting unique symbols, intervals, and markets
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
 
-        return view('CoinReports.coin-report', compact('tradeData', 'stopLosses', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', compact(
+            'tradeData',
+            'pageSlug',
+            'interval',
+            'market',
+            'liquidatedSymbols',
+            'liquidatedIntervals',
+            'liquidatedMarkets',
+            'profitableTrades',
+            'totalProfit',
+            'lossTrades',
+            'totalLosses'
+        ));
     }
     public function getCoinReportDetails($market, Request $request)
     {

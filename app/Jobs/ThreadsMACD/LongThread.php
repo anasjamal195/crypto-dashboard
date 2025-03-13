@@ -175,7 +175,22 @@ class LongThread implements ShouldQueue
         }
 
 
+        $openTrades = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'LONG')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->get();
+        $openTradesCount = count($openTrades);
+        $allInProfit = true;
 
+        if ($openTradesCount == 0) {
+            $allInProfit = false;
+        }
+        foreach ($openTrades as $openTrade) {
+            if ($openTrade->currentProfit < 0.5) {
+                $allInProfit = false;
+            }
+        }
+
+        if (!$allInProfit && $openTradesCount >= 3) {
+            $openTrade = false;
+        }
 
 
         if ($openTrade) {
@@ -270,32 +285,32 @@ class LongThread implements ShouldQueue
 
             $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $tradeInstance->tradeAccount)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'open')->orderBy('created_at', 'desc')->first();
 
-            if ($lastOrderOpen) {
-                $lastOrderOpen = $lastOrderOpen->created_at;
-                $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen));
-                if ($timeDiff > 5 && $timeDiff < 10) {
-                    $diff = $secondLastCandle['close'] - $secondLastCandle['open'];
-                    if (
-                        $currentCandle['close'] < $currentCandle['open']  && $currentCandle['close'] <= (max($secondLastCandle['close'], $secondLastCandle['open']) - ($diff * 0.6))
-                        && $currentCandle['rsi6'] < $secondLastCandle['rsi6'] * (1 - 0.25)
-                    ) {
+            // if ($lastOrderOpen) {
+            //     $lastOrderOpen = $lastOrderOpen->created_at;
+            //     $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderOpen));
+            //     if ($timeDiff > 5 && $timeDiff < 10) {
+            //         $diff = $secondLastCandle['close'] - $secondLastCandle['open'];
+            //         if (
+            //             $currentCandle['close'] < $currentCandle['open']  && $currentCandle['close'] <= (max($secondLastCandle['close'], $secondLastCandle['open']) - ($diff * 0.6))
+            //             && $currentCandle['rsi6'] < $secondLastCandle['rsi6'] * (1 - 0.25)
+            //         ) {
 
-                        // Closing due to early detection
-                        BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
-                        DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
-                            'previousPrice' => $currentCandle['close'],
-                            'currentPrice' => $currentCandle['close'],
-                            'currentProfit' => $currentProfit,
-                            'targetProfit' => $targetProfit,
+            //             // Closing due to early detection
+            //             BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
+            //             DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+            //                 'previousPrice' => $currentCandle['close'],
+            //                 'currentPrice' => $currentCandle['close'],
+            //                 'currentProfit' => $currentProfit,
+            //                 'targetProfit' => $targetProfit,
 
-                        ]);
-                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                            'isWorkerDispatched' => false,
-                        ]);
-                        return false;
-                    }
-                }
-            }
+            //             ]);
+            //             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+            //                 'isWorkerDispatched' => false,
+            //             ]);
+            //             return false;
+            //         }
+            //     }
+            // }
             DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
