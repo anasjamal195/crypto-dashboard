@@ -40,12 +40,13 @@ class LongReportService
         foreach ($coins as $coin) {
 
             $targetProfit = 0.5;
-
+            $stopLoss = 1;
             try {
                 $symbol = $coin->symbol;
-                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, 1741257764000, 'FUTURE');
+                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
-                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
+
+                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $stopLoss);
 
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'LONG')->delete();
@@ -70,7 +71,7 @@ class LongReportService
         $targetProfit = 1;
         try {
             $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
-            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
+            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, 1);
             $tradesTotal[$symbol] = $trades;
         } catch (\Exception $e) {
             Log::error("Failed to update coin reports: " . $e->getMessage());
@@ -90,7 +91,7 @@ class LongReportService
      * @param float $targetProfit Target profit percentage for sell signal.
      * @return array Processed trade data.
      */
-    protected static function processCandles($symbol, $interval, $market, $data, $targetProfit)
+    protected static function processCandles($symbol, $interval, $market, $data, $targetProfitInitial, $stopLoss)
     {
         $buy_price = 0;
         $buy_triggers = [];
@@ -102,7 +103,9 @@ class LongReportService
         $trades = [];
         $lockedPriceBuy = 0;
         $lowestPrice = 0;
+        $stopLossPrice = 0;
         $buyingCandles = [];
+        $targetProfit = $targetProfitInitial;
         $timestamp = $data[0]['binance_timestamp'] - (60 * 5000 * 1000);
         $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 1000, $timestamp, $market);
 
@@ -198,21 +201,25 @@ class LongReportService
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $currentTrade['buyingAverages'] = json_encode($averages);
                     $lowestPrice = $buy_price;
+                    $stopLossPrice = $buy_price * (1 - $stopLoss / 100);
                 }
             } else {
                 if ($lowestPrice > $candle['low'])
                     $lowestPrice = $candle['low'];
-                if ($candle['high'] >= $buy_price * (1 + $targetProfit / 100)) {
+
+
+
+                if ($candle['low'] <= $stopLossPrice) {
                     $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'long');
                     $candle['should_sell'] = true;
                     $buy_triggers[] = $candle;
                     $currentTrade['sellingCandle'] = json_encode($candle);
                     $currentTrade['buyingPrice'] = $buy_price;
                     $currentTrade['market'] = $market;
-                    $currentTrade['sellingPrice'] = $candle['high'];
+                    $currentTrade['sellingPrice'] = $stopLossPrice;
                     $currentTrade['symbol'] = $symbol;
                     $currentTrade['interval'] = $interval;
-                    $currentTrade['profit'] = round(($candle['high'] - $buy_price) / $buy_price * 100, 2);
+                    $currentTrade['profit'] = round(($stopLossPrice - $buy_price) / $buy_price * 100, 2);
                     $currentTrade['lowestPrice'] = $lowestPrice;
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
@@ -227,6 +234,11 @@ class LongReportService
                     $trades[] = $currentTrade;
                     $currentTrade = [];
                     $buy_price = 0;
+                    $stopLossPrice = 0;
+                }
+                if ($candle['close'] >= $buy_price * (1 + $targetProfit / 100)) {
+                    $targetProfit += 1;
+                    $stopLossPrice = $candle['close'] * (1 - $stopLoss / 100);
                 }
             }
         }

@@ -100,7 +100,7 @@ class BinanceController extends Controller
             });
 
         // Fetching Base Candle Data
-        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, 1741257764000, $market);
+        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, null, $market);
 
         foreach ($data as $index => &$candle) {
 
