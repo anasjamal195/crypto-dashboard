@@ -43,7 +43,7 @@ class LongReportService
 
             try {
                 $symbol = $coin->symbol;
-                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
+                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, 1741257764000, 'FUTURE');
 
                 $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
 
