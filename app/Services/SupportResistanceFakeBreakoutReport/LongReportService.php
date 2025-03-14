@@ -157,7 +157,7 @@ class LongReportService
                     $loopIndex--;
                 }
 
-
+                $slopeRatio = ($data[$index]['dea'] - $data[$index - 1]['dea']) ? ($data[$index]['dif'] - $data[$index - 1]['dif']) / ($data[$index]['dea'] - $data[$index - 1]['dea']) : 0;
                 if (
                     // $candle['close'] > $candle['open'] &&
                     // $data[$index - 1]['close'] > $data[$index - 1]['open'] &&
@@ -186,9 +186,11 @@ class LongReportService
                     // Check for two bullish and one berish candles
                     $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0 &&
 
-                    ($data[$index]['histogram'] < 0 ||  $data[$index - 1]['histogram'] < 0) &&
+                    ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0)  &&
 
-                    $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 6
+                    $slopeRatio > 0 &&
+
+                    $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 4
 
 
                 ) {
@@ -236,7 +238,6 @@ class LongReportService
                     $buy_price = 0;
                     $stopLossPrice = 0;
                 }
-                
             }
         }
 
