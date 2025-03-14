@@ -209,17 +209,17 @@ class LongReportService
 
 
 
-                if ($candle['close'] >= $buy_price * (1 + $targetProfit / 100)) {
+                if ($candle['high'] >= $buy_price * (1 + $targetProfit / 100)) {
                     $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'long');
                     $candle['should_sell'] = true;
                     $buy_triggers[] = $candle;
                     $currentTrade['sellingCandle'] = json_encode($candle);
                     $currentTrade['buyingPrice'] = $buy_price;
                     $currentTrade['market'] = $market;
-                    $currentTrade['sellingPrice'] = $candle['close'];
+                    $currentTrade['sellingPrice'] = $candle['high'];
                     $currentTrade['symbol'] = $symbol;
                     $currentTrade['interval'] = $interval;
-                    $currentTrade['profit'] = round(($candle['close'] - $buy_price) / $buy_price * 100, 2);
+                    $currentTrade['profit'] = round(($candle['high'] - $buy_price) / $buy_price * 100, 2);
                     $currentTrade['lowestPrice'] = $lowestPrice;
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
