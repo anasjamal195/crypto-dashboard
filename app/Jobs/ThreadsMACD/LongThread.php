@@ -182,8 +182,8 @@ class LongThread implements ShouldQueue
         if ($openTradesCount == 0) {
             $allInProfit = false;
         }
-        foreach ($openTrades as $openTrade) {
-            if ($openTrade->currentProfit < 0.5) {
+        foreach ($openTrades as $currentOpenOrders) {
+            if ($currentOpenOrders->currentProfit < 0.5) {
                 $allInProfit = false;
             }
         }
