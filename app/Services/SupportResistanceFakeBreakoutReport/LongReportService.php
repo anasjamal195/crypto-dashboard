@@ -210,7 +210,6 @@ class LongReportService
                     $lowestPrice = $candle['low'];
 
 
-
                 if ($candle['high'] >= $buy_price * (1 + $targetProfit / 100)) {
                     $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'long');
                     $candle['should_sell'] = true;
