@@ -213,7 +213,7 @@ class LongThread implements ShouldQueue
                             $tradeLoop = false;
                         $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
                         $candleData = $supportResistance['candleData'];
-                        $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
+
                         $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
                     } catch (\Exception $e) {
                         Log::error('LongThreadMACD: Error - ' . $e->getMessage());
@@ -241,14 +241,16 @@ class LongThread implements ShouldQueue
         $currentCandle = $candleData[count($candleData) - 1];
         $secondLastCandle = $candleData[count($candleData) - 2];
         $stopLoss = $buy_order['stopLoss'];
-
+        $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
 
         // Scenerio 1: If Current profit is less than 1%
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
         Log::info('LongThreadMACD: Current profit ' . $currentProfit);
 
-        if ($currentCandle['close'] < $stopLoss) {
+
+
+        if (($stopLoss > $buy_order['price'] && $currentCandle['close'] < $stopLoss) || ($stopLoss < $buy_order['price'] && $currentCandle['open'] < $stopLoss)) {
             // Checking Upper Wick Formation
 
             $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 5, $stopLoss, $tradeInstance->symbol);
