@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\SupportResistanceFakeBreakoutReport;
+namespace App\Services\ReportServiceMacd;
 
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
@@ -10,9 +10,8 @@ use DateTime;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class LongReportService
+class ShortReportService
 {
-    public static $priceLock = 0;
     /**
      * Updates the coin report data by fetching the latest from the Binance API.
      * 
@@ -40,18 +39,18 @@ class LongReportService
         foreach ($coins as $coin) {
 
             $targetProfit = 0.5;
-            $stopLoss = 1;
+
             try {
                 $symbol = $coin->symbol;
                 $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
-
-                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $stopLoss);
+                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
 
                 // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'LONG')->delete();
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'SHORT')->delete();
                 DB::table('coin_reports')->insert($trades);
                 $tradesTotal[$symbol] = $trades;
+
                 // Log::info("Updated coin report for $symbol at interval $interval.");
             } catch (\Exception $e) {
                 Log::error("Failed to update coin reports: " . $e->getMessage());
@@ -68,15 +67,17 @@ class LongReportService
     ) {
 
         $tradesTotal = [];
-        $targetProfit = 1;
+        $targetProfit = 2;
         try {
             $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
-            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, 1);
+
+            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
             $tradesTotal[$symbol] = $trades;
         } catch (\Exception $e) {
             Log::error("Failed to update coin reports: " . $e->getMessage());
             dd($e);
         }
+        usleep(100000); // 100ms Sleep after each iteration
 
         return $tradesTotal;
     }
@@ -91,11 +92,11 @@ class LongReportService
      * @param float $targetProfit Target profit percentage for sell signal.
      * @return array Processed trade data.
      */
-    protected static function processCandles($symbol, $interval, $market, $data, $targetProfitInitial, $stopLoss)
+    protected static function processCandles($symbol, $interval, $market, $data, $targetProfit)
     {
         $buy_price = 0;
         $buy_triggers = [];
-        $priceLock = $data[0]['open'];
+        $priceLock = $data[0]['close'];
         $priceLockIndex = 0;
         $skipIndex = 0;
         $counter = 0;
@@ -103,9 +104,7 @@ class LongReportService
         $trades = [];
         $lockedPriceBuy = 0;
         $lowestPrice = 0;
-        $stopLossPrice = 0;
         $buyingCandles = [];
-        $targetProfit = $targetProfitInitial;
         $timestamp = $data[0]['binance_timestamp'] - (60 * 5000 * 1000);
         $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 1000, $timestamp, $market);
 
@@ -118,7 +117,6 @@ class LongReportService
         }, array_merge($averageAdjustmetCandles, $data));
 
 
-
         foreach ($data as $index => $candle) {
 
             // Skip First 1000 Candles
@@ -126,30 +124,31 @@ class LongReportService
                 continue;
             }
 
-            $secondLastCandle = $data[$index - 1];
-
 
             $obvCandles = 15;
-            $idealBuying = IdealTradeService::getIdealOpeningCandlesLong(array_slice($data, $index - 1000, 1000));
+            $idealBuying = IdealTradeService::getIdealOpeningCandlesShort(array_slice($data, $index - 1000, 1000));
             // dd($symbol,$index,$idealBuying);
             if (empty($idealBuying))
                 continue;
-            $averages = IdealTradeService::getAverages($idealBuying);
+            $averages = IdealTradeService::getAverages($idealBuying, 'SHORT');
 
+            $rsiThreshold = $averages['rsi6'];
+            $stochDLimit =  $averages['stoch_d'];
+            $obvLimit = $averages['previousObvLow'] ? (($averages['previousObvLow'] - $averages['obv']) / $averages['previousObvLow']) * 100 : 0;
             $supportResistanceData = array_slice($data, $index - 300, 300);
             $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [7]);
 
-            $newSupport = $supportResistance[7]['support'] * (1 + 0.5 / 100);
+            $newResistance = $supportResistance[7]['resistance'] * (1 - 0.5 / 100);
+
 
             if ($buy_price == 0) {
 
-                $macdDarkRedDistance = 0;
+                $macdLightGreenDistance = 0;
                 $loopIndex = $index;
 
                 while (true) {
-
-                    if ($data[$loopIndex]['histogram'] >= $data[$loopIndex - 1]['histogram']) {
-                        $macdDarkRedDistance++;
+                    if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
+                        $macdLightGreenDistance++;
                     } else {
                         break;
                     }
@@ -157,73 +156,63 @@ class LongReportService
                     $loopIndex--;
                 }
 
+                if ($index > $obvCandles) {
 
-                if (
-                    // $candle['close'] > $candle['open'] &&
-                    // $data[$index - 1]['close'] > $data[$index - 1]['open'] &&
-                    // $data[$index - 2]['close'] > $data[$index - 2]['open'] &&
-                    // ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
-                    // ($candle['dif'] < 0 || $candle['dea'] < 0) &&
-                    // $candle['histogram'] > 0 &&
-                    // $candle['wr'] > -10
+                    if (
+                        // $candle['close'] < $candle['open'] &&
+                        // $data[$index - 1]['close'] < $data[$index - 1]['open'] &&
+                        // $data[$index - 2]['close'] > $newResistance && $data[$index - 2]['open'] < $newResistance &&
+                        // $candle['close'] <= $supportResistance[7]['resistance'] &&
 
-
-
-                    // // MACD Should be negative, downward candles
-                    // $data[$index]['histogram'] < 0 && $data[$index - 1]['histogram'] < 0 && $data[$index - 2]['histogram'] < 0 &&
-
-                    // // Current candle should be light red and increasing from previous
-                    // $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['per'] > 0 &&
-
-                    // // second last should be lower than third last and solid red candles
-                    // $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] < 0 &&
-
-                    // ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
-
-                    // $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+                        // ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
 
 
-                    // Check for two bullish and one berish candles
-                    $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0 &&
+                        // MACD Should be negative, downward candles
+                        // $data[$index]['histogram'] > 0 && $data[$index - 1]['histogram'] > 0 && $data[$index - 2]['histogram'] > 0 &&
 
-                    ($data[$index]['histogram'] < 0 ||  $data[$index - 1]['histogram'] < 0) &&
+                        // // Current candle should be light green and increasing from previous
+                        // $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['per'] < 0 &&
 
-                    $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 6
+                        // // second last should be lower than third last and solid red candles
+                        // $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] > 0 &&
 
+                        // ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
 
-                ) {
+                    
+                        $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] > 0 &&
 
-                    $candle['should_buy'] = true;
-                    $candle['previousObvHigh'] = 0;
-                    $candle['previousObvHighReduced'] = 0;
-                    $buy_price = $candle['close'];
-                    $buy_triggers[] = $candle;
-                    $currentTrade['buyingCandle'] = json_encode($candle);
-                    $currentTrade['buyingAverages'] = json_encode($averages);
-                    $lowestPrice = $buy_price;
-                    $stopLossPrice = $buy_price * (1 - $stopLoss / 100);
+                        ($data[$index]['histogram'] > 0 ||  $data[$index - 1]['histogram'] > 0) &&
+
+                        $data[$index]['dif'] < $data[$index - 1]['dif'] && $macdLightGreenDistance >= 6
+                    ) {
+                        $candle['should_buy'] = true;
+                        $candle['previousObvHigh'] = 0;
+                        $candle['previousObvHighReduced'] = 0;
+                        $buy_price = $candle['close'];
+                        $buy_triggers[] = $candle;
+                        $currentTrade['buyingCandle'] = json_encode($candle);
+                        $currentTrade['buyingAverages'] = json_encode($averages);
+                        $lowestPrice = $buy_price;
+                    }
                 }
             } else {
-                if ($lowestPrice > $candle['low'])
-                    $lowestPrice = $candle['low'];
-
-
-
-                if ($candle['high'] >= $buy_price * (1 - $targetProfit / 100)) {
-                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'long');
+                if ($lowestPrice < $candle['high'])
+                    $lowestPrice = $candle['high'];
+                if ($candle['low'] <= $buy_price * (1 - $targetProfit / 100)) {
+                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'short');
                     $candle['should_sell'] = true;
                     $buy_triggers[] = $candle;
                     $currentTrade['sellingCandle'] = json_encode($candle);
                     $currentTrade['buyingPrice'] = $buy_price;
                     $currentTrade['market'] = $market;
-                    $currentTrade['sellingPrice'] = $candle['high'];
+                    $currentTrade['sellingPrice'] = $candle['low'];
                     $currentTrade['symbol'] = $symbol;
                     $currentTrade['interval'] = $interval;
-                    $currentTrade['profit'] = round(($candle['high'] - $buy_price) / $buy_price * 100, 2);
+                    $currentTrade['profit'] = abs(round(($candle['low'] - $buy_price) / $buy_price * 100, 2));
                     $currentTrade['lowestPrice'] = $lowestPrice;
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
-                    $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
-                    $currentTrade['position'] = 'LONG';
+                    $currentTrade['lowestPricePercentage'] = abs((($buy_price - $lowestPrice) / $buy_price)) * 100;
+                    $currentTrade['position'] = 'SHORT';
                     $currentTrade['formula'] = 'StochRsiBreakout';
                     $lowestPrice = 0;
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
@@ -234,9 +223,7 @@ class LongReportService
                     $trades[] = $currentTrade;
                     $currentTrade = [];
                     $buy_price = 0;
-                    $stopLossPrice = 0;
                 }
-                
             }
         }
 

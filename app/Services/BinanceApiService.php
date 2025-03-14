@@ -277,6 +277,7 @@ class BinanceApiService
             $volume = (float) $candle[5];
 
             $closePrices[] = $close;
+            $volumes[] = $volume;
 
             if ($index == 0) {
                 // Initial trend assumption can actually be decided based on more context or prior data
@@ -491,6 +492,13 @@ class BinanceApiService
                     }
                 }
             }
+
+            // Calculate MA5 for Volume
+            $ma5_volume = $index >= 4 ? array_sum(array_slice($volumes, -5)) / 5 : null;
+
+            // Calculate MA10 for Volume
+            $ma10_volume = $index >= 9 ? array_sum(array_slice($volumes, -10)) / 10 : null;
+
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp' => $timestamp,
@@ -501,6 +509,8 @@ class BinanceApiService
                 'low' => $low,
                 'close' => $close,
                 'volume' => $volume,
+                'volumeMA5' => $ma5_volume,
+                'volumeMA10' => $ma10_volume,
                 'ma7' => $ma7,
                 'ma14' => $ma14,
                 'ma25' => $ma25,
@@ -1196,7 +1206,7 @@ class BinanceApiService
 
 
     // Future Api's
-    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false,$stopLossPercentage = 0.5,$targetProfit = 0.5)
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false, $stopLossPercentage = 0.5, $targetProfit = 0.5)
     {
 
         $market = 'FUTURE';

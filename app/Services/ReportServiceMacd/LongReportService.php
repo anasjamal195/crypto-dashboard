@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\SupportResistanceFakeBreakoutReport;
+namespace App\Services\ReportServiceMacd;
 
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
@@ -148,47 +148,54 @@ class LongReportService
 
                 while (true) {
 
-                    if ($data[$loopIndex]['histogram'] >= $data[$loopIndex - 1]['histogram']) {
-                        $macdDarkRedDistance++;
-                    } else {
+                    if ($data[$loopIndex]['histogram'] > 0)
                         break;
-                    }
+                    $macdDarkRedDistance++;
 
                     $loopIndex--;
                 }
 
+                $volumeCrossover = false;
+                $loopIndex = $index;
+
+                while (true) {
+
+                    if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
+                        $volumeCrossover = true;
+                        break;
+                    }
+                    if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
+                        break;
+                    }
+                    $loopIndex--;
+                }
+
+
+                $kdjCrossover = false;
+                $kdjthreshold = 30;
 
                 if (
-                    // $candle['close'] > $candle['open'] &&
-                    // $data[$index - 1]['close'] > $data[$index - 1]['open'] &&
-                    // $data[$index - 2]['close'] > $data[$index - 2]['open'] &&
-                    // ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
-                    // ($candle['dif'] < 0 || $candle['dea'] < 0) &&
-                    // $candle['histogram'] > 0 &&
-                    // $candle['wr'] > -10
+                    $data[$index]['J'] > $data[$index]['K'] * (1 + $kdjthreshold / 100) &&
+                    $data[$index - 1]['J'] <= $data[$index]['K'] * (1 + $kdjthreshold / 100)
+                    &&
+                    $data[$index]['J'] > $data[$index]['D'] * (1 + $kdjthreshold / 100) &&
+                    $data[$index - 1]['J'] <= $data[$index]['D'] * (1 + $kdjthreshold / 100)
+                ) {
+                    $kdjCrossover = true;
+                }
 
 
 
-                    // // MACD Should be negative, downward candles
-                    // $data[$index]['histogram'] < 0 && $data[$index - 1]['histogram'] < 0 && $data[$index - 2]['histogram'] < 0 &&
+                if (
+                    // Current and previous MACD should be red
 
-                    // // Current candle should be light red and increasing from previous
-                    // $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['per'] > 0 &&
+                    $data[$index]['histogram'] < 0 && $data[$index - 1]['histogram'] < 0 &&
+                    // Current MACD should be light red (increasing)
+                    $data[$index]['histogram'] > $data[$index - 1]['histogram'] &&
 
-                    // // second last should be lower than third last and solid red candles
-                    // $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] < 0 &&
+                    $volumeCrossover && $kdjCrossover &&
 
-                    // ($candle['J'] > $candle['K'] || $candle['J'] > $candle['D']) &&
-
-                    // $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-
-
-                    // Check for two bullish and one berish candles
-                    $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0 &&
-
-                    ($data[$index]['histogram'] < 0 ||  $data[$index - 1]['histogram'] < 0) &&
-
-                    $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 6
+                    $macdDarkRedDistance >= 6
 
 
                 ) {
@@ -201,7 +208,6 @@ class LongReportService
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $currentTrade['buyingAverages'] = json_encode($averages);
                     $lowestPrice = $buy_price;
-                    $stopLossPrice = $buy_price * (1 - $stopLoss / 100);
                 }
             } else {
                 if ($lowestPrice > $candle['low'])
@@ -209,17 +215,17 @@ class LongReportService
 
 
 
-                if ($candle['high'] >= $buy_price * (1 - $targetProfit / 100)) {
+                if ($candle['close'] >= $buy_price * (1 + $targetProfit / 100)) {
                     $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'long');
                     $candle['should_sell'] = true;
                     $buy_triggers[] = $candle;
                     $currentTrade['sellingCandle'] = json_encode($candle);
                     $currentTrade['buyingPrice'] = $buy_price;
                     $currentTrade['market'] = $market;
-                    $currentTrade['sellingPrice'] = $candle['high'];
+                    $currentTrade['sellingPrice'] = $candle['close'];
                     $currentTrade['symbol'] = $symbol;
                     $currentTrade['interval'] = $interval;
-                    $currentTrade['profit'] = round(($candle['high'] - $buy_price) / $buy_price * 100, 2);
+                    $currentTrade['profit'] = round(($candle['close'] - $buy_price) / $buy_price * 100, 2);
                     $currentTrade['lowestPrice'] = $lowestPrice;
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
@@ -234,9 +240,7 @@ class LongReportService
                     $trades[] = $currentTrade;
                     $currentTrade = [];
                     $buy_price = 0;
-                    $stopLossPrice = 0;
                 }
-                
             }
         }
 

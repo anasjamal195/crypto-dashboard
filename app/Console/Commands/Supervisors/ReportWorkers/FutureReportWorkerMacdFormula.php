@@ -3,22 +3,25 @@
 namespace App\Console\Commands\Supervisors\ReportWorkers;
 
 use App\CommonHelpers;
+use App\Services\BinanceApiService;
 use App\Services\CoinReportService;
 use App\Services\MailerService;
+use App\Services\ReportServiceMacd\LongReportService as ReportServiceMacdLongReportService;
+use App\Services\ReportServiceMacd\ShortReportService as ReportServiceMacdShortReportService;
 use App\Services\SupportResistanceFakeBreakoutReport\LongReportService;
 use App\Services\SupportResistanceFakeBreakoutReport\ShortReportService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class FutureReportWorkerSupportResistanceFakeBreakout extends Command
+class FutureReportWorkerMacdFormula extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'app:future-report-worker-support-resistance-fake-breakout-formula';
+    protected $signature = 'app:future-report-worker-macd-formula';
     public $interval;
     public $limit;
     public $rsiThreshold;
@@ -41,14 +44,14 @@ class FutureReportWorkerSupportResistanceFakeBreakout extends Command
     {
         DB::table('coin_reports')->where('market', 'FUTURE')->truncate();
 
-        // while (true) {
+        
         try {
-            // ShortReportService::updateCoinReport(
+            // ReportServiceMacdShortReportService::updateCoinReport(
             //     '5m',
             //     1000,
             //     'FUTURE'
             // );
-            LongReportService::updateCoinReport(
+            ReportServiceMacdLongReportService::updateCoinReport(
                 '5m',
                 1000,
                 'FUTURE'
@@ -56,6 +59,5 @@ class FutureReportWorkerSupportResistanceFakeBreakout extends Command
         } catch (\Exception $e) {
             Log::error($e);
         }
-        // }
     }
 }
