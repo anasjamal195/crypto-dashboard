@@ -87,9 +87,9 @@ class MacdFormulaLong
 
                     if (
                         // Check for two bullish and one berish candles
-                        $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0 &&
+                        $data[$index]['per'] > 0 && $data[$index - 1][' '] > 0 && $data[$index - 2]['per'] < 0 &&
 
-                        ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0) && $slopeRatio > 0 &&
+                        ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0) &&
 
                         $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 6 &&
 

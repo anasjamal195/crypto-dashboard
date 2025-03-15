@@ -156,6 +156,8 @@ class ShortReportService
                     $loopIndex--;
                 }
 
+                $slopeRatio = ($data[$index]['dea'] - $data[$index - 1]['dea']) ? ($data[$index]['dif'] - $data[$index - 1]['dif']) / ($data[$index]['dea'] - $data[$index - 1]['dea']) : 0;
+
                 if ($index > $obvCandles) {
 
                     if (
@@ -178,10 +180,12 @@ class ShortReportService
 
                         // ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
 
-                    
+
                         $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] > 0 &&
 
                         ($data[$index]['histogram'] > 0 ||  $data[$index - 1]['histogram'] > 0) &&
+
+                        $slopeRatio < 0 &&
 
                         $data[$index]['dif'] < $data[$index - 1]['dif'] && $macdLightGreenDistance >= 6
                     ) {
