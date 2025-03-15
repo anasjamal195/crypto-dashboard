@@ -254,7 +254,7 @@ class ShortReportService
                         && $data[$index]['close'] < $lastHighest * (1 - 0.7 / 100)
                         && $data[$index]['avl'] < $data[$index - 1]['avl']
                         && $data[$index]['dif'] < $data[$index - 1]['dif']
-                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] + 10
+                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] - 10
                     ) {
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;
