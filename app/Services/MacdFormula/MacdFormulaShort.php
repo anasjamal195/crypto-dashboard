@@ -83,16 +83,124 @@ class MacdFormulaShort
 
                     $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
 
+                    // New Formula
+                    $macdDarkGreenDistance = 0;
+                    $loopIndex = $index;
+
+                    while (true) {
+
+                        if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
+                            $macdDarkGreenDistance++;
+                        } else {
+                            break;
+                        }
+
+                        $loopIndex--;
+                    }
+
+
+                    $totalGreenCandles = 0;
+                    $loopIndex = $index;
+
+                    while (true) {
+
+                        if ($data[$loopIndex]['histogram'] < 0)
+                            break;
+                        $totalGreenCandles++;
+
+                        $loopIndex--;
+                    }
+
+                    $volumeCrossover = false;
+                    $loopIndex = $index;
+
+                    while (true) {
+
+                        if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
+                            $volumeCrossover = true;
+                            break;
+                        }
+                        if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
+                            break;
+                        }
+                        $loopIndex--;
+                    }
+
+
+                    $kdjCrossover = false;
+                    $kdjthreshold = 0;
+                    $loopIndex = $index;
+
+                    while (true) {
+                        if (
+                            $data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
+                            $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
+                            &&
+                            $data[$loopIndex]['J'] < $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100) &&
+                            $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100)
+                        ) {
+                            $kdjCrossover = true;
+                            break;
+                        }
+
+                        if (
+                            ($data[$loopIndex]['J'] > $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
+                                $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
+                                &&
+                                $data[$loopIndex]['J'] > $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100) &&
+                                $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100))
+                            ||
+                            $loopIndex == 1
+                        ) {
+                            break;
+                        }
+
+                        $loopIndex--;
+                    }
+
+                    // Check KDJ approaching Crossover
+                    $kdjApproachingCrossover = abs($data[$index]['K'] - $data[$index]['J']) < abs($data[$index - 1]['K'] - $data[$index - 1]['J']) &&
+                        abs($data[$index]['D'] - $data[$index]['J']) < abs($data[$index - 1]['D'] - $data[$index - 1]['J']);
+
+
+
+                    // Check downward wick
+                    $upperWick = ($data[$index]['high'] - $data[$index]['open']);
+                    $lowerWick = ($data[$index]['close'] - $data[$index]['low']);
+                    $isDownwardWick = $data[$index]['close'] < $data[$index]['open'] && $lowerWick < $upperWick * 2;
+
+
+                    $lastHighest = $data[$index]['high'];
+                    $loopIndex = $index;
+                    while (true) {
+                        if ($data[$loopIndex]['high'] > $lastHighest) {
+                            $lastHighest = $data[$loopIndex]['high'];
+                        } else if ($data[$loopIndex]['high'] < $data[$index]['high'] || $loopIndex == 1) {
+                            break;
+                        }
+                        $loopIndex--;
+                    }
 
 
                     if (
-                        $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] > 0 &&
+                        // $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] > 0 &&
 
-                        ($data[$index]['histogram'] > 0 ||  $data[$index - 1]['histogram'] > 0) &&
+                        // ($data[$index]['histogram'] > 0 ||  $data[$index - 1]['histogram'] > 0) &&
 
-                        $data[$index]['dif'] < $data[$index - 1]['dif'] && $macdLightGreenDistance >= 6 &&
+                        // $data[$index]['dif'] < $data[$index - 1]['dif'] && $macdLightGreenDistance >= 6 &&
 
-                        !$isWorkerDispatched
+                        $data[$index]['histogram'] > 0
+                        && $isDownwardWick
+                        && ($kdjCrossover || $kdjApproachingCrossover)
+                        && $totalGreenCandles > 4
+                        && $data[$index]['per'] <= -0.2
+                        && $data[$index]['per'] > -0.6
+                        && $data[$index]['close'] < $lastHighest * (1 - 0.7 / 100)
+                        && $data[$index]['avl'] < $data[$index - 1]['avl']
+                        && $data[$index]['dif'] < $data[$index - 1]['dif']
+                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] - 10
+
+                        && !$isWorkerDispatched
 
                     ) {
                         Log::info('ShortWorkerMACD: Dispatching Short Thread... Coin: ' . $symbol);
