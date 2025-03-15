@@ -157,6 +157,34 @@ class LongReportService
                     $loopIndex--;
                 }
 
+                $macdLightGreenDistance = 0;
+                $loopIndex = $index;
+
+                while (true) {
+
+                    if ($data[$loopIndex]['histogram'] < 0) {
+                        break;
+                    }
+                    $macdDarkRedDistance++;
+
+                    $loopIndex--;
+                }
+
+                $kdjCrossoverDistance = 0;
+                $loopIndex = $index;
+
+                while (true) {
+
+                    if (($data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex - 1]['J'] < $data[$loopIndex - 1]['K']) ||
+                        ($data[$loopIndex]['J'] > $data[$loopIndex]['D'] && $data[$loopIndex - 1]['J'] < $data[$loopIndex - 1]['D'])
+                    ) {
+                        break;
+                    }
+                    $kdjCrossoverDistance++;
+
+                    $loopIndex--;
+                }
+
                 $slopeRatio = ($data[$index]['dea'] - $data[$index - 1]['dea']) ? ($data[$index]['dif'] - $data[$index - 1]['dif']) / ($data[$index]['dea'] - $data[$index - 1]['dea']) : 0;
                 if (
                     // $candle['close'] > $candle['open'] &&
@@ -184,14 +212,22 @@ class LongReportService
 
 
                     // Check for two bullish and one berish candles
-                    $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0 &&
+                    // $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0 &&
 
-                    ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0)  &&
+                    // ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0)  &&
 
-                    $slopeRatio > 0 &&
 
-                    $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 4
 
+                    // $data[$index]['dif'] > $data[$index - 1]['dif'] && $macdDarkRedDistance >= 4
+
+
+                    $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index]['close'] > $data[$index - 1]['close'] &&
+
+                    $data[$index]['histogram'] < 0 && $data[$index - 1]['histogram'] < 0 &&
+
+                    $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] &&
+
+                    $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index]['dif'] > 0 && $data[$index]['dea'] > 0 && $kdjCrossoverDistance <= 4 && $kdjCrossoverDistance >= 1
 
                 ) {
 

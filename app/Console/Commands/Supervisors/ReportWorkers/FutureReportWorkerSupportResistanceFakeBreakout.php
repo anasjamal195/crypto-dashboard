@@ -43,16 +43,16 @@ class FutureReportWorkerSupportResistanceFakeBreakout extends Command
 
         // while (true) {
         try {
-            ShortReportService::updateCoinReport(
-                '5m',
-                1000,
-                'FUTURE'
-            );
-            // LongReportService::updateCoinReport(
+            // ShortReportService::updateCoinReport(
             //     '5m',
             //     1000,
             //     'FUTURE'
             // );
+            LongReportService::updateCoinReport(
+                '5m',
+                1000,
+                'FUTURE'
+            );
         } catch (\Exception $e) {
             Log::error($e);
         }
