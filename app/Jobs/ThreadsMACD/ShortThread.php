@@ -191,7 +191,7 @@ class ShortThread implements ShouldQueue
             }
         }
 
-        if (!$allInProfit && $openTradesCount >= 2) {
+        if (!$allInProfit && $openTradesCount >= 5) {
             $openTrade = false;
         }
 
