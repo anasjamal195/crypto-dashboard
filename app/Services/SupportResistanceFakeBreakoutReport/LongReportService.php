@@ -228,7 +228,7 @@ class LongReportService
                     $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] &&
 
                     $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index]['dif'] > 0 && $data[$index]['dea'] > 0 && $kdjCrossoverDistance <= 4 && $kdjCrossoverDistance >= 1
-
+                    
                 ) {
 
                     $candle['should_buy'] = true;
