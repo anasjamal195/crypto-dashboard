@@ -27,8 +27,15 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-2 align-self-end">
-                                <button type="submit" class="btn btn-primary">Apply</button>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="stopLoss">Stop Loss % - Default is 1%</label>
+                                    <input name="stopLoss" id="stopLoss" class="form-control"
+                                        value="{{ request('stopLoss') }}" placeholder="Enter Stop Loss">
+                                </div>
+                            </div>
+                            <div class="col-md-2 ">
+                                <button type="submit" class="btn btn-primary my-2">Apply</button>
                             </div>
                         </div>
                     </form>
@@ -59,7 +66,7 @@
                                             $totalProfit += number_format($trade->total_profit, 2);
                                             $totalTrades += $trade->total_entries;
                                         @endphp
-                                        <tr @if ($trade->max_lowestPrice > 1) class="bg-danger" @endif>
+                                        <tr @if ($trade->max_lowestPrice > $stopLoss) class="bg-danger" @endif>
                                             <td>{{ $index + 1 }}</td>
                                             <td>{{ $trade->position }}</td>
                                             <td>{{ $trade->symbol }}</td>
@@ -75,7 +82,7 @@
                                             <td>{{ \Carbon\Carbon::parse($trade->last_updated)->timezone('Asia/Karachi')->format('h:i A') }}
                                             </td>
                                             <td>
-                                                <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'interval' => '5m']) }}"
+                                                <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'stopLoss' => request('stopLoss'), 'interval' => '5m']) }}"
                                                     class="btn btn-info btn-sm">
                                                     <i class="fa fa-eye"></i>
                                                 </a>
@@ -89,7 +96,7 @@
                                 <div class="flex-fill "><strong>Total Profit:</strong></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $totalTrades }}</div>
+                                <div class="flex-fill ">{{ $totalTrades - $stopLossesTrades }}</div>
                                 <div class="flex-fill ">{{ $totalProfit }} %</div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
@@ -104,8 +111,8 @@
                                 <div class="flex-fill "><strong>Total Stop Losses:</strong></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $stopLosses }} %</div>
+                                <div class="flex-fill ">{{ $stopLossesTrades }}</div>
+                                <div class="flex-fill ">{{ $stopLossesTotal }} %</div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
@@ -120,7 +127,7 @@
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill ">{{ $totalTrades }}</div>
-                                <div class="flex-fill ">{{ $totalProfit - $stopLosses }} %</div>
+                                <div class="flex-fill ">{{ $totalProfit - $stopLossesTotal }} %</div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
@@ -136,7 +143,8 @@
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $totalTrades ? round(100 - (($stopLosses) / $totalTrades) * 100, 2) : 0 }} %
+                                <div class="flex-fill ">
+                                    {{ $totalTrades ? round(100 - ($stopLossesTrades / $totalTrades) * 100, 2) : 0 }} %
                                 </div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>

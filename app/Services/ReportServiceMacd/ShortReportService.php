@@ -143,12 +143,13 @@ class ShortReportService
 
             if ($buy_price == 0) {
 
-                $macdLightGreenDistance = 0;
+                $macdDarkGreenDistance = 0;
                 $loopIndex = $index;
 
                 while (true) {
+
                     if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
-                        $macdLightGreenDistance++;
+                        $macdDarkGreenDistance++;
                     } else {
                         break;
                     }
@@ -156,34 +157,104 @@ class ShortReportService
                     $loopIndex--;
                 }
 
+
+                $totalGreenCandles = 0;
+                $loopIndex = $index;
+
+                while (true) {
+
+                    if ($data[$loopIndex]['histogram'] < 0)
+                        break;
+                    $totalGreenCandles++;
+
+                    $loopIndex--;
+                }
+
+                $volumeCrossover = false;
+                $loopIndex = $index;
+
+                while (true) {
+
+                    if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
+                        $volumeCrossover = true;
+                        break;
+                    }
+                    if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
+                        break;
+                    }
+                    $loopIndex--;
+                }
+
+
+                $kdjCrossover = false;
+                $kdjthreshold = 0;
+                $loopIndex = $index;
+
+                while (true) {
+                    if (
+                        $data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
+                        $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
+                        &&
+                        $data[$loopIndex]['J'] < $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100) &&
+                        $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100)
+                    ) {
+                        $kdjCrossover = true;
+                        break;
+                    }
+
+                    if (
+                        ($data[$loopIndex]['J'] > $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
+                            $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
+                            &&
+                            $data[$loopIndex]['J'] > $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100) &&
+                            $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100))
+                        ||
+                        $loopIndex == 1
+                    ) {
+                        break;
+                    }
+
+                    $loopIndex--;
+                }
+
+                // Check KDJ approaching Crossover
+                $kdjApproachingCrossover = abs($data[$index]['K'] - $data[$index]['J']) < abs($data[$index - 1]['K'] - $data[$index - 1]['J']) &&
+                    abs($data[$index]['D'] - $data[$index]['J']) < abs($data[$index - 1]['D'] - $data[$index - 1]['J']);
+
+
+
+                // Check downward wick
+                $upperWick = ($data[$index]['high'] - $data[$index]['open']);
+                $lowerWick = ($data[$index]['close'] - $data[$index]['low']);
+                $isDownwardWick = $data[$index]['close'] < $data[$index]['open'] && $lowerWick < $upperWick * 2;
+
+
+                $lastHighest = $data[$index]['high'];
+                $loopIndex = $index;
+                while (true) {
+                    if ($data[$loopIndex]['high'] > $lastHighest) {
+                        $lastHighest = $data[$loopIndex]['high'];
+                    } else if ($data[$loopIndex]['high'] < $data[$index]['high'] || $loopIndex == 1) {
+                        break;
+                    }
+                    $loopIndex--;
+                }
+
+
                 if ($index > $obvCandles) {
 
                     if (
-                        // $candle['close'] < $candle['open'] &&
-                        // $data[$index - 1]['close'] < $data[$index - 1]['open'] &&
-                        // $data[$index - 2]['close'] > $newResistance && $data[$index - 2]['open'] < $newResistance &&
-                        // $candle['close'] <= $supportResistance[7]['resistance'] &&
-
-                        // ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
-
-
-                        // MACD Should be negative, downward candles
-                        // $data[$index]['histogram'] > 0 && $data[$index - 1]['histogram'] > 0 && $data[$index - 2]['histogram'] > 0 &&
-
-                        // // Current candle should be light green and increasing from previous
-                        // $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['per'] < 0 &&
-
-                        // // second last should be lower than third last and solid red candles
-                        // $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] > 0 &&
-
-                        // ($candle['J'] < $candle['K'] || $candle['J'] < $candle['D'])
-
-                    
-                        $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] > 0 &&
-
-                        ($data[$index]['histogram'] > 0 ||  $data[$index - 1]['histogram'] > 0) &&
-
-                        $data[$index]['dif'] < $data[$index - 1]['dif'] && $macdLightGreenDistance >= 6
+                        // Current and previous MACD should be green
+                        $data[$index]['histogram'] > 0
+                        && $isDownwardWick
+                        && ($kdjCrossover || $kdjApproachingCrossover)
+                        && $totalGreenCandles > 4
+                        && $data[$index]['per'] <= -0.2
+                        && $data[$index]['per'] > -0.6
+                        && $data[$index]['close'] < $lastHighest * (1 - 0.7 / 100)
+                        && $data[$index]['avl'] < $data[$index - 1]['avl']
+                        && $data[$index]['dif'] < $data[$index - 1]['dif']
+                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] + 10
                     ) {
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;

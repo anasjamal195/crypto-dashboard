@@ -148,9 +148,24 @@ class LongReportService
 
                 while (true) {
 
+                    if ($data[$loopIndex]['histogram'] >= $data[$loopIndex - 1]['histogram']) {
+                        $macdDarkRedDistance++;
+                    } else {
+                        break;
+                    }
+
+                    $loopIndex--;
+                }
+
+
+                $totalRedCandles = 0;
+                $loopIndex = $index;
+
+                while (true) {
+
                     if ($data[$loopIndex]['histogram'] > 0)
                         break;
-                    $macdDarkRedDistance++;
+                    $totalRedCandles++;
 
                     $loopIndex--;
                 }
@@ -172,30 +187,95 @@ class LongReportService
 
 
                 $kdjCrossover = false;
-                $kdjthreshold = 30;
+                $kdjthreshold = 0;
+                $loopIndex = $index;
 
-                if (
-                    $data[$index]['J'] > $data[$index]['K'] * (1 + $kdjthreshold / 100) &&
-                    $data[$index - 1]['J'] <= $data[$index]['K'] * (1 + $kdjthreshold / 100)
-                    &&
-                    $data[$index]['J'] > $data[$index]['D'] * (1 + $kdjthreshold / 100) &&
-                    $data[$index - 1]['J'] <= $data[$index]['D'] * (1 + $kdjthreshold / 100)
-                ) {
-                    $kdjCrossover = true;
+                while (true) {
+                    if (
+                        $data[$loopIndex]['J'] > $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100) &&
+                        $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100)
+                        &&
+                        $data[$loopIndex]['J'] > $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100) &&
+                        $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100)
+                    ) {
+                        $kdjCrossover = true;
+                        break;
+                    }
+
+                    if (
+                        ($data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100) &&
+                            $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100)
+                            &&
+                            $data[$loopIndex]['J'] < $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100) &&
+                            $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100))
+                        ||
+                        $loopIndex == 1
+                    ) {
+                        break;
+                    }
+
+                    $loopIndex--;
                 }
 
+                // Check KDJ approaching Crossover
+                $kdjApproachingCrossover = abs($data[$index]['K'] - $data[$index]['J']) < abs($data[$index - 1]['K'] - $data[$index - 1]['J']) &&
+                    abs($data[$index]['D'] - $data[$index]['J']) < abs($data[$index - 1]['D'] - $data[$index - 1]['J']);
 
+
+
+                // Check downward wick
+                $upperWick = ($data[$index]['high'] - $data[$index]['close']);
+                $lowerWick = ($data[$index]['open'] - $data[$index]['low']);
+                $isDownwardWick = $data[$index]['close'] > $data[$index]['open'] && $lowerWick > $upperWick * 2;
+
+
+                $lastLowest = $data[$index]['low'];
+                $loopIndex = $index;
+                while (true) {
+                    if ($data[$loopIndex]['low'] < $lastLowest) {
+                        $lastLowest = $data[$loopIndex]['low'];
+                    } else if ($data[$loopIndex]['low'] > $data[$index]['low'] || $loopIndex == 1) {
+                        break;
+                    }
+                    $loopIndex--;
+                }
 
                 if (
                     // Current and previous MACD should be red
+                    // $data[$index]['histogram'] < 0
+                    // && $isDownwardWick
+                    // && ($kdjCrossover || $kdjApproachingCrossover)
+                    // && $totalRedCandles > 4
+                    // && $data[$index]['per'] >= 0.2
+                    // && $data[$index]['per'] < 0.6
+                    // && $data[$index]['close'] < $lastLowest * (1 + 0.7 / 100)
+                    // && $data[$index]['avl'] > $data[$index - 1]['avl']
+                    // && $data[$index]['dif'] > $data[$index - 1]['dif']
+                    // && $data[$index]['rsi6'] > $data[$index - 1]['rsi6'] + 10
 
-                    $data[$index]['histogram'] < 0 && $data[$index - 1]['histogram'] < 0 &&
-                    // Current MACD should be light red (increasing)
-                    $data[$index]['histogram'] > $data[$index - 1]['histogram'] &&
 
-                    $volumeCrossover && $kdjCrossover &&
 
-                    $macdDarkRedDistance >= 6
+                    // Old Live Formula
+                    $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0
+                    // && $isDownwardWick
+                    && $data[$index]['per'] >= 0.2
+
+                    // && ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0)
+
+                    && $data[$index]['histogram'] < 0
+
+
+                    && $data[$index]['dif'] > $data[$index - 1]['dif']
+                    // && $macdDarkRedDistance >= 6
+
+                    && $data[$index]['avl'] > $data[$index - 1]['avl']
+
+                    && ($kdjCrossover || $kdjApproachingCrossover)
+                    && $totalRedCandles > 4
+                    && $data[$index]['close'] < $lastLowest * (1 + 0.7 / 100)
+                    && $data[$index]['rsi6'] > $data[$index - 1]['rsi6'] + 10
+
+
 
 
                 ) {

@@ -22,7 +22,7 @@ class LongThread implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public $timeout = 360000000;
     public $tries = 1; // The job will only run once
-    public $stopLoss = 1;
+    public $stopLoss = 2;
     public $targetProfit = 0.5;
 
     public $tradeInstance;
@@ -188,7 +188,7 @@ class LongThread implements ShouldQueue
             }
         }
 
-        if (!$allInProfit && $openTradesCount >= 3) {
+        if (!$allInProfit && $openTradesCount >= 5) {
             $openTrade = false;
         }
 

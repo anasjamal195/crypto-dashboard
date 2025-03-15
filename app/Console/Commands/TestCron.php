@@ -35,11 +35,11 @@ class TestCron extends Command
     public function handle()
     {
         dd(BinanceApiService::getCandleStickData(
-            'ICPUSDT',
+            'UXLINKUSDT',
             '5m',
             300,
             null,
             'FUTURE'
-        )[295]);
+        )[298]);
     }
 }

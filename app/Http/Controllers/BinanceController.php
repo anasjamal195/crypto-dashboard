@@ -60,22 +60,24 @@ class BinanceController extends Controller
         }
         $liquidatedCoins = $liquidatedCoinsQuery->get();
 
+        $stopLoss = $request->input('stopLoss') ?? 1;
         // Stop losses query with position filter if provided
         $stopLossesQuery = DB::table('coin_reports')
-            ->select('symbol', 'interval', 'market')
+            ->select('symbol', 'interval', 'market', 'profit')
             ->distinct()
-            ->whereRaw('lowestPricePercentage > 1');
+            ->whereRaw('lowestPricePercentage > ' . $stopLoss);
 
         if ($request->filled('position')) {
             $stopLossesQuery->where('position', $request->position);
         }
-        $stopLosses = $stopLossesQuery->count() ;
+        $stopLossesTrades = $stopLossesQuery->count();
+        $stopLossesTotal = $stopLossesTrades * $stopLoss;
         // Extracting unique symbols, intervals, and markets
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
 
-        return view('CoinReports.coin-report', compact('tradeData', 'stopLosses', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', compact('tradeData', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {
@@ -84,6 +86,7 @@ class BinanceController extends Controller
         $symbol = $request->query('symbol');
         $interval = $request->query('interval');
         $position = $request->query('position');
+        $stopLoss = $request->query('stopLoss') ?? 1;
 
         // Fetch the trades for the given symbol
         $trades = DB::table('coin_reports')
@@ -115,6 +118,7 @@ class BinanceController extends Controller
             'symbol' => $symbol,
             'interval' => $interval,
             'trades' => $trades,
+            'stopLoss' => $stopLoss,
             'market' => $market,
             'data' => $data,
         ]);

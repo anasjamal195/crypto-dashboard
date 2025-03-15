@@ -267,6 +267,9 @@ class BinanceApiService
 
         $kValues = [50]; // Initial K value
         $dValues = [50]; // Initial D value
+
+        // AVL Calculation
+
         foreach ($data as $index => $candle) {
             // Parse candlestick data
             $timestamp = $candle[0];
@@ -499,6 +502,8 @@ class BinanceApiService
             // Calculate MA10 for Volume
             $ma10_volume = $index >= 9 ? array_sum(array_slice($volumes, -10)) / 10 : null;
 
+            // AVL Calculation
+            $avl = ($high + $low) / 2;
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp' => $timestamp,
@@ -511,6 +516,7 @@ class BinanceApiService
                 'volume' => $volume,
                 'volumeMA5' => $ma5_volume,
                 'volumeMA10' => $ma10_volume,
+                'avl' => $avl,
                 'ma7' => $ma7,
                 'ma14' => $ma14,
                 'ma25' => $ma25,

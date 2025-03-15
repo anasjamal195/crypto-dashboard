@@ -44,18 +44,18 @@ class FutureReportWorkerMacdFormula extends Command
     {
         DB::table('coin_reports')->where('market', 'FUTURE')->truncate();
 
-        
+
         try {
-            // ReportServiceMacdShortReportService::updateCoinReport(
-            //     '5m',
-            //     1000,
-            //     'FUTURE'
-            // );
-            ReportServiceMacdLongReportService::updateCoinReport(
+            ReportServiceMacdShortReportService::updateCoinReport(
                 '5m',
                 1000,
                 'FUTURE'
             );
+            // ReportServiceMacdLongReportService::updateCoinReport(
+            //     '5m',
+            //     1000,
+            //     'FUTURE'
+            // );
         } catch (\Exception $e) {
             Log::error($e);
         }
