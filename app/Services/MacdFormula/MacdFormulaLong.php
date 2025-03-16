@@ -43,8 +43,8 @@ class MacdFormulaLong
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
 
-                $openWorkersCount = DB::table('trade_handler')->where('isWorkerDispatched', true)->count();
-                if ($openWorkersCount >= 17) {
+                $openWorkersCount = DB::table('trade_handler')->where('isWorkerDispatched', true)->where('position', 'LONG')->count();
+                if ($openWorkersCount >= 9) {
                     continue;
                 }
 
@@ -195,7 +195,7 @@ class MacdFormulaLong
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'isWorkerDispatched' => true,
                         ]);
-                        
+
                         ThreadsMACDLongThread::dispatch($tradeInstance, $supportResistance);
                         break;
                     }

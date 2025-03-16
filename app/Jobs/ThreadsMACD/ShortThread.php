@@ -180,20 +180,23 @@ class ShortThread implements ShouldQueue
 
         $openTrades = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->get();
         $openTradesCount = count($openTrades);
-        $allInProfit = true;
-
-        if ($openTradesCount == 0) {
-            $allInProfit = false;
-        }
-        foreach ($openTrades as $openTrade) {
-            if ($openTrade->currentProfit < 0.5) {
-                $allInProfit = false;
-            }
-        }
-
-        if (!$allInProfit && $openTradesCount >= 5) {
+        if ($openTradesCount >= 5) {
             $openTrade = false;
         }
+        // $allInProfit = true;
+
+        // if ($openTradesCount == 0) {
+        //     $allInProfit = false;
+        // }
+        // foreach ($openTrades as $openTrade) {
+        //     if ($openTrade->currentProfit < 0.5) {
+        //         $allInProfit = false;
+        //     }
+        // }
+
+        // if (!$allInProfit && $openTradesCount >= 5) {
+        //     $openTrade = false;
+        // }
 
         if ($openTrade) {
 

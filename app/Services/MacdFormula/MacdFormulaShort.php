@@ -42,8 +42,8 @@ class MacdFormulaShort
             try {
                 $symbol = $tradeInstance->symbol;
                 $trade_acc = $tradeInstance->tradeAccount;
-                $openWorkersCount = DB::table('trade_handler')->where('isWorkerDispatched', true)->count();
-                if ($openWorkersCount >= 17) {
+                $openWorkersCount = DB::table('trade_handler')->where('isWorkerDispatched', true)->where('position', 'SHORT')->count();
+                if ($openWorkersCount >= 9) {
                     continue;
                 }
 
