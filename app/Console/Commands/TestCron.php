@@ -34,6 +34,20 @@ class TestCron extends Command
      */
     public function handle()
     {
-        dd(BinanceApiService::getPositionDetails('UXLINKUSDT',1));
+        $supportResistance = [
+            'support' => 20,
+            'resistance' => 30
+        ];
+        // dd(BinanceApiService::openMarketPositionLiveTrader('XRPUSDT', 7, 'BUY', 2, 1, 'Testing Stop Market', $supportResistance, 0, false, 0.5, 0.5));
+
+        // dd(BinanceApiService::placeOrUpdateStopMarketOrder('XRPUSDT',1,1.5,93210099227));
+        dd(BinanceApiService::placeTpSlOrders('XRPUSDT',1,2.3625,2.358,93210099227));
+
+
+        // dd(BinanceApiService::closeMarketPositionLiveTrader(93197794497));
     }
+
+
+
+  
 }

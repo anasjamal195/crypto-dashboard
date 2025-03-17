@@ -310,7 +310,7 @@ class LongReportService
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
                     $currentTrade['position'] = 'LONG';
-                    $currentTrade['formula'] = 'StochRsiBreakout';
+                    $currentTrade['formula'] = 'MacdSwing';
                     $lowestPrice = 0;
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);

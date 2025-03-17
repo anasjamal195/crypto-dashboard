@@ -1660,7 +1660,7 @@ class BinanceApiService
         if (!$user) {
             return false;
         }
-
+        
         $apiKey = $user->api_key;
         $secretKey = $user->api_secret;
         $timestamp = round(microtime(true) * 1000);
@@ -1679,7 +1679,7 @@ class BinanceApiService
 
 
         $positions = $response->json();
-
+      
         if (!$positions || isset($positions['code'])) {
             return false; // Return false if request fails or API returns an error
         }
@@ -1944,7 +1944,7 @@ class BinanceApiService
 
         // Get position details
         $positionDetails = self::getPositionDetails($symbol, $trader);
-
+        dd($positionDetails);
         if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
             // No open position found, return last close order details
 
@@ -1961,6 +1961,7 @@ class BinanceApiService
 
 
             $response =  self::getLastCloseOrder($symbol, $trader);
+
 
 
 
@@ -2045,31 +2046,51 @@ class BinanceApiService
 
         // Check for existing stop order
         $existingStopOrder = self::getExistingStopOrder($symbol, $trader, $side);
-
+        // dd($existingStopOrder);
         if ($existingStopOrder) {
             // Cancel existing stop order
             self::cancelOrder($symbol, $trader, $existingStopOrder['orderId']);
         }
 
         // Place new stop order
+        // Place new stop order
         $timestamp = round(microtime(true) * 1000);
-        $queryString = "symbol=$symbol&side=$side&type=STOP_MARKET&stopPrice=$stopPrice&quantity=" . abs($positionDetails['positionAmt']) . "&timestamp=$timestamp";
-        $signature = hash_hmac('sha256', $queryString, $secretKey);
 
-        // Make API Request
-        $response = self::getHttpClient()->withHeaders([
-            'X-MBX-APIKEY' => $apiKey,
-        ])->post("https://fapi.binance.com/fapi/v1/order", [
+        // Create parameters array
+        $params = [
             'symbol' => $symbol,
             'side' => $side,
             'type' => 'STOP_MARKET',
             'stopPrice' => $stopPrice,
             'quantity' => abs($positionDetails['positionAmt']),
             'timestamp' => $timestamp,
-            'signature' => $signature,
+        ];
+
+        // Convert to query string for signature
+        $queryString = http_build_query($params);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
+        // Try using Guzzle directly for more control
+        $client = new \GuzzleHttp\Client();
+        $response = $client->request('POST', 'https://fapi.binance.com/fapi/v1/order', [
+            'headers' => [
+                'X-MBX-APIKEY' => $apiKey,
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ],
+            'query' => $params + ['signature' => $signature],
         ]);
 
-        return $response->json();
+        // Get the response body as a string
+        $responseBody = $response->getBody()->getContents();
+
+        // Decode the JSON response
+        $jsonResponse = json_decode($responseBody, true);
+
+
+        // Return the JSON response
+        return $jsonResponse;
     }
     private static function getExistingStopOrder($symbol, $trader, $side)
     {
@@ -2139,7 +2160,7 @@ class BinanceApiService
         ]);
 
         $orders = $response->json();
-
+       
         // Find last closed order
         foreach (array_reverse($orders) as $order) {
             if ($order['status'] == 'FILLED' || $order['status'] == 'CANCELED') {
@@ -2148,5 +2169,253 @@ class BinanceApiService
         }
 
         return false;
+    }
+
+
+
+
+
+
+
+
+
+
+    // TP/SL Position functions
+
+    /**
+     * Place Take Profit and Stop Loss orders on an existing Binance Futures position
+     * 
+     * @param string $symbol The trading pair symbol (e.g. "BTCUSDT")
+     * @param array $positionDetails The position details including positionAmt
+     * @param float $takeProfitPrice The take profit price
+     * @param float $stopLossPrice The stop loss price
+     * @param string $apiKey Your Binance API key
+     * @param string $secretKey Your Binance API secret key
+     * @return array An array containing both order responses
+     */
+    public static function placeTpSlOrders($symbol, $trader, float $takeProfitPrice, float $stopLossPrice, $openOrderId)
+    {
+
+
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+
+        // Get position details
+        $positionDetails = self::getPositionDetails($symbol, $trader);
+        
+        if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
+            // No open position found, return last close order details
+
+
+            $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
+            $market = 'FUTURE';
+            $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
+            $symbol = $openOrder->symbol;
+            $trader = $openOrder->trade_acc;
+            $quantity = $openOrder->qty;
+
+
+            $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+
+            $response =  self::getLastCloseOrder($symbol, $trader);
+
+
+
+
+            if (isset($response['code']) && $response['code'] < 0) {
+                throw new Exception("Order failed: " . $response['msg']);
+            }
+
+            $currentProfit = 0;
+            if ($position === 'BUY') {
+                $currentProfit = (($openOrder->price - $current_price) / $openOrder->price) * 100;
+            } else {
+                $currentProfit = (($current_price - $openOrder->price) / $openOrder->price) * 100;
+            }
+
+            $data =  [
+                'orderId' => $response['orderId'],
+                'pairId' => $openOrder->pairId,
+                'symbol' => $response['symbol'],
+                'side' => $response['side'],
+                'amount' => $openOrder->amount,
+                'qty' => $quantity,
+                'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
+                'type' => 'close',
+                'trade_status' => 'close',
+                'leverage' => 0,
+                'price' => $current_price,
+                'currentProfit' => $currentProfit,
+                'trade_acc' => $trader,
+                'liqPrice' => 0,
+
+                'created_at' => Carbon::now('Asia/Karachi'),
+            ];
+
+            DB::table('live_trades_future_results')->insert(
+                $data
+            );
+
+
+
+            $feeUsdt = 0;
+            $realizedPnl = 0;
+
+            // For close order
+            $feeDetails = self::getFeeDetails($response['orderId']);
+
+            foreach ($feeDetails as $fee) {
+                $feeUsdt += floatval($fee['commission']);
+                $realizedPnl += floatval($fee['realizedPnl']);
+            }
+
+            // For close order
+            $feeDetails = self::getFeeDetails($openOrderId);
+
+            foreach ($feeDetails as $fee) {
+                $feeUsdt += floatval($fee['commission']);
+                $realizedPnl += floatval($fee['realizedPnl']);
+            }
+
+            DB::table('live_trades_future_results')->where('orderId', $response['orderId'])->update([
+                'trade_status' => 'close',
+                'feeUsdt' => $feeUsdt,
+                'realizedPnl' => $realizedPnl,
+
+            ]);
+
+
+            DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
+                'trade_status' => 'close',
+                'pairId' => $response['orderId'],
+                'feeUsdt' => $feeUsdt,
+                'realizedPnl' => $realizedPnl,
+
+            ]);
+            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+
+            MailerService::sendFutureTradeDynamicEmail($data);
+            return $data;
+        }
+
+
+        // Determine position side
+        $positionAmt = $positionDetails['positionAmt'];
+        $positionSide = $positionAmt > 0 ? 'LONG' : 'SHORT';
+
+        // Set order sides based on position direction
+        $tpSide = $positionSide === 'LONG' ? 'SELL' : 'BUY';
+        $slSide = $positionSide === 'LONG' ? 'SELL' : 'BUY';
+
+        // Absolute quantity (remove negative sign for short positions)
+        $quantity = abs($positionAmt);
+
+        // Place Take Profit order
+        $tpOrder = self::placeOrder(
+            $symbol,
+            $tpSide,
+            'TAKE_PROFIT_MARKET',
+            $quantity,
+            $takeProfitPrice,
+            $apiKey,
+            $secretKey
+        );
+
+        // Place Stop Loss order
+        $slOrder = self::placeOrder(
+            $symbol,
+            $slSide,
+            'STOP_MARKET',
+            $quantity,
+            $stopLossPrice,
+            $apiKey,
+            $secretKey
+        );
+
+        return [
+            'takeProfit' => $tpOrder,
+            'stopLoss' => $slOrder
+        ];
+    }
+
+    /**
+     * Place a single order on Binance Futures
+     * 
+     * @param string $symbol The trading pair symbol
+     * @param string $side Order side (BUY or SELL)
+     * @param string $type Order type (TAKE_PROFIT_MARKET or STOP_MARKET)
+     * @param float $quantity Order quantity
+     * @param float $triggerPrice The trigger price (stopPrice)
+     * @param string $apiKey Binance API key
+     * @param string $secretKey Binance API secret key
+     * @return array The order response
+     */
+    private static function placeOrder($symbol, $side, $type, $quantity, $triggerPrice, $apiKey, $secretKey)
+    {
+        // Create timestamp
+        $timestamp = round(microtime(true) * 1000);
+
+        // Set up the parameters
+        $params = [
+            'symbol' => $symbol,
+            'side' => $side,
+            'type' => $type,
+            'quantity' => $quantity,
+            'timestamp' => $timestamp,
+            'reduceOnly' => 'true', // Ensures the order only reduces position
+        ];
+
+        // Add the appropriate price parameter based on order type
+        if ($type === 'TAKE_PROFIT_MARKET') {
+            $params['stopPrice'] = $triggerPrice;
+            $params['priceProtect'] = 'true'; // Optional: Adds price protection
+            $params['workingType'] = 'MARK_PRICE'; // Uses mark price as trigger
+        } elseif ($type === 'STOP_MARKET') {
+            $params['stopPrice'] = $triggerPrice;
+            $params['priceProtect'] = 'true'; // Optional: Adds price protection
+            $params['workingType'] = 'MARK_PRICE'; // Uses mark price as trigger
+        }
+
+        // Convert to query string for signature
+        $queryString = http_build_query($params);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
+        try {
+            // Create Guzzle client
+            $client = new \GuzzleHttp\Client();
+
+            // Make the request
+            $response = $client->request('POST', 'https://fapi.binance.com/fapi/v1/order', [
+                'headers' => [
+                    'X-MBX-APIKEY' => $apiKey,
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                ],
+                'query' => $params + ['signature' => $signature],
+            ]);
+
+            // Parse and return the response
+            $responseBody = $response->getBody()->getContents();
+            return json_decode($responseBody, true);
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            // Handle errors and return error information
+            if ($e->hasResponse()) {
+                $errorBody = $e->getResponse()->getBody()->getContents();
+                return [
+                    'error' => true,
+                    'message' => json_decode($errorBody, true),
+                    'code' => $e->getCode()
+                ];
+            }
+
+            return [
+                'error' => true,
+                'message' => $e->getMessage(),
+                'code' => $e->getCode()
+            ];
+        }
     }
 }

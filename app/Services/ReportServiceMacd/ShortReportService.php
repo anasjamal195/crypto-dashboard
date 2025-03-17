@@ -284,13 +284,11 @@ class ShortReportService
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = abs((($buy_price - $lowestPrice) / $buy_price)) * 100;
                     $currentTrade['position'] = 'SHORT';
-                    $currentTrade['formula'] = 'StochRsiBreakout';
+                    $currentTrade['formula'] = 'MacdSwing';
                     $lowestPrice = 0;
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
-
                     $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
-
                     $trades[] = $currentTrade;
                     $currentTrade = [];
                     $buy_price = 0;

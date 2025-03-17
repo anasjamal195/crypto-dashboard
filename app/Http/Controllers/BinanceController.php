@@ -22,6 +22,7 @@ class BinanceController extends Controller
         $query = DB::table('coin_reports')
             ->select(
                 'symbol',
+                'formula',
                 'position',
                 DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
                 DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
@@ -42,7 +43,11 @@ class BinanceController extends Controller
             $query->where('position', $request->position);
         }
 
-        $tradeData = $query->groupBy('symbol', 'position')
+        if ($request->filled('formula')) {
+            $query->where('formula', $request->formula);
+        }
+
+        $tradeData = $query->groupBy('symbol', 'position', 'formula')
             ->orderBy('total_entries', 'DESC')
             ->orderBy('last_updated', 'DESC')
             ->get();
@@ -58,6 +63,9 @@ class BinanceController extends Controller
         if ($request->filled('position')) {
             $liquidatedCoinsQuery->where('position', $request->position);
         }
+        if ($request->filled('formula')) {
+            $liquidatedCoinsQuery->where('formula', $request->formula);
+        }
         $liquidatedCoins = $liquidatedCoinsQuery->get();
 
         $stopLoss = $request->input('stopLoss') ?? 1;
@@ -69,6 +77,10 @@ class BinanceController extends Controller
 
         if ($request->filled('position')) {
             $stopLossesQuery->where('position', $request->position);
+        }
+
+        if ($request->filled('formula')) {
+            $stopLossesQuery->where('formula', $request->formula);
         }
         $stopLossesTrades = $stopLossesQuery->count();
         $stopLossesTotal = $stopLossesTrades * $stopLoss;
@@ -86,12 +98,14 @@ class BinanceController extends Controller
         $symbol = $request->query('symbol');
         $interval = $request->query('interval');
         $position = $request->query('position');
+        $formula = $request->query('formula');
         $stopLoss = $request->query('stopLoss') ?? 1;
 
         // Fetch the trades for the given symbol
         $trades = DB::table('coin_reports')
             ->where('symbol', $symbol)
             ->where('market', $market)
+            ->where('formula', $formula)
             ->where('position', $position)
             ->where('interval', $interval)
             ->orderBy('id', 'ASC')

@@ -29,6 +29,19 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group">
+                                    <label for="formula">Filter by Formula</label>
+                                    <select name="formula" id="formula" class="form-control select2">
+                                        <option value="">All Formulas</option>
+                                        @foreach (DB::table('coin_reports')->select('formula')->distinct()->get() as $formula)
+                                            <option value="{{ $formula->formula }}"
+                                                {{ request('formula') == $formula->formula ? 'selected' : '' }}>
+                                                {{ $formula->formula }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
                                     <label for="stopLoss">Stop Loss % - Default is 1%</label>
                                     <input name="stopLoss" id="stopLoss" class="form-control"
                                         value="{{ request('stopLoss') }}" placeholder="Enter Stop Loss">
@@ -36,6 +49,9 @@
                             </div>
                             <div class="col-md-2 ">
                                 <button type="submit" class="btn btn-primary my-2">Apply</button>
+                            </div>
+                            <div class="col-md-2 ">
+                                <a href="{{route('coinReport',['market'=>'FUTURE','interval' => '5m'])}}" class="btn btn-secondary my-2">Clear</a>
                             </div>
                         </div>
                     </form>
@@ -56,6 +72,7 @@
                                         <th>Min Profit (%)</th>
                                         <th>Max Lowest Price (%)</th>
                                         <th>Min Lowest Price (%)</th>
+                                        <th>Formula</th>
                                         <th>Updated at</th>
                                         <th>Actions</th>
                                     </tr>
@@ -79,10 +96,11 @@
                                             <td>{{ number_format($trade->min_profit, 2) }} %</td>
                                             <td>{{ number_format($trade->max_lowestPrice, 2) }} %</td>
                                             <td>{{ number_format($trade->min_lowestPrice, 2) }} %</td>
+                                            <td>{{ $trade->formula }}</td>
                                             <td>{{ \Carbon\Carbon::parse($trade->last_updated)->timezone('Asia/Karachi')->format('h:i A') }}
                                             </td>
                                             <td>
-                                                <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'stopLoss' => request('stopLoss'), 'interval' => '5m']) }}"
+                                                <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'formula' => $trade->formula, 'stopLoss' => request('stopLoss'), 'interval' => '5m']) }}"
                                                     class="btn btn-info btn-sm">
                                                     <i class="fa fa-eye"></i>
                                                 </a>
