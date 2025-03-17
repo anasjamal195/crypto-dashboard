@@ -192,7 +192,6 @@ class ShortThread implements ShouldQueue
             ($secondLastcandle30m['per'] <= -0.07 || !$isUpwardWick30m)
             &&
             $isDownwardWick30m
-
         ) {
             $openTrade = false;
             Log::info('ShortThreadMACD: Skipped opening SHORT Due to 30m candle conditions ' . $symbol);
