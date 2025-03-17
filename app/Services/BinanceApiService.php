@@ -1651,6 +1651,58 @@ class BinanceApiService
         $trades = $response->json();
         return $trades;
     }
+
+
+    public static function getPositionDetails($symbol, $trader)
+    {
+        $user = User::find($trader);
+        if (!$user) {
+            return false;
+        }
+
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+        $timestamp = round(microtime(true) * 1000);
+
+        // Generate the signature
+        $queryString = "timestamp=$timestamp";
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
+        // Make the API request to get positions
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->get("https://fapi.binance.com/fapi/v2/positionRisk", [
+            'timestamp' => $timestamp,
+            'signature' => $signature,
+        ]);
+
+        dd($response->json());
+        $positions = $response->json();
+
+        if (!$positions || isset($positions['code'])) {
+            return false; // Return false if request fails or API returns an error
+        }
+
+        // Loop through positions to find the specific symbol
+        foreach ($positions as $position) {
+            if ($position['symbol'] === strtoupper($symbol) && abs($position['positionAmt']) > 0) {
+                return [
+                    'symbol' => $position['symbol'],
+                    'positionAmt' => $position['positionAmt'], // Amount of asset held (positive = long, negative = short)
+                    'entryPrice' => $position['entryPrice'], // Entry price of the position
+                    'markPrice' => $position['markPrice'], // Current price of the asset
+                    'unRealizedProfit' => $position['unRealizedProfit'], // Unrealized PnL
+                    'liquidationPrice' => $position['liquidationPrice'], // Liquidation price
+                    'marginType' => $position['marginType'], // Margin type (cross or isolated)
+                    'leverage' => $position['leverage'], // Leverage used
+                    'positionSide' => $position['positionSide'], // Position side (BOTH, LONG, SHORT)
+                ];
+            }
+        }
+
+        return false; // No open position for this symbol
+    }
+
     public static function openMarketPosition($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $trade = null)
     {
 
