@@ -48,9 +48,10 @@ class ShortThread implements ShouldQueue
         $data = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '5m', 300, null, 'FUTURE');
         $symbol = $this->tradeInstance->symbol;
         $trade_acc = $this->tradeInstance->tradeAccount;
-        $data3m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '3m', 5, null, 'FUTURE');
-        $candle3m = $data3m[count($data3m) - 1];
-        $secondLastcandle3m = $data3m[count($data3m) - 2];
+        $data30m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '30m', 5, null, 'FUTURE');
+        $candle30m = $data30m[count($data30m) - 1];
+        $secondLastcandle30m = $data30m[count($data30m) - 2];
+        $thirdLastcandle30m = $data30m[count($data30m) - 3];
         $priceCount = 20;
 
         $openTrade = true;
@@ -176,7 +177,29 @@ class ShortThread implements ShouldQueue
         //         }
         //     }
         // }
+        // Check Opposite Wick Direction
+        $secondLastsolid30mLength = abs($secondLastcandle30m['close'] - $secondLastcandle30m['open']);
+        $secondLastlowerWickDiff30m = $secondLastcandle30m['low'] - min($secondLastcandle30m['close'], $secondLastcandle30m['open']);
+        $secondLastupperWickDiff30m = $secondLastcandle30m['high'] - max($secondLastcandle30m['close'], $secondLastcandle30m['open']);
 
+        $isDownwardWick30m  = $secondLastlowerWickDiff30m > $secondLastsolid30mLength && $secondLastupperWickDiff30m < $secondLastsolid30mLength * 0.1;
+        $isUpwardWick30m  = $secondLastlowerWickDiff30m < $secondLastsolid30mLength * 0.1 && $secondLastupperWickDiff30m > $secondLastsolid30mLength;
+
+        if (
+
+            ($secondLastcandle30m['per'] >= -0.07 || $thirdLastcandle30m['per'] >= -0.07)
+            &&
+            ($secondLastcandle30m['per'] <= -0.07 || !$isUpwardWick30m)
+            &&
+            $isDownwardWick30m
+
+        ) {
+            $openTrade = false;
+            Log::info('ShortThreadMACD: Skipped opening SHORT Due to 30m candle conditions ' . $symbol);
+        }
+
+
+       
 
         $openTrades = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->get();
         $openTradesCount = count($openTrades);
