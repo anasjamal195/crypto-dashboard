@@ -29,7 +29,8 @@ class ShortReportService
     public static function updateCoinReport(
         $interval = '1m',
         $limit = 1000,
-        $market = 'FUTURE'
+        $market = 'FUTURE',
+        $formula = 'Default',
     ) {
 
 
@@ -44,7 +45,7 @@ class ShortReportService
                 $symbol = $coin->symbol;
                 $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
-                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
+                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
 
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'SHORT')->delete();
@@ -63,7 +64,8 @@ class ShortReportService
         $symbol,
         $interval = '1m',
         $limit = 1000,
-        $market = 'FUTURE'
+        $market = 'FUTURE',
+        $formula = 'Default',
     ) {
 
         $tradesTotal = [];
@@ -71,7 +73,7 @@ class ShortReportService
         try {
             $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
-            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit);
+            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
             $tradesTotal[$symbol] = $trades;
         } catch (\Exception $e) {
             Log::error("Failed to update coin reports: " . $e->getMessage());
@@ -92,7 +94,7 @@ class ShortReportService
      * @param float $targetProfit Target profit percentage for sell signal.
      * @return array Processed trade data.
      */
-    protected static function processCandles($symbol, $interval, $market, $data, $targetProfit)
+    protected static function processCandles($symbol, $interval, $market, $data, $targetProfit, $formula)
     {
         $buy_price = 0;
         $buy_triggers = [];
@@ -284,7 +286,7 @@ class ShortReportService
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = abs((($buy_price - $lowestPrice) / $buy_price)) * 100;
                     $currentTrade['position'] = 'SHORT';
-                    $currentTrade['formula'] = 'MacdSwing';
+                    $currentTrade['formula'] = $formula;
                     $lowestPrice = 0;
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);

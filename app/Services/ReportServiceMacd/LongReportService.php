@@ -30,7 +30,8 @@ class LongReportService
     public static function updateCoinReport(
         $interval = '1m',
         $limit = 1000,
-        $market = 'FUTURE'
+        $market = 'FUTURE',
+        $formula = 'Default',
     ) {
 
 
@@ -46,7 +47,7 @@ class LongReportService
                 $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
 
-                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $stopLoss);
+                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $stopLoss,$formula);
 
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'LONG')->delete();
@@ -64,14 +65,15 @@ class LongReportService
         $symbol,
         $interval = '1m',
         $limit = 1000,
-        $market = 'FUTURE'
+        $market = 'FUTURE',
+        $formula = 'Default',
     ) {
 
         $tradesTotal = [];
         $targetProfit = 1;
         try {
             $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
-            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, 1);
+            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, 1,$formula);
             $tradesTotal[$symbol] = $trades;
         } catch (\Exception $e) {
             Log::error("Failed to update coin reports: " . $e->getMessage());
@@ -91,7 +93,7 @@ class LongReportService
      * @param float $targetProfit Target profit percentage for sell signal.
      * @return array Processed trade data.
      */
-    protected static function processCandles($symbol, $interval, $market, $data, $targetProfitInitial, $stopLoss)
+    protected static function processCandles($symbol, $interval, $market, $data, $targetProfitInitial, $stopLoss, $formula)
     {
         $buy_price = 0;
         $buy_triggers = [];
@@ -310,7 +312,7 @@ class LongReportService
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
                     $currentTrade['position'] = 'LONG';
-                    $currentTrade['formula'] = 'MacdSwing';
+                    $currentTrade['formula'] = $formula;
                     $lowestPrice = 0;
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
