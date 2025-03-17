@@ -1931,4 +1931,222 @@ class BinanceApiService
         $exchangeInfo = json_decode(file_get_contents(config('binance.api.future_base_url') . config('binance.endpoints.exchange_info')), true);
         return $exchangeInfo;
     }
+
+
+
+
+    //  For handling stop loss to binance end
+    public static function placeOrUpdateStopMarketOrder($symbol, $trader, $stopPrice, $openOrderId)
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+
+        // Get position details
+        $positionDetails = self::getPositionDetails($symbol, $trader);
+
+        if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
+            // No open position found, return last close order details
+
+
+            $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
+            $market = 'FUTURE';
+            $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
+            $symbol = $openOrder->symbol;
+            $trader = $openOrder->trade_acc;
+            $quantity = $openOrder->qty;
+
+
+            $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+
+            $response =  self::getLastCloseOrder($symbol, $trader);
+
+
+
+            if (isset($response['code']) && $response['code'] < 0) {
+                throw new Exception("Order failed: " . $response['msg']);
+            }
+
+            $currentProfit = 0;
+            if ($position === 'BUY') {
+                $currentProfit = (($openOrder->price - $current_price) / $openOrder->price) * 100;
+            } else {
+                $currentProfit = (($current_price - $openOrder->price) / $openOrder->price) * 100;
+            }
+
+            $data =  [
+                'orderId' => $response['orderId'],
+                'pairId' => $openOrder->pairId,
+                'symbol' => $response['symbol'],
+                'side' => $response['side'],
+                'amount' => $openOrder->amount,
+                'qty' => $quantity,
+                'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
+                'type' => 'close',
+                'trade_status' => 'close',
+                'leverage' => 0,
+                'price' => $current_price,
+                'currentProfit' => $currentProfit,
+                'trade_acc' => $trader,
+                'liqPrice' => 0,
+
+                'created_at' => Carbon::now('Asia/Karachi'),
+            ];
+
+            DB::table('live_trades_future_results')->insert(
+                $data
+            );
+
+
+
+            $feeUsdt = 0;
+            $realizedPnl = 0;
+
+            // For close order
+            $feeDetails = self::getFeeDetails($response['orderId']);
+
+            foreach ($feeDetails as $fee) {
+                $feeUsdt += floatval($fee['commission']);
+                $realizedPnl += floatval($fee['realizedPnl']);
+            }
+
+            // For close order
+            $feeDetails = self::getFeeDetails($openOrderId);
+
+            foreach ($feeDetails as $fee) {
+                $feeUsdt += floatval($fee['commission']);
+                $realizedPnl += floatval($fee['realizedPnl']);
+            }
+
+            DB::table('live_trades_future_results')->where('orderId', $response['orderId'])->update([
+                'trade_status' => 'close',
+                'feeUsdt' => $feeUsdt,
+                'realizedPnl' => $realizedPnl,
+
+            ]);
+
+
+            DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
+                'trade_status' => 'close',
+                'pairId' => $response['orderId'],
+                'feeUsdt' => $feeUsdt,
+                'realizedPnl' => $realizedPnl,
+
+            ]);
+            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+
+            MailerService::sendFutureTradeDynamicEmail($data);
+            return $data;
+        }
+
+        // Determine side: If position is LONG, stop-loss is a SELL. If SHORT, stop-loss is a BUY.
+        $side = ($positionDetails['positionAmt'] > 0) ? 'SELL' : 'BUY';
+
+        // Check for existing stop order
+        $existingStopOrder = self::getExistingStopOrder($symbol, $trader, $side);
+
+        if ($existingStopOrder) {
+            // Cancel existing stop order
+            self::cancelOrder($symbol, $trader, $existingStopOrder['orderId']);
+        }
+
+        // Place new stop order
+        $timestamp = round(microtime(true) * 1000);
+        $queryString = "symbol=$symbol&side=$side&type=STOP_MARKET&stopPrice=$stopPrice&quantity=" . abs($positionDetails['positionAmt']) . "&timestamp=$timestamp";
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
+        // Make API Request
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->post("https://fapi.binance.com/fapi/v1/order", [
+            'symbol' => $symbol,
+            'side' => $side,
+            'type' => 'STOP_MARKET',
+            'stopPrice' => $stopPrice,
+            'quantity' => abs($positionDetails['positionAmt']),
+            'timestamp' => $timestamp,
+            'signature' => $signature,
+        ]);
+
+        return $response->json();
+    }
+    private static function getExistingStopOrder($symbol, $trader, $side)
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+
+        $timestamp = round(microtime(true) * 1000);
+        $queryString = "symbol=$symbol&timestamp=$timestamp";
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->get("https://fapi.binance.com/fapi/v1/openOrders", [
+            'symbol' => $symbol,
+            'timestamp' => $timestamp,
+            'signature' => $signature,
+        ]);
+
+        $orders = $response->json();
+
+        foreach ($orders as $order) {
+            if ($order['side'] == $side && $order['type'] == 'STOP_MARKET') {
+                return $order;
+            }
+        }
+
+        return null;
+    }
+    private static function cancelOrder($symbol, $trader, $orderId)
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+
+        $timestamp = round(microtime(true) * 1000);
+        $queryString = "symbol=$symbol&orderId=$orderId&timestamp=$timestamp";
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->delete("https://fapi.binance.com/fapi/v1/order", [
+            'symbol' => $symbol,
+            'orderId' => $orderId,
+            'timestamp' => $timestamp,
+            'signature' => $signature,
+        ]);
+
+        return $response->json();
+    }
+    private static function getLastCloseOrder($symbol, $trader)
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+
+        $timestamp = round(microtime(true) * 1000);
+        $queryString = "symbol=$symbol&timestamp=$timestamp";
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->get("https://fapi.binance.com/fapi/v1/allOrders", [
+            'symbol' => $symbol,
+            'timestamp' => $timestamp,
+            'signature' => $signature,
+        ]);
+
+        $orders = $response->json();
+
+        // Find last closed order
+        foreach (array_reverse($orders) as $order) {
+            if ($order['status'] == 'FILLED' || $order['status'] == 'CANCELED') {
+                return $order;
+            }
+        }
+
+        return false;
+    }
 }
