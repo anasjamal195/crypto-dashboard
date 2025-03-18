@@ -70,6 +70,8 @@ class MacdFormulaShort
                     $loopIndex = $index;
 
                     while (true) {
+                        if ($loopIndex == 1)
+                            break;
                         if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
                             $macdLightGreenDistance++;
                         } else {
@@ -88,7 +90,8 @@ class MacdFormulaShort
                     $loopIndex = $index;
 
                     while (true) {
-
+                        if ($loopIndex == 1)
+                            break;
                         if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
                             $macdDarkGreenDistance++;
                         } else {
@@ -103,7 +106,8 @@ class MacdFormulaShort
                     $loopIndex = $index;
 
                     while (true) {
-
+                        if ($loopIndex == 1)
+                            break;
                         if ($data[$loopIndex]['histogram'] < 0)
                             break;
                         $totalGreenCandles++;
@@ -115,6 +119,8 @@ class MacdFormulaShort
                     $loopIndex = $index;
 
                     while (true) {
+                        if ($loopIndex == 1)
+                            break;
 
                         if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
                             $volumeCrossover = true;
@@ -132,6 +138,8 @@ class MacdFormulaShort
                     $loopIndex = $index;
 
                     while (true) {
+                        if ($loopIndex == 1)
+                            break;
                         if (
                             $data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
                             $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
@@ -173,6 +181,8 @@ class MacdFormulaShort
                     $lastHighest = $data[$index]['high'];
                     $loopIndex = $index;
                     while (true) {
+                        if ($loopIndex == 1)
+                            break;
                         if ($data[$loopIndex]['high'] > $lastHighest) {
                             $lastHighest = $data[$loopIndex]['high'];
                         } else if ($data[$loopIndex]['high'] < $data[$index]['high'] || $loopIndex == 1) {

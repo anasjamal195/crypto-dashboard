@@ -70,7 +70,8 @@ class MacdFormulaLong
                     $loopIndex = $index;
 
                     while (true) {
-
+                        if ($loopIndex == 1)
+                            break;
                         if ($data[$loopIndex]['histogram'] >= $data[$loopIndex - 1]['histogram']) {
                             $macdDarkRedDistance++;
                         } else {
@@ -90,7 +91,8 @@ class MacdFormulaLong
                     $loopIndex = $index;
 
                     while (true) {
-
+                        if ($loopIndex == 1)
+                            break;
                         if ($data[$loopIndex]['histogram'] > 0)
                             break;
                         $totalRedCandles++;
@@ -102,7 +104,8 @@ class MacdFormulaLong
                     $loopIndex = $index;
 
                     while (true) {
-
+                        if ($loopIndex == 1)
+                            break;
                         if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
                             $volumeCrossover = true;
                             break;
@@ -119,6 +122,8 @@ class MacdFormulaLong
                     $loopIndex = $index;
 
                     while (true) {
+                        if ($loopIndex == 1)
+                            break;
                         if (
                             $data[$loopIndex]['J'] > $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100) &&
                             $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100)
@@ -160,9 +165,11 @@ class MacdFormulaLong
                     $lastLowest = $data[$index]['low'];
                     $loopIndex = $index;
                     while (true) {
+                        if ($loopIndex == 1)
+                            break;
                         if ($data[$loopIndex]['low'] < $lastLowest) {
                             $lastLowest = $data[$loopIndex]['low'];
-                        } else if ($data[$loopIndex]['low'] > $data[$index]['low'] || $loopIndex == 1) {
+                        } else if ($data[$loopIndex]['low'] > $data[$index]['low']) {
                             break;
                         }
                         $loopIndex--;
