@@ -42,16 +42,16 @@ class FutureReportWorkerMacdFormula extends Command
      */
     public function handle()
     {
-        $formula = 'Macd Formula';
+        $formula = 'MACD Multithread';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->truncate();
 
         try {
-            // ReportServiceMacdShortReportService::updateCoinReport(
-            //     '5m',
-            //     1000,
-            //     'FUTURE',
-            //      $formula,
-            // );
+            ReportServiceMacdShortReportService::updateCoinReport(
+                '5m',
+                1000,
+                'FUTURE',
+                $formula,
+            );
             ReportServiceMacdLongReportService::updateCoinReport(
                 '5m',
                 1000,

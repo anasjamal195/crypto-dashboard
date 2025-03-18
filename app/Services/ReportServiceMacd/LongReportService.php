@@ -329,14 +329,6 @@ class LongReportService
 
 
 
-
-                    
-
-
-
-
-
-
                     $candle['should_buy'] = true;
                     $candle['previousObvHigh'] = 0;
                     $candle['previousObvHighReduced'] = 0;

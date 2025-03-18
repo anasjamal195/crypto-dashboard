@@ -195,7 +195,6 @@ class MacdFormulaLong
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'isWorkerDispatched' => true,
                         ]);
-
                         ThreadsMACDLongThread::dispatch($tradeInstance, $supportResistance);
                         break;
                     }
