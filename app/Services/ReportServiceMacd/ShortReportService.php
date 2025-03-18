@@ -258,6 +258,60 @@ class ShortReportService
                         && $data[$index]['dif'] < $data[$index - 1]['dif']
                         && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] - 10
                     ) {
+
+
+
+
+
+
+
+                        // New Conditions on 2h 
+                        // Fetch 2-hour candlestick data
+                        $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, $candle['binance_timestamp'], 'FUTURE');
+                        $candle2h = end($data2h);
+                        $secondLastCandle2h = prev($data2h);
+
+                        $instantOpen = false;
+
+                        // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
+                        if ($candle2h['ma7'] < $candle2h['ma25'] && $candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['per'] >= 0) {
+                            continue;
+                        }
+
+                        // Condition 5: Check for instant opening
+                        if (
+                            ($candle2h['ma7'] < $candle2h['ma25'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma25']) ||
+                            ($candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma99'])
+                        ) {
+                            $instantOpen = true;
+                        }
+
+                        // Calculate wick and solid region sizes
+                        $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
+                        $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
+                        $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
+
+                        // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+                        if (
+                            !$instantOpen &&
+                            !(
+                                $secondLastCandle2h['per'] <= 0.15 || // Condition 1
+                                ($secondLastCandle2h['per'] > 0 && $lowerWick < $upperWick && $lowerWick < $solidRegion * 0.1) || // Condition 3
+                                ($lowerWick == 0 && $upperWick > 0) // Condition 4
+                            )
+                        ) {
+                            continue;
+                        }
+
+                        // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
+                        if ($secondLastCandle2h['per'] < 0 && $upperWick < $lowerWick) {
+                            continue;
+                        }
+
+
+
+
+
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;
                         $candle['previousObvHighReduced'] = 0;

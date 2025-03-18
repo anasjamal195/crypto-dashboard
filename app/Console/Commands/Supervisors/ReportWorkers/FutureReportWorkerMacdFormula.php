@@ -49,12 +49,15 @@ class FutureReportWorkerMacdFormula extends Command
             // ReportServiceMacdShortReportService::updateCoinReport(
             //     '5m',
             //     1000,
-            //     'FUTURE'
+            //     'FUTURE',
+            //      $formula,
             // );
             ReportServiceMacdLongReportService::updateCoinReport(
                 '5m',
                 1000,
-                'FUTURE'
+                'FUTURE',
+                $formula,
+
             );
         } catch (\Exception $e) {
             Log::error($e);

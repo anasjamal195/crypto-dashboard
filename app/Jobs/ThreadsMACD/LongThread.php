@@ -43,12 +43,32 @@ class LongThread implements ShouldQueue
 
     public function handle(): void
     {
-        $data = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '5m', 300, null, 'FUTURE');
         $symbol = $this->tradeInstance->symbol;
         $trade_acc = $this->tradeInstance->tradeAccount;
-        $data3m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '3m', 5, null, 'FUTURE');
-        $candle3m = $data3m[count($data3m) - 1];
-        $secondLastcandle3m = $data3m[count($data3m) - 2];
+
+
+        // Fetching Candle Data
+        // -------------------------------
+        $data = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '5m', 300, null, 'FUTURE');
+        $candle = $data[count($data) - 1];
+        $secondLastcandle = $data[count($data) - 2];
+
+        $data15m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '15m', 100, null, 'FUTURE');
+        $candle15m = $data15m[count($data15m) - 1];
+        $secondLastcandle15m = $data15m[count($data15m) - 2];
+
+        $data30m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '30m', 100, null, 'FUTURE');
+        $candle30m = $data30m[count($data30m) - 1];
+        $secondLastcandle30m = $data30m[count($data30m) - 2];
+
+        $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, null, 'FUTURE');
+        $candle2h = $data2h[count($data2h) - 1];
+        $secondLastCandle2h = $data2h[count($data2h) - 2];
+        // ---------------------------------
+
+
+
+
         $priceCount = 20;
 
         $openTrade = true;
@@ -195,8 +215,82 @@ class LongThread implements ShouldQueue
         //     $openTrade = false;
         // }
 
-        // New Conditions to check weather to open trade or nor
+
+
+
+
+
+
+
+
         
+        /*
+        ========================NEW CONDITIONS ON 2h===================================
+        */
+
+        // Fetch 2-hour candlestick data
+
+
+        $instantOpen = false;
+
+        // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
+        // OR
+        // Condition 8: Skip trade if last 2 hrs candle's RSI is above 72 OR current 2 hrs candle's RSI is above 70
+
+        if (($candle2h['ma7'] > $candle2h['ma25'] && $candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['per'] <= 0)
+            || ($secondLastCandle2h['rsi6'] > 72 || $candle2h['rsi6'] > 70)
+        ) {
+            $openTrade = false;
+        }
+
+
+        // Condition 5: Check for instant opening
+        if (
+            (($candle2h['ma7'] > $candle2h['ma25'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma25']) ||
+                ($candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma99']))
+
+            ||
+
+            ($secondLastCandle2h['rsi6'] < 25 || $candle2h['rsi6'] < 20)
+
+            ||
+            ($secondLastcandle30m['rsi6'] < 12 || $candle15m['rsi6'] < 17)
+
+        ) {
+            $instantOpen = true;
+        }
+
+        // Calculate wick and solid region sizes
+        $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
+        $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
+        $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
+
+        // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+        if (
+            !$instantOpen &&
+            !(
+                $secondLastCandle2h['per'] >= 0.15 || // Condition 1
+                ($secondLastCandle2h['per'] < 0 && $lowerWick > $upperWick && $upperWick < $solidRegion * 0.1) || // Condition 3
+                ($upperWick == 0 && $lowerWick > 0) // Condition 4
+            )
+        ) {
+            $openTrade = false;
+        }
+
+        // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
+        if ($secondLastCandle2h['per'] > 0 && $upperWick > $lowerWick) {
+            $openTrade = false;
+        }
+
+
+
+        /*
+        ===============================================================================
+        */
+
+
+
+
         if ($openTrade) {
 
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);
