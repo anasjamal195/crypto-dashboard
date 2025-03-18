@@ -42,7 +42,7 @@ class FutureReportWorkerMacdFormula extends Command
      */
     public function handle()
     {
-        $formula = 'MacdSwing';
+        $formula = 'Macd Formula';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->truncate();
 
         try {
