@@ -51,10 +51,29 @@
                                 <button type="submit" class="btn btn-primary my-2">Apply</button>
                             </div>
                             <div class="col-md-2 ">
-                                <a href="{{route('coinReport',['market'=>'FUTURE','interval' => '5m'])}}" class="btn btn-secondary my-2">Clear</a>
+                                <a href="{{ route('coinReport', ['market' => 'FUTURE', 'interval' => '5m']) }}"
+                                    class="btn btn-secondary my-2">Clear</a>
                             </div>
+
+
+
                         </div>
                     </form>
+
+                    <div class="card-body">
+                        @if (request()->get('formula'))
+                            @php
+                                $formulaDetails = DB::table('formula_details')
+                                    ->where('formula', request('formula'))
+                                    ->first();
+                                    // dd($formulaDetails);
+                            @endphp
+                            <div class="form-group">
+                                <label for="formulaDetails">Formula Description</label>
+                                <textarea id="formulaDetails" class="form-control" rows="5" >{{ $formulaDetails ? $formulaDetails->details : 'No details available for the selected formula.' }}</textarea>
+                            </div>
+                        @endif
+                    </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table">

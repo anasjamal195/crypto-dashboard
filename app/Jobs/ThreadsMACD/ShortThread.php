@@ -177,27 +177,34 @@ class ShortThread implements ShouldQueue
         //         }
         //     }
         // }
+
+
+
+
+
         // Check Opposite Wick Direction
-        $secondLastsolid30mLength = abs($secondLastcandle30m['close'] - $secondLastcandle30m['open']);
-        $secondLastlowerWickDiff30m = $secondLastcandle30m['low'] - min($secondLastcandle30m['close'], $secondLastcandle30m['open']);
-        $secondLastupperWickDiff30m = $secondLastcandle30m['high'] - max($secondLastcandle30m['close'], $secondLastcandle30m['open']);
+        // $secondLastsolid30mLength = abs($secondLastcandle30m['close'] - $secondLastcandle30m['open']);
+        // $secondLastlowerWickDiff30m = $secondLastcandle30m['low'] - min($secondLastcandle30m['close'], $secondLastcandle30m['open']);
+        // $secondLastupperWickDiff30m = $secondLastcandle30m['high'] - max($secondLastcandle30m['close'], $secondLastcandle30m['open']);
 
-        $isDownwardWick30m  = $secondLastlowerWickDiff30m > $secondLastsolid30mLength && $secondLastupperWickDiff30m < $secondLastsolid30mLength * 0.1;
-        $isUpwardWick30m  = $secondLastlowerWickDiff30m < $secondLastsolid30mLength * 0.1 && $secondLastupperWickDiff30m > $secondLastsolid30mLength;
+        // $isDownwardWick30m  = $secondLastlowerWickDiff30m > $secondLastsolid30mLength && $secondLastupperWickDiff30m < $secondLastsolid30mLength * 0.1;
+        // $isUpwardWick30m  = $secondLastlowerWickDiff30m < $secondLastsolid30mLength * 0.1 && $secondLastupperWickDiff30m > $secondLastsolid30mLength;
 
-        if (
+        // if (
 
-            ($secondLastcandle30m['per'] >= -0.07 || $thirdLastcandle30m['per'] >= -0.07)
-            &&
-            ($secondLastcandle30m['per'] <= -0.07 || !$isUpwardWick30m)
-            &&
-            $isDownwardWick30m
-        ) {
-            $openTrade = false;
-            Log::info('ShortThreadMACD: Skipped opening SHORT Due to 30m candle conditions ' . $symbol);
-        }
+        //     ($secondLastcandle30m['per'] >= -0.07 || $thirdLastcandle30m['per'] >= -0.07)
+        //     &&
+        //     ($secondLastcandle30m['per'] <= -0.07 || !$isUpwardWick30m)
+        //     &&
+        //     $isDownwardWick30m
+        // ) {
+        //     $openTrade = false;
+        //     Log::info('ShortThreadMACD: Skipped opening SHORT Due to 30m candle conditions ' . $symbol);
+        // }
 
 
+
+        
        
 
         $openTrades = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->get();

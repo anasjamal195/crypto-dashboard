@@ -45,13 +45,12 @@ class FutureReportWorkerMacdFormula extends Command
         $formula = 'MacdSwing';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->truncate();
 
-
         try {
-            ReportServiceMacdShortReportService::updateCoinReport(
-                '5m',
-                1000,
-                'FUTURE'
-            );
+            // ReportServiceMacdShortReportService::updateCoinReport(
+            //     '5m',
+            //     1000,
+            //     'FUTURE'
+            // );
             ReportServiceMacdLongReportService::updateCoinReport(
                 '5m',
                 1000,

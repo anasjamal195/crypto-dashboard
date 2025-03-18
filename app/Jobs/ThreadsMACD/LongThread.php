@@ -195,7 +195,8 @@ class LongThread implements ShouldQueue
         //     $openTrade = false;
         // }
 
-
+        // New Conditions to check weather to open trade or nor
+        
         if ($openTrade) {
 
             $open_order = CommonHelpers::checkOpenOrder($symbol, $this->tradeInstance->position, 'FUTURE', $trade_acc);

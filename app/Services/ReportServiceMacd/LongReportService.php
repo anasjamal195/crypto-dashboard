@@ -47,7 +47,7 @@ class LongReportService
                 $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
 
-                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $stopLoss,$formula);
+                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $stopLoss, $formula);
 
                 // Insert trades into the database
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'LONG')->delete();
@@ -73,7 +73,7 @@ class LongReportService
         $targetProfit = 1;
         try {
             $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
-            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, 1,$formula);
+            $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, 1, $formula);
             $tradesTotal[$symbol] = $trades;
         } catch (\Exception $e) {
             Log::error("Failed to update coin reports: " . $e->getMessage());
@@ -242,6 +242,7 @@ class LongReportService
                     $loopIndex--;
                 }
 
+
                 if (
                     // Current and previous MACD should be red
                     // $data[$index]['histogram'] < 0
@@ -281,6 +282,60 @@ class LongReportService
 
 
                 ) {
+
+
+                    // Fetch 2-hour candlestick data
+                    $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, $candle['binance_timestamp'], 'FUTURE');
+                    $candle2h = end($data2h);
+                    $secondLastCandle2h = prev($data2h);
+
+                    $instantOpen = false;
+
+                    // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
+                    if ($candle2h['ma7'] > $candle2h['ma25'] && $candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['per'] <= 0) {
+                        continue;
+                    }
+
+                    // Condition 5: Check for instant opening
+                    if (
+                        ($candle2h['ma7'] > $candle2h['ma25'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma25']) ||
+                        ($candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma99'])
+                    ) {
+                        $instantOpen = true;
+                    }
+
+                    // Calculate wick and solid region sizes
+                    $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
+                    $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
+                    $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
+
+                    // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+                    if (
+                        !$instantOpen &&
+                        !(
+                            $secondLastCandle2h['per'] >= 0.15 || // Condition 1
+                            ($secondLastCandle2h['per'] < 0 && $lowerWick > $upperWick && $upperWick < $solidRegion * 0.1) || // Condition 3
+                            ($upperWick == 0 && $lowerWick > 0) // Condition 4
+                        )
+                    ) {
+                        continue;
+                    }
+
+                    // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
+                    if ($secondLastCandle2h['per'] > 0 && $upperWick > $lowerWick) {
+                        continue;
+                    }
+
+
+
+
+
+                    
+
+
+
+
+
 
                     $candle['should_buy'] = true;
                     $candle['previousObvHigh'] = 0;
