@@ -127,6 +127,70 @@ class BinanceController extends Controller
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
         }
 
+
+        if (!empty($data)) {
+            // Determine the start and end time from the fetched candlestick data
+            $startTime = $data[0]['timestamp'];
+            $endTime = end($data)['timestamp'];
+
+            // Fetch live trades from live_trades_future_results between start and end time
+            $liveTrades = DB::table('live_trades_future_results')
+                ->where('symbol', $symbol)
+
+                ->where('formula', $formula)
+                ->where('position', $position)
+
+                ->whereBetween('created_at', [$startTime, $endTime])
+                ->get();
+            $liveTradesData  = DB::table('live_trades_future_results')
+                ->where('symbol', $symbol)
+
+                ->where('formula', $formula)
+                ->where('position', $position)
+
+                ->where('type', 'open')
+                ->whereBetween('created_at', [$startTime, $endTime])
+                ->get();
+        } else {
+            $liveTrades = collect();
+            $liveTradesData = collect();
+        }
+
+
+
+        // dd($liveTrades);
+        $liveBuy = [];
+        $liveSell = [];
+        foreach ($data as $index => &$candle) {
+
+            // Convert candle timestamp to Unix timestamp
+            $candleTime = strtotime($candle['timestamp']);
+            // Define the interval window (+- 5 minutes)
+            $startWindow = $candleTime - (5 * 60);
+            $endWindow = $candleTime + (5 * 60);
+
+            // Iterate through the live trades to find matching entries
+            foreach ($liveTrades as $key => $trade) {
+                $tradeTime = strtotime($trade->created_at);
+                if ($tradeTime >= $startWindow && $tradeTime <= $endWindow) {
+
+                    if ($trade->type === 'open') {
+                        $liveBuy[] = $candle['binance_timestamp'];
+                        $liveTrades->forget($key);
+                    } elseif ($trade->type === 'close') {
+                        $liveSell[] = $candle['binance_timestamp'];
+                        $liveTrades->forget($key);
+                    }
+                }
+            }
+        }
+
+        // dd($liveBuy,$liveSell);
+
+
+
+
+
         return view('CoinReports.coin-report-details', [
             'pageSlug' => 'Report Details',
             'symbol' => $symbol,
@@ -134,7 +198,10 @@ class BinanceController extends Controller
             'trades' => $trades,
             'stopLoss' => $stopLoss,
             'market' => $market,
+            'liveBuy' => $liveBuy,
+            'liveSell' => $liveSell,
             'data' => $data,
+            'liveTradesData' => $liveTradesData,
         ]);
     }
 

@@ -527,6 +527,8 @@
                 const candlestickData = @json($data);
                 const trades = @json($trades);
                 const buyTriggers = @json($buyTriggers);
+                const liveBuy = @json($liveBuy);
+                const liveSell = @json($liveSell);
                 const sellTriggers = @json($sellTriggers);
                 const lowestTriggers = @json($lowestTriggers);
 
@@ -537,6 +539,35 @@
                 // Determine point colors and styles based on buy/sell triggers
                 const pointStyles = timestamps.map((timestamp, index) => {
                     const binanceTimestamp = candlestickData[index].binance_timestamp;
+
+
+
+
+                    if (liveBuy.includes(binanceTimestamp)) {
+                        return {
+                            backgroundColor: 'white', // Green for buy triggers
+                            borderColor: 'green', // Darker green border
+                            radius: 6 // Larger point radius
+                        };
+                    }
+
+                    if (liveSell.includes(binanceTimestamp)) {
+                        return {
+                            backgroundColor: 'white', // Green for buy triggers
+                            borderColor: 'red', // Darker green border
+                            radius: 6 // Larger point radius
+                        };
+                    }
+
+
+
+
+
+
+
+
+
+                    // Old Conditions
                     if (buyTriggers.includes(binanceTimestamp)) {
                         return {
                             backgroundColor: 'green', // Green for buy triggers
@@ -549,12 +580,6 @@
                             borderColor: 'darkred', // Darker red border
                             radius: 6 // Larger point radius
                         };
-                    } else if (lowestTriggers.includes(binanceTimestamp)) {
-                        return {
-                            backgroundColor: 'orange', // Red for sell triggers
-                            borderColor: 'darkred', // Darker red border
-                            radius: 6 // Larger point radius
-                        };
                     } else {
                         return {
                             backgroundColor: 'lightBlue', // Light blue for other points
@@ -562,6 +587,11 @@
                             radius: 3 // Normal point radius
                         };
                     }
+
+
+
+
+
                 });
 
                 // Initialize Chart.js
@@ -659,5 +689,113 @@
                 }
             });
         </script>
+    </div>
+
+
+
+    {{-- Live Trades Table --}}
+    @php
+        use Carbon\Carbon;
+        use Illuminate\Support\Facades\DB;
+        $grand_total = 0;
+        $profit_total = 0;
+        $loss_total = 0;
+        $trades_total = 0;
+        $profit_order_count = 0;
+        $profit_percentage_total = 0;
+        $loss_order_count = 0;
+        $symbols = [];
+        $symbols = DB::table('orders')->pluck('symbol')->unique();
+
+    @endphp
+    <div class="table-container">
+        <table class="table dataTable">
+
+            <thead class="">
+                <tr>
+                    <th>Coin</th>
+                    <th>Amount</th>
+                    <th>Leverage</th>
+                    <th>Position</th>
+                    <th>Type</th>
+                    <th>Entry Price</th>
+                    <th>Close Price</th>
+                    <th>Current Price</th>
+                    <th>Turnover Point</th>
+                    {{-- <th>Current Support</th>
+                        <th>Current Resistance</th>
+                        <th>Stop Loss</th> --}}
+                    <th>Current Profit</th>
+                    <th>Realized Pnl</th>
+                    <th>Status</th>
+                    <th>Take Profit</th>
+                    <th>Time</th>
+
+                    <th>Formula</th>
+
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($liveTradesData as $order)
+                    @php
+                        $sqlTimestamp = $order->created_at;
+                        $date = Carbon::createFromFormat('Y-m-d H:i:s', $sqlTimestamp, 'Asia/Karachi');
+                        $date->setTimezone('GMT');
+                        $unixTimestamp = $date->timestamp * 1000;
+                        $unixTimestamp = floor($unixTimestamp / 60000) * 60000;
+                        $unixTimestamp = intval($unixTimestamp);
+                        $orderClose = DB::table('live_trades_future_results')
+                            ->where('orderId', $order->pairId)
+                            ->first();
+
+                    @endphp
+                    <tr>
+                        <td>{{ $order->symbol ?? '-' }}</td>
+                        <td>{{ $order->amount ?? '-' }}</td>
+                        <td>{{ $order->leverage ?? '-' }}</td>
+                        <td>{{ $order->position ?? '-' }}</td>
+                        <td>{{ $order->type ?? '-' }}</td>
+                        <td>{{ $order->price ?? '-' }}</td>
+                        <td>{{ $orderClose->price ?? '-' }}</td>
+                        <td>{{ $order->previousPrice ?? '-' }}</td>
+                        <td>{{ $order->turnoverPoint ?? '-' }}</td>
+                        {{-- <td>{{ $order->currentSupport ?? '-' }}</td>
+                            <td>{{ $order->currentResistance ?? '-' }}</td>
+                            <td>{{ $order->stopLoss ?? '-' }}</td> --}}
+                        <td
+                            style="color:{{ isset($order->currentProfit) ? ($order->currentProfit > 0 ? 'green' : ($order->currentProfit < 0 ? 'red' : '')) : '' }} !important">
+                            {{ isset($order->currentProfit) ? round($order->currentProfit, 2) . '%' : '0' }}
+                        </td>
+                        <td
+                            style="color:{{ isset($order->realizedPnl) ? ($order->realizedPnl > 0 ? 'green' : ($order->realizedPnl < 0 ? 'red' : '')) : '' }} !important">
+                            $ {{ isset($order->realizedPnl) ? round($order->realizedPnl, 4) . '' : '0' }}
+                        </td>
+                        <td>
+                            <span
+                                class="badge {{ $order->trade_status == 'open' ? 'bg-info' : 'bg-secondary text-dark' }}">
+                                {{ ucfirst($order->trade_status ?? '-') }}
+                            </span>
+                        </td>
+                        <td>{{ $order->targetProfit ? $order->targetProfit . '%' : '-' }}</td>
+                        <td>{{ $date->setTimezone('Asia/Karachi')->format('H:i:s') }}<br>{{ $date->format('M d, Y') }}
+                        </td>
+                        </td>
+
+
+
+                        <td colspan="13" class="text-center  py-2">
+                            <span class="fw-bold"> </span>{{ $order->formula ?? '-' }}
+                        </td>
+                    </tr>
+                @endforeach
+                {{-- <tr>
+                    <td colspan="10" style="text-align: right;">
+                        <strong>Total Trades:</strong> {{ count($orders) }}<br>
+                        <strong>Total Profit:</strong> ${{ number_format($profit_total, 4) }}
+                        ({{ round($profit_percentage_total, 2) }} %)
+                    </td>
+                </tr> --}}
+            </tbody>
+        </table>
     </div>
 @endsection

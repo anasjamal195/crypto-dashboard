@@ -14,6 +14,24 @@ use Illuminate\Support\Facades\Log;
 class BinanceApiService
 {
     protected static $httpClient = null;
+    protected static $binanceIntervals = [
+        '1s'  => 1 / 60,  // 1 second (not commonly used)
+        '1m'  => 1,       // 1 minute
+        '3m'  => 3,       // 3 minutes
+        '5m'  => 5,       // 5 minutes
+        '15m' => 15,      // 15 minutes
+        '30m' => 30,      // 30 minutes
+        '1h'  => 60,      // 1 hour
+        '2h'  => 120,     // 2 hours
+        '4h'  => 240,     // 4 hours
+        '6h'  => 360,     // 6 hours
+        '8h'  => 480,     // 8 hours
+        '12h' => 720,     // 12 hours
+        '1d'  => 1440,    // 1 day
+        '3d'  => 4320,    // 3 days
+        '1w'  => 10080,   // 1 week
+        '1M'  => 43200,   // 1 month (approx 30 days)
+    ];
 
     /**
      * Initialize or retrieve the HTTP client.
@@ -272,13 +290,16 @@ class BinanceApiService
 
         foreach ($data as $index => $candle) {
             // Parse candlestick data
+
             $timestamp = $candle[0];
             $open = (float) $candle[1];
             $high = (float) $candle[2];
             $low = (float) $candle[3];
             $close = (float) $candle[4];
             $volume = (float) $candle[5];
-
+            $timestampReadable =  \Carbon\Carbon::createFromTimestampMs($timestamp)
+                ->setTimezone('Asia/Karachi')
+                ->toDateTimeString();
             $closePrices[] = $close;
             $volumes[] = $volume;
 
@@ -507,6 +528,7 @@ class BinanceApiService
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp' => $timestamp,
+                'timestampReadable' => $timestampReadable,
                 'market' => $market,
                 'binance_timestamp' => $timestamp,
                 'open' => $open,
@@ -543,6 +565,67 @@ class BinanceApiService
         }
 
         return $candlesticks;
+    }
+    public static function estimateRSIAtPercentage($symbol, $interval, $timestampNow)
+    {
+        $data = BinanceApiService::getCandleStickDataPast($symbol, $interval, 100, $timestampNow, 'FUTURE');
+
+        $intervalInMs = self::$binanceIntervals[$interval] * 60000;
+        $candle = $data[count($data) - 1];
+        $previousCandle = $data[count($data) - 2];
+        // Convert full RSI to RS
+        $rsiFull = $candle['rsi6'];
+        $open = $candle['open'];
+        $close = $candle['close'];
+
+
+
+
+
+        // Estimating the % of candle formation till current $binanceTimestamp
+        $candleStartTime = $candle['binance_timestamp'];
+        $candleEndTime = $candle['binance_timestamp'] + $intervalInMs;
+        $userTime = $timestampNow;
+
+        // Compute RSI at 50% of candle formation
+        $nPercent = (($userTime - $candleStartTime) / ($candleEndTime - $candleStartTime)) * 100;
+
+
+        // Estimate avg gain/loss if previous candle is available
+        $previousCandle = null; // Replace with actual previous candle if available
+        if ($previousCandle) {
+            $previousClose = $previousCandle['close'];
+            $gain = max(0, $close - $previousClose);
+            $loss = max(0, $previousClose - $close);
+            $avgGainPrev = ($gain + $previousCandle['rsi6']) / 2;
+            $avgLossPrev = ($loss + $previousCandle['rsi6']) / 2;
+        } else {
+            $avgGainPrev = abs($close - $open) * 0.5; // Approximation
+            $avgLossPrev = abs($close - $open) * 0.5;
+        }
+
+
+        $rsFull = (100 / (100 - $rsiFull)) - 1;
+
+        // Estimate close price at n% of candle formation
+        $closeAtNPercent = $open + (($close - $open) * ($nPercent / 100));
+
+        // Calculate gain/loss at n%
+        if ($closeAtNPercent > $open) {
+            $gainN = $closeAtNPercent - $open;
+            $lossN = 0;
+        } else {
+            $lossN = $open - $closeAtNPercent;
+            $gainN = 0;
+        }
+
+        // Adjust RS using estimated gain/loss
+        $rsN = $rsFull * (($gainN + $avgGainPrev) / ($lossN + $avgLossPrev));
+
+        // Calculate RSI at n%
+        $rsiN = 100 - (100 / (1 + $rsN));
+
+        return $rsiN;
     }
 
     public static function calculateKDJ($data)
@@ -611,6 +694,21 @@ class BinanceApiService
         return $candlesticks;
     }
 
+
+    // Misc Candle data functions for internal trader
+
+    public static function getCandleStickDataPast($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT')
+    {
+
+
+        $intervalInMins = self::$binanceIntervals[$interval];
+
+        $revisedTimestamp = $timestamp - ($intervalInMins * ($limit) * 60000) +  1000;
+
+        $data = self::getCandleStickData($symbol, $interval, $limit, $revisedTimestamp, $market);
+        // dd($data);
+        return $data;
+    }
 
     // Live Trades Functions 
     public static function getCurrentPrice($symbol, $market = 'SPOT')
@@ -1660,7 +1758,7 @@ class BinanceApiService
         if (!$user) {
             return false;
         }
-        
+
         $apiKey = $user->api_key;
         $secretKey = $user->api_secret;
         $timestamp = round(microtime(true) * 1000);
@@ -1679,7 +1777,7 @@ class BinanceApiService
 
 
         $positions = $response->json();
-      
+
         if (!$positions || isset($positions['code'])) {
             return false; // Return false if request fails or API returns an error
         }
@@ -2160,7 +2258,7 @@ class BinanceApiService
         ]);
 
         $orders = $response->json();
-       
+
         // Find last closed order
         foreach (array_reverse($orders) as $order) {
             if ($order['status'] == 'FILLED' || $order['status'] == 'CANCELED') {
@@ -2203,7 +2301,7 @@ class BinanceApiService
 
         // Get position details
         $positionDetails = self::getPositionDetails($symbol, $trader);
-        
+
         if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
             // No open position found, return last close order details
 
