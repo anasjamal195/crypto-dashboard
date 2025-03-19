@@ -21,7 +21,7 @@ class ShortThread implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public $timeout = 360000000;
-    public $tries = 0.5; // The job will only run once
+    public $tries = 1; // The job will only run once
     public $stopLoss = 1.5;
     public $targetProfit = 0.5;
 
