@@ -183,6 +183,7 @@
                                             $nearbyTrades = DB::table('coin_reports')
                                                 ->where('symbol', '!=', $trade->symbol)
                                                 ->where('market', $market)
+                                                ->where('market', $trade->formula)
                                                 ->where('interval', $interval)
 
                                                 ->whereBetween('buyingCandle->timestamp', [

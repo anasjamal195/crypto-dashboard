@@ -42,8 +42,8 @@ class FutureReportWorkerMacdFormula extends Command
      */
     public function handle()
     {
-        $formula = 'MACD Multithread';
-        DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->truncate();
+        $formula = 'MACD Multithread Short (MA & DIF Condition added)';
+        DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
         try {
             ReportServiceMacdShortReportService::updateCoinReport(
@@ -52,13 +52,12 @@ class FutureReportWorkerMacdFormula extends Command
                 'FUTURE',
                 $formula,
             );
-            ReportServiceMacdLongReportService::updateCoinReport(
-                '5m',
-                1000,
-                'FUTURE',
-                $formula,
-
-            );
+            // ReportServiceMacdLongReportService::updateCoinReport(
+            //     '5m',
+            //     1000,
+            //     'FUTURE',
+            //     $formula,
+            // );
         } catch (\Exception $e) {
             Log::error($e);
         }

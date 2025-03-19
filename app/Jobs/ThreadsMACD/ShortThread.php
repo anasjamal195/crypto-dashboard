@@ -21,8 +21,8 @@ class ShortThread implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public $timeout = 360000000;
-    public $tries = 1; // The job will only run once
-    public $stopLoss = 1.2;
+    public $tries = 0.5; // The job will only run once
+    public $stopLoss = 1.5;
     public $targetProfit = 0.5;
 
     public $tradeInstance;
@@ -66,6 +66,7 @@ class ShortThread implements ShouldQueue
         $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, null, 'FUTURE');
         $candle2h = $data2h[count($data2h) - 1];
         $secondLastCandle2h = $data2h[count($data2h) - 2];
+        $thirdLastCandle2h = $data2h[count($data2h) - 3];
         // ---------------------------------
 
 
@@ -84,210 +85,11 @@ class ShortThread implements ShouldQueue
                 Log::info('ShortThreadMACD: Skipped due to last order close time: ' . $symbol);
             }
         }
-        // if ($isWick) {
-        //     $openTrade = false;
-        //     // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to Wick formation ' . $symbol);
-        //     Log::info('ShortThreadMACD: Retreating Due to upper wick');
-        // }
+
         // Condition to limit open orders for a symbol in long or short
         if ($currentOpenOrders >= 1) {
             $openTrade = false;
         }
-
-
-
-        // while (true) {
-        //     Log::info('ShortThreadMACD: Entering 1m Loop...');
-
-        //     $data1m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '1m', 5, null, 'FUTURE');
-        //     $data3m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '3m', 5, null, 'FUTURE');
-        //     $candle3m = $data3m[count($data3m) - 1];
-        //     $secondLastcandle3m = $data3m[count($data3m) - 2];
-        //     $candle1m = $data1m[count($data1m) - 1];
-        //     $secondLastcandle1m = $data1m[count($data1m) - 2];
-        //     $thirdLastcandle1m = $data1m[count($data1m) - 3];
-        //     $openTrade = true;
-
-        //     if ($candle3m['close'] > $candle3m['open']) {
-        //         $openTrade = false;
-        //         Log::info('ShortThreadMACD: Skipped opening SHORT Due to 3m candle direction ' . $symbol);
-        //     }
-
-        //     if ($secondLastcandle3m['close'] > $secondLastcandle3m['open']) {
-        //         $openTrade = false;
-        //         Log::info('ShortThreadMACD: Skipped opening SHORT Due to second Last 3m candle direction ' . $symbol);
-        //     }
-
-        //     if ($candle1m['close'] > $candle1m['open']) {
-        //         $openTrade = false;
-        //         // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT Due to 1m candle direction ' . $symbol);
-        //         Log::info('ShortThreadMACD: Skipped opening SHORT Due to 1m candle direction ' . $symbol);
-        //     }
-
-
-
-        //     // JUST FOR TESTING
-
-        //     $secondLastper = (($secondLastcandle1m['open'] - $secondLastcandle1m['close']) / $secondLastcandle1m['open']) * 100;
-        //     if ($secondLastper < 0.08) {
-        //         $openTrade = false;
-        //         Log::info('ShortThreadMACD: Skipped opening SHORT Due to second Last 1m candle percentage ' . $symbol);
-        //     }
-
-        //     // Check for second last 1m candle direction
-        //     if ($secondLastcandle1m['close'] > $secondLastcandle1m['open']) {
-        //         $openTrade = false;
-        //         // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to second Last 1m candle direction ' . $symbol);
-        //         Log::info('ShortThreadMACD: Skipped opening SHORT Due to second Last 1m candle direction ' . $symbol);
-        //     }
-
-        //     // Check for second last 1m candle direction
-        //     if ($thirdLastcandle1m['close'] > $thirdLastcandle1m['open']) {
-        //         $openTrade = false;
-        //         // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening Short Due to third Last 1m candle direction ' . $symbol);
-        //         Log::info('ShortThreadMACD: Skipped opening SHORT Due to third Last 1m candle direction ' . $symbol);
-        //     }
-
-
-        //     $candleDiff1m  = abs($secondLastcandle1m['close'] - $secondLastcandle1m['open']);
-
-        //     $lowerWickDiff = min($secondLastcandle1m['close'], $secondLastcandle1m['open']) - $secondLastcandle1m['low'];
-        //     // Candle wick condition for second last candle 1m 
-        //     if ($lowerWickDiff > $candleDiff1m) {
-        //         $openTrade = false;
-        //         Log::info('ShortThreadMACD: Skipped opening SHORT Due to 1m candle wick greated than solid region ' . $symbol);
-        //     }
-
-        //     if (
-        //         $openTrade ||
-        //         $candle1m['close'] < ($this->supportResistance[7]['support'] * (1 - 0.3 / 100))  ||
-        //         $candle1m['close'] > ($this->supportResistance[7]['support'] * (1 + 1.2 / 100))
-        //     ) {
-        //         Log::info('ShortThreadMACD: Timeout for 1m loop ' . $symbol . ' Trade status: ' . $openTrade);
-        //         break;
-        //     }
-        //     // Update Cache to make this symbol unavailable
-
-        //     CommonHelpers::delayS(5);
-        // }
-
-
-        // // Check if it is allowed to open trade
-        // $lastOpenTrade = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->first();
-        // if ($lastOpenTrade) {
-
-        //     if ($lastOpenTrade->currentProfit < 0.2) {
-        //         $openTrade = false;
-        //         Log::info('ShortThreadMACD: Skipped due to current open order in loss: ' . $symbol);
-        //         // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to current open order in loss ' . $symbol);
-        //     }
-        // } else {
-
-        //     $lastClosed = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'close')->orderBy('created_at', 'DESC')->first();
-
-        //     if ($lastClosed) {
-        //         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastClosed->created_at));
-        //         if ($timeDiff <= 30 && $lastClosed->currentProfit <= 0) {
-        //             $openTrade = false;
-        //             Log::info('ShortThreadMACD: Skipped due to last order closed in loss: ' . $symbol);
-        //             // MailerService::sendSkipEmail($this->tradeInstance, 'Skipped opening SHORT due to last order closed in loss ' . $symbol);
-        //         }
-        //     }
-        // }
-
-
-
-
-
-        // Check Opposite Wick Direction
-        // $secondLastsolid30mLength = abs($secondLastcandle30m['close'] - $secondLastcandle30m['open']);
-        // $secondLastlowerWickDiff30m = $secondLastcandle30m['low'] - min($secondLastcandle30m['close'], $secondLastcandle30m['open']);
-        // $secondLastupperWickDiff30m = $secondLastcandle30m['high'] - max($secondLastcandle30m['close'], $secondLastcandle30m['open']);
-
-        // $isDownwardWick30m  = $secondLastlowerWickDiff30m > $secondLastsolid30mLength && $secondLastupperWickDiff30m < $secondLastsolid30mLength * 0.1;
-        // $isUpwardWick30m  = $secondLastlowerWickDiff30m < $secondLastsolid30mLength * 0.1 && $secondLastupperWickDiff30m > $secondLastsolid30mLength;
-
-        // if (
-
-        //     ($secondLastcandle30m['per'] >= -0.07 || $thirdLastcandle30m['per'] >= -0.07)
-        //     &&
-        //     ($secondLastcandle30m['per'] <= -0.07 || !$isUpwardWick30m)
-        //     &&
-        //     $isDownwardWick30m
-        // ) {
-        //     $openTrade = false;
-        //     Log::info('ShortThreadMACD: Skipped opening SHORT Due to 30m candle conditions ' . $symbol);
-        // }
-
-
-
-
-
-
-
-
-        /*
-        ========================NEW CONDITIONS ON 2h===================================
-        */
-
-        // Fetch 2-hour candlestick data
-
-
-        $instantOpen = false;
-
-        // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
-        // OR
-        // Condition 8: Skip trade if last 2 hrs candle's RSI is above 72 OR current 2 hrs candle's RSI is above 70
-
-        if (($candle2h['ma7'] < $candle2h['ma25'] && $candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['per'] >= 0)
-            || ($secondLastCandle2h['rsi6'] < 20 || $candle2h['rsi6'] < 20)
-        ) {
-            $openTrade = false;
-        }
-
-
-        // Condition 5: Check for instant opening
-        if (
-            (($candle2h['ma7'] < $candle2h['ma25'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma25']) ||
-                ($candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma99']))
-
-            ||
-
-            ($secondLastCandle2h['rsi6'] > 70 || $candle2h['rsi6'] > 75)
-
-            ||
-            ($secondLastcandle30m['rsi6'] > 85 || $candle15m['rsi6'] > 80)
-
-        ) {
-            $instantOpen = true;
-        }
-
-        // Calculate wick and solid region sizes
-        $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
-        $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
-        $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
-
-        // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
-        if (
-            !$instantOpen &&
-            !(
-                $secondLastCandle2h['per'] <= 0.15 || // Condition 1
-                ($secondLastCandle2h['per'] > 0 && $lowerWick < $upperWick && $lowerWick < $solidRegion * 0.1) || // Condition 3
-                ($lowerWick == 0 && $upperWick > 0) // Condition 4
-            )
-        ) {
-            $openTrade = false;
-        }
-
-        // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
-        if ($secondLastCandle2h['per'] < 0 && $upperWick < $lowerWick) {
-            $openTrade = false;
-        }
-        /*
-        ===============================================================================
-        */
-
-
 
 
         $openTrades = DB::table('live_trades_future_results')->where('trade_acc', $this->tradeInstance->tradeAccount)->where('position', 'SHORT')->where('trade_status', 'open')->orderBy('created_at', 'DESC')->get();
@@ -309,6 +111,23 @@ class ShortThread implements ShouldQueue
         // if (!$allInProfit && $openTradesCount >= 5) {
         //     $openTrade = false;
         // }
+
+
+
+        // Calculate wick and solid region sizes
+        // $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
+        // $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
+        // $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
+
+
+        if (
+            !(
+                $secondLastCandle2h['histogram'] < $thirdLastCandle2h['histogram']
+            )
+        ) {
+            $openTrade = false;
+        }
+
 
         if ($openTrade) {
 

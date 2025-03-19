@@ -223,7 +223,7 @@ class LongThread implements ShouldQueue
 
 
 
-        
+
         /*
         ========================NEW CONDITIONS ON 2h===================================
         */
@@ -251,11 +251,12 @@ class LongThread implements ShouldQueue
 
             ||
 
-            ($secondLastCandle2h['rsi6'] < 25 || $candle2h['rsi6'] < 20)
-
+            ($secondLastCandle2h['rsi6'] < 25 && $candle2h['rsi6'] < 20)
             ||
-            ($secondLastcandle30m['rsi6'] < 12 || $candle15m['rsi6'] < 17)
 
+            ($secondLastcandle30m['rsi6'] < 12 && $candle15m['rsi6'] < 17)
+
+            
         ) {
             $instantOpen = true;
         }
@@ -271,7 +272,7 @@ class LongThread implements ShouldQueue
             !(
                 $secondLastCandle2h['per'] >= 0.15 || // Condition 1
                 ($secondLastCandle2h['per'] < 0 && $lowerWick > $upperWick && $upperWick < $solidRegion * 0.1) || // Condition 3
-                ($upperWick == 0 && $lowerWick > 0) // Condition 4
+                ($secondLastCandle2h['per'] <= 0 &&  $upperWick == 0 && $lowerWick > 0) // Condition 4
             )
         ) {
             $openTrade = false;

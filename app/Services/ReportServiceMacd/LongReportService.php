@@ -40,7 +40,7 @@ class LongReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.5;
+            $targetProfit = 1;
             $stopLoss = 1;
             try {
                 $symbol = $coin->symbol;
@@ -50,7 +50,7 @@ class LongReportService
                 $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $stopLoss, $formula);
 
                 // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'LONG')->delete();
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('formula', $formula)->where('market', $market)->where('position', 'LONG')->delete();
                 DB::table('coin_reports')->insert($trades);
                 $tradesTotal[$symbol] = $trades;
                 // Log::info("Updated coin report for $symbol at interval $interval.");
@@ -145,13 +145,14 @@ class LongReportService
 
             if ($buy_price == 0) {
 
-                $macdDarkRedDistance = 0;
+
+                $macdLightRedDistance = 0;
                 $loopIndex = $index;
 
                 while (true) {
 
                     if ($data[$loopIndex]['histogram'] >= $data[$loopIndex - 1]['histogram']) {
-                        $macdDarkRedDistance++;
+                        $macdLightRedDistance++;
                     } else {
                         break;
                     }
@@ -172,20 +173,7 @@ class LongReportService
                     $loopIndex--;
                 }
 
-                $volumeCrossover = false;
-                $loopIndex = $index;
 
-                while (true) {
-
-                    if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
-                        $volumeCrossover = true;
-                        break;
-                    }
-                    if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
-                        break;
-                    }
-                    $loopIndex--;
-                }
 
 
                 $kdjCrossover = false;
@@ -219,17 +207,17 @@ class LongReportService
                     $loopIndex--;
                 }
 
+
+
                 // Check KDJ approaching Crossover
                 $kdjApproachingCrossover = abs($data[$index]['K'] - $data[$index]['J']) < abs($data[$index - 1]['K'] - $data[$index - 1]['J']) &&
                     abs($data[$index]['D'] - $data[$index]['J']) < abs($data[$index - 1]['D'] - $data[$index - 1]['J']);
 
-
-
                 // Check downward wick
                 $upperWick = ($data[$index]['high'] - $data[$index]['close']);
                 $lowerWick = ($data[$index]['open'] - $data[$index]['low']);
+                $isUpwardWick = $data[$index]['close'] > $data[$index]['open'] && $upperWick > $lowerWick * 2;
                 $isDownwardWick = $data[$index]['close'] > $data[$index]['open'] && $lowerWick > $upperWick * 2;
-
 
                 $lastLowest = $data[$index]['low'];
                 $loopIndex = $index;
@@ -243,89 +231,75 @@ class LongReportService
                 }
 
 
+
                 if (
-                    // Current and previous MACD should be red
-                    // $data[$index]['histogram'] < 0
-                    // && $isDownwardWick
-                    // && ($kdjCrossover || $kdjApproachingCrossover)
-                    // && $totalRedCandles > 4
-                    // && $data[$index]['per'] >= 0.2
-                    // && $data[$index]['per'] < 0.6
-                    // && $data[$index]['close'] < $lastLowest * (1 + 0.7 / 100)
-                    // && $data[$index]['avl'] > $data[$index - 1]['avl']
-                    // && $data[$index]['dif'] > $data[$index - 1]['dif']
-                    // && $data[$index]['rsi6'] > $data[$index - 1]['rsi6'] + 10
-
-
-
-                    // Old Live Formula
-                    $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0 && $data[$index - 2]['per'] < 0
-                    // && $isDownwardWick
-                    && $data[$index]['per'] >= 0.2
-
-                    // && ($data[$index]['histogram'] < 0 || $data[$index - 1]['histogram'] < 0)
-
-                    && $data[$index]['histogram'] < 0
-
-
-                    && $data[$index]['dif'] > $data[$index - 1]['dif']
-                    // && $macdDarkRedDistance >= 6
-
-                    && $data[$index]['avl'] > $data[$index - 1]['avl']
-
+                    // Current and previous MACD should be green
+                    $data[$index]['histogram'] < 0
+                    && $isDownwardWick
                     && ($kdjCrossover || $kdjApproachingCrossover)
                     && $totalRedCandles > 4
-                    && $data[$index]['close'] < $lastLowest * (1 + 0.7 / 100)
+                    && $data[$index]['per'] >= 0.2
+                    && $data[$index]['per'] < 0.6
+                    && $data[$index]['close'] > $lastLowest * (1 + 0.7 / 100)
+                    && $data[$index]['avl'] > $data[$index - 1]['avl']
+                    && $data[$index]['dif'] > $data[$index - 1]['dif']
                     && $data[$index]['rsi6'] > $data[$index - 1]['rsi6'] + 10
-
-
-
-
+                    && $data[$index]['per'] > 0 && $data[$index - 1]['per'] < 0
                 ) {
-
 
                     // Fetch 2-hour candlestick data
                     $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, $candle['binance_timestamp'], 'FUTURE');
                     $candle2h = end($data2h);
                     $secondLastCandle2h = prev($data2h);
+                    $thirdLastCandle2h = prev($data2h);
 
-                    $instantOpen = false;
+                    // $instantOpen = false;
 
-                    // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
-                    if ($candle2h['ma7'] > $candle2h['ma25'] && $candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['per'] <= 0) {
-                        continue;
-                    }
+                    // // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
+                    // if ($candle2h['ma7'] > $candle2h['ma25'] && $candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['per'] <= 0) {
+                    //     continue;
+                    // }
 
-                    // Condition 5: Check for instant opening
-                    if (
-                        ($candle2h['ma7'] > $candle2h['ma25'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma25']) ||
-                        ($candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma99'])
-                    ) {
-                        $instantOpen = true;
-                    }
+                    // // Condition 5: Check for instant opening
+                    // if (
+                    //     ($candle2h['ma7'] > $candle2h['ma25'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma25']) ||
+                    //     ($candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma99'])
+                    // ) {
+                    //     $instantOpen = true;
+                    // }
 
                     // Calculate wick and solid region sizes
                     $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
                     $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
                     $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
 
-                    // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+                    // // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+                    // if (
+                    //     !$instantOpen &&
+                    //     !(
+                    //         $secondLastCandle2h['per'] >= 0.15 || // Condition 1
+                    //         ($secondLastCandle2h['per'] < 0 && $lowerWick > $upperWick && $upperWick < $solidRegion * 0.1) || // Condition 3
+                    //         ($upperWick == 0 && $lowerWick > 0) // Condition 4
+                    //     )
+                    // ) {
+                    //     continue;
+                    // }
+
+                    // // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
+                    // if ($secondLastCandle2h['per'] > 0 && $upperWick > $lowerWick) {
+                    //     continue;
+                    // }
+
+
                     if (
-                        !$instantOpen &&
                         !(
-                            $secondLastCandle2h['per'] >= 0.15 || // Condition 1
-                            ($secondLastCandle2h['per'] < 0 && $lowerWick > $upperWick && $upperWick < $solidRegion * 0.1) || // Condition 3
-                            ($upperWick == 0 && $lowerWick > 0) // Condition 4
+                            ($upperWick < $lowerWick && $upperWick < $solidRegion * 0.1)  &&
+                            // $secondLastCandle2h['per'] < 0 &&
+                            $secondLastCandle2h['histogram'] > $thirdLastCandle2h['histogram']
                         )
                     ) {
                         continue;
                     }
-
-                    // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
-                    if ($secondLastCandle2h['per'] > 0 && $upperWick > $lowerWick) {
-                        continue;
-                    }
-
 
 
 
@@ -341,7 +315,6 @@ class LongReportService
             } else {
                 if ($lowestPrice > $candle['low'])
                     $lowestPrice = $candle['low'];
-
 
 
                 if ($candle['close'] >= $buy_price * (1 + $targetProfit / 100)) {

@@ -48,7 +48,7 @@ class ShortReportService
                 $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
 
                 // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('market', $market)->where('position', 'SHORT')->delete();
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('formula', $formula)->where('market', $market)->where('position', 'SHORT')->delete();
                 DB::table('coin_reports')->insert($trades);
                 $tradesTotal[$symbol] = $trades;
 
@@ -69,7 +69,7 @@ class ShortReportService
     ) {
 
         $tradesTotal = [];
-        $targetProfit = 2;
+        $targetProfit = 1;
         try {
             $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
@@ -172,20 +172,20 @@ class ShortReportService
                     $loopIndex--;
                 }
 
-                $volumeCrossover = false;
-                $loopIndex = $index;
+                // $volumeCrossover = false;
+                // $loopIndex = $index;
 
-                while (true) {
+                // while (true) {
 
-                    if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
-                        $volumeCrossover = true;
-                        break;
-                    }
-                    if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
-                        break;
-                    }
-                    $loopIndex--;
-                }
+                //     if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
+                //         $volumeCrossover = true;
+                //         break;
+                //     }
+                //     if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
+                //         break;
+                //     }
+                //     $loopIndex--;
+                // }
 
 
                 $kdjCrossover = false;
@@ -228,7 +228,7 @@ class ShortReportService
                 // Check downward wick
                 $upperWick = ($data[$index]['high'] - $data[$index]['open']);
                 $lowerWick = ($data[$index]['close'] - $data[$index]['low']);
-                $isDownwardWick = $data[$index]['close'] < $data[$index]['open'] && $lowerWick < $upperWick * 2;
+                $isUpwardWick = $data[$index]['close'] < $data[$index]['open'] && $upperWick > $lowerWick * 2;
 
 
                 $lastHighest = $data[$index]['high'];
@@ -241,14 +241,16 @@ class ShortReportService
                     }
                     $loopIndex--;
                 }
+                $difDeaCondition = $data[$index - 3]['dif'] < $data[$index - 3]['dea'] && $data[$index]['dif'] > $data[$index]['dea'];
 
 
+                $maCondition = abs($data[$index]['ma7'] - $data[$index]['ma25']) < abs($data[$index - 1]['ma7'] - $data[$index - 1]['ma25']);
                 if ($index > $obvCandles) {
 
                     if (
                         // Current and previous MACD should be green
                         $data[$index]['histogram'] > 0
-                        && $isDownwardWick
+                        && $isUpwardWick
                         && ($kdjCrossover || $kdjApproachingCrossover)
                         && $totalGreenCandles > 4
                         && $data[$index]['per'] <= -0.2
@@ -257,6 +259,9 @@ class ShortReportService
                         && $data[$index]['avl'] < $data[$index - 1]['avl']
                         && $data[$index]['dif'] < $data[$index - 1]['dif']
                         && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] - 10
+                        && $data[$index]['per'] < 0 && $data[$index - 1]['per'] > 0
+                        && $maCondition
+                        && !$difDeaCondition
                     ) {
 
 
@@ -270,43 +275,57 @@ class ShortReportService
                         $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, $candle['binance_timestamp'], 'FUTURE');
                         $candle2h = end($data2h);
                         $secondLastCandle2h = prev($data2h);
+                        $thirdLastCandle2h = prev($data2h);
 
-                        $instantOpen = false;
+                        // $instantOpen = false;
 
-                        // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
-                        if ($candle2h['ma7'] < $candle2h['ma25'] && $candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['per'] >= 0) {
-                            continue;
-                        }
+                        // // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
+                        // if ($candle2h['ma7'] < $candle2h['ma25'] && $candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['per'] >= 0) {
+                        //     continue;
+                        // }
 
-                        // Condition 5: Check for instant opening
-                        if (
-                            ($candle2h['ma7'] < $candle2h['ma25'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma25']) ||
-                            ($candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma99'])
-                        ) {
-                            $instantOpen = true;
-                        }
+                        // // Condition 5: Check for instant opening
+                        // if (
+                        //     ($candle2h['ma7'] < $candle2h['ma25'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma25']) ||
+                        //     ($candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma99'])
+                        // ) {
+                        //     $instantOpen = true;
+                        // }
 
                         // Calculate wick and solid region sizes
                         $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
                         $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
                         $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
 
-                        // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+                        // // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+                        // if (
+                        //     !$instantOpen &&
+                        //     !(
+                        //         $secondLastCandle2h['per'] <= 0.15 || // Condition 1
+                        //         ($secondLastCandle2h['per'] > 0 && $lowerWick < $upperWick && $lowerWick < $solidRegion * 0.1) || // Condition 3
+                        //         ($lowerWick == 0 && $upperWick > 0) // Condition 4
+                        //     )
+                        // ) {
+                        //     continue;
+                        // }
+
+                        // // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
+                        // if ($secondLastCandle2h['per'] < 0 && $upperWick < $lowerWick) {
+                        //     continue;
+                        // }
+
+
+                        // Custom Condition
                         if (
-                            !$instantOpen &&
                             !(
-                                $secondLastCandle2h['per'] <= 0.15 || // Condition 1
-                                ($secondLastCandle2h['per'] > 0 && $lowerWick < $upperWick && $lowerWick < $solidRegion * 0.1) || // Condition 3
-                                ($lowerWick == 0 && $upperWick > 0) // Condition 4
+                                // ($upperWick > $lowerWick && $lowerWick < $solidRegion * 0.1)  &&
+                                // $secondLastCandle2h['per'] < 0 &&
+                                $secondLastCandle2h['histogram'] < $thirdLastCandle2h['histogram']
                             )
                         ) {
                             continue;
                         }
-
-                        // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
-                        if ($secondLastCandle2h['per'] < 0 && $upperWick < $lowerWick) {
-                            continue;
-                        }
+                        // dd($candle, $secondLastCandle2h, $thirdLastCandle2h, $symbol);
 
 
 

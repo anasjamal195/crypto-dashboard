@@ -66,32 +66,11 @@ class MacdFormulaShort
                     // Use Last completed Candle for checking conditions
                     $index--;
 
-                    $macdLightGreenDistance = 0;
-                    $loopIndex = $index;
-
-                    while (true) {
-                        if ($loopIndex == 1)
-                            break;
-                        if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
-                            $macdLightGreenDistance++;
-                        } else {
-                            break;
-                        }
-
-                        $loopIndex--;
-                    }
-
-
-
-                    $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
-
-                    // New Formula
                     $macdDarkGreenDistance = 0;
                     $loopIndex = $index;
 
                     while (true) {
-                        if ($loopIndex == 1)
-                            break;
+
                         if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
                             $macdDarkGreenDistance++;
                         } else {
@@ -106,8 +85,7 @@ class MacdFormulaShort
                     $loopIndex = $index;
 
                     while (true) {
-                        if ($loopIndex == 1)
-                            break;
+
                         if ($data[$loopIndex]['histogram'] < 0)
                             break;
                         $totalGreenCandles++;
@@ -115,22 +93,20 @@ class MacdFormulaShort
                         $loopIndex--;
                     }
 
-                    $volumeCrossover = false;
-                    $loopIndex = $index;
+                    // $volumeCrossover = false;
+                    // $loopIndex = $index;
 
-                    while (true) {
-                        if ($loopIndex == 1)
-                            break;
+                    // while (true) {
 
-                        if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
-                            $volumeCrossover = true;
-                            break;
-                        }
-                        if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
-                            break;
-                        }
-                        $loopIndex--;
-                    }
+                    //     if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
+                    //         $volumeCrossover = true;
+                    //         break;
+                    //     }
+                    //     if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
+                    //         break;
+                    //     }
+                    //     $loopIndex--;
+                    // }
 
 
                     $kdjCrossover = false;
@@ -138,8 +114,6 @@ class MacdFormulaShort
                     $loopIndex = $index;
 
                     while (true) {
-                        if ($loopIndex == 1)
-                            break;
                         if (
                             $data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
                             $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
@@ -175,14 +149,12 @@ class MacdFormulaShort
                     // Check downward wick
                     $upperWick = ($data[$index]['high'] - $data[$index]['open']);
                     $lowerWick = ($data[$index]['close'] - $data[$index]['low']);
-                    $isDownwardWick = $data[$index]['close'] < $data[$index]['open'] && $lowerWick < $upperWick * 2;
+                    $isUpwardWick = $data[$index]['close'] < $data[$index]['open'] && $upperWick > $lowerWick * 2;
 
 
                     $lastHighest = $data[$index]['high'];
                     $loopIndex = $index;
                     while (true) {
-                        if ($loopIndex == 1)
-                            break;
                         if ($data[$loopIndex]['high'] > $lastHighest) {
                             $lastHighest = $data[$loopIndex]['high'];
                         } else if ($data[$loopIndex]['high'] < $data[$index]['high'] || $loopIndex == 1) {
@@ -190,17 +162,16 @@ class MacdFormulaShort
                         }
                         $loopIndex--;
                     }
+                    $difDeaCondition = $data[$index - 3]['dif'] < $data[$index - 3]['dea'] && $data[$index]['dif'] > $data[$index]['dea'];
+
+
+                    $maCondition = abs($data[$index]['ma7'] - $data[$index]['ma25']) < abs($data[$index - 1]['ma7'] - $data[$index - 1]['ma25']);
 
 
                     if (
-                        // $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0 && $data[$index - 2]['per'] > 0 &&
-
-                        // ($data[$index]['histogram'] > 0 ||  $data[$index - 1]['histogram'] > 0) &&
-
-                        // $data[$index]['dif'] < $data[$index - 1]['dif'] && $macdLightGreenDistance >= 6 &&
-
+                        // Current and previous MACD should be green
                         $data[$index]['histogram'] > 0
-                        && $isDownwardWick
+                        && $isUpwardWick
                         && ($kdjCrossover || $kdjApproachingCrossover)
                         && $totalGreenCandles > 4
                         && $data[$index]['per'] <= -0.2
@@ -209,9 +180,9 @@ class MacdFormulaShort
                         && $data[$index]['avl'] < $data[$index - 1]['avl']
                         && $data[$index]['dif'] < $data[$index - 1]['dif']
                         && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] - 10
-
-                        && !$isWorkerDispatched
-
+                        && $data[$index]['per'] < 0 && $data[$index - 1]['per'] > 0
+                        && $maCondition
+                        && !$difDeaCondition
                     ) {
                         Log::info('ShortWorkerMACD: Dispatching Short Thread... Coin: ' . $symbol);
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
