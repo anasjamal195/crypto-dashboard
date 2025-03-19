@@ -58,6 +58,7 @@ class ShortThread implements ShouldQueue
         $data15m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '15m', 100, null, 'FUTURE');
         $candle15m = $data15m[count($data15m) - 1];
         $secondLastcandle15m = $data15m[count($data15m) - 2];
+        $thirdLastcandle15m = $data15m[count($data15m) - 3];
 
         $data30m = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '30m', 100, null, 'FUTURE');
         $candle30m = $data30m[count($data30m) - 1];
@@ -128,6 +129,13 @@ class ShortThread implements ShouldQueue
             $openTrade = false;
         }
 
+        if (
+
+            $secondLastcandle15m['histogram'] > $thirdLastcandle15m['histogram'] && $secondLastcandle15m['histogram'] < 0
+
+        ) {
+            $openTrade = false;
+        }
 
         if ($openTrade) {
 
