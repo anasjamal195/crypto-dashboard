@@ -318,8 +318,7 @@ class ShortReportService
                         // Custom Condition
                         if (
                             !(
-                                // ($upperWick > $lowerWick && $lowerWick < $solidRegion * 0.1)  &&
-                                // $secondLastCandle2h['per'] < 0 &&
+
                                 $secondLastCandle2h['histogram'] < $thirdLastCandle2h['histogram']
                             )
                         ) {
@@ -328,8 +327,41 @@ class ShortReportService
                         // dd($candle, $secondLastCandle2h, $thirdLastCandle2h, $symbol);
 
 
+                        $data15m = BinanceApiService::getCandleStickDataPast($symbol, '15m', 100, $candle['binance_timestamp'], 'FUTURE');
+                        $candle15m = end($data15m);
+                        $secondLastCandle15m = prev($data15m);
+                        $thirdLastCandle15m = prev($data15m);
 
 
+
+
+                        if (
+
+                            $secondLastCandle15m['histogram'] > $thirdLastCandle15m['histogram'] && $secondLastCandle15m['histogram'] < 0
+
+                        ) {
+                            continue;
+                        }
+
+
+                        $data1h = BinanceApiService::getCandleStickDataPast($symbol, '1h', 100, $candle['binance_timestamp'], 'FUTURE');
+                        $candle1h = end($data1h);
+                        $secondLastCandle1h = prev($data1h);
+                        $thirdLastCandle1h = prev($data1h);
+                        $fourthLastCandle1h = prev($data1h);
+                        $fifthLastCandle1h = prev($data1h);
+
+
+                        if (
+                            (
+                                $secondLastCandle1h['per'] > 0
+                                && $thirdLastCandle1h['per'] > 0
+                                && $fourthLastCandle1h['per'] > 0
+                                // && $fifthLastCandle1h['per'] > 0
+                            )
+                        ) {
+                            continue;
+                        }
 
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;

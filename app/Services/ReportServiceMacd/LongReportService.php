@@ -40,7 +40,7 @@ class LongReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 1;
+            $targetProfit = 0.5;
             $stopLoss = 1;
             try {
                 $symbol = $coin->symbol;
@@ -168,7 +168,9 @@ class LongReportService
 
                     if ($data[$loopIndex]['histogram'] > 0)
                         break;
-                    $totalRedCandles++;
+
+                    if ($data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'])
+                        $totalRedCandles++;
 
                     $loopIndex--;
                 }
@@ -230,10 +232,14 @@ class LongReportService
                     $loopIndex--;
                 }
 
+                $difDeaCondition = $data[$index - 3]['dif'] > $data[$index - 3]['dea'] && $data[$index]['dif'] < $data[$index]['dea'];
 
+
+                $maCondition = abs($data[$index]['ma7'] - $data[$index]['ma25']) < abs($data[$index - 1]['ma7'] - $data[$index - 1]['ma25']);
 
                 if (
-                    // Current and previous MACD should be green
+                    // Current and previous MACD should be red
+
                     $data[$index]['histogram'] < 0
                     && $isDownwardWick
                     && ($kdjCrossover || $kdjApproachingCrossover)
@@ -245,7 +251,10 @@ class LongReportService
                     && $data[$index]['dif'] > $data[$index - 1]['dif']
                     && $data[$index]['rsi6'] > $data[$index - 1]['rsi6'] + 10
                     && $data[$index]['per'] > 0 && $data[$index - 1]['per'] < 0
+                    && $maCondition
+                    && !$difDeaCondition
                 ) {
+
 
                     // Fetch 2-hour candlestick data
                     $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, $candle['binance_timestamp'], 'FUTURE');
@@ -253,20 +262,7 @@ class LongReportService
                     $secondLastCandle2h = prev($data2h);
                     $thirdLastCandle2h = prev($data2h);
 
-                    // $instantOpen = false;
 
-                    // // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
-                    // if ($candle2h['ma7'] > $candle2h['ma25'] && $candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['per'] <= 0) {
-                    //     continue;
-                    // }
-
-                    // // Condition 5: Check for instant opening
-                    // if (
-                    //     ($candle2h['ma7'] > $candle2h['ma25'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma25']) ||
-                    //     ($candle2h['ma7'] > $candle2h['ma99'] && $secondLastCandle2h['ma7'] < $secondLastCandle2h['ma99'])
-                    // ) {
-                    //     $instantOpen = true;
-                    // }
 
                     // Calculate wick and solid region sizes
                     $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
@@ -293,15 +289,45 @@ class LongReportService
 
                     if (
                         !(
-                            ($upperWick < $lowerWick && $upperWick < $solidRegion * 0.1)  &&
-                            // $secondLastCandle2h['per'] < 0 &&
                             $secondLastCandle2h['histogram'] > $thirdLastCandle2h['histogram']
                         )
                     ) {
                         continue;
                     }
 
+                    $data15m = BinanceApiService::getCandleStickDataPast($symbol, '15m', 100, $candle['binance_timestamp'], 'FUTURE');
+                    $candle15m = end($data15m);
+                    $secondLastCandle15m = prev($data15m);
+                    $thirdLastCandle15m = prev($data15m);
 
+
+
+
+                    if (
+
+                        $secondLastCandle15m['histogram'] < $thirdLastCandle15m['histogram'] && $secondLastCandle15m['histogram'] > 0
+
+                    ) {
+                        continue;
+                    }
+                    $data1h = BinanceApiService::getCandleStickDataPast($symbol, '1h', 100, $candle['binance_timestamp'], 'FUTURE');
+                    $candle1h = end($data1h);
+                    $secondLastCandle1h = prev($data1h);
+                    $thirdLastCandle1h = prev($data1h);
+                    $fourthLastCandle1h = prev($data1h);
+                    $fifthLastCandle1h = prev($data1h);
+
+
+                    if (
+                        (
+                            $secondLastCandle1h['per'] < 0
+                            && $thirdLastCandle1h['per'] < 0
+                            && $fourthLastCandle1h['per'] < 0
+                            // && $fifthLastCandle1h['per'] > 0
+                        )
+                    ) {
+                        continue;
+                    }
 
                     $candle['should_buy'] = true;
                     $candle['previousObvHigh'] = 0;
@@ -315,6 +341,7 @@ class LongReportService
             } else {
                 if ($lowestPrice > $candle['low'])
                     $lowestPrice = $candle['low'];
+
 
 
                 if ($candle['close'] >= $buy_price * (1 + $targetProfit / 100)) {
