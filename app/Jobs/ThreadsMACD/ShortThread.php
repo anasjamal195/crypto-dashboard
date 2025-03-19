@@ -38,7 +38,7 @@ class ShortThread implements ShouldQueue
     {
         $this->tradeInstance = $tradeInstance;
         $this->supportResistance = $supportResistance;
-        $this->formula = 'MACD Multithread';
+        $this->formula = 'MACD Multithread (MA & DIF Condition added)';
         $this->profitIncrementPercentage = 0.2;
     }
 
