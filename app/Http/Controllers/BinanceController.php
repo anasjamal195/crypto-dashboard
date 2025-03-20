@@ -17,10 +17,6 @@ class BinanceController extends Controller
 {
     public function getCoinReport($market, Request $request)
     {
-        // Testing
-        $strategy = new OrderBookStrategy();
-        $symbol = 'BTCUSDT';
-        dd($strategy->getTradingRecommendation($symbol));
 
         // Fetch all unique symbols from the database
         $interval = $request->interval;
@@ -123,7 +119,7 @@ class BinanceController extends Controller
 
         // Fetching Base Candle Data
         $startTime = $trades->first()->buyingCandle->binance_timestamp;
-        
+
         $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startTime, $market);
 
         foreach ($data as $index => &$candle) {

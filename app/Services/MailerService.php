@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Mail\DynamicFutureTradeNotification;
 use App\Mail\DynamicSpotTradeNotification;
+use App\Mail\OrderBookSignalEmail;
 use App\Mail\OrderMail;
 use App\Mail\SkipEmail;
 use App\Mail\WalletEmail;
@@ -48,6 +49,11 @@ class MailerService
     {
         foreach (self::$recipients as $recipient)
             Mail::to($recipient)->send(new WalletEmail($order));
+    }
+    public static function sendOrderBookSignalEmail($snapshot)
+    {
+        foreach (self::$recipients as $recipient)
+            Mail::to($recipient)->send(new OrderBookSignalEmail($snapshot));
     }
 
 
