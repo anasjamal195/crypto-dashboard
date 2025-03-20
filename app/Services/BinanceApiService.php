@@ -695,6 +695,31 @@ class BinanceApiService
     }
 
 
+    // Order Book Details
+    public static function getOrderBook(string $symbol, int $limit = 100): ?array
+    {
+        $url = config('binance.api.base_url') . config('binance.endpoints.depth');
+        try {
+
+            $params = [
+                'symbol' => $symbol,
+                'limit' => $limit,
+            ];
+            $response = self::getHttpClient()->get($url, $params);
+           
+            
+            if ($response->successful()) {
+                return $response->json();
+            }
+            
+            Log::error('Binance API Error: ' . $response->body());
+            return null;
+        } catch (Exception $e) {
+            Log::error('Error fetching order book: ' . $e->getMessage());
+            return null;
+        }
+    }
+    
     // Misc Candle data functions for internal trader
 
     public static function getCandleStickDataPast($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT')

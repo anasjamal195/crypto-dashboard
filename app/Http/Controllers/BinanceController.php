@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
 use App\Services\MarketTrendService;
+use App\Services\OrderBookStrategy;
 use App\Services\ReportService\LongReportService;
 use Carbon\Carbon;
 use DateTime;
@@ -16,6 +17,10 @@ class BinanceController extends Controller
 {
     public function getCoinReport($market, Request $request)
     {
+        // Testing
+        $strategy = new OrderBookStrategy();
+        $symbol = 'BTCUSDT';
+        dd($strategy->getTradingRecommendation($symbol));
 
         // Fetch all unique symbols from the database
         $interval = $request->interval;

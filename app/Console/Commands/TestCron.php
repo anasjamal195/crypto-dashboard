@@ -7,6 +7,7 @@ use App\Jobs\TestJob;
 use App\Services\BinanceApiService;
 use App\Services\MailerService;
 use App\Services\MarketTrendService;
+use App\Services\OrderBookStrategy;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -34,25 +35,8 @@ class TestCron extends Command
      */
     public function handle()
     {
-        // $supportResistance = [
-        //     'support' => 20,
-        //     'resistance' => 30
-        // ];
-        // dd(BinanceApiService::openMarketPositionLiveTrader('XRPUSDT', 7, 'BUY', 2, 1, 'Testing Stop Market', $supportResistance, 0, false, 0.5, 0.5));
-
-        // dd(BinanceApiService::placeOrUpdateStopMarketOrder('XRPUSDT',1,1.5,93210099227));
-        // dd(BinanceApiService::placeTpSlOrders('XRPUSDT',1,2.3625,2.358,93210099227));
-
-
-        // dd(BinanceApiService::closeMarketPositionLiveTrader(93197794497));
-
-        // $candle5m = BinanceApiService::getCandleStickData('BTCUSDT', '5m', 100, null,'FUTURE')[98];
-        // // dd($candle5m);
-        // $candle1h = BinanceApiService::getCandleStickDataPast('BTCUSDT', '1m', 100, $candle5m['binance_timestamp'], 'FUTURE')[98];
-
-        // dd($candle5m, $candle1h);
-
-
-        dd(BinanceApiService::estimateRSIAtPercentage('BTCUSDT', '5m',1742317367000));
+        $strategy = new OrderBookStrategy();
+        $symbol = 'BTCUSDT';
+        dd($strategy->getTradingRecommendation($symbol));
     }
 }
