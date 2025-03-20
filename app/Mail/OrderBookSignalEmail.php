@@ -34,6 +34,6 @@ class OrderBookSignalEmail extends Mailable
     public function build()
     {
         return $this->subject('Order Book Signal Alert :: Signal: ' . $this->details['signal'])
-            ->view('Emails.new-order');
+            ->view('Emails.order-book-signal-details');
     }
 }
