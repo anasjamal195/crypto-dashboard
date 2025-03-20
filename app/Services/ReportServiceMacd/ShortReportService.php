@@ -363,6 +363,20 @@ class ShortReportService
                             continue;
                         }
 
+                        $data4h = BinanceApiService::getCandleStickDataPast($symbol, '4h', 100, $candle['binance_timestamp'], 'FUTURE');
+                        $candle4h = end($data4h);
+                        $secondLastCandle4h = prev($data4h);
+                        $thirdLastCandle4h = prev($data4h);
+                        $fourthLastCandle4h = prev($data4h);
+                        $fifthLastCandle4h = prev($data4h);
+
+                        if(
+                            $candle4h['per'] < -0.25
+                        ){
+                            continue;
+                        }
+
+                        
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;
                         $candle['previousObvHighReduced'] = 0;
