@@ -9,7 +9,7 @@
         }
 
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: auto;
             padding: 20px;
         }
@@ -79,15 +79,15 @@
         <table>
             <tr>
                 <th>Support Levels</th>
-                <td>{{ implode(', ', $snapshot->support_levels) }}</td>
+                <td>{{ json_encode($snapshot->support_levels) }}</td>
             </tr>
             <tr>
                 <th>Resistance Levels</th>
-                <td>{{ implode(', ', $snapshot->resistance_levels) }}</td>
+                <td>{{ json_encode($snapshot->resistance_levels) }}</td>
             </tr>
             <tr>
                 <th>Thin Liquidity Areas</th>
-                <td>{{ implode(', ', $snapshot->thin_liquidity_areas) }}</td>
+                <td>{{ json_encode($snapshot->thin_liquidity_areas) }}</td>
             </tr>
         </table>
 
@@ -107,11 +107,11 @@
             </tr>
             <tr>
                 <th>Long Entry Points</th>
-                <td>{{ implode(', ', $snapshot->long_entry_points) }}</td>
+                <td>{{ json_encode($snapshot->long_entry_points) }}</td>
             </tr>
             <tr>
                 <th>Short Entry Points</th>
-                <td>{{ implode(', ', $snapshot->short_entry_points) }}</td>
+                <td>{{ json_encode($snapshot->short_entry_points) }}</td>
             </tr>
         </table>
     </div>
