@@ -33,7 +33,7 @@ class Collector extends Command
 
         $interval = 300;
         $depth = 100;
-        $cleanup = true;
+        $cleanup = false;
         $daysToKeep = 2;
 
         $this->info('Starting order book data collection');
