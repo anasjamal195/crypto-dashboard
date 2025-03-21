@@ -75,9 +75,9 @@ class OrderBookCollectorService
             ]);
 
             Log::info("Stored order book snapshot for {$symbol} with ID {$snapshot->id}");
-            if ($snapshot->signal == 'LONG' || $snapshot->signal == 'SHORT') {
-                MailerService::sendOrderBookSignalEmail($snapshot);
-            }
+            // if ($snapshot->signal == 'LONG' || $snapshot->signal == 'SHORT') {
+            //     MailerService::sendOrderBookSignalEmail($snapshot);
+            // }
             return $snapshot;
         } catch (\Exception $e) {
             Log::error("Error collecting order book data: " . $e->getMessage());
