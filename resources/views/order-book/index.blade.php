@@ -10,6 +10,10 @@
                     <input type="text" name="symbol" class="form-control" placeholder="Symbol"
                         value="{{ request('symbol') }}">
                 </div>
+                <div class="col-md-2">
+                    <input type="number" name="strength" class="form-control" placeholder="Strength" max="10" min="0" step="0.01"
+                        value="{{ request('strength') }}">
+                </div>
                 <div class="col-md-3">
                     <select name="signal" class="form-control select2">
                         <option value="">Select Signal</option>
@@ -17,11 +21,11 @@
                         <option value="SHORT" {{ request('signal') == 'SHORT' ? 'selected' : '' }}>SHORT</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <input type="datetime-local" name="date_from" class="form-control flatpickr-input" placeholder="From"
                         value="{{ request()->get('date_from') }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <input type="datetime-local" name="date_to" class="form-control flatpickr-input" placeholder="To"
                         value="{{ request()->get('date_to') }}">
                 </div>
@@ -36,10 +40,11 @@
                 <tr>
                     <th>Sr. </th>
                     <th>Symbol</th>
-                    <th>Snapshot Time</th>
                     <th>Bid Volume</th>
                     <th>Ask Volume</th>
+                    <th>Strength</th>
                     <th>Signal</th>
+                    <th>Snapshot Time</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -53,9 +58,11 @@
                     <tr>
                         <td>{{ $index + 1 + $startIndex }}</td>
                         <td>{{ $snapshot->symbol }}</td>
-                        <td>{{ $snapshot->snapshot_time }}</td>
                         <td>{{ number_format($snapshot->bid_volume, 2) }}</td>
                         <td>{{ number_format($snapshot->ask_volume, 2) }}</td>
+                        <td>
+                            {{ number_format($snapshot->signal === 'LONG' ? $snapshot->long_strength : $snapshot->short_strength , 2) }}
+                        </td>
                         <td>
                             @if ($snapshot->signal == 'LONG')
                                 <span class="badge badge-success">{{ $snapshot->signal }}</span>
@@ -65,6 +72,8 @@
                                 <span class="badge badge-primary">{{ $snapshot->signal }}</span>
                             @endif
                         </td>
+
+                        <td>{{ $snapshot->snapshot_time }}</td>
 
                         <td>
                             <a href="{{ route('order-book.show', $snapshot->id) }}" class="btn btn-info btn-sm">View</a>

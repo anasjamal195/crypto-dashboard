@@ -21,7 +21,12 @@ class OrderBookSnapshotController extends Controller
         if ($request->filled('signal')) {
             $query->where('signal', $request->signal);
         }
-
+        if ($request->filled('strength')) {
+            $query->where(function ($query) use ($request) {
+                $query->where('long_strength', $request->strength)
+                      ->orWhere('short_strength', $request->strength);
+            });
+        }
         if ($request->filled('date_from')) {
             $query->where('snapshot_time', '>=', Carbon::parse(request('date_from'))->format('Y-m-d H:i:s'));
         }
