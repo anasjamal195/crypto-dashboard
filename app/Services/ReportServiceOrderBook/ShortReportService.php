@@ -3,6 +3,7 @@
 namespace App\Services\ReportServiceOrderBook;
 
 use App\CommonHelpers;
+use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
 use App\Services\MarketTrendService;
@@ -140,6 +141,8 @@ class ShortReportService
             $supportResistanceData = array_slice($data, $index - 300, 300);
             $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [7]);
             if ($buy_price == 0) {
+
+                OrderBookSnapshot
                 if (
                     true
                 ) {

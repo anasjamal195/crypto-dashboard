@@ -242,55 +242,55 @@ class BinanceApiService
     protected static function processData($data, $market = 'SPOT')
     {
         $KDJ = self::calculateKDJ($data);
-
+    
         // Initialize arrays for calculation
         $candlesticks = [];
         $closePrices = [];
-
+    
         $ema12 = [];
         $ema26 = [];
         $macd = [];
         $signalLine = [];
         $shouldBuy = [];
-
+    
         $gains = [];
         $losses = [];
         $avgGain = 0;
         $avgLoss = 0;
-
+    
         $obv = 0;
-
+    
         // Initialize SAR variables
         $af = 0.02; // Acceleration Factor
         $afStep = 0.02; // Smaller AF increment
         $afMax = 0.2; // Lower max AF
-
+    
         $trend = 'up'; // Initial trend assumption
         $sar = null;   // Initial SAR
         $ep = null;    // Extreme Point
-
+    
         $rsiValues = []; // Stores RSI for StochRSI calculation
         $stochRsiValues = []; // Stores calculated StochRSI values
-
-
-
+    
         $candlesticks = [];
         $lengthRsi = 14;
         $smoothK = 3; // Smoothing factor for %K
         $smoothD = 3; // Smoothing factor for %D
-
+    
         // WR Calculation
         $wrValues = []; // Array to store WR values
         $lookbackPeriod = 14; // Typical lookback period for WR
-
+    
         $kValues = [50]; // Initial K value
         $dValues = [50]; // Initial D value
-
-        // AVL Calculation
-
+    
+        // Bollinger Bands parameters
+        $bbPeriod = 20; // Standard period for Bollinger Bands
+        $bbDeviation = 2; // Standard deviation multiplier (typically 2)
+        $smaValues = []; // Array to store SMA values for Bollinger Bands
+    
         foreach ($data as $index => $candle) {
             // Parse candlestick data
-
             $timestamp = $candle[0];
             $open = (float) $candle[1];
             $high = (float) $candle[2];
@@ -302,7 +302,7 @@ class BinanceApiService
                 ->toDateTimeString();
             $closePrices[] = $close;
             $volumes[] = $volume;
-
+    
             if ($index == 0) {
                 // Initial trend assumption can actually be decided based on more context or prior data
                 $trend = 'up';
@@ -313,7 +313,7 @@ class BinanceApiService
                 $previousCandle = $data[$index - 1];
                 $prevLow = (float) $previousCandle[3];
                 $prevHigh = (float) $previousCandle[2];
-
+    
                 if ($trend == 'up') {
                     if ($high > $ep) {
                         $ep = $high;
@@ -340,7 +340,7 @@ class BinanceApiService
                     }
                 }
             }
-
+    
             // Calculate EMA12 and EMA26
             if ($index == 0) {
                 $ema12[] = $close;
@@ -349,7 +349,7 @@ class BinanceApiService
                 $ema12[] = ($close * 2 / (12 + 1)) + ($ema12[$index - 1] * (1 - 2 / (12 + 1)));
                 $ema26[] = ($close * 2 / (26 + 1)) + ($ema26[$index - 1] * (1 - 2 / (26 + 1)));
             }
-
+    
             // Calculate OBV
             if ($index > 0) { // OBV calculation starts from the second candle
                 $prevClose = $closePrices[$index - 1];
@@ -360,17 +360,17 @@ class BinanceApiService
                 }
                 // If the close is equal, OBV remains the same
             }
-
+    
             // Calculate MACD (DIF) and Signal Line (DEA)
             $dif = $ema12[$index] - $ema26[$index];
             $macd[] = $dif;
-
+    
             if ($index < 9) {
                 $signalLine[] = $dif; // Initializing the signal line (DEA)
             } else {
                 $signalLine[] = ($dif * 2 / (9 + 1)) + ($signalLine[$index - 1] * (1 - 2 / (9 + 1)));
             }
-
+    
             // Calculate RSI
             if ($index >= 1) {
                 $change = $close - $closePrices[$index - 1];
@@ -382,7 +382,7 @@ class BinanceApiService
                     $losses[$index] = abs($change);
                 }
             }
-
+    
             if ($index == 5) {
                 $avgGain = array_sum(array_slice($gains, 1, 6)) / 6;
                 $avgLoss = array_sum(array_slice($losses, 1, 6)) / 6;
@@ -390,85 +390,107 @@ class BinanceApiService
                 $avgGain = (($avgGain * 5) + $gains[$index]) / 6;
                 $avgLoss = (($avgLoss * 5) + $losses[$index]) / 6;
             }
-
+    
             $rs = $avgLoss == 0 ? 100 : $avgGain / $avgLoss;
             $rsi6 = 100 - (100 / (1 + $rs));
             $rsiValues[] = $rsi6; // Store RSI for StochRSI calculation
-
-
-
+    
             // Stochastic RSI calculation
             $stochRsi = null;
             if (count($rsiValues) >= $lengthRsi) {
                 $recentRsi = array_slice($rsiValues, -$lengthRsi);
                 $lowestRsi = min($recentRsi);
                 $highestRsi = max($recentRsi);
-
+    
                 if ($highestRsi != $lowestRsi) {
                     $stochRsi = ($rsi6 - $lowestRsi) / ($highestRsi - $lowestRsi);
                 } else {
                     $stochRsi = 0; // Avoid division by zero
                 }
             }
-
+    
             $stochRsiValues[] = $stochRsi;
-
+    
             // Add %K values
             if (!is_null($stochRsi)) {
                 $kValues[] = $stochRsi * 100; // Scale to percentage
             }
-
+    
             // Calculate smoothed %K
             $smoothedK = null;
             if (count($kValues) >= $smoothK) {
                 $smoothedK = array_sum(array_slice($kValues, -$smoothK)) / $smoothK;
             }
-
+    
             // Add %D values
             if (!is_null($smoothedK)) {
                 $dValues[] = $smoothedK;
             }
-
+    
             // Calculate smoothed %D
             $smoothedD = null;
             if (count($dValues) >= $smoothD) {
                 $smoothedD = array_sum(array_slice($dValues, -$smoothD)) / $smoothD;
             }
-
+    
             // Add high and low prices to a rolling array
             $highs[] = $high;
             $lows[] = $low;
-
+    
             // Ensure we only keep the last $lookbackPeriod highs and lows
             if (count($highs) > $lookbackPeriod) {
                 array_shift($highs);
                 array_shift($lows);
             }
-
+    
             // Calculate WR if we have enough data
             $wr = null;
             if (count($highs) >= $lookbackPeriod) {
                 $highestHigh = max($highs);
                 $lowestLow = min($lows);
-
+    
                 if ($highestHigh != $lowestLow) {
                     $wr = (($highestHigh - $close) / ($highestHigh - $lowestLow)) * -100;
                 } else {
                     $wr = 0; // Avoid division by zero
                 }
             }
-
-
+    
             // Calculate Moving Averages
             $ma7 = $index >= 6 ? array_sum(array_slice($closePrices, -7)) / 7 : null;
             $ma14 = $index >= 13 ? array_sum(array_slice($closePrices, -14)) / 14 : null;
             $ma25 = $index >= 24 ? array_sum(array_slice($closePrices, -25)) / 25 : null;
             $ma99 = $index >= 98 ? array_sum(array_slice($closePrices, -99)) / 99 : null;
-
+    
+            // Calculate Bollinger Bands
+            $bbMiddle = null;
+            $bbUpper = null;
+            $bbLower = null;
+    
+            // Calculate middle band (SMA)
+            if ($index >= ($bbPeriod - 1)) {
+                // Get the last $bbPeriod closing prices
+                $recentPrices = array_slice($closePrices, -$bbPeriod);
+                
+                // Calculate SMA (middle band)
+                $bbMiddle = array_sum($recentPrices) / $bbPeriod;
+                
+                // Calculate standard deviation
+                $sumSquaredDiff = 0;
+                foreach ($recentPrices as $price) {
+                    $sumSquaredDiff += pow($price - $bbMiddle, 2);
+                }
+                $standardDeviation = sqrt($sumSquaredDiff / $bbPeriod);
+                
+                // Calculate upper and lower bands
+                $bbUpper = $bbMiddle + ($bbDeviation * $standardDeviation);
+                $bbLower = $bbMiddle - ($bbDeviation * $standardDeviation);
+            }
+    
             // Calculate Percentage Change
             $prevClose = $index > 0 ? $closePrices[$index - 1] : null;
             $percentageChange = $prevClose ? (($close - $prevClose) / $prevClose) * 100 : null;
-
+    
             // Determine whether to buy
             $buySignal = false;
             if ($index > 9) {
@@ -481,9 +503,7 @@ class BinanceApiService
                 }
             }
             $shouldBuy[] = $buySignal;
-
-
-
+    
             if ($index <= 9) {
                 $K = 0;
                 $D = 0;
@@ -493,38 +513,38 @@ class BinanceApiService
                 $D = $KDJ[$index - 9]['D'];
                 $J = $KDJ[$index - 9]['J'];
             }
-
+    
             $previousObvHigh = 0;
             if ($index > 15) {
                 $previousObvHigh = $candlesticks[$index - 15]['obv'];
-
+    
                 for ($i = $index - 15; $i < $index; $i++) {
                     if ($previousObvHigh < $candlesticks[$i]['obv']) {
                         $previousObvHigh = $candlesticks[$i]['obv'];
                     }
                 }
             }
-
-
+    
             $previousObvLow = 0;
             if ($index > 15) {
                 $previousObvLow = $candlesticks[$index - 15]['obv'];
-
+    
                 for ($i = $index - 15; $i < $index; $i++) {
                     if ($previousObvLow > $candlesticks[$i]['obv']) {
                         $previousObvLow = $candlesticks[$i]['obv'];
                     }
                 }
             }
-
+    
             // Calculate MA5 for Volume
             $ma5_volume = $index >= 4 ? array_sum(array_slice($volumes, -5)) / 5 : null;
-
+    
             // Calculate MA10 for Volume
             $ma10_volume = $index >= 9 ? array_sum(array_slice($volumes, -10)) / 10 : null;
-
+    
             // AVL Calculation
             $avl = ($high + $low) / 2;
+            
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp' => $timestamp,
@@ -543,6 +563,9 @@ class BinanceApiService
                 'ma14' => $ma14,
                 'ma25' => $ma25,
                 'ma99' => $ma99,
+                'bb_middle' => $bbMiddle,    // Middle Bollinger Band (20 SMA)
+                'bb_upper' => $bbUpper,      // Upper Bollinger Band
+                'bb_lower' => $bbLower,      // Lower Bollinger Band
                 'rsi6' => $rsi6,
                 'per' => $percentageChange,
                 'dif' => $dif,
@@ -563,7 +586,7 @@ class BinanceApiService
                 'previousObvLow' => $previousObvLow,
             ];
         }
-
+    
         return $candlesticks;
     }
     public static function estimateRSIAtPercentage($symbol, $interval, $timestampNow)

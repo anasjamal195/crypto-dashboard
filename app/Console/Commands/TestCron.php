@@ -35,8 +35,10 @@ class TestCron extends Command
      */
     public function handle()
     {
-        $strategy = new OrderBookStrategy();
-        $symbol = 'BTCUSDT';
-        dd($strategy->getTradingRecommendation($symbol));
+        // $strategy = new OrderBookStrategy();
+        // $symbol = 'BTCUSDT';
+        // dd($strategy->getTradingRecommendation($symbol));
+
+        dd(BinanceApiService::getCandleStickData('BTCUSDT','5m',300,null,'FUTURE')[298]);
     }
 }
