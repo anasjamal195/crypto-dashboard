@@ -74,10 +74,8 @@ class OrderBookSnapshotController extends Controller
             $candle['marketTrend'] = 'blue';
             if ($candle['binance_timestamp'] == $roundedUnixTimestampMs) {
 
-                if ($snapshot->signal === 'LONG')
-                    $candle['marketTrend'] = 'green';
-                if ($snapshot->signal === 'SHORT')
-                    $candle['marketTrend'] = 'red';
+
+                $candle['marketTrend'] = 'green';
 
                 $openPrice = $candle['close'];
             }
