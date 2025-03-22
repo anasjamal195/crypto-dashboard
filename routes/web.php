@@ -53,7 +53,8 @@ Route::get('/get-current-price', function (Request $request) {
 
 
 
-
+Route::get('/order-book', [App\Http\Controllers\OrderBookSnapshotController::class, 'index'])->name('order-book.index');
+Route::get('/order-book/{id}', [App\Http\Controllers\OrderBookSnapshotController::class, 'show'])->name('order-book.show');
 
 
 Route::get('/trade-handler/delete/all', [TradeHandlerController::class, 'deleteAll'])->name('trade-handler.delete.all')->middleware('auth');

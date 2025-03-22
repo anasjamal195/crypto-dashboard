@@ -117,6 +117,29 @@
                     </ul>
                 </div>
             </li>
+
+
+
+            <li class="{{ request()->is('order-book*') ? 'active' : '' }}">
+                <a data-toggle="collapse" href="#orderBooksMenu"
+                    aria-expanded="{{ request()->is('order-book*') ? 'true' : 'false' }}">
+                    <i class="tim-icons icon-notes"></i>
+                    <p>{{ __('Order Books') }}
+                        <b class="caret"></b>
+                    </p>
+                </a>
+                <div class="collapse {{ request()->is('order-book*') ? 'show' : '' }}" id="orderBooksMenu">
+                    <ul class="nav">
+                        <li class="{{ request()->routeIs('order-book.index') ? 'active' : '' }}">
+                            <a href="{{ route('order-book.index') }}">
+                                <i class="tim-icons icon-bullet-list-67"></i>
+                                <p>{{ __('View Order Books') }}</p>
+                            </a>
+                        </li>
+
+                    </ul>
+                </div>
+            </li>
             {{-- New Trade Handlers Menu --}}
             <li class="{{ request()->is('trade-handlers*') ? 'active' : '' }}">
                 <a data-toggle="collapse" href="#tradeHandlersMenu"

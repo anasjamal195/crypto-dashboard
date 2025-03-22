@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
 use App\Services\MarketTrendService;
@@ -18,6 +19,7 @@ class BinanceController extends Controller
     public function getCoinReport($market, Request $request)
     {
 
+        dd(OrderBookSnapshot::first());
         // Fetch all unique symbols from the database
         $interval = $request->interval;
         $query = DB::table('coin_reports')

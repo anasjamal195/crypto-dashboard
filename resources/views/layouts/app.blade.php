@@ -320,6 +320,9 @@
 
     <script src="{{ asset('black') }}/js/theme.js"></script>
 
+    <!-- Bootstrap Bundle with Popper (JavaScript) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 
     <!-- DataTables JS -->
     <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.js"></script>
