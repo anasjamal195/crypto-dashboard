@@ -10,8 +10,8 @@
                 <tr>
                     <th>Sr. </th>
                     <th>Symbol</th>
-                    <th>Total Long</th>
-                    <th>Total Short</th>
+                    <th>Long</th>
+                    <th>Short</th>
                     <th>Last Updated</th>
                     <th>Actions</th>
                 </tr>
