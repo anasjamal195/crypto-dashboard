@@ -23,11 +23,11 @@ class OrderBookSnapshotController extends Controller
         }
 
         if ($request->filled('date_from')) {
-            $query->where('snapshot_time', '>=', Carbon::parse($request->date_from)->startOfDay());
+            $query->where('snapshot_time', '>=', Carbon::parse(request('date_from'))->format('Y-m-d H:i:s'));
         }
 
         if ($request->filled('date_to')) {
-            $query->where('snapshot_time', '<=', Carbon::parse($request->date_to)->endOfDay());
+            $query->where('snapshot_time', '<=', Carbon::parse(request('date_to'))->format('Y-m-d H:i:s'));
         }
 
         // Get distinct symbols and signals for filter dropdowns

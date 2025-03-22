@@ -18,12 +18,12 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <input type="date" name="date_from" class="form-control flatpickr-input" placeholder="From"
-                        value="{{ request('date_from') }}">
+                    <input type="datetime-local" name="date_from" class="form-control flatpickr-input" placeholder="From"
+                        value="{{ request()->get('date_from') }}">
                 </div>
                 <div class="col-md-3">
-                    <input type="date" name="date_to" class="form-control flatpickr-input" placeholder="To"
-                        value="{{ request('date_to') }}">
+                    <input type="datetime-local" name="date_to" class="form-control flatpickr-input" placeholder="To"
+                        value="{{ request()->get('date_to') }}">
                 </div>
             </div>
             <div class="mt-2">
