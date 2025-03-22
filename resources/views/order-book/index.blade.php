@@ -87,11 +87,11 @@
                         @if ($snapshots->onFirstPage())
                             <span class="btn btn-secondary disabled">Previous</span>
                         @else
-                            <a href="{{ $snapshots->previousPageUrl() . '&symbol=&'. request()->get('symbol').'strength='. request()->get('strength').'&signal='. request()->get('signal').'&date_from='. request()->get('date_from').'&date_to='. request()->get('date_to') }}" class="btn btn-primary">Previous</a>
+                            <a href="{{ $snapshots->previousPageUrl() . '&symbol='. request()->get('symbol').'&strength='. request()->get('strength').'&signal='. request()->get('signal').'&date_from='. request()->get('date_from').'&date_to='. request()->get('date_to') }}" class="btn btn-primary">Previous</a>
                         @endif
 
                         @if ($snapshots->hasMorePages())
-                            <a href="{{ $snapshots->nextPageUrl() . '&symbol=&'. request()->get('symbol').'strength='. request()->get('strength').'&signal='. request()->get('signal').'&date_from='. request()->get('date_from').'&date_to='. request()->get('date_to')  }}" class="btn btn-primary">Next</a>
+                            <a href="{{ $snapshots->nextPageUrl() . '&symbol='. request()->get('symbol').'&strength='. request()->get('strength').'&signal='. request()->get('signal').'&date_from='. request()->get('date_from').'&date_to='. request()->get('date_to')  }}" class="btn btn-primary">Next</a>
                         @else
                             <span class="btn btn-secondary disabled">Next</span>
                         @endif
