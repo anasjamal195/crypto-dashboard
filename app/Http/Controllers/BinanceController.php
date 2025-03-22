@@ -19,7 +19,7 @@ class BinanceController extends Controller
     public function getCoinReport($market, Request $request)
     {
 
-        dd(OrderBookSnapshot::first());
+      
         // Fetch all unique symbols from the database
         $interval = $request->interval;
         $query = DB::table('coin_reports')
