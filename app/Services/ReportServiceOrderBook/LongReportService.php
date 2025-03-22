@@ -2,12 +2,15 @@
 
 namespace App\Services\ReportServiceOrderBook;
 
+
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
 use App\Services\MarketTrendService;
 use DateTime;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Models\OrderBookSnapshot;
 use Illuminate\Support\Facades\Log;
 
 class LongReportService
@@ -119,6 +122,8 @@ class LongReportService
             return $candle;
         }, array_merge($averageAdjustmetCandles, $data));
 
+        $triggerPrice = 0;
+        $triggerIndex = 0;
 
 
         foreach ($data as $index => $candle) {
@@ -145,9 +150,52 @@ class LongReportService
 
             if ($buy_price == 0) {
 
-                if (
+                $allowOpening = false;
 
-                    true
+                if (!$triggerPrice) {
+                    $timestamp = $candle['timestamp'];
+                    $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
+                        ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                        ->where('symbol', $symbol)
+                        ->where('signal', 'LONG')
+                        ->where('long_strength', '>=', 9)
+                        ->latest('snapshot_time')
+                        ->first();
+
+                    if (!$snapshot) {
+                        continue;
+                    }
+
+                    $entry_point = $snapshot->long_entry_points;
+                    $triggerPrice = $entry_point[0]['price'];
+                    $triggerIndex = $index;
+                } else {
+
+                    if ($candle['low'] <= $triggerPrice) {
+                        $timestamp = $candle['timestamp'];
+                        $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
+                            ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                            ->where('symbol', $symbol)
+                            ->where('signal', 'LONG')
+                            ->where('long_strength', '>=', 9)
+                            ->latest('snapshot_time')
+                            ->first();
+
+                        if (!$snapshot)
+                            continue;
+
+                        $allowOpening = true;
+                        $triggerPrice = 0;
+                        $triggerIndex = 0;
+                    } else if ($index - $triggerIndex > 20) {
+                        $allowOpening = false;
+                        $triggerPrice = 0;
+                        $triggerIndex = 0;
+                    }
+                }
+
+                if (
+                    $allowOpening
                 ) {
                     $candle['should_buy'] = true;
                     $candle['previousObvHigh'] = 0;

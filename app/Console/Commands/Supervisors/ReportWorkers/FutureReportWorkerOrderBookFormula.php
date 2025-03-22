@@ -42,22 +42,22 @@ class FutureReportWorkerOrderBookFormula extends Command
      */
     public function handle()
     {
-        $formula = 'Order-Book (Basic: Short)';
+        $formula = 'Order-Book (Basic: Long - Realtime Snapshot added)';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
         try {
-            ReportServiceOrderBookShortReportService::updateCoinReport(
-                '5m',
-                1000,
-                'FUTURE',
-                $formula,
-            );
-            // ReportServiceOrderBookLongReportService::updateCoinReport(
+            // ReportServiceOrderBookShortReportService::updateCoinReport(
             //     '5m',
             //     1000,
             //     'FUTURE',
             //     $formula,
             // );
+            ReportServiceOrderBookLongReportService::updateCoinReport(
+                '5m',
+                1000,
+                'FUTURE',
+                $formula,
+            );
         } catch (\Exception $e) {
             Log::error($e);
         }

@@ -3,12 +3,14 @@
 namespace App\Services\ReportServiceOrderBook;
 
 use App\CommonHelpers;
-use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
 use App\Services\MarketTrendService;
 use DateTime;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Models\OrderBookSnapshot;
+
 use Illuminate\Support\Facades\Log;
 
 class ShortReportService
@@ -119,7 +121,8 @@ class ShortReportService
             return $candle;
         }, array_merge($averageAdjustmetCandles, $data));
 
-
+        $triggerPrice = 0;
+        $triggerIndex = 0;
         foreach ($data as $index => $candle) {
 
             // Skip First 1000 Candles
@@ -142,9 +145,53 @@ class ShortReportService
             $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [7]);
             if ($buy_price == 0) {
 
-                OrderBookSnapshot
+                $allowOpening = false;
+                if (!$triggerPrice) {
+                    $timestamp = $candle['timestamp'];
+                    $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
+                        ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                        ->where('symbol', $symbol)
+                        ->where('signal', 'SHORT')
+                        ->where('short_strength', '>=', 8)
+                        ->latest('snapshot_time')
+                        ->first();
+
+                    if (!$snapshot) {
+                        continue;
+                    }
+
+                    $entry_point = $snapshot->short_entry_points;
+
+                    $triggerPrice = $entry_point[0]['price'];
+                    $triggerIndex = $index;
+                } else {
+
+                    if ($candle['high'] >= $triggerPrice) {
+                        $timestamp = $candle['timestamp'];
+                        $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
+                            ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                            ->where('symbol', $symbol)
+                            ->where('signal', 'SHORT')
+                            ->where('short_strength', '>=', 8)
+                            ->latest('snapshot_time')
+                            ->first();
+
+                        if (!$snapshot)
+                            continue;
+
+                            
+                        $allowOpening = true;
+                        $triggerPrice = 0;
+                        $triggerIndex = 0;
+                    } else if ($index - $triggerIndex > 20) {
+                        $allowOpening = false;
+                        $triggerPrice = 0;
+                        $triggerIndex = 0;
+                    }
+                }
+
                 if (
-                    true
+                    $allowOpening
                 ) {
                     $candle['should_buy'] = true;
                     $candle['previousObvHigh'] = 0;
