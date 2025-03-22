@@ -136,7 +136,12 @@
                                 <p>{{ __('View Order Books') }}</p>
                             </a>
                         </li>
-
+                        <li class="{{ request()->routeIs('order-book.overview') ? 'active' : '' }}">
+                            <a href="{{ route('order-book.overview') }}">
+                                <i class="tim-icons icon-badge"></i>
+                                <p>{{ __('Symbol Overview') }}</p>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </li>

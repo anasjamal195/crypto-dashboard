@@ -29,6 +29,9 @@ class OrderBookSnapshotController extends Controller
         if ($request->filled('date_to')) {
             $query->where('snapshot_time', '<=', Carbon::parse(request('date_to'))->format('Y-m-d H:i:s'));
         }
+        // Ignore Neutral Signal
+        $query->whereIn('signal', ['LONG', 'SHORT']);
+
 
         // Get distinct symbols and signals for filter dropdowns
         $symbols = OrderBookSnapshot::distinct()->pluck('symbol');
@@ -40,6 +43,30 @@ class OrderBookSnapshotController extends Controller
         return view('order-book.index', compact('snapshots', 'symbols', 'signals', 'pageSlug'));
     }
 
+
+    public function overview(Request $request)
+    {
+        $query = OrderBookSnapshot::query();
+        $pageSlug = 'Order Book Overview';
+
+
+        $snapshots = OrderBookSnapshot::selectRaw("
+        symbol, 
+        COUNT(CASE WHEN `signal` = 'LONG' THEN 1 END) AS long_count, 
+        COUNT(CASE WHEN `signal` = 'SHORT' THEN 1 END) AS short_count,
+        MAX(snapshot_time) AS latest_snapshot_time
+    ")
+            ->whereIn('signal', ['LONG', 'SHORT'])
+            ->groupBy('symbol')
+            ->latest('latest_snapshot_time')
+            ->get();
+
+
+
+
+
+        return view('order-book.overview', compact('snapshots', 'pageSlug'));
+    }
     public function show($id)
     {
         $pageSlug = 'Order Book Details';
