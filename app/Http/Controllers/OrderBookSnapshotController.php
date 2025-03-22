@@ -44,7 +44,7 @@ class OrderBookSnapshotController extends Controller
     {
         $pageSlug = 'Order Book Details';
         $snapshot = OrderBookSnapshot::findOrFail($id);
-        $snapshotTime = '2025-03-21 04:31:06'; // Asia/Karachi time
+        $snapshotTime = $snapshot->snapshot_time;
 
         // Convert to UTC and get UNIX timestamp in seconds
         $unixTimestamp = Carbon::createFromFormat('Y-m-d H:i:s', $snapshotTime, 'Asia/Karachi')
