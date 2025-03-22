@@ -5,7 +5,7 @@
         <h2>Order Book Snapshots Overview</h2>
 
 
-        <table class="table table-bordered">
+        <table class="table dataTable" >
             <thead>
                 <tr>
                     <th>Sr. </th>
