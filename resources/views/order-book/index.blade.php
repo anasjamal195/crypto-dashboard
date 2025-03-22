@@ -34,7 +34,7 @@
         <table class="table table-bordered">
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>Sr. </th>
                     <th>Symbol</th>
                     <th>Snapshot Time</th>
                     <th>Bid Volume</th>
@@ -44,15 +44,20 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($snapshots as $snapshot)
+                @php
+                    $startIndex = request()->get('page') ?? 1;
+
+                    $startIndex = ($startIndex - 1) * 100;
+                @endphp
+                @foreach ($snapshots as $index => $snapshot)
                     <tr>
-                        <td>{{ $snapshot->id }}</td>
+                        <td>{{ $index + 1 + $startIndex }}</td>
                         <td>{{ $snapshot->symbol }}</td>
                         <td>{{ $snapshot->snapshot_time }}</td>
                         <td>{{ number_format($snapshot->bid_volume, 2) }}</td>
                         <td>{{ number_format($snapshot->ask_volume, 2) }}</td>
                         <td>
-                            @if($snapshot->signal == 'LONG')
+                            @if ($snapshot->signal == 'LONG')
                                 <span class="badge badge-success">{{ $snapshot->signal }}</span>
                             @elseif($snapshot->signal == 'SHORT')
                                 <span class="badge badge-danger">{{ $snapshot->signal }}</span>
@@ -60,7 +65,7 @@
                                 <span class="badge badge-primary">{{ $snapshot->signal }}</span>
                             @endif
                         </td>
-               
+
                         <td>
                             <a href="{{ route('order-book.show', $snapshot->id) }}" class="btn btn-info btn-sm">View</a>
                         </td>

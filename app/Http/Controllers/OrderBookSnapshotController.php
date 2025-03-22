@@ -35,7 +35,7 @@ class OrderBookSnapshotController extends Controller
         $signals = OrderBookSnapshot::distinct()->pluck('signal');
 
         // Paginate results
-        $snapshots = $query->paginate(100);
+        $snapshots = $query->latest('snapshot_time')->paginate(100);
 
         return view('order-book.index', compact('snapshots', 'symbols', 'signals', 'pageSlug'));
     }
