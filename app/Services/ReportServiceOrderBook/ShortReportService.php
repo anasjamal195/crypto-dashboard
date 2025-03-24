@@ -42,7 +42,7 @@ class ShortReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.5;
+            $targetProfit = 1;
 
             try {
                 $symbol = $coin->symbol;
@@ -179,7 +179,7 @@ class ShortReportService
                         if (!$snapshot)
                             continue;
 
-                            
+
                         $allowOpening = true;
                         $triggerPrice = 0;
                         $triggerIndex = 0;
@@ -190,8 +190,17 @@ class ShortReportService
                     }
                 }
 
+
+
                 if (
                     $allowOpening
+
+                    &&
+                    !(
+                        $data[$index]['dif'] > $data[$index]['dea']
+                        && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
+                    )
+
                 ) {
                     $candle['should_buy'] = true;
                     $candle['previousObvHigh'] = 0;
