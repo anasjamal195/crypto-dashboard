@@ -142,6 +142,12 @@
                                 <p>{{ __('Symbol Overview') }}</p>
                             </a>
                         </li>
+                        <li class="{{ request()->routeIs('order-book.status') ? 'active' : '' }}">
+                            <a href="{{ route('order-book.status') }}">
+                                <i class="tim-icons icon-coins"></i>
+                                <p>{{ __('Symbol Status') }}</p>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </li>

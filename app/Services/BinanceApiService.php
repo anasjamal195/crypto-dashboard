@@ -719,19 +719,21 @@ class BinanceApiService
 
 
     // Order Book Details
-    public static function getOrderBook(string $symbol, int $limit = 100): ?array
+    public static function getOrderBook(string $symbol, int $limit = 100,$apiPointerUrl = null): ?array
     {
+        
         $url = config('binance.api.base_url') . config('binance.endpoints.depth');
+        if($apiPointerUrl){
+            $url = $apiPointerUrl;
+        }
         try {
-
             $params = [
                 'symbol' => $symbol,
                 'limit' => $limit,
             ];
             $response = self::getHttpClient()->get($url, $params);
             $headers = $response->getHeaders();
-
-            if (isset($headers["x-mbx-used-weight-1m"][0])) {
+            if (isset($headers["x-mbx-used-weight-1m"][0]) && !$apiPointerUrl) {
                 $usedWeight = (int) $headers["x-mbx-used-weight-1m"][0];
                 if ($usedWeight >= 1100) {
                     $resetTime = 60 - now()->format('s');
@@ -739,7 +741,7 @@ class BinanceApiService
                 }
             }
 
-            if ($response->successful()) {
+            if ($response->successful() || $response->json()['error']) {
                 return $response->json();
             }
 
