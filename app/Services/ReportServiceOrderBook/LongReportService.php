@@ -11,6 +11,7 @@ use DateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\OrderBookSnapshot;
+use Illuminate\Support\Facades\Log;
 
 class LongReportService
 {
@@ -146,18 +147,20 @@ class LongReportService
             $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [7]);
 
             $newSupport = $supportResistance[7]['support'] * (1 + 0.5 / 100);
-            
+
             if ($buy_price == 0) {
 
                 $allowOpening = false;
 
+                // Reverse Trigger Signals
                 if (!$triggerPrice) {
                     $timestamp = $candle['timestamp'];
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
-                        ->where('signal', 'LONG')
-                        ->where('long_strength', '>=', 8)
+                        ->where('depth', 100)
+                        ->where('signal', 'SHORT')
+                        ->where('short_strength', '>=', 8)
                         ->latest('snapshot_time')
                         ->first();
 
@@ -165,8 +168,11 @@ class LongReportService
                         continue;
                     }
 
-                    $entry_point = $snapshot->long_entry_points;
-                    $triggerPrice = $entry_point[0]['price'];
+                    $entry_points = array_map(function ($level) {
+                        return $level['price'];
+                    }, $snapshot->support_levels);
+
+                    $triggerPrice = max($entry_points);
                     $triggerIndex = $index;
                 } else {
 
@@ -175,8 +181,9 @@ class LongReportService
                         $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                             ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                             ->where('symbol', $symbol)
-                            ->where('signal', 'LONG')
-                            ->where('long_strength', '>=', 8)
+                            ->where('depth', 100)
+                            ->where('signal', 'SHORT')
+                            ->where('short_strength', '>=', 8)
                             ->latest('snapshot_time')
                             ->first();
 

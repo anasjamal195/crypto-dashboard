@@ -42,7 +42,7 @@ class FutureReportWorkerOrderBookFormula extends Command
      */
     public function handle()
     {
-        $formula = 'Order-Book (Basic: Long - Realtime Snapshot added)';
+        $formula = 'Order-Book (Basic: Long - 100 Depth Reverse Signal )';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
         try {

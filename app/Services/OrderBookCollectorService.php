@@ -50,6 +50,12 @@ class OrderBookCollectorService
             $analysisData = $analysis['analysis'];
             $signals = $analysis['signals'];
 
+            if ($signals['recommendation'] === 'NEUTRAL') {
+                Log::error("Skipped due to NEUTRAL signal. {$symbol}");
+                return null;
+            }
+
+            
             // Create the snapshot record
             $snapshot = OrderBookSnapshot::create([
                 'symbol' => $symbol,

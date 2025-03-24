@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\CommonHelpers;
 use App\Jobs\TestJob;
 use App\Services\BinanceApiService;
+use App\Services\BlockchainTradingSignalService;
 use App\Services\MailerService;
 use App\Services\MarketTrendService;
 use App\Services\OrderBookStrategy;
@@ -37,24 +38,26 @@ class TestCron extends Command
     {
 
        
-        $symbol = 'BTCUSDT';
-        $depth = 1000;
-        $orderBookData = BinanceApiService::getOrderBook($symbol, $depth);
-        if (!$orderBookData) {
-            Log::error("Failed to fetch order book data for {$symbol}");
-            return null;
-        }
+        // $symbol = 'BTCUSDT';
+        // $depth = 1000;
+        // $orderBookData = BinanceApiService::getOrderBook($symbol, $depth);
+        // if (!$orderBookData) {
+        //     Log::error("Failed to fetch order book data for {$symbol}");
+        //     return null;
+        // }
 
-        $orderBookStrategy = new OrderBookStrategy;
-        // Analyze the order book
-        $analysis = $orderBookStrategy->analyzeOrderBook($symbol, $depth);
-        if (!$analysis['success']) {
-            Log::error("Failed to analyze order book data for {$symbol}");
-            return null;
-        }
+        // $orderBookStrategy = new OrderBookStrategy;
+        // // Analyze the order book
+        // $analysis = $orderBookStrategy->analyzeOrderBook($symbol, $depth);
+        // if (!$analysis['success']) {
+        //     Log::error("Failed to analyze order book data for {$symbol}");
+        //     return null;
+        // }
 
-
-        dd($analysis);
+        $blockchainService = new BlockchainTradingSignalService();
+        $signalResult = $blockchainService->generateBlockchainTradingSignal('BTC');
+        
+        dd($signalResult);
 
        
     }

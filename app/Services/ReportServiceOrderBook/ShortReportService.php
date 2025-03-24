@@ -42,7 +42,7 @@ class ShortReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 1;
+            $targetProfit = 0.05;
 
             try {
                 $symbol = $coin->symbol;
@@ -151,8 +151,9 @@ class ShortReportService
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
-                        ->where('signal', 'SHORT')
-                        ->where('short_strength', '>=', 8)
+                        ->where('signal', 'LONG')
+                        ->where('depth', 1000)
+                        ->where('long_strength', '>=', 8)
                         ->latest('snapshot_time')
                         ->first();
 
@@ -160,9 +161,12 @@ class ShortReportService
                         continue;
                     }
 
-                    $entry_point = $snapshot->short_entry_points;
+                    $entry_points = array_map(function ($level) {
+                        return $level['price'];
+                    }, $snapshot->resistance_levels);
 
-                    $triggerPrice = $entry_point[0]['price'];
+
+                    $triggerPrice = min($entry_points);
                     $triggerIndex = $index;
                 } else {
 
@@ -171,8 +175,9 @@ class ShortReportService
                         $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                             ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                             ->where('symbol', $symbol)
-                            ->where('signal', 'SHORT')
-                            ->where('short_strength', '>=', 8)
+                            ->where('signal', 'LONG')
+                            ->where('depth', 1000)
+                            ->where('long_strength', '>=', 8)
                             ->latest('snapshot_time')
                             ->first();
 
