@@ -31,8 +31,8 @@ class Collector extends Command
     {
         $symbols  = DB::table('coins')->where('market', 'FUTURE')->pluck('symbol')->toArray();
 
-        $interval = 300;
-        $depth = 100;
+        $interval = 1;
+        $depth = 1000;
         $cleanup = false;
         $daysToKeep = 2;
 
@@ -72,13 +72,8 @@ class Collector extends Command
                 $this->error('Error during collection: ' . $e->getMessage());
             }
 
-            // Calculate how long to sleep
-            $endTime = now();
-            $processingTime = $endTime->diffInSeconds($startTime);
-            $sleepTime = max(1, $interval - $processingTime);
 
-            $this->info("Processing took {$processingTime} seconds. Sleeping for {$sleepTime} seconds...");
-            sleep($sleepTime);
+            sleep($interval);
         }
     }
 }

@@ -729,7 +729,15 @@ class BinanceApiService
                 'limit' => $limit,
             ];
             $response = self::getHttpClient()->get($url, $params);
+            $headers = $response->getHeaders();
 
+            if (isset($headers["x-mbx-used-weight-1m"][0])) {
+                $usedWeight = (int) $headers["x-mbx-used-weight-1m"][0];
+                if ($usedWeight >= 1100) {
+                    $resetTime = 60 - now()->format('s');
+                    sleep($resetTime);
+                }
+            }
 
             if ($response->successful()) {
                 return $response->json();

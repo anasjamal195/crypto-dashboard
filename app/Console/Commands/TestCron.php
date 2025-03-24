@@ -35,10 +35,27 @@ class TestCron extends Command
      */
     public function handle()
     {
-        // $strategy = new OrderBookStrategy();
-        // $symbol = 'BTCUSDT';
-        // dd($strategy->getTradingRecommendation($symbol));
 
-        dd(BinanceApiService::getCandleStickData('BTCUSDT','5m',300,null,'FUTURE')[298]);
+       
+        $symbol = 'BTCUSDT';
+        $depth = 1000;
+        $orderBookData = BinanceApiService::getOrderBook($symbol, $depth);
+        if (!$orderBookData) {
+            Log::error("Failed to fetch order book data for {$symbol}");
+            return null;
+        }
+
+        $orderBookStrategy = new OrderBookStrategy;
+        // Analyze the order book
+        $analysis = $orderBookStrategy->analyzeOrderBook($symbol, $depth);
+        if (!$analysis['success']) {
+            Log::error("Failed to analyze order book data for {$symbol}");
+            return null;
+        }
+
+
+        dd($analysis);
+
+       
     }
 }
