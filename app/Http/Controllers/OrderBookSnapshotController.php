@@ -170,7 +170,7 @@ class OrderBookSnapshotController extends Controller
             // Fetching Data from external server
             $apiPointerUrl = 'https://xnfts.shop/load_balancer/orderBook.php';
             $orderBookData = BinanceApiService::getOrderBook($symbol, $depth, $apiPointerUrl);
-     
+
 
             if (!$orderBookData) {
                 return abort(500);
@@ -212,6 +212,7 @@ class OrderBookSnapshotController extends Controller
                 'short_strength' => $signals['short']['strength'],
                 'long_entry_points' => $signals['long']['entry_points'],
                 'short_entry_points' => $signals['short']['entry_points'],
+                'type' => 'm',
             ]);
             // ----------------------------------
 

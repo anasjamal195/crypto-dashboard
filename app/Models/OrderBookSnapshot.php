@@ -27,6 +27,7 @@ class OrderBookSnapshot extends Model
         'spread',
         'support_levels',
         'resistance_levels',
+        'type',
         'thin_liquidity_areas',
         'signal',
         'long_strength',
@@ -105,11 +106,11 @@ class OrderBookSnapshot extends Model
     {
         $query = self::where('symbol', $symbol)
             ->whereBetween('snapshot_time', [$startTime, $endTime]);
-            
+
         if ($signalType) {
             $query->where('signal', $signalType);
         }
-        
+
         return $query->orderBy('snapshot_time')->get();
     }
 }

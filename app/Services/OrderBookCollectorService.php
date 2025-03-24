@@ -65,6 +65,7 @@ class OrderBookCollectorService
                     ? (float)$orderBookData['asks'][0][0] - (float)$orderBookData['bids'][0][0]
                     : null,
                 'support_levels' => $analysisData['support_levels'],
+                'type' => 'a',
                 'resistance_levels' => $analysisData['resistance_levels'],
                 'thin_liquidity_areas' => $analysisData['thin_liquidity_areas'],
                 'signal' => $signals['recommendation'],
