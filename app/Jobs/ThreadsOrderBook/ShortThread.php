@@ -114,7 +114,7 @@ class ShortThread implements ShouldQueue
 
         // Checking Trigger Price 
         while (true) {
-
+            sleep(1);
             $data = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '5m', 300, null, 'FUTURE');
             $candle = $data[count($data) - 1];
 
@@ -136,7 +136,6 @@ class ShortThread implements ShouldQueue
                 $openTrade = false;
                 break;
             }
-            sleep(1);
         }
 
 
