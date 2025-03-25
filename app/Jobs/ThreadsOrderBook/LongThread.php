@@ -101,7 +101,7 @@ class LongThread implements ShouldQueue
 
                         // break current for loop for next processing
                         break;
-                    } else if (((($candle['close'] - $this->triggerPrice) / $this->triggerPrice) * 100) >  1) {
+                    } else if (((($candle['close'] - $triggerPrice) / $triggerPrice) * 100) >  1) {
 
                         // In case trigger fails or does not hit, remove the entry from worker_symbols
 
