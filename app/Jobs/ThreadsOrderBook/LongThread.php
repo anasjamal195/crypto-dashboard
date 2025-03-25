@@ -109,6 +109,10 @@ class LongThread implements ShouldQueue
 
         // Checking Trigger Price 
         while (true) {
+            $data = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '5m', 300, null, 'FUTURE');
+            $candle = $data[count($data) - 1];
+
+            
             if ($candle['close'] <= $this->triggerPrice) {
                 $timestamp = $candle['timestamp'];
                 $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
@@ -127,10 +131,8 @@ class LongThread implements ShouldQueue
                 $openTrade = false;
                 break;
             }
+            sleep(1);
         }
-
-
-
 
 
 
