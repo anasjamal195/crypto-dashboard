@@ -70,7 +70,7 @@ class LongThread implements ShouldQueue
 
                     $entry_points = array_map(function ($level) {
                         return $level['price'];
-                    }, $trigger->support_levels);
+                    }, json_decode($trigger->support_levels, true));
 
                     $triggerPrice = max($entry_points);
 
