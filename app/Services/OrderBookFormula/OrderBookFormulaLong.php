@@ -38,7 +38,7 @@ class OrderBookFormulaLong
     {
         $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
         $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->where('isWorkerDispatched', false)->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
-        Log::info('LongWorkerMACD: Worker Started');
+        Log::info('LongWorkerOrderBook: Worker Started');
 
         foreach ($tradeHandler as  $tradeInstance)
             try {
@@ -71,7 +71,8 @@ class OrderBookFormulaLong
                     $allowOpening = false;
                     $triggerPrice = 0;
 
-                    $timestamp = $data[$index]['timestamp'];
+                    $timestamp = $data[$index]['timestampReadable'];
+                 
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
@@ -81,6 +82,7 @@ class OrderBookFormulaLong
                         ->latest('snapshot_time')
                         ->first();
 
+                  
                     if (!$snapshot) {
                         continue;
                     }
@@ -102,7 +104,7 @@ class OrderBookFormulaLong
                         )
 
                     ) {
-                        Log::info('LongWorkerMACD: Dispatching Long Thread MACD... Coin:  ' . $symbol);
+                        Log::info('LongWorkerOrderBook: Dispatching Long Thread MACD... Coin:  ' . $symbol);
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'isWorkerDispatched' => true,
                         ]);
@@ -112,7 +114,7 @@ class OrderBookFormulaLong
                 }
                 CommonHelpers::delayMS(100);
             } catch (\Exception $e) {
-                Log::error('LongWorkerMACD: Error - ' . $e->getMessage());
+                Log::error('LongWorkerOrderBook: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
             }
         return true;

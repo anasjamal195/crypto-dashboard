@@ -94,7 +94,7 @@ class ShortThread implements ShouldQueue
             $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
             if ($timeDiff < 20) {
                 $openTrade = false;
-                Log::info('ShortThreadMACD: Skipped due to last order close time: ' . $symbol);
+                Log::info('ShortThreadOrderBook: Skipped due to last order close time: ' . $symbol);
             }
         }
 
@@ -119,7 +119,7 @@ class ShortThread implements ShouldQueue
             $candle = $data[count($data) - 1];
 
             if ($candle['close'] >= $this->triggerPrice) {
-                $timestamp = $candle['timestamp'];
+                $timestamp = $candle['timestampReadable'];
                 $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                     ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                     ->where('symbol', $symbol)
@@ -152,7 +152,7 @@ class ShortThread implements ShouldQueue
                     'support' => $this->supportResistance[7]['support'],
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
-                Log::info('ShortThreadMACD: Opening Position: ' . $symbol);
+                Log::info('ShortThreadOrderBook: Opening Position: ' . $symbol);
                 BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
 
                 $tradeLoop = true;
@@ -168,7 +168,7 @@ class ShortThread implements ShouldQueue
 
                         $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
                     } catch (\Exception $e) {
-                        Log::error('ShortThreadMACD: Error - ' . $e->getMessage());
+                        Log::error('ShortThreadOrderBook: Error - ' . $e->getMessage());
                         Log::error($e->getTraceAsString());
                     }
                     CommonHelpers::delayS(1);
@@ -179,13 +179,13 @@ class ShortThread implements ShouldQueue
             DB::table('trade_handler')->where('id', $this->tradeInstance->id)->update([
                 'isWorkerDispatched' => false,
             ]);
-            Log::info('ShortThreadMACD: Failed to open trade: ' . $symbol);
+            Log::info('ShortThreadOrderBook: Failed to open trade: ' . $symbol);
         }
     }
 
     private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
     {
-        Log::info('ShortThreadMACD: Open order found for ' . $buy_order['symbol']);
+        Log::info('ShortThreadOrderBook: Open order found for ' . $buy_order['symbol']);
 
         $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
@@ -197,7 +197,7 @@ class ShortThread implements ShouldQueue
 
 
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
-        Log::info('ShortThreadMACD: Current profit ' . $currentProfit);
+        Log::info('ShortThreadOrderBook: Current profit ' . $currentProfit);
 
         if ($currentCandle['close'] > $stopLoss) {
             $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
@@ -215,7 +215,7 @@ class ShortThread implements ShouldQueue
                 ]);
                 return false;
             } else {
-                Log::info('ShortThreadMACD: Retreating Due to lower wick');
+                Log::info('ShortThreadOrderBook: Retreating Due to lower wick');
                 // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation ' . $tradeInstance->symbol);
             }
         } else if ($currentProfit > $targetProfit) {

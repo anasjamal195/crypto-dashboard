@@ -87,7 +87,7 @@ class LongThread implements ShouldQueue
             $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
             if ($timeDiff < 20) {
                 $openTrade = false;
-                Log::info('LongThreadMACD: Skipped due to last order close time: ' . $symbol);
+                Log::info('LongThreadOrderBook: Skipped due to last order close time: ' . $symbol);
             }
         }
 
@@ -114,7 +114,7 @@ class LongThread implements ShouldQueue
 
             
             if ($candle['close'] <= $this->triggerPrice) {
-                $timestamp = $candle['timestamp'];
+                $timestamp = $candle['timestampReadable'];
                 $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                     ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                     ->where('symbol', $symbol)
@@ -144,7 +144,7 @@ class LongThread implements ShouldQueue
                     'support' => $this->supportResistance[7]['support'],
                     'resistance' => $this->supportResistance[7]['resistance'],
                 ];
-                Log::info('LongThreadMACD: Opening Position: ' . $symbol);
+                Log::info('LongThreadOrderBook: Opening Position: ' . $symbol);
                 BinanceApiService::openMarketPositionLiveTrader($this->tradeInstance->symbol, $this->tradeInstance->buyPrice, $this->tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $this->tradeInstance->leverage, $this->tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
 
                 $tradeLoop = true;
@@ -159,7 +159,7 @@ class LongThread implements ShouldQueue
 
                         $tradeLoop = self::manageOpenOrder($this->tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
                     } catch (\Exception $e) {
-                        Log::error('LongThreadMACD: Error - ' . $e->getMessage());
+                        Log::error('LongThreadOrderBook: Error - ' . $e->getMessage());
                         Log::error($e->getTraceAsString());
                     }
                     CommonHelpers::delayS(1);
@@ -171,14 +171,14 @@ class LongThread implements ShouldQueue
             ]);
 
 
-            Log::info('LongThreadMACD: Failed to open trade: ' . $symbol);
+            Log::info('LongThreadOrderBook: Failed to open trade: ' . $symbol);
         }
     }
 
     private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
     {
 
-        Log::info('LongThreadMACD: Open order found for ' . $buy_order['symbol']);
+        Log::info('LongThreadOrderBook: Open order found for ' . $buy_order['symbol']);
         $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
@@ -189,7 +189,7 @@ class LongThread implements ShouldQueue
 
         // Scenerio 1: If Current profit is less than 1%
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
-        Log::info('LongThreadMACD: Current profit ' . $currentProfit);
+        Log::info('LongThreadOrderBook: Current profit ' . $currentProfit);
 
 
 
@@ -213,7 +213,7 @@ class LongThread implements ShouldQueue
             } else {
 
                 // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation ' . $tradeInstance->symbol);
-                Log::info('LongThreadMACD: Retreating Due to upper wick');
+                Log::info('LongThreadOrderBook: Retreating Due to upper wick');
             }
         } else if ($currentProfit > $targetProfit) {
 

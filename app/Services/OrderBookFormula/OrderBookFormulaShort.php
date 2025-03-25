@@ -38,7 +38,7 @@ class OrderBookFormulaShort
     {
         $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
         $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'SHORT')->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
-        Log::info('ShortWorkerMACD: Worker Started');
+        Log::info('ShortWorkerOrderBook: Worker Started');
 
         foreach ($tradeHandler as $tradeInstance)
             try {
@@ -72,7 +72,7 @@ class OrderBookFormulaShort
                     $allowOpening = false;
                     $triggerPrice = 0;
 
-                    $timestamp = $data[$index]['timestamp'];
+                    $timestamp = $data[$index]['timestampReadable'];
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
@@ -102,7 +102,7 @@ class OrderBookFormulaShort
                             && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
                         )
                     ) {
-                        Log::info('ShortWorkerMACD: Dispatching Short Thread... Coin: ' . $symbol);
+                        Log::info('ShortWorkerOrderBook: Dispatching Short Thread... Coin: ' . $symbol);
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                             'isWorkerDispatched' => true,
                         ]);
@@ -112,7 +112,7 @@ class OrderBookFormulaShort
                 }
                 CommonHelpers::delayMS(100);
             } catch (\Exception $e) {
-                Log::error('ShortWorkerMACD: Error - ' . $e->getMessage());
+                Log::error('ShortWorkerOrderBook: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
                 // dd($e);
                 // sendEmailException($e, 'API Store Txn Alert: Exception Alert!');
