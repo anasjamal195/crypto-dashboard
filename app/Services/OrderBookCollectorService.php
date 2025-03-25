@@ -51,11 +51,11 @@ class OrderBookCollectorService
             $signals = $analysis['signals'];
 
             if ($signals['recommendation'] === 'NEUTRAL') {
-                Log::error("Skipped due to NEUTRAL signal. {$symbol}");
+                // Log::error("Skipped due to NEUTRAL signal. {$symbol}");
                 return null;
             }
 
-            
+
             // Create the snapshot record
             $snapshot = OrderBookSnapshot::create([
                 'symbol' => $symbol,
@@ -81,7 +81,7 @@ class OrderBookCollectorService
                 'short_entry_points' => $signals['short']['entry_points'],
             ]);
 
-            Log::info("Stored order book snapshot for {$symbol} with ID {$snapshot->id}");
+            // Log::info("Stored order book snapshot for {$symbol} with ID {$snapshot->id}");
             // if ($snapshot->signal == 'LONG' || $snapshot->signal == 'SHORT') {
             //     MailerService::sendOrderBookSignalEmail($snapshot);
             // }
