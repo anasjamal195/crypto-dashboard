@@ -37,7 +37,7 @@ class OrderBookFormulaShort
     public static function performLiveTrades($market, $account = null)
     {
         $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
-        $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'SHORT')->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
+        $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('isWorkerDispatched', false)->where('position', 'SHORT')->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
         Log::info('ShortWorkerOrderBook: Worker Started');
 
         foreach ($tradeHandler as $tradeInstance)
@@ -69,7 +69,7 @@ class OrderBookFormulaShort
                     $index--;
 
 
-                   
+
                     $triggerPrice = 0;
 
                     $timestamp = $data[$index]['timestampReadable'];
@@ -94,7 +94,7 @@ class OrderBookFormulaShort
                     $triggerIndex = $index;
 
                     if (
-                       
+
                         !(
                             $data[$index]['dif'] > $data[$index]['dea']
                             && $data[$index - 1]['dif'] < $data[$index - 1]['dea']

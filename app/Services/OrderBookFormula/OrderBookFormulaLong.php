@@ -37,7 +37,7 @@ class OrderBookFormulaLong
     public static function performLiveTrades($market, $account = null)
     {
         $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
-        $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->where('isWorkerDispatched', false)->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
+        $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
         Log::info('LongWorkerOrderBook: Worker Started');
 
         foreach ($tradeHandler as  $tradeInstance)
