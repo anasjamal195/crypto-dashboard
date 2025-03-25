@@ -109,7 +109,7 @@ class LongThread implements ShouldQueue
                         DB::table('worker_symbols')->where('worker_id', $this->workerId)->where('symbol', $symbol)->delete();
                         DB::table('workers')->where('worker_id', $this->workerId)->update([
                             'symbol_count' => count($currentWorkerSymbols) - 1,
-                            'trade_status' => true,
+                            'trade_status' => false,
                             'active_status' => true,
                         ]);
                         DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
