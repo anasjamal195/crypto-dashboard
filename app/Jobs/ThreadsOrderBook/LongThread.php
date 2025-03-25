@@ -44,7 +44,7 @@ class LongThread implements ShouldQueue
         $this->triggerIndex = $triggerIndex;
         $this->tradeInstance = $tradeInstance;
         $this->supportResistance = $supportResistance;
-        $this->formula = 'MACD Multithread';
+        $this->formula = 'Order Book Snapshots';
     }
 
     public function handle(): void
