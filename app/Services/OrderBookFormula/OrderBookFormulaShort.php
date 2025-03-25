@@ -77,8 +77,8 @@ class OrderBookFormulaShort
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
                         ->where('depth', 1000)
-                        ->where('signal', 'SHORT')
-                        ->where('short_strength', '>=', 8)
+                        ->where('signal', 'LONG')
+                        ->where('long_strength', '>=', 8)
                         ->latest('snapshot_time')
                         ->first();
 
@@ -88,9 +88,9 @@ class OrderBookFormulaShort
 
                     $entry_points = array_map(function ($level) {
                         return $level['price'];
-                    }, $snapshot->support_levels);
+                    }, $snapshot->resistance_levels);
 
-                    $triggerPrice = max($entry_points);
+                    $triggerPrice = min($entry_points);
                     $triggerIndex = $index;
 
                     if (
