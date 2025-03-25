@@ -101,7 +101,7 @@ class OrderBookFormulaLong
                             ]
                         );
                         DB::table('workers')->where('worker_id', $worker->worker_id)->update([
-                            'symbol_count' => $worker->symbol_count++,
+                            'symbol_count' => $worker->symbol_count+1,
                             'active_status' => 1,
                         ]);
                         DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->update([
