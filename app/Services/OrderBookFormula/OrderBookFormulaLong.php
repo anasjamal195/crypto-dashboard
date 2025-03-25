@@ -68,11 +68,11 @@ class OrderBookFormulaLong
                     // Use Last completed Candle for checking conditions
                     $index--;
 
-                    $allowOpening = false;
+
                     $triggerPrice = 0;
 
                     $timestamp = $data[$index]['timestampReadable'];
-                 
+
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
@@ -82,7 +82,7 @@ class OrderBookFormulaLong
                         ->latest('snapshot_time')
                         ->first();
 
-                  
+
                     if (!$snapshot) {
                         continue;
                     }
@@ -96,8 +96,7 @@ class OrderBookFormulaLong
 
 
                     if (
-                        $allowOpening
-                        &&
+
                         !(
                             $data[$index]['dif'] < $data[$index]['dea']
                             && $data[$index - 1]['dif'] > $data[$index - 1]['dea']

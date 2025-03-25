@@ -69,7 +69,7 @@ class OrderBookFormulaShort
                     $index--;
 
 
-                    $allowOpening = false;
+                   
                     $triggerPrice = 0;
 
                     $timestamp = $data[$index]['timestampReadable'];
@@ -94,9 +94,7 @@ class OrderBookFormulaShort
                     $triggerIndex = $index;
 
                     if (
-                        $allowOpening
-
-                        &&
+                       
                         !(
                             $data[$index]['dif'] > $data[$index]['dea']
                             && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
