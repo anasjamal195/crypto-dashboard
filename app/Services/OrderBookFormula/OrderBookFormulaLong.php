@@ -95,16 +95,16 @@ class OrderBookFormulaLong
                         DB::table('worker_symbols')->insert(
                             [
                                 'worker_id' => $worker->worker_id,
-                                'symbol' => $trigger['symbol'],
-                                'trigger_id' => $trigger['trigger_id'],
-                                'trade_handler_id' => $trigger['trade_handler_id'],
+                                'symbol' => $trigger->symbol,
+                                'trigger_id' => $trigger->trigger_id,
+                                'trade_handler_id' => $trigger->trade_handler_id,
                             ]
                         );
                         DB::table('workers')->where('worker_id', $worker->worker_id)->update([
                             'symbol_count' => $worker->symbol_count++,
                             'active_status' => 1,
                         ]);
-                        DB::table('trade_handler')->where('id', $trigger['trade_handler_id'])->update([
+                        DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->update([
                             'isWorkerDispatched' => true,
                         ]);
                         break;
