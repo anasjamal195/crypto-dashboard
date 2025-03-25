@@ -719,11 +719,11 @@ class BinanceApiService
 
 
     // Order Book Details
-    public static function getOrderBook(string $symbol, int $limit = 100,$apiPointerUrl = null): ?array
+    public static function getOrderBook(string $symbol, int $limit = 100, $apiPointerUrl = null): ?array
     {
-        
+
         $url = config('binance.api.base_url') . config('binance.endpoints.depth');
-        if($apiPointerUrl){
+        if ($apiPointerUrl) {
             $url = $apiPointerUrl;
         }
         try {
@@ -1472,11 +1472,9 @@ class BinanceApiService
             $stopLoss = 0;
 
             if ($position === 'BUY') {
-                $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
-                $stopLoss = $current_price * (1 - 0.5 / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - 0.5 / 100);
+                $stopLoss = $current_price * (1 - 0.5 / 100);
             } else if ($position === 'SELL') {
-                $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
-                $stopLoss = $current_price * (1 + 0.5 / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + 0.5 / 100);
+                $stopLoss = $current_price * (1 + 0.5 / 100);
             }
 
 
