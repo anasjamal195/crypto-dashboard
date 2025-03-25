@@ -158,8 +158,8 @@ class LongThread implements ShouldQueue
                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                 if (!(isset($open_order['is_open']) && $open_order['is_open'])) {
                     $supportResistanceArr = [
-                        'support' => 0,
-                        'resistance' => 0,
+                        'support' => 1,
+                        'resistance' => 1,
                     ];
                     Log::info('LongThreadOrderBook: Opening Position: ' . $symbol);
                     // Make it dummy for now
