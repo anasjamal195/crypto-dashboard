@@ -117,6 +117,7 @@ class ShortThread implements ShouldQueue
             sleep(1);
             $data = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '5m', 300, null, 'FUTURE');
             $candle = $data[count($data) - 1];
+            Log::info('ShortThreadOrderBook: Current Price: ' . $candle['close'] . ' Trigger Price: ' . $this->triggerPrice . ' Symbol: ' . $symbol);
 
             if ($candle['close'] >= $this->triggerPrice) {
                 $timestamp = $candle['timestampReadable'];

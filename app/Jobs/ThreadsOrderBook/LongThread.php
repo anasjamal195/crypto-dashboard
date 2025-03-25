@@ -113,6 +113,7 @@ class LongThread implements ShouldQueue
 
             $data = BinanceApiService::getCandleStickData($this->tradeInstance->symbol, '5m', 300, null, 'FUTURE');
             $candle = $data[count($data) - 1];
+            Log::info('LongThreadOrderBook: Current Price: ' . $candle['close'] . ' Trigger Price: ' . $this->triggerPrice . ' Symbol: ' . $symbol);
 
             
             if ($candle['close'] <= $this->triggerPrice) {
