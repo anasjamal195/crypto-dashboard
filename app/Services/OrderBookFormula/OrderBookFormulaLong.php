@@ -86,7 +86,7 @@ class OrderBookFormulaLong
                 ->get()->toArray();
 
             foreach ($triggers as $trigger) {
-                $workers = DB::table('workers')->all();
+                $workers = DB::table('workers')->get();
 
                 // Check for available workers and check next coins
                 foreach ($workers as $worker) {

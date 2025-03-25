@@ -51,7 +51,7 @@ class LongThread implements ShouldQueue
             $tradeToOpen = null;
             // Main Loop to process coins list
             while (true) {
-                $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->all();
+                $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->get();
 
                 foreach ($worker_symbols as $worker_symbol) {
 
