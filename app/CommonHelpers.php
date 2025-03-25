@@ -163,7 +163,7 @@ class CommonHelpers
     {
 
         $prices = [];
-      
+
 
         for ($i = 0; $i < $priceCount; $i++) {
             $prices[] = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
@@ -325,5 +325,19 @@ class CommonHelpers
             return response()->json(['message' => 'Log file cleared successfully']);
         }
         return response()->json(['message' => 'Log file does not exist'], 404);
+    }
+    public static function distributeEntriesToWorkers($triggers, $numWorkers = 10)
+    {
+        $totalEntries = count($triggers);
+
+        // If entries are less than or equal to workers, assign one per worker
+        if ($totalEntries <= $numWorkers) {
+            return array_chunk($triggers, 1);
+        }
+
+        // Otherwise, distribute entries optimally
+        $entriesPerWorker = ceil($totalEntries / $numWorkers);
+
+        return array_chunk($triggers, $entriesPerWorker);
     }
 }
