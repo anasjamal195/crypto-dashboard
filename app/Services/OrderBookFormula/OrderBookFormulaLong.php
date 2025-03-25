@@ -36,150 +36,93 @@ class OrderBookFormulaLong
 
     public static function performLiveTrades($market, $account = null)
     {
-
-        // $openSymbols = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('trade_status', 'open')->pluck('symbol');
-        // $tradeHandler = DB::table('trade_handler')->where('tradeAccount', $account)->where('market', $market)->where('position', 'LONG')->where('isWorkerDispatched', false)->whereNotIn('symbol', $openSymbols)->where('isActive', 1)->get();
-        // Log::info('LongWorkerOrderBook: Worker Started');
-
-
         // ==================New Strategy========================
-        $openSymbols = DB::table('live_trades_future_results')
-            ->where('trade_acc', $account)
-            ->where('trade_status', 'open')
-            ->pluck('symbol');
+        try {
+            $workerLimit = 3;
+            $openSymbols = DB::table('live_trades_future_results')
+                ->where('trade_acc', $account)
+                ->where('trade_status', 'open')
+                ->pluck('symbol');
 
-        // Subquery to get the latest snapshot entry per symbol with required conditions
-        $fiveMinutesAgo = Carbon::now()->subMinutes(5);
+            // Subquery to get the latest snapshot entry per symbol with required conditions
+            $fiveMinutesAgo = Carbon::now()->subMinutes(5);
 
-        $latestSnapshots = DB::table('order_book_snapshots as obs1')
-            ->select(
-                'obs1.symbol',
-                DB::raw('MAX(obs1.snapshot_time) as latest_snapshot_time')
-            )
-            ->where('obs1.snapshot_time', '>=', $fiveMinutesAgo)
-            ->where('obs1.depth', 1000)
-            ->where('obs1.signal', 'SHORT')
-            ->where('obs1.short_strength', '>=', 8)
-            ->groupBy('obs1.symbol');
+            $latestSnapshots = DB::table('order_book_snapshots as obs1')
+                ->select(
+                    'obs1.symbol',
+                    DB::raw('MAX(obs1.snapshot_time) as latest_snapshot_time')
+                )
+                ->where('obs1.snapshot_time', '>=', $fiveMinutesAgo)
+                ->where('obs1.depth', 1000)
+                ->where('obs1.signal', 'SHORT')
+                ->where('obs1.short_strength', '>=', 8)
+                ->groupBy('obs1.symbol');
 
-        $triggers = DB::table('order_book_snapshots as obs2')
-            ->joinSub($latestSnapshots, 'latest_obs', function ($join) {
-                $join->on('obs2.symbol', '=', 'latest_obs.symbol')
-                    ->on('obs2.snapshot_time', '=', 'latest_obs.latest_snapshot_time');
-            })
-            ->join('trade_handler as th', function ($join) use ($account, $openSymbols) {
-                $join->on('obs2.symbol', '=', 'th.symbol')
-                    ->where('th.position', 'LONG')
-                    ->where('th.tradeAccount', $account)
-                    ->whereNotIn('th.symbol', $openSymbols)
-                    ->where('th.isWorkerDispatched', 0);
-            })
-            ->select(
-                'obs2.symbol',
-                'obs2.snapshot_time',
-                'obs2.resistance_levels',
-                'obs2.support_levels',
-                'obs2.signal',
-                'obs2.long_strength',
-                'obs2.short_strength',
-                'th.buyPrice',
-                'th.isWorkerDispatched',
-                'th.id as trade_handler_id',
-            )
-            ->get()->toArray();
+            $triggers = DB::table('order_book_snapshots as obs2')
+                ->joinSub($latestSnapshots, 'latest_obs', function ($join) {
+                    $join->on('obs2.symbol', '=', 'latest_obs.symbol')
+                        ->on('obs2.snapshot_time', '=', 'latest_obs.latest_snapshot_time');
+                })
+                ->join('trade_handler as th', function ($join) use ($account, $openSymbols) {
+                    $join->on('obs2.symbol', '=', 'th.symbol')
+                        ->where('th.position', 'LONG')
+                        ->where('th.tradeAccount', $account)
+                        ->whereNotIn('th.symbol', $openSymbols)
+                        ->where('th.isWorkerDispatched', 0);
+                })
+                ->select(
+                    'obs2.symbol',
+                    'obs2.snapshot_time',
+                    'obs2.resistance_levels',
+                    'obs2.support_levels',
+                    'obs2.signal',
+                    'obs2.long_strength',
+                    'obs2.short_strength',
+                    'th.buyPrice',
+                    'th.isWorkerDispatched',
+                    'th.id as trade_handler_id',
+                    'obs2.id as trigger_id',
+                )
+                ->get()->toArray();
 
+            foreach ($triggers as $trigger) {
+                $workers = DB::table('workers')->all();
 
-        $packets = CommonHelpers::distributeEntriesToWorkers($triggers);
-        dd($triggers, $packets);
-
-
-       
-        // ======================================================
-
-        foreach ($tradeHandler as  $tradeInstance)
-            try {
-                $symbol = $tradeInstance->symbol;
-                $trade_acc = $tradeInstance->tradeAccount;
-
-                $openWorkersCount = DB::table('trade_handler')->where('isWorkerDispatched', true)->count();
-                if ($openWorkersCount >= 10) {
-                    continue;
-                }
-
-                $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, $market, $trade_acc);
-
-                if (isset($open_order['is_open']) && $open_order['is_open']) {
-                    continue;
-                } else {
-
-                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', $market, [7]);
-                    $candleData = $supportResistance['candleData'];
-                    $index = count($candleData) - 1;
-                    $data = $candleData;
-
-                    $currentCandle = $candleData[count($candleData) - 1];
-                    $secondLastCandle = $candleData[count($candleData) - 2];
-                    $thirdLastCandle = $candleData[count($candleData) - 3];
-
-                    // Use Last completed Candle for checking conditions
-                    $index--;
-
-
-                    $triggerPrice = 0;
-
-                    $timestamp = $data[$index]['timestampReadable'];
-
-                    $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
-                        ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-                        ->where('symbol', $symbol)
-                        ->where('depth', 1000)
-                        ->where('signal', 'SHORT')
-                        ->where('short_strength', '>=', 8)
-                        ->latest('snapshot_time')
-                        ->first();
-
-
-                    if (!$snapshot) {
-                        continue;
-                    }
-
-                    $entry_points = array_map(function ($level) {
-                        return $level['price'];
-                    }, $snapshot->support_levels);
-
-                    $triggerPrice = max($entry_points);
-                    $triggerIndex = $index;
-
-
-                    if (
-
-                        !(
-                            $data[$index]['dif'] < $data[$index]['dea']
-                            && $data[$index - 1]['dif'] > $data[$index - 1]['dea']
-                        )
-
-                    ) {
-                        Log::info('LongWorkerOrderBook: Dispatching Long Thread MACD... Coin:  ' . $symbol);
-                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                // Check for available workers and check next coins
+                foreach ($workers as $worker) {
+                    // If a worker is available than add its entry
+                    if ($worker->symbol_count < $workerLimit && !$worker->trade_status) {
+                        DB::table('worker_symbols')->insert(
+                            [
+                                'worker_id' => $worker->worker_id,
+                                'symbol' => $trigger['symbol'],
+                                'trigger_id' => $trigger['trigger_id'],
+                                'trade_handler_id' => $trigger['trade_handler_id'],
+                            ]
+                        );
+                        DB::table('workers')->where('worker_id', $worker->worker_id)->update([
+                            'symbol_count' => $worker->symbol_count++,
+                            'active_status' => 1,
+                        ]);
+                        DB::table('trade_handler')->where('id', $trigger['trade_handler_id'])->update([
                             'isWorkerDispatched' => true,
                         ]);
-                        ThreadsOrderBookLongThread::dispatch($tradeInstance, $supportResistance, $triggerPrice, $triggerIndex);
                         break;
                     }
                 }
-                CommonHelpers::delayMS(100);
-            } catch (\Exception $e) {
-                Log::error('LongWorkerOrderBook: Error - ' . $e->getMessage());
-                Log::error($e->getTraceAsString());
             }
-        return true;
+        } catch (\Exception $e) {
+            Log::error('LongWorkerOrderBook: Error - ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+        }
+
+
+
+
+        // ======================================================
+
+
     }
-
-
-
-
-
-
 
 
 
