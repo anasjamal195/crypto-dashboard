@@ -74,7 +74,7 @@ class LongThread implements ShouldQueue
 
                     $triggerPrice = max($entry_points);
 
-                    $currentWorkerSymbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->pluck('symbols');
+                    $currentWorkerSymbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->pluck('symbol');
 
                     if (
                         $candle['close'] <= $triggerPrice
