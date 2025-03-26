@@ -213,6 +213,9 @@
                                                 <button class="btn btn-info btn-sm"
                                                     onclick="window.showDetails({{ $trade->id }},this)">Show
                                                     Details</button>
+                                                    <a class="btn btn-info btn-sm"
+                                                    href="{{ route('order-book.show', $trade->snapshot_id) }}">Show
+                                                    Trigger</a>
                                             </td>
                                         </tr>
                                         <tr id="details-{{ $trade->id }}" class="trade-details d-none">
@@ -491,9 +494,7 @@
                                                                             href="{{ route('coinReportDetails', $market) . '?symbol=' . $trade->symbol . '&interval=' . $trade->interval }}">Show
                                                                             Details</a>
 
-                                                                        <a class="btn btn-info btn-sm"
-                                                                            href="{{ route('order-book.show', $trade->snapshot_id) }}">Show
-                                                                            Trigger</a>
+                                                                       
                                                                     </td>
                                                                 </tr>
                                                             @endforeach
