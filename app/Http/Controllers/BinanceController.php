@@ -48,13 +48,13 @@ class BinanceController extends Controller
         if ($request->filled('formula')) {
             $query->where('formula', $request->formula);
         }
+        $averageDuration  = $query->average('duration');
 
         $tradeData = $query->groupBy('symbol', 'position', 'formula')
             ->orderBy('total_entries', 'DESC')
             ->orderBy('last_updated', 'DESC')
             ->get();
 
-        $averageDuration  = $query->average('duration');
         $pageSlug = 'CoinReport' . $market;
 
         // Liquidated coins query with position filter if provided
