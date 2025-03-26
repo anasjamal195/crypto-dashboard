@@ -54,7 +54,7 @@ class BinanceController extends Controller
             ->orderBy('last_updated', 'DESC')
             ->get();
 
-        $averageDuration  = $query->average('average_duration');
+        $averageDuration  = $query->average('duration');
         $pageSlug = 'CoinReport' . $market;
 
         // Liquidated coins query with position filter if provided
