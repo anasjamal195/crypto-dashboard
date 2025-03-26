@@ -83,10 +83,10 @@
                                         <th>Position</th>
                                         <th>Symbol</th>
                                         <th>Total Duration (min)</th>
+                                        <th>Average Duration (min)</th>
                                         <th>Total Trades</th>
                                         <th>Total Profit (%)</th>
                                         <th>Average Profit (%)</th>
-                                        <th>Average Duration (min)</th>
                                         <th>Max Profit (%)</th>
                                         <th>Min Profit (%)</th>
                                         <th>Max Lowest Price (%)</th>
@@ -107,10 +107,10 @@
                                             <td>{{ $trade->position }}</td>
                                             <td>{{ $trade->symbol }}</td>
                                             <td>{{ $trade->total_duration }}</td>
+                                            <td>{{ number_format($trade->average_duration, 2) }}</td>
                                             <td>{{ $trade->total_entries }}</td>
                                             <td>{{ number_format($trade->total_profit, 2) }} %</td>
                                             <td>{{ number_format($trade->average_profit, 2) }} %</td>
-                                            <td>{{ number_format($trade->average_duration, 2) }}</td>
                                             <td>{{ number_format($trade->max_profit, 2) }} %</td>
                                             <td>{{ number_format($trade->min_profit, 2) }} %</td>
                                             <td>{{ number_format($trade->max_lowestPrice, 2) }} %</td>
