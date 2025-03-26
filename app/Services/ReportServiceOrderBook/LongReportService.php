@@ -158,9 +158,9 @@ class LongReportService
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
-                        ->where('depth', 100)
-                        ->where('signal', 'SHORT')
-                        ->where('short_strength', '>=', 8)
+                        ->where('depth', 1000)
+                        ->where('signal', 'LONG')
+                        ->where('long_strength', '>=', 8)
                         ->latest('snapshot_time')
                         ->first();
 
@@ -172,7 +172,14 @@ class LongReportService
                         return $level['price'];
                     }, $snapshot->support_levels);
 
-                    $triggerPrice = max($entry_points);
+
+                    if ((abs($data[$index]['close'] - $entry_points[0]) / $data[$index]['close']) * 100 > 1) {
+                        continue;
+                    }
+                    // $triggerPrice = max($entry_points);
+
+                    $triggerPrice = $entry_points[0];
+
                     $triggerIndex = $index;
                 } else {
 
@@ -181,9 +188,9 @@ class LongReportService
                         $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                             ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                             ->where('symbol', $symbol)
-                            ->where('depth', 100)
-                            ->where('signal', 'SHORT')
-                            ->where('short_strength', '>=', 8)
+                            ->where('depth', 1000)
+                            ->where('signal', 'LONG')
+                            ->where('long_strength', '>=', 8)
                             ->latest('snapshot_time')
                             ->first();
 
@@ -200,8 +207,25 @@ class LongReportService
                     }
                 }
 
+
+                $volumeCondition = true;
+                $volumeAverage = 0;
+                for ($i = $index; $i >= $index - 10; $i--) {
+                    $volumeAverage += $data[$i]['volume'];
+                }
+
+                $volumeAverage = $volumeAverage / 10;
+
+                for ($i = $index; $i >= $index - 10; $i--) {
+                    if ($data[$i]['volume'] > 2 * $volumeAverage && $data[$i]['per'] < 0) {
+                        $volumeCondition = false;
+                        break;
+                    }
+                }
+
                 if (
                     $allowOpening
+                    && $volumeCondition
                     &&
                     !(
                         $data[$index]['dif'] < $data[$index]['dea']

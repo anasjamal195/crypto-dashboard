@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\OrderBookSnapshot;
 
 use Illuminate\Support\Facades\Log;
+use stdClass;
 
 class ShortReportService
 {
@@ -42,7 +43,7 @@ class ShortReportService
 
         foreach ($coins as $coin) {
 
-            $targetProfit = 0.05;
+            $targetProfit = 0.5;
 
             try {
                 $symbol = $coin->symbol;
@@ -100,6 +101,8 @@ class ShortReportService
     protected static function processCandles($symbol, $interval, $market, $data, $targetProfit, $formula)
     {
         $buy_price = 0;
+        $snapshotOpen = new stdClass;
+        $tradeType = null;
         $buy_triggers = [];
         $priceLock = $data[0]['close'];
         $priceLockIndex = 0;
@@ -143,6 +146,7 @@ class ShortReportService
             $obvLimit = $averages['previousObvLow'] ? (($averages['previousObvLow'] - $averages['obv']) / $averages['previousObvLow']) * 100 : 0;
             $supportResistanceData = array_slice($data, $index - 300, 300);
             $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [7]);
+
             if ($buy_price == 0) {
 
                 $allowOpening = false;
@@ -151,9 +155,9 @@ class ShortReportService
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
-                        ->where('signal', 'LONG')
+                        ->where('signal', 'SHORT')
                         ->where('depth', 1000)
-                        ->where('long_strength', '>=', 8)
+                        ->where('short_strength', '>=', 8)
                         ->latest('snapshot_time')
                         ->first();
 
@@ -165,83 +169,187 @@ class ShortReportService
                         return $level['price'];
                     }, $snapshot->resistance_levels);
 
+                    $entry_points_reverse = array_map(function ($level) {
+                        return $level['price'];
+                    }, $snapshot->support_levels);
 
-                    $triggerPrice = min($entry_points);
-                    $triggerIndex = $index;
+
+                    $triggerPriceShort = min($entry_points);
+                    $triggerPriceLong = max($entry_points_reverse);
+                    $snapshotOpen = $snapshot;
+
+                    if (round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceShort), 2) >= round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceLong), 2)) {
+                        $tradeType = 'LONG';
+                        $triggerPrice = $triggerPriceShort;
+                        $triggerIndex = $index;
+                    } else {
+                        $triggerPrice = $triggerPriceLong;
+                        $triggerIndex = $index;
+                        $tradeType = 'SHORT';
+                    }
                 } else {
-
-                    if ($candle['high'] >= $triggerPrice) {
-                        $timestamp = $candle['timestamp'];
-                        $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
-                            ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-                            ->where('symbol', $symbol)
-                            ->where('signal', 'LONG')
-                            ->where('depth', 1000)
-                            ->where('long_strength', '>=', 8)
-                            ->latest('snapshot_time')
-                            ->first();
-
-                        if (!$snapshot)
-                            continue;
-
-
-                        $allowOpening = true;
-                        $triggerPrice = 0;
-                        $triggerIndex = 0;
-                    } else if ($index - $triggerIndex > 20) {
-                        $allowOpening = false;
-                        $triggerPrice = 0;
-                        $triggerIndex = 0;
+                    if ($tradeType == 'SHORT') {
+                        if ($candle['high'] >= $triggerPrice) {
+                            $allowOpening = true;
+                            $triggerPrice = 0;
+                            $triggerIndex = 0;
+                        } else if ($index - $triggerIndex > 20) {
+                            $allowOpening = false;
+                            $triggerPrice = 0;
+                            $triggerIndex = 0;
+                            $snapshotOpen = null;
+                        }
+                    } else if ($tradeType == 'LONG') {
+                        if ($candle['low'] <= $triggerPrice) {
+                            $allowOpening = true;
+                            $triggerPrice = 0;
+                            $triggerIndex = 0;
+                        } else if ($index - $triggerIndex > 20) {
+                            $allowOpening = false;
+                            $triggerPrice = 0;
+                            $triggerIndex = 0;
+                        }
                     }
                 }
 
 
 
-                if (
-                    $allowOpening
+                if ($tradeType == 'SHORT') {
+                    $volumeCondition = true;
+                    $volumeAverage = 0;
+                    for ($i = $index; $i >= $index - 20; $i--) {
+                        $volumeAverage += $data[$i]['volume'];
+                    }
 
-                    &&
-                    !(
-                        $data[$index]['dif'] > $data[$index]['dea']
-                        && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
-                    )
+                    $volumeAverage = $volumeAverage / 10;
 
-                ) {
-                    $candle['should_buy'] = true;
-                    $candle['previousObvHigh'] = 0;
-                    $candle['previousObvHighReduced'] = 0;
-                    $buy_price = $candle['close'];
-                    $buy_triggers[] = $candle;
-                    $currentTrade['buyingCandle'] = json_encode($candle);
-                    $currentTrade['buyingAverages'] = json_encode($averages);
-                    $lowestPrice = $buy_price;
+                    for ($i = $index; $i >= $index - 10; $i--) {
+                        if ($data[$i]['volume'] > 2 * $volumeAverage && $data[$i]['per'] > 0) {
+                            $volumeCondition = false;
+                            break;
+                        }
+                    }
+                    if (
+                        $allowOpening
+                        && $volumeCondition
+                        &&
+                        !(
+                            $data[$index]['dif'] > $data[$index]['dea']
+                            && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
+                        )
+
+                    ) {
+                        $candle['should_buy'] = true;
+                        $candle['previousObvHigh'] = 0;
+                        $candle['previousObvHighReduced'] = 0;
+                        $buy_price = $candle['close'];
+                        $buy_triggers[] = $candle;
+                        $currentTrade['buyingCandle'] = json_encode($candle);
+                        $currentTrade['buyingAverages'] = json_encode($averages);
+                        $lowestPrice = $buy_price;
+                    }
+                } else if ($tradeType == 'LONG') {
+                    $volumeCondition = true;
+                    $volumeAverage = 0;
+                    for ($i = $index; $i >= $index - 10; $i--) {
+                        $volumeAverage += $data[$i]['volume'];
+                    }
+
+                    $volumeAverage = $volumeAverage / 10;
+
+                    for ($i = $index; $i >= $index - 10; $i--) {
+                        if ($data[$i]['volume'] > 2 * $volumeAverage && $data[$i]['per'] < 0) {
+                            $volumeCondition = false;
+                            break;
+                        }
+                    }
+
+                    if (
+                        $allowOpening
+                        && $volumeCondition
+                        &&
+                        !(
+                            $data[$index]['dif'] < $data[$index]['dea']
+                            && $data[$index - 1]['dif'] > $data[$index - 1]['dea']
+                        )
+                    ) {
+                        $candle['should_buy'] = true;
+                        $candle['previousObvHigh'] = 0;
+                        $candle['previousObvHighReduced'] = 0;
+                        $buy_price = $candle['close'];
+                        $buy_triggers[] = $candle;
+                        $currentTrade['buyingCandle'] = json_encode($candle);
+                        $currentTrade['buyingAverages'] = json_encode($averages);
+                        $lowestPrice = $buy_price;
+                    }
                 }
             } else {
-                if ($lowestPrice < $candle['high'])
-                    $lowestPrice = $candle['high'];
-                if ($candle['low'] <= $buy_price * (1 - $targetProfit / 100)) {
-                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'short');
-                    $candle['should_sell'] = true;
-                    $buy_triggers[] = $candle;
-                    $currentTrade['sellingCandle'] = json_encode($candle);
-                    $currentTrade['buyingPrice'] = $buy_price;
-                    $currentTrade['market'] = $market;
-                    $currentTrade['sellingPrice'] = $candle['low'];
-                    $currentTrade['symbol'] = $symbol;
-                    $currentTrade['interval'] = $interval;
-                    $currentTrade['profit'] = abs(round(($candle['low'] - $buy_price) / $buy_price * 100, 2));
-                    $currentTrade['lowestPrice'] = $lowestPrice;
-                    $currentTrade['liquidationPrice'] = $liquidationPrice;
-                    $currentTrade['lowestPricePercentage'] = abs((($buy_price - $lowestPrice) / $buy_price)) * 100;
-                    $currentTrade['position'] = 'SHORT';
-                    $currentTrade['formula'] = $formula;
-                    $lowestPrice = 0;
-                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
-                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
-                    $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
-                    $trades[] = $currentTrade;
-                    $currentTrade = [];
-                    $buy_price = 0;
+
+                if ($tradeType == 'SHORT') {
+                    if ($lowestPrice < $candle['high'])
+                        $lowestPrice = $candle['high'];
+                    if ($candle['low'] <= $buy_price * (1 - $targetProfit / 100)) {
+                        $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'short');
+                        $candle['should_sell'] = true;
+                        $buy_triggers[] = $candle;
+                        $currentTrade['sellingCandle'] = json_encode($candle);
+                        $currentTrade['buyingPrice'] = $buy_price;
+                        $currentTrade['market'] = $market;
+                        $currentTrade['sellingPrice'] = $candle['low'];
+                        $currentTrade['symbol'] = $symbol;
+                        $currentTrade['interval'] = $interval;
+                        $currentTrade['profit'] = abs(round(($candle['low'] - $buy_price) / $buy_price * 100, 2));
+                        $currentTrade['lowestPrice'] = $lowestPrice;
+                        $currentTrade['liquidationPrice'] = $liquidationPrice;
+                        $currentTrade['lowestPricePercentage'] = abs((($buy_price - $lowestPrice) / $buy_price)) * 100;
+                        $currentTrade['position'] = 'SHORT';
+                        $currentTrade['formula'] = $formula;
+                        $currentTrade['snapshot_id'] = $snapshotOpen->id;
+                        $lowestPrice = 0;
+                        $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
+                        $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
+                        $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
+                        $trades[] = $currentTrade;
+                        $currentTrade = [];
+                        $buy_price = 0;
+                        $snapshotOpen = null;
+                        $tradeType = null;
+
+                    }
+                } else if ($tradeType == 'LONG') {
+                    if ($lowestPrice > $candle['low'])
+                        $lowestPrice = $candle['low'];
+
+                    if ($candle['close'] >= $buy_price * (1 + $targetProfit / 100)) {
+                        $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'long');
+                        $candle['should_sell'] = true;
+                        $buy_triggers[] = $candle;
+                        $currentTrade['sellingCandle'] = json_encode($candle);
+                        $currentTrade['buyingPrice'] = $buy_price;
+                        $currentTrade['market'] = $market;
+                        $currentTrade['sellingPrice'] = $candle['close'];
+                        $currentTrade['symbol'] = $symbol;
+                        $currentTrade['interval'] = $interval;
+                        $currentTrade['profit'] = round(($candle['close'] - $buy_price) / $buy_price * 100, 2);
+                        $currentTrade['lowestPrice'] = $lowestPrice;
+                        $currentTrade['liquidationPrice'] = $liquidationPrice;
+                        $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
+                        $currentTrade['position'] = 'LONG';
+                        $currentTrade['formula'] = $formula;
+                        $currentTrade['snapshot_id'] = $snapshotOpen->id;
+
+                        $lowestPrice = 0;
+                        $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
+                        $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
+
+                        $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
+
+                        $trades[] = $currentTrade;
+                        $currentTrade = [];
+                        $buy_price = 0;
+                        $snapshotOpen = null;
+                        $tradeType = null;
+                    }
                 }
             }
         }

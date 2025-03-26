@@ -340,4 +340,9 @@ class CommonHelpers
 
         return array_chunk($triggers, $entriesPerWorker);
     }
+
+    public static function getPercentDiff($pivot, $value)
+    {
+        return (abs($pivot - $value) / $pivot) * 100;
+    }
 }
