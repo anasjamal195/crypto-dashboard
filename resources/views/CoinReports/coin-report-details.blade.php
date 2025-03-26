@@ -213,9 +213,11 @@
                                                 <button class="btn btn-info btn-sm"
                                                     onclick="window.showDetails({{ $trade->id }},this)">Show
                                                     Details</button>
+                                                    @if($trade->snapshot_id)
                                                     <a class="btn btn-info btn-sm"
                                                     href="{{ route('order-book.show', $trade->snapshot_id) }}">Show
                                                     Trigger</a>
+                                                    @endif
                                             </td>
                                         </tr>
                                         <tr id="details-{{ $trade->id }}" class="trade-details d-none">
