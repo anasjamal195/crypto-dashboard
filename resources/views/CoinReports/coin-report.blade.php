@@ -130,6 +130,21 @@
                                 </tbody>
                             </table>
                             <div class="d-flex flex-row text-center text-white">
+                                <div class="flex-fill "><strong>Average Duration:</strong></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill ">{{ round($averageDuration) }} min</div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                            </div>
+                            <div class="d-flex flex-row text-center text-white">
                                 <div class="flex-fill "><strong>Total Profit:</strong></div>
                                 <div class="flex-fill "></div>
                                 <div class="flex-fill "></div>

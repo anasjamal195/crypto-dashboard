@@ -54,6 +54,7 @@ class BinanceController extends Controller
             ->orderBy('last_updated', 'DESC')
             ->get();
 
+        $averageDuration  = $query->average('average_duration');
         $pageSlug = 'CoinReport' . $market;
 
         // Liquidated coins query with position filter if provided
@@ -91,7 +92,7 @@ class BinanceController extends Controller
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
 
-        return view('CoinReports.coin-report', compact('tradeData', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', compact('tradeData', 'averageDuration','stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {
