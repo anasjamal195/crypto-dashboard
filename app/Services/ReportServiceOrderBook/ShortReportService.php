@@ -178,7 +178,7 @@ class ShortReportService
                     $triggerPriceLong = max($entry_points_reverse);
                     $snapshotOpen = $snapshot;
 
-                    if (round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceShort), 2) >= round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceLong), 2)) {
+                    if (round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceShort), 2) >= round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceLong), 2) ) {
                         $tradeType = 'LONG';
                         $triggerPrice = $triggerPriceShort;
                         $triggerIndex = $index;

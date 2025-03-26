@@ -490,6 +490,10 @@
                                                                         <a class="btn btn-primary btn-sm"
                                                                             href="{{ route('coinReportDetails', $market) . '?symbol=' . $trade->symbol . '&interval=' . $trade->interval }}">Show
                                                                             Details</a>
+
+                                                                        <a class="btn btn-info btn-sm"
+                                                                            href="{{ route('order-book.show', $trade->snapshot_id) }}">Show
+                                                                            Trigger</a>
                                                                     </td>
                                                                 </tr>
                                                             @endforeach
