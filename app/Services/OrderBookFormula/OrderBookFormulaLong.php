@@ -53,9 +53,9 @@ class OrderBookFormulaLong
                     DB::raw('MAX(obs1.snapshot_time) as latest_snapshot_time')
                 )
                 ->where('obs1.snapshot_time', '>=', $fiveMinutesAgo)
-                ->where('obs1.depth', 1000)
-                ->where('obs1.signal', 'SHORT')
-                ->where('obs1.short_strength', '>=', 8)
+                ->where('signal', 'SHORT')
+                ->where('depth', 1000)
+                ->where('short_strength', '>=', 8)
                 ->groupBy('obs1.symbol');
 
             $triggers = DB::table('order_book_snapshots as obs2')
@@ -92,6 +92,8 @@ class OrderBookFormulaLong
                 foreach ($workers as $worker) {
                     // If a worker is available than add its entry
                     if ($worker->symbol_count < $workerLimit && !$worker->trade_status) {
+
+                        $trade_handler = DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->get();
                         DB::table('worker_symbols')->insert(
                             [
                                 'worker_id' => $worker->worker_id,
@@ -101,10 +103,16 @@ class OrderBookFormulaLong
                             ]
                         );
                         DB::table('workers')->where('worker_id', $worker->worker_id)->update([
-                            'symbol_count' => $worker->symbol_count+1,
+                            'symbol_count' => $worker->symbol_count + 1,
                             'active_status' => 1,
                         ]);
+                        // Toggle Long trade handler for same coin
                         DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->update([
+                            'isWorkerDispatched' => true,
+                        ]);
+                        
+                        // Toggle Short trade handler for same coin
+                        DB::table('trade_handler')->where('symbol', $trade_handler->symbol)->where('tradeAccount',$trade_handler->tradeAccount)->where('position','SHORT')->update([
                             'isWorkerDispatched' => true,
                         ]);
                         break;
@@ -116,15 +124,9 @@ class OrderBookFormulaLong
             Log::error($e->getTraceAsString());
         }
 
-
-
-
         // ======================================================
 
-
     }
-
-
 
     public static function updateTradeHandler($interval, $market = 'SPOT', $user_id)
     {

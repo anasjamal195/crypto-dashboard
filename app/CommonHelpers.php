@@ -345,4 +345,237 @@ class CommonHelpers
     {
         return (abs($pivot - $value) / $pivot) * 100;
     }
+
+
+
+
+    public static function checkMacdConditionsShort($data, $index)
+    {
+        $macdDarkGreenDistance = 0;
+        $loopIndex = $index;
+
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
+                $macdDarkGreenDistance++;
+            } else {
+                break;
+            }
+
+            $loopIndex--;
+        }
+
+
+        $totalGreenCandles = 0;
+        $loopIndex = $index;
+
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if ($data[$loopIndex]['histogram'] < 0)
+                break;
+            $totalGreenCandles++;
+
+            $loopIndex--;
+        }
+
+
+
+        $kdjCrossover = false;
+        $kdjthreshold = 0;
+        $loopIndex = $index;
+
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if (
+                $data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
+                $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
+                &&
+                $data[$loopIndex]['J'] < $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100) &&
+                $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100)
+            ) {
+                $kdjCrossover = true;
+                break;
+            }
+
+            if (
+                ($data[$loopIndex]['J'] > $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
+                    $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
+                    &&
+                    $data[$loopIndex]['J'] > $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100) &&
+                    $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100))
+                ||
+                $loopIndex == 1
+            ) {
+                break;
+            }
+
+            $loopIndex--;
+        }
+
+        // Check KDJ approaching Crossover
+        $kdjApproachingCrossover = abs($data[$index]['K'] - $data[$index]['J']) < abs($data[$index - 1]['K'] - $data[$index - 1]['J']) &&
+            abs($data[$index]['D'] - $data[$index]['J']) < abs($data[$index - 1]['D'] - $data[$index - 1]['J']);
+
+
+
+        // Check downward wick
+        $upperWick = ($data[$index]['high'] - $data[$index]['open']);
+        $lowerWick = ($data[$index]['close'] - $data[$index]['low']);
+        $isUpwardWick = $data[$index]['close'] < $data[$index]['open'] && $upperWick > $lowerWick * 2;
+
+
+        $lastHighest = $data[$index]['high'];
+        $loopIndex = $index;
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if ($data[$loopIndex]['high'] > $lastHighest) {
+                $lastHighest = $data[$loopIndex]['high'];
+            } else if ($data[$loopIndex]['high'] < $data[$index]['high'] || $loopIndex == 1) {
+                break;
+            }
+            $loopIndex--;
+        }
+
+
+
+        $sellShortMACDConditions = $data[$index]['histogram'] > 0
+            && $isUpwardWick
+            && ($kdjCrossover || $kdjApproachingCrossover)
+            && $totalGreenCandles > 4
+            &&
+            !(
+                $data[$index]['dif'] > $data[$index]['dea']
+                && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
+            );;
+
+        return $sellShortMACDConditions;
+    }
+
+
+    public static function checkMacdConditionsLong($data, $index)
+    {
+        $macdLightRedDistance = 0;
+        $loopIndex = $index;
+
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if ($data[$loopIndex]['histogram'] >= $data[$loopIndex - 1]['histogram']) {
+                $macdLightRedDistance++;
+            } else {
+                break;
+            }
+
+            $loopIndex--;
+        }
+
+
+        $totalRedCandles = 0;
+        $loopIndex = $index;
+
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if ($data[$loopIndex]['histogram'] > 0)
+                break;
+
+            if ($data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'])
+                $totalRedCandles++;
+
+            $loopIndex--;
+        }
+
+
+
+
+        $kdjCrossover = false;
+        $kdjthreshold = 0;
+        $loopIndex = $index;
+
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if (
+                $data[$loopIndex]['J'] > $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100) &&
+                $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100)
+                &&
+                $data[$loopIndex]['J'] > $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100) &&
+                $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100)
+            ) {
+                $kdjCrossover = true;
+                break;
+            }
+
+            if (
+                ($data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100) &&
+                    $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100)
+                    &&
+                    $data[$loopIndex]['J'] < $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100) &&
+                    $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100))
+                ||
+                $loopIndex == 1
+            ) {
+                break;
+            }
+
+            $loopIndex--;
+        }
+
+
+
+
+        // Check KDJ approaching Crossover
+        $kdjApproachingCrossover = abs($data[$index]['K'] - $data[$index]['J']) < abs($data[$index - 1]['K'] - $data[$index - 1]['J']) &&
+            abs($data[$index]['D'] - $data[$index]['J']) < abs($data[$index - 1]['D'] - $data[$index - 1]['J']);
+
+        // Check downward wick
+        $upperWick = ($data[$index]['high'] - $data[$index]['close']);
+        $lowerWick = ($data[$index]['open'] - $data[$index]['low']);
+        $isUpwardWick = $data[$index]['close'] > $data[$index]['open'] && $upperWick > $lowerWick * 2;
+        $isDownwardWick = $data[$index]['close'] > $data[$index]['open'] && $lowerWick > $upperWick * 2;
+
+        $lastLowest = $data[$index]['low'];
+        $loopIndex = $index;
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if ($data[$loopIndex]['low'] < $lastLowest) {
+                $lastLowest = $data[$loopIndex]['low'];
+            } else if ($data[$loopIndex]['low'] > $data[$index]['low'] || $loopIndex == 1) {
+                break;
+            }
+            $loopIndex--;
+        }
+
+
+
+        //  ======================================
+
+
+
+        $buyLongMACDConditions = $data[$index]['histogram'] < 0
+            && $isDownwardWick
+            && ($kdjCrossover || $kdjApproachingCrossover)
+            && $totalRedCandles > 4
+            &&
+            !(
+                $data[$index]['dif'] < $data[$index]['dea']
+                && $data[$index - 1]['dif'] > $data[$index - 1]['dea']
+            );
+
+
+        return $buyLongMACDConditions;
+    }
 }

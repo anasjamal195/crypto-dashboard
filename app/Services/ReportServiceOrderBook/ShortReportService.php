@@ -1,5 +1,6 @@
 <?php
 
+// Order-Book (Basic: Short-Hybrid MACD Added and revers trigger prices - Last successfull formula)
 namespace App\Services\ReportServiceOrderBook;
 
 use App\CommonHelpers;
@@ -151,6 +152,7 @@ class ShortReportService
 
                 $allowOpening = false;
                 if (!$triggerPrice) {
+
                     $timestamp = $candle['timestamp'];
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
                         ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
@@ -178,33 +180,35 @@ class ShortReportService
                     $triggerPriceLong = max($entry_points_reverse);
                     $snapshotOpen = $snapshot;
 
-                    if (round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceShort), 2) >= round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceLong), 2) ) {
+                    if (round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceShort), 2) >=  2 * round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceLong), 2)) {
                         $tradeType = 'LONG';
                         $triggerPrice = $triggerPriceShort;
                         $triggerIndex = $index;
-                    } else {
+                    } else if (2 * round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceShort), 2) <=   round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceLong), 2)) {
                         $triggerPrice = $triggerPriceLong;
                         $triggerIndex = $index;
                         $tradeType = 'SHORT';
+                    } else {
+                        continue;
                     }
                 } else {
                     if ($tradeType == 'SHORT') {
-                        if ($candle['high'] >= $triggerPrice) {
+                        if ($data[$index - 1]['high'] >= $triggerPrice  && $data[$index]['per'] < 0) {
                             $allowOpening = true;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
-                        } else if ($index - $triggerIndex > 20) {
+                        } else if ($index - $triggerIndex > 30) {
                             $allowOpening = false;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
                             $snapshotOpen = null;
                         }
                     } else if ($tradeType == 'LONG') {
-                        if ($candle['low'] <= $triggerPrice) {
+                        if ($data[$index - 1]['low'] <= $triggerPrice && $data[$index]['per'] > 0) {
                             $allowOpening = true;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
-                        } else if ($index - $triggerIndex > 20) {
+                        } else if ($index - $triggerIndex > 30) {
                             $allowOpening = false;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
@@ -213,30 +217,17 @@ class ShortReportService
                 }
 
 
+                if (!$allowOpening) {
+                    continue;
+                }
 
                 if ($tradeType == 'SHORT') {
-                    $volumeCondition = true;
-                    $volumeAverage = 0;
-                    for ($i = $index; $i >= $index - 20; $i--) {
-                        $volumeAverage += $data[$i]['volume'];
-                    }
 
-                    $volumeAverage = $volumeAverage / 10;
-
-                    for ($i = $index; $i >= $index - 10; $i--) {
-                        if ($data[$i]['volume'] > 2 * $volumeAverage && $data[$i]['per'] > 0) {
-                            $volumeCondition = false;
-                            break;
-                        }
-                    }
                     if (
                         $allowOpening
-                        && $volumeCondition
                         &&
-                        !(
-                            $data[$index]['dif'] > $data[$index]['dea']
-                            && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
-                        )
+                        CommonHelpers::checkMacdConditionsShort($data, $index)
+
 
                     ) {
                         $candle['should_buy'] = true;
@@ -249,29 +240,13 @@ class ShortReportService
                         $lowestPrice = $buy_price;
                     }
                 } else if ($tradeType == 'LONG') {
-                    $volumeCondition = true;
-                    $volumeAverage = 0;
-                    for ($i = $index; $i >= $index - 10; $i--) {
-                        $volumeAverage += $data[$i]['volume'];
-                    }
-
-                    $volumeAverage = $volumeAverage / 10;
-
-                    for ($i = $index; $i >= $index - 10; $i--) {
-                        if ($data[$i]['volume'] > 2 * $volumeAverage && $data[$i]['per'] < 0) {
-                            $volumeCondition = false;
-                            break;
-                        }
-                    }
 
                     if (
                         $allowOpening
-                        && $volumeCondition
                         &&
-                        !(
-                            $data[$index]['dif'] < $data[$index]['dea']
-                            && $data[$index - 1]['dif'] > $data[$index - 1]['dea']
-                        )
+                        CommonHelpers::checkMacdConditionsLong($data, $index)
+
+
                     ) {
                         $candle['should_buy'] = true;
                         $candle['previousObvHigh'] = 0;
@@ -314,7 +289,6 @@ class ShortReportService
                         $buy_price = 0;
                         $snapshotOpen = null;
                         $tradeType = null;
-
                     }
                 } else if ($tradeType == 'LONG') {
                     if ($lowestPrice > $candle['low'])

@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class LongThread implements ShouldQueue
+class TriggersThread implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public $workerId;
@@ -29,7 +29,7 @@ class LongThread implements ShouldQueue
 
     public $tradeInstance;
     public $supportResistance;
-    public $formula = 'Order Book Snapshots';
+    public $formula = 'Order Book Snapshots ';
     public $profitIncrementPercentage = 0.2;
 
     public $triggerPrice = 0;
@@ -50,6 +50,7 @@ class LongThread implements ShouldQueue
         while (true) {
             try {
                 $tradeToOpen = null;
+                $tradeType = null;
                 // Main Loop to process coins list
                 while (true) {
                     $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->get();
@@ -66,60 +67,117 @@ class LongThread implements ShouldQueue
 
 
                             $data = BinanceApiService::getCandleStickData($tradeInstance->symbol, '5m', 300, null, 'FUTURE');
+                            $index = count($data) - 1;
+                            $index--;
+
+
                             $candle = $data[count($data) - 1];
                             $secondLastcandle = $data[count($data) - 2];
                             $thirdLastcandle = $data[count($data) - 3];
 
-                            $entry_points = array_map(function ($level) {
+                            $resistanceLevels = array_map(function ($level) {
                                 return $level['price'];
-                            }, json_decode($trigger->support_levels, true));
+                            }, $trigger->resistance_levels);
 
-                            $triggerPrice = max($entry_points);
+                            $supportLevels = array_map(function ($level) {
+                                return $level['price'];
+                            }, $trigger->support_levels);
+
+
+                            $triggerPriceShort = min($resistanceLevels);
+                            $triggerPricePercentDiffShort = round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceShort), 2);
+                            $triggerPriceLong = max($supportLevels);
+                            $triggerPricePercentDiffLong =  round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceLong), 2);
+
+
+                            if ($triggerPricePercentDiffShort >=  2 * $triggerPricePercentDiffLong) {
+                                $tradeInstance = DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('position', 'LONG')->where('interval', '5m')->first();
+                                $tradeType = 'LONG';
+                                $triggerPrice = $triggerPriceShort;
+                            } else if ($triggerPricePercentDiffLong >=  2 * $triggerPricePercentDiffShort) {
+                                $tradeInstance = DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('position', 'SHORT')->where('interval', '5m')->first();
+                                $triggerPrice = $triggerPriceLong;
+                                $tradeType = 'SHORT';
+                            } else {
+                                continue;
+                            }
 
                             $currentWorkerSymbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->pluck('symbol');
 
-                            if (
-                                $candle['close'] <= $triggerPrice
-                                &&
-                                !(
-                                    $secondLastcandle['dif'] < $secondLastcandle['dea']
-                                    && $thirdLastcandle['dif'] > $thirdLastcandle['dea']
-                                )
-                            ) {
+                            if ($tradeType == 'SHORT') {
 
-                                // If price hits trigger than pass current tradeInstance to parent function 
-                                $tradeToOpen =  $tradeInstance;
-                                // Free all other coins from this worker
-                                DB::table('worker_symbols')->where('worker_id', $this->workerId)->where('symbol', '!=', $symbol)->delete();
-                                DB::table('workers')->where('worker_id', $this->workerId)->update([
-                                    'symbol_count' => 1,
-                                    'trade_status' => true,
-                                    'active_status' => true,
-                                ]);
-                                DB::table('trade_handler')->whereIn('symbol', $currentWorkerSymbols)->where('symbol', '!=', $symbol)->where('tradeAccount', $tradeInstance->tradeAccount)->where('position', 'LONG')->update([
-                                    'isWorkerDispatched' => false,
-                                ]);
+                                if ($data[$index - 1]['high'] >= $triggerPriceLong  && $data[$index]['per'] < 0) {
+
+                                    // If price hits trigger than pass current tradeInstance to parent function 
+                                    $tradeToOpen =  $tradeInstance;
+                                    // Free all other coins from this worker
+                                    DB::table('worker_symbols')->where('worker_id', $this->workerId)->where('symbol', '!=', $symbol)->delete();
+                                    DB::table('workers')->where('worker_id', $this->workerId)->update([
+                                        'symbol_count' => 1,
+                                        'trade_status' => true,
+                                        'active_status' => true,
+                                    ]);
+                                    DB::table('trade_handler')->whereIn('symbol', $currentWorkerSymbols)->where('symbol', '!=', $symbol)->where('tradeAccount', $tradeInstance->tradeAccount)->update([
+                                        'isWorkerDispatched' => false,
+                                    ]);
 
 
-                                // break current for loop for next processing
-                                break;
-                            } else if (((($candle['close'] - $triggerPrice) / $triggerPrice) * 100) >  1) {
+                                    // break current for loop for next processing
+                                    break;
+                                } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceLong) >  1) {
 
-                                // In case trigger fails or does not hit, remove the entry from worker_symbols
+                                    // In case trigger fails or does not hit, remove the entry from worker_symbols
 
-                                // Free this coin from this worker
-                                DB::table('worker_symbols')->where('worker_id', $this->workerId)->where('symbol', $symbol)->delete();
-                                DB::table('workers')->where('worker_id', $this->workerId)->update([
-                                    'symbol_count' => count($currentWorkerSymbols) - 1,
-                                    'trade_status' => false,
-                                    'active_status' => true,
-                                ]);
-                                DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                                    'isWorkerDispatched' => false,
-                                ]);
+                                    // Free this coin from this worker
+                                    DB::table('worker_symbols')->where('worker_id', $this->workerId)->where('symbol', $symbol)->delete();
+                                    DB::table('workers')->where('worker_id', $this->workerId)->update([
+                                        'symbol_count' => count($currentWorkerSymbols) - 1,
+                                        'trade_status' => false,
+                                        'active_status' => true,
+                                    ]);
+                                    DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                                        'isWorkerDispatched' => false,
+                                    ]);
+                                }
+                            } else if ($tradeType == 'LONG') {
+
+                                if ($data[$index - 1]['low'] <= $triggerPriceShort  && $data[$index]['per'] > 0) {
+
+                                    // If price hits trigger than pass current tradeInstance to parent function 
+                                    $tradeToOpen =  $tradeInstance;
+                                    // Free all other coins from this worker
+                                    DB::table('worker_symbols')->where('worker_id', $this->workerId)->where('symbol', '!=', $symbol)->delete();
+                                    DB::table('workers')->where('worker_id', $this->workerId)->update([
+                                        'symbol_count' => 1,
+                                        'trade_status' => true,
+                                        'active_status' => true,
+                                    ]);
+                                    DB::table('trade_handler')->whereIn('symbol', $currentWorkerSymbols)->where('symbol', '!=', $symbol)->where('tradeAccount', $tradeInstance->tradeAccount)->update([
+                                        'isWorkerDispatched' => false,
+                                    ]);
+
+
+                                    // break current for loop for next processing
+                                    break;
+                                } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceShort) >  1) {
+
+                                    // In case trigger fails or does not hit, remove the entry from worker_symbols
+
+                                    // Free this coin from this worker
+                                    DB::table('worker_symbols')->where('worker_id', $this->workerId)->where('symbol', $symbol)->delete();
+                                    DB::table('workers')->where('worker_id', $this->workerId)->update([
+                                        'symbol_count' => count($currentWorkerSymbols) - 1,
+                                        'trade_status' => false,
+                                        'active_status' => true,
+                                    ]);
+
+                                    DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->update([
+                                        'isWorkerDispatched' => false,
+                                    ]);
+                                }
                             }
                         } catch (\Exception $e) {
-                            Log::error('LongThreadOrderBook: Error - ' . $e->getMessage());
+                            Log::error('TriggersThreadOrderBook: Error - ' . $e->getMessage());
                             Log::error($e->getTraceAsString());
                         }
                         sleep(1);
@@ -140,14 +198,14 @@ class LongThread implements ShouldQueue
                 $tradeInstance = $tradeToOpen;
 
 
-                $lastOrderClose = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
+                $lastOrderClose = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
                 $currentOpenOrders = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
                 if ($lastOrderClose) {
                     $lastOrderClose = $lastOrderClose->created_at;
                     $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
                     if ($timeDiff < 20) {
                         $openTrade = false;
-                        Log::info('LongThreadOrderBook: Skipped due to last order close time: ' . $symbol);
+                        Log::info('TriggersThreadOrderBook: Skipped due to last order close time: ' . $symbol);
                     }
                 }
 
@@ -167,7 +225,7 @@ class LongThread implements ShouldQueue
                             'support' => 1,
                             'resistance' => 1,
                         ];
-                        Log::info('LongThreadOrderBook: Opening Position: ' . $symbol);
+                        Log::info('TriggersThreadOrderBook: Opening Position: ' . $symbol);
                         // Make it dummy for now
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, true, $this->stopLoss, $this->targetProfit);
 
@@ -179,10 +237,12 @@ class LongThread implements ShouldQueue
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
                                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
-
-                                $tradeLoop = self::manageOpenOrder($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
+                                if ($tradeType === 'LONG')
+                                    $tradeLoop = self::manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
+                                else if ($tradeType === 'SHORT')
+                                    $tradeLoop = self::manageOpenOrderShort($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
                             } catch (\Exception $e) {
-                                Log::error('LongThreadOrderBook: Error - ' . $e->getMessage());
+                                Log::error('TriggersThreadOrderBook: Error - ' . $e->getMessage());
                                 Log::error($e->getTraceAsString());
                             }
                             CommonHelpers::delayS(1);
@@ -195,12 +255,11 @@ class LongThread implements ShouldQueue
                             'trade_status' => false,
                             'active_status' => true,
                         ]);
-                        DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                        DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->update([
                             'isWorkerDispatched' => false,
                         ]);
 
-
-                        Log::info('LongThreadOrderBook: Trade Successfully Closed: ' . $symbol);
+                        Log::info('TriggersThreadOrderBook: Trade Successfully Closed: ' . $symbol);
                     }
                 } else {
                     // Trade Failure
@@ -210,27 +269,27 @@ class LongThread implements ShouldQueue
                         'trade_status' => false,
                         'active_status' => true,
                     ]);
-                    DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                    DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->update([
                         'isWorkerDispatched' => false,
                     ]);
 
-                    Log::info('LongThreadOrderBook: Failed to open trade: ' . $symbol);
+                    Log::info('TriggersThreadOrderBook: Failed to open trade: ' . $symbol);
                 }
 
 
                 // Recall this loop after every successful trade
                 sleep(5);
             } catch (\Exception $e) {
-                Log::error('LongThreadOrderBook: Error - ' . $e->getMessage());
+                Log::error('TriggersThreadOrderBook: Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
             }
         }
     }
 
-    private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
+    private static function manageOpenOrderLong($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
     {
 
-        Log::info('LongThreadOrderBook: Open order found for ' . $buy_order['symbol']);
+        Log::info('TriggersThreadOrderBook: Open order found for ' . $buy_order['symbol']);
         $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
@@ -241,7 +300,7 @@ class LongThread implements ShouldQueue
 
         // Scenerio 1: If Current profit is less than 1%
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
-        Log::info('LongThreadOrderBook: Current profit ' . $currentProfit);
+        Log::info('TriggersThreadOrderBook: Current profit ' . $currentProfit);
 
 
 
@@ -265,7 +324,7 @@ class LongThread implements ShouldQueue
             } else {
 
                 // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation ' . $tradeInstance->symbol);
-                Log::info('LongThreadOrderBook: Retreating Due to upper wick');
+                Log::info('TriggersThreadOrderBook: Retreating Due to upper wick');
             }
         } else if ($currentProfit > $targetProfit) {
 
@@ -292,8 +351,7 @@ class LongThread implements ShouldQueue
     }
 
 
-
-    private static function manageOpenOrder($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
+    private static function manageOpenOrderShort($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
     {
         Log::info('ShortThreadOrderBook: Open order found for ' . $buy_order['symbol']);
 
@@ -326,7 +384,7 @@ class LongThread implements ShouldQueue
                 return false;
             } else {
                 Log::info('ShortThreadOrderBook: Retreating Due to lower wick');
-               
+                // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation ' . $tradeInstance->symbol);
             }
         } else if ($currentProfit > $targetProfit) {
 
@@ -338,12 +396,6 @@ class LongThread implements ShouldQueue
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
             ]);
         } else {
-
-
-            $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'SHORT')->where('trade_acc', $tradeInstance->tradeAccount)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'open')->orderBy('created_at', 'desc')->first();
-
-
-
             DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
