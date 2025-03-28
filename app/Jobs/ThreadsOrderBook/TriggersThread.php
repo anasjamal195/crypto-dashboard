@@ -31,6 +31,7 @@ class TriggersThread implements ShouldQueue
     public $supportResistance;
     public $formula = 'Order Book Snapshots ';
     public $profitIncrementPercentage = 0.05;
+    public $profitIncrementPercentageNext = 0.1;
 
     public $triggerPrice = 0;
     public $triggerIndex = 0;
@@ -301,7 +302,11 @@ class TriggersThread implements ShouldQueue
         // Scenerio 1: If Current profit is less than 1%
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
-
+        if ($currentProfit < 0.5) {
+            $profitIncrementPercentage = 0.05;
+        } else {
+            $profitIncrementPercentage = 0.1;
+        }
 
 
         if (($stopLoss > $buy_order['price'] && $currentCandle['close'] < $stopLoss) || ($stopLoss < $buy_order['price'] && $currentCandle['open'] < $stopLoss)) {
@@ -367,6 +372,11 @@ class TriggersThread implements ShouldQueue
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
+        if ($currentProfit < 0.5) {
+            $profitIncrementPercentage = 0.05;
+        } else {
+            $profitIncrementPercentage = 0.1;
+        }
         if ($currentCandle['close'] > $stopLoss) {
             $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
             if (!$upper_wick) {
