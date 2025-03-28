@@ -25,12 +25,12 @@ class TriggersThread implements ShouldQueue
     public $timeout = 360000000;
     public $tries = 1; // The job will only run once
     public $stopLoss = 1.5;
-    public $targetProfit = 0.5;
+    public $targetProfit = 0.4;
 
     public $tradeInstance;
     public $supportResistance;
     public $formula = 'Order Book Snapshots ';
-    public $profitIncrementPercentage = 0.2;
+    public $profitIncrementPercentage = 0.1;
 
     public $triggerPrice = 0;
     public $triggerIndex = 0;
@@ -106,7 +106,7 @@ class TriggersThread implements ShouldQueue
 
                             if ($tradeType == 'SHORT') {
 
-                                if ($data[$index - 1]['high'] >= $triggerPriceLong  && $data[$index]['per'] < 0 && CommonHelpers::checkMacdConditionsShort($data,$index)) {
+                                if ($data[$index - 1]['high'] >= $triggerPriceLong  && $data[$index]['per'] < 0 && CommonHelpers::checkMacdConditionsShort($data, $index)) {
 
                                     // If price hits trigger than pass current tradeInstance to parent function 
                                     $tradeToOpen =  $tradeInstance;
@@ -141,7 +141,7 @@ class TriggersThread implements ShouldQueue
                                 }
                             } else if ($tradeType == 'LONG') {
 
-                                if ($data[$index - 1]['low'] <= $triggerPriceShort  && $data[$index]['per'] > 0  && CommonHelpers::checkMacdConditionsLong($data,$index)) {
+                                if ($data[$index - 1]['low'] <= $triggerPriceShort  && $data[$index]['per'] > 0  && CommonHelpers::checkMacdConditionsLong($data, $index)) {
 
                                     // If price hits trigger than pass current tradeInstance to parent function 
                                     $tradeToOpen =  $tradeInstance;
@@ -240,7 +240,7 @@ class TriggersThread implements ShouldQueue
                                 if ($tradeType === 'LONG')
                                     $tradeLoop = self::manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
-                                    $tradeLoop = self::manageOpenOrderShort($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage,$this->workerId);
+                                    $tradeLoop = self::manageOpenOrderShort($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                             } catch (\Exception $e) {
                                 Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                                 Log::error($e->getTraceAsString());
