@@ -224,6 +224,7 @@ class LiveTradeLONGFutureServiceEXP1
             }
 
             // Handle SHORT Trades
+            
             // Remove Coins that are not in priority queue
             $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('position', 'SHORT')->where('market', $market)->where('interval', $interval)->get();
             foreach ($leftoverEntries as $leftoverCoin) {
