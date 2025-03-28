@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\CommonHelpers;
+use App\Jobs\ThreadsOrderBook\TriggersThread;
 use App\Services\SupervisorService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 class ProcessController extends Controller
@@ -59,6 +61,13 @@ class ProcessController extends Controller
             foreach ($processes as $process)
                 SupervisorService::restart($process);
 
+            // Dispatch All threads
+
+            $threads = DB::table('workers')->where('active_status', true)->pluck('worker_id');
+            Artisan::call('queue:clear');
+            foreach ($threads as $workerId) {
+                TriggersThread::dispatch($workerId);
+            }
             return redirect()->back()->withSuccess('Action ' . 'Multithread Started');
         } catch (\Throwable $th) {
             return redirect()->back()->withError('Failed to Perform Multithread Restart ');
