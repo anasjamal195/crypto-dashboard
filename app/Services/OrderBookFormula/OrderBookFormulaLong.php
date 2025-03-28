@@ -93,7 +93,7 @@ class OrderBookFormulaLong
                     // If a worker is available than add its entry
                     if ($worker->symbol_count < $workerLimit && !$worker->trade_status) {
 
-                        $trade_handler = DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->get();
+                        $trade_handler = DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->first();
                         DB::table('worker_symbols')->insert(
                             [
                                 'worker_id' => $worker->worker_id,
