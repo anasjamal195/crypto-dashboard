@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\ThreadsOrderBook\LongThread;
+use App\Jobs\ThreadsOrderBook\TriggersThread;
 use App\Services\OrderBookFormula\OrderBookFormulaLong;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
@@ -34,7 +35,7 @@ class DispatchThreads extends Command
         $this->info('Preparing to dispatch ' . count($threads) . ' threads...');
         sleep(1);
         foreach ($threads as $workerId) {
-            LongThread::dispatch($workerId);
+            TriggersThread::dispatch($workerId);
             $this->info('Dispatched thread: ' . $workerId);
         }
     }
