@@ -77,11 +77,11 @@ class TriggersThread implements ShouldQueue
 
                             $resistanceLevels = array_map(function ($level) {
                                 return $level['price'];
-                            }, json_decode($trigger->resistance_levels,true));
+                            }, json_decode($trigger->resistance_levels, true));
 
                             $supportLevels = array_map(function ($level) {
                                 return $level['price'];
-                            }, json_decode($trigger->support_levels,true));
+                            }, json_decode($trigger->support_levels, true));
 
 
                             $triggerPriceShort = min($resistanceLevels);
@@ -177,7 +177,7 @@ class TriggersThread implements ShouldQueue
                                 }
                             }
                         } catch (\Exception $e) {
-                            Log::error('TriggersThreadOrderBook: Error - ' . $e->getMessage());
+                            Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                             Log::error($e->getTraceAsString());
                         }
                         sleep(1);
@@ -205,7 +205,7 @@ class TriggersThread implements ShouldQueue
                     $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
                     if ($timeDiff < 20) {
                         $openTrade = false;
-                        Log::info('TriggersThreadOrderBook: Skipped due to last order close time: ' . $symbol);
+                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipped due to last order close time: ' . $symbol);
                     }
                 }
 
@@ -225,8 +225,8 @@ class TriggersThread implements ShouldQueue
                             'support' => 1,
                             'resistance' => 1,
                         ];
-                        Log::info('TriggersThreadOrderBook: Opening Position: ' . $symbol);
-                        
+                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Opening Position: ' . $symbol);
+
                         BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
 
                         $tradeLoop = true;
@@ -238,11 +238,11 @@ class TriggersThread implements ShouldQueue
                                     $tradeLoop = false;
                                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
                                 if ($tradeType === 'LONG')
-                                    $tradeLoop = self::manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
+                                    $tradeLoop = self::manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
-                                    $tradeLoop = self::manageOpenOrderShort($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage);
+                                    $tradeLoop = self::manageOpenOrderShort($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage,$this->workerId);
                             } catch (\Exception $e) {
-                                Log::error('TriggersThreadOrderBook: Error - ' . $e->getMessage());
+                                Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                                 Log::error($e->getTraceAsString());
                             }
                             CommonHelpers::delayS(1);
@@ -259,7 +259,7 @@ class TriggersThread implements ShouldQueue
                             'isWorkerDispatched' => false,
                         ]);
 
-                        Log::info('TriggersThreadOrderBook: Trade Successfully Closed: ' . $symbol);
+                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Trade Successfully Closed: ' . $symbol);
                     }
                 } else {
                     // Trade Failure
@@ -273,23 +273,23 @@ class TriggersThread implements ShouldQueue
                         'isWorkerDispatched' => false,
                     ]);
 
-                    Log::info('TriggersThreadOrderBook: Failed to open trade: ' . $symbol);
+                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Failed to open trade: ' . $symbol);
                 }
 
 
                 // Recall this loop after every successful trade
                 sleep(5);
             } catch (\Exception $e) {
-                Log::error('TriggersThreadOrderBook: Error - ' . $e->getMessage());
+                Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                 Log::error($e->getTraceAsString());
             }
         }
     }
 
-    private static function manageOpenOrderLong($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
+    private static function manageOpenOrderLong($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage, $workerId)
     {
 
-        Log::info('TriggersThreadOrderBook: Open order found for ' . $buy_order['symbol']);
+        Log::info('TriggersThreadOrderBook ' . $workerId . ': Open order found for ' . $buy_order['symbol']);
         $targetProfit = $buy_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
@@ -300,7 +300,7 @@ class TriggersThread implements ShouldQueue
 
         // Scenerio 1: If Current profit is less than 1%
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
-        Log::info('TriggersThreadOrderBook: Current profit ' . $currentProfit);
+        Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
 
 
@@ -324,7 +324,7 @@ class TriggersThread implements ShouldQueue
             } else {
 
                 // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation ' . $tradeInstance->symbol);
-                Log::info('TriggersThreadOrderBook: Retreating Due to upper wick');
+                Log::info('TriggersThreadOrderBook ' . $workerId . ': Retreating Due to upper wick');
             }
         } else if ($currentProfit > $targetProfit) {
 
@@ -351,7 +351,7 @@ class TriggersThread implements ShouldQueue
     }
 
 
-    private static function manageOpenOrderShort($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage)
+    private static function manageOpenOrderShort($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage, $workerId)
     {
         Log::info('ShortThreadOrderBook: Open order found for ' . $buy_order['symbol']);
 
@@ -365,7 +365,7 @@ class TriggersThread implements ShouldQueue
 
 
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
-        Log::info('ShortThreadOrderBook: Current profit ' . $currentProfit);
+        Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
         if ($currentCandle['close'] > $stopLoss) {
             $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
@@ -383,7 +383,7 @@ class TriggersThread implements ShouldQueue
                 ]);
                 return false;
             } else {
-                Log::info('ShortThreadOrderBook: Retreating Due to lower wick');
+                Log::info('TriggersThreadOrderBook ' . $workerId . ': Retreating Due to lower wick');
                 // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation ' . $tradeInstance->symbol);
             }
         } else if ($currentProfit > $targetProfit) {
