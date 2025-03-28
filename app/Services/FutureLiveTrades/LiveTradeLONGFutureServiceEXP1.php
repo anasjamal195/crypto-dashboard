@@ -160,6 +160,8 @@ class LiveTradeLONGFutureServiceEXP1
 
     public static function updateTradeHandler($interval, $market = 'SPOT', $user_id)
     {
+        if ($user_id == 1)
+            return;
         $meta_prefix = '';
         if ($market == 'SPOT')
             $meta_prefix = '_spot';
@@ -169,9 +171,9 @@ class LiveTradeLONGFutureServiceEXP1
         // $coins = array_map(function ($value) {
         //     return $value['symbol'];
         // }, json_decode(json_encode(CommonHelpers::getPriorityQueue($interval, $market, $limit)), true));
-        
-        $coins = DB::table('coins')->pluck('symbol');
 
+        $coins = DB::table('coins')->pluck('symbol');
+        // dd($coins);
         foreach ($coins as $coin) {
 
             // $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
