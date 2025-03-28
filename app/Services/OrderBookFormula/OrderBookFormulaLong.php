@@ -38,7 +38,7 @@ class OrderBookFormulaLong
     {
         // ==================New Strategy========================
         try {
-            $workerLimit = 3;
+            $workerLimit = 10;
             $openSymbols = DB::table('live_trades_future_results')
                 ->where('trade_acc', $account)
                 ->where('trade_status', 'open')
@@ -110,7 +110,7 @@ class OrderBookFormulaLong
                         DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->update([
                             'isWorkerDispatched' => true,
                         ]);
-                        
+
                         // Toggle Short trade handler for same coin
                         DB::table('trade_handler')->where('symbol', $trade_handler->symbol)->where('tradeAccount',$trade_handler->tradeAccount)->where('position','SHORT')->update([
                             'isWorkerDispatched' => true,
