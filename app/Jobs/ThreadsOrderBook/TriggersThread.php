@@ -226,8 +226,8 @@ class TriggersThread implements ShouldQueue
                             'resistance' => 1,
                         ];
                         Log::info('TriggersThreadOrderBook: Opening Position: ' . $symbol);
-                        // Make it dummy for now
-                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, true, $this->stopLoss, $this->targetProfit);
+                        
+                        BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
 
                         $tradeLoop = true;
                         // Proceed trade until the position is closed
