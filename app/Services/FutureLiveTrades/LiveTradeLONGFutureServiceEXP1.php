@@ -104,7 +104,7 @@ class LiveTradeLONGFutureServiceEXP1
                     $volumeMultiplier = 1.3;
                     $volumeCondition = $currentCandle['volume'] > $averageTrailingVolume * $volumeMultiplier && $averageTrailingVolume != 0;
 
-                    $macdCondition = $secondLastCandle['histogram'] > 0 && $thirdLastCandle['histogram'] > 0  && $secondLastCandle['histogram'] > $thirdLastCandle['histogram']; 
+                    $macdCondition = $secondLastCandle['histogram'] > 0 && $thirdLastCandle['histogram'] > 0  && $secondLastCandle['histogram'] > $thirdLastCandle['histogram'];
                     $isWorkerDispatched = DB::table('trade_handler')->where('id', $tradeInstance->id)->first()->isWorkerDispatched;
                     $data = $candleData;
 
@@ -117,7 +117,7 @@ class LiveTradeLONGFutureServiceEXP1
                         ]);
                         LongThread::dispatch($tradeInstance, $supportResistance);
                         break;
-                    } 
+                    }
                     // else if (
                     //     $data[$index - 1]['histogram'] > 0 &&
 
@@ -166,12 +166,14 @@ class LiveTradeLONGFutureServiceEXP1
         else
             $meta_prefix = '_future';
         $limit = CommonHelpers::getMetaValue($user_id, 'live_trade_coin_count' . $meta_prefix, 10);
-        $coins = array_map(function ($value) {
-            return $value['symbol'];
-        }, json_decode(json_encode(CommonHelpers::getPriorityQueue($interval, $market, $limit)), true));
-
+        // $coins = array_map(function ($value) {
+        //     return $value['symbol'];
+        // }, json_decode(json_encode(CommonHelpers::getPriorityQueue($interval, $market, $limit)), true));
+        
+        $coins = DB::table('coins')->pluck('symbol');
 
         foreach ($coins as $coin) {
+
             // $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
             // $idealBuying = IdealTradeService::getIdealBuyingCandles($data);
             // $averages = IdealTradeService::getAverages($idealBuying);
