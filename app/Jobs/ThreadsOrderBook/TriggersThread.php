@@ -30,7 +30,7 @@ class TriggersThread implements ShouldQueue
     public $tradeInstance;
     public $supportResistance;
     public $formula = 'Order Book Snapshots ';
-    public $profitIncrementPercentage = 0.1;
+    public $profitIncrementPercentage = 0.05;
 
     public $triggerPrice = 0;
     public $triggerIndex = 0;
