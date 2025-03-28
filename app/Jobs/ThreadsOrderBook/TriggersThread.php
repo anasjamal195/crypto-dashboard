@@ -77,11 +77,11 @@ class TriggersThread implements ShouldQueue
 
                             $resistanceLevels = array_map(function ($level) {
                                 return $level['price'];
-                            }, $trigger->resistance_levels);
+                            }, json_decode($trigger->resistance_levels,true));
 
                             $supportLevels = array_map(function ($level) {
                                 return $level['price'];
-                            }, $trigger->support_levels);
+                            }, json_decode($trigger->support_levels,true));
 
 
                             $triggerPriceShort = min($resistanceLevels);
