@@ -31,6 +31,41 @@ class ProcessController extends Controller
 
         return redirect()->back()->withError('Failed to Stop');
     }
+
+
+    public function startMultithread()
+    {
+        try {
+            // Run Essential DB Query
+            DB::statement('UPDATE trade_handler SET isWorkerDispatched = 0');
+            DB::statement('UPDATE workers SET symbol_count = 0');
+            DB::statement('UPDATE workers SET trade_status = 0');
+            DB::statement('DELETE FROM worker_symbols WHERE 1');
+
+            $processes = [
+                'laravel_order_book_signals_worker',
+                'laravel_thread_workers:laravel_thread_workers_00',
+                'laravel_thread_workers:laravel_thread_workers_01',
+                'laravel_thread_workers:laravel_thread_workers_02',
+                'laravel_thread_workers:laravel_thread_workers_03',
+                'laravel_thread_workers:laravel_thread_workers_04',
+                'laravel_thread_workers:laravel_thread_workers_05',
+                'laravel_thread_workers:laravel_thread_workers_06',
+                'laravel_thread_workers:laravel_thread_workers_07',
+                'laravel_thread_workers:laravel_thread_workers_08',
+                'laravel_thread_workers:laravel_thread_workers_09',
+                'acc_2_order_book_long_worker',
+            ];
+            foreach ($processes as $process)
+                SupervisorService::restart($process);
+
+            return redirect()->back()->withSuccess('Action ' . 'Multithread Started');
+        } catch (\Throwable $th) {
+            return redirect()->back()->withError('Failed to Perform Multithread Restart ');
+        }
+    }
+
+
     public function performAction($action)
     {
         CommonHelpers::clearLogs();

@@ -70,6 +70,12 @@ Route::get('/process-handler/restart/{process_name}', 'App\Http\Controllers\Proc
 Route::get('/process-handler/stop/{process_name}', 'App\Http\Controllers\ProcessController@stop')->name('process-handler.stop')->middleware('auth');
 Route::get('/process-handler/action/{action}', 'App\Http\Controllers\ProcessController@performAction')->name('process-handler.action')->middleware('auth');
 
+// Combined workers start for multithread
+Route::get('/process-handler/start-multithread', 'App\Http\Controllers\ProcessController@startMultithread')->name('process-handler.start-multithread')->middleware('auth');
+
+
+
+
 // Critical process Urls
 Route::get('/process-handler/action/plesk-git/{apiKey}/{action}', 'App\Http\Controllers\ProcessController@performActionOnPleskGit')->name('process-handler.action.plesk-git');
 
