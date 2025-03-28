@@ -106,7 +106,7 @@ class TriggersThread implements ShouldQueue
 
                             if ($tradeType == 'SHORT') {
 
-                                if ($data[$index - 1]['high'] >= $triggerPriceLong  && $data[$index]['per'] < 0) {
+                                if ($data[$index - 1]['high'] >= $triggerPriceLong  && $data[$index]['per'] < 0 && CommonHelpers::checkMacdConditionsShort($data,$index)) {
 
                                     // If price hits trigger than pass current tradeInstance to parent function 
                                     $tradeToOpen =  $tradeInstance;
@@ -141,7 +141,7 @@ class TriggersThread implements ShouldQueue
                                 }
                             } else if ($tradeType == 'LONG') {
 
-                                if ($data[$index - 1]['low'] <= $triggerPriceShort  && $data[$index]['per'] > 0) {
+                                if ($data[$index - 1]['low'] <= $triggerPriceShort  && $data[$index]['per'] > 0  && CommonHelpers::checkMacdConditionsLong($data,$index)) {
 
                                     // If price hits trigger than pass current tradeInstance to parent function 
                                     $tradeToOpen =  $tradeInstance;
