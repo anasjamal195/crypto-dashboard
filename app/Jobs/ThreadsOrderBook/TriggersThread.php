@@ -253,11 +253,19 @@ class TriggersThread implements ShouldQueue
         // Scenerio 1: If Current profit is less than 1%
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
+
+        // Change take profit levels when order is stuck for more than 80 mins
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($buy_order['created_at']) > 80) && $targetProfit <= 0.4) {
+            $targetProfit = 0.2;
+            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $buy_order['symbol']);
+        }
+
         if ($currentProfit < 0.5) {
             $profitIncrementPercentage = 0.05;
         } else {
             $profitIncrementPercentage = 0.1;
         }
+
 
 
         if (($stopLoss > $buy_order['price'] && $currentCandle['close'] < $stopLoss) || ($stopLoss < $buy_order['price'] && $currentCandle['open'] < $stopLoss)) {
@@ -322,6 +330,13 @@ class TriggersThread implements ShouldQueue
 
         $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
+
+
+        // Change take profit levels when order is stuck for more than 80 mins
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($buy_order['created_at']) > 80) && $targetProfit <= 0.4) {
+            $targetProfit = 0.2;
+            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $buy_order['symbol']);
+        }
 
         if ($currentProfit < 0.5) {
             $profitIncrementPercentage = 0.05;
