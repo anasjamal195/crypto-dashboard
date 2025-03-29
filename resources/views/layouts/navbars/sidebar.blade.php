@@ -239,6 +239,13 @@
                             </a>
                         </li>
 
+                        <li class="{{ request()->routeIs('worker-handler.index') ? 'active' : '' }}">
+                            <a href="{{ route('worker-handler.index') }}">
+                                <i class="tim-icons icon-laptop text-primary"></i>
+                                <p>{{ __('Worker Dashboard') }}</p>
+                            </a>
+                        </li>
+
                     </ul>
                 </div>
             </li>
