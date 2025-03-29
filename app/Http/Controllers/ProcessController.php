@@ -66,7 +66,7 @@ class ProcessController extends Controller
             $threads = DB::table('workers')->where('active_status', true)->pluck('worker_id');
             Artisan::call('queue:clear');
             foreach ($threads as $workerId) {
-                TriggersThread::dispatch($workerId);
+                TriggersThread::dispatch($workerId, 2);
             }
             return redirect()->back()->withSuccess('Action ' . 'Multithread Started');
         } catch (\Throwable $th) {
@@ -106,5 +106,25 @@ class ProcessController extends Controller
             return true;
         }
         return false;
+    }
+
+    public function togglePosition($position)
+    {
+
+        if ($position === 'LONG') {
+
+            $currentStatus = CommonHelpers::getSettingsValue('enable_long_multithread', 0);
+            DB::table('trade_settings')->where('settings_key', 'enable_long_multithread')->update([
+                'settings_value' => !$currentStatus
+            ]);
+        } else if ($position === 'SHORT') {
+            $currentStatus = CommonHelpers::getSettingsValue('enable_short_multithread', 0);
+            DB::table('trade_settings')->where('settings_key', 'enable_short_multithread')->update([
+                'settings_value' => !$currentStatus
+            ]);
+        }
+
+
+        return redirect()->back()->withSuccess('Toggled  ' . $position . ' status');
     }
 }

@@ -69,6 +69,7 @@ Route::get('/process-handler', 'App\Http\Controllers\ProcessController@index')->
 Route::get('/process-handler/restart/{process_name}', 'App\Http\Controllers\ProcessController@restart')->name('process-handler.restart')->middleware('auth');
 Route::get('/process-handler/stop/{process_name}', 'App\Http\Controllers\ProcessController@stop')->name('process-handler.stop')->middleware('auth');
 Route::get('/process-handler/action/{action}', 'App\Http\Controllers\ProcessController@performAction')->name('process-handler.action')->middleware('auth');
+Route::get('/process-handler/toggle-position/{position}','App\Http\Controllers\ProcessController@togglePosition')->name('user.toggle-position')->middleware('auth');
 
 // Combined workers start for multithread
 Route::get('/process-handler/start-multithread', 'App\Http\Controllers\ProcessController@startMultithread')->name('process-handler.start-multithread')->middleware('auth');

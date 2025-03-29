@@ -10,6 +10,11 @@
         <a href="{{ route('process-handler.action', 'RESTART') }}" class="btn btn-primary btn-sm m-2">Restart Current</a>
         <a href="{{ route('process-handler.action', 'STOP') }}" class="btn btn-danger btn-sm m-2">Stop All</a>
 
+        <a href="{{ route('user.toggle-position', 'LONG') }}"
+            class="btn mb-2 float-right {{ \App\CommonHelpers::getSettingsValue('enable_long_multithread', 0) == 1 ? 'btn-danger' : 'btn-success' }}">{{ \App\CommonHelpers::getSettingsValue('enable_long_multithread', 0) == 1 ? 'LONG is Enabled' : 'LONG is Disabled' }}</a>
+
+        <a href="{{ route('user.toggle-position', 'SHORT') }}"
+            class="btn mb-2 float-right {{ \App\CommonHelpers::getSettingsValue('enable_short_multithread', 0) == 1 ? 'btn-danger' : 'btn-success' }}">{{ \App\CommonHelpers::getSettingsValue('enable_short_multithread', 0) == 1 ? 'SHORT is Enabled' : 'SHORT is Disabled' }}</a>
 
         <table class="table">
             <thead>

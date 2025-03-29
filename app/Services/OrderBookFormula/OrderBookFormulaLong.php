@@ -92,29 +92,7 @@ class OrderBookFormulaLong
                 foreach ($workers as $worker) {
                     // If a worker is available than add its entry
                     if ($worker->symbol_count < $workerLimit && !$worker->trade_status) {
-
-                        $trade_handler = DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->first();
-                        DB::table('worker_symbols')->insert(
-                            [
-                                'worker_id' => $worker->worker_id,
-                                'symbol' => $trigger->symbol,
-                                'trigger_id' => $trigger->trigger_id,
-                                'trade_handler_id' => $trigger->trade_handler_id,
-                            ]
-                        );
-                        DB::table('workers')->where('worker_id', $worker->worker_id)->update([
-                            'symbol_count' => $worker->symbol_count + 1,
-                            'active_status' => 1,
-                        ]);
-                        // Toggle Long trade handler for same coin
-                        DB::table('trade_handler')->where('id', $trigger->trade_handler_id)->update([
-                            'isWorkerDispatched' => true,
-                        ]);
-
-                        // Toggle Short trade handler for same coin
-                        DB::table('trade_handler')->where('symbol', $trade_handler->symbol)->where('tradeAccount',$trade_handler->tradeAccount)->where('position','SHORT')->update([
-                            'isWorkerDispatched' => true,
-                        ]);
+                        CommonHelpers::workerEngageSymbol($worker->workerId, $trigger->trigger_id, $trigger->symbol, $account);
                         break;
                     }
                 }

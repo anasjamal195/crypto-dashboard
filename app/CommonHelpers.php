@@ -578,4 +578,123 @@ class CommonHelpers
 
         return $buyLongMACDConditions;
     }
+
+    public static function getTradeHandler($symbol, $account, $position)
+    {
+        return DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $account)->where('position', $position)->where('interval', '5m')->first();
+    }
+
+    public static function workerEngageSymbol($workerId, $triggerId, $symbol, $trade_acc, $position = '')
+    {
+
+        // Engage symbol in trade Handler
+        if ($position) {
+            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->update([
+                'isWorkerDispatched' => false,
+            ]);
+            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->where('position', $position)->update([
+                'isWorkerDispatched' => true,
+            ]);
+        } else {
+            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->update([
+                'isWorkerDispatched' => true,
+            ]);
+        }
+
+
+        // Add entry in Worker_symbol Table
+        DB::table('worker_symbols')->insert(
+            [
+                'worker_id' => $workerId,
+                'symbol' => $symbol,
+                'trigger_id' => $triggerId,
+                'updated_at' => Carbon::now()->toDateTimeString(),
+
+            ]
+        );
+
+        // Add entry in worker table
+        DB::table('workers')->where('worker_id', $workerId)->update([
+            'symbol_count' =>  DB::table('worker_symbols')->where('worker_id', $workerId)->count(),
+            'updated_at' => Carbon::now()->toDateTimeString(),
+        ]);
+    }
+    public static function workerFreeSymbol($workerId, $symbol, $account)
+    {
+        // Remove entry from worker Symbol
+        DB::table('worker_symbols')->where('worker_id', $workerId)->where('symbol', $symbol)->delete();
+
+        // Update Trade handler table
+        DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $account)->update([
+            'isWorkerDispatched' => false,
+        ]);
+
+        // Update Workers table count
+        DB::table('workers')->where('worker_id', $workerId)->update([
+            'symbol_count' => DB::table('worker_symbols')->where('worker_id', $workerId)->count(),
+            'trade_status' => false,
+            'updated_at' => Carbon::now()->toDateTimeString(),
+
+        ]);
+    }
+
+
+    public static function workerFreeAllSymbols($workerId, $account)
+    {
+        $currentWorkerSymbols = DB::table('worker_symbols')->where('worker_id', $workerId)->pluck('symbol');
+
+
+        DB::table('trade_handler')->where('tradeAccount', $account)->whereIn('symbol', $currentWorkerSymbols)->update([
+            'isWorkerDispatched' => false,
+        ]);
+
+
+        // Empty Worker Symbols for this worker
+        DB::table('worker_symbols')->where('worker_id', $workerId)->delete();
+
+        // Update Worker Status for zero symbols
+        DB::table('workers')->where('worker_id', $workerId)->update([
+            'symbol_count' => 0,
+            'trade_status' => 0,
+            'updated_at' => Carbon::now()->toDateTimeString(),
+        ]);
+    }
+    public static function workerEngageSymbolOpenTrade($workerId, $tradeHandler)
+    {
+
+        $symbol = $tradeHandler->symbol;
+        $account = $tradeHandler->tradeAccount;
+
+        $triggerId = DB::table('worker_symbols')->where('worker_id', $workerId)->where('symbol', $symbol)->first();
+
+
+
+        // Disengage all symbols from current worker
+        self::workerFreeAllSymbols($workerId, $account);
+
+
+        // Update Worker Symbol Table
+        DB::table('worker_symbols')->insert(
+            [
+                'worker_id' => $workerId,
+                'symbol' => $symbol,
+                'trigger_id' => $triggerId,
+                'updated_at' => Carbon::now()->toDateTimeString(),
+
+            ]
+        );
+
+        // Update Worker table
+        DB::table('workers')->where('worker_id', $workerId)->update([
+            'symbol_count' => 1,
+            'trade_status' => true,
+            'active_status' => true,
+        ]);
+
+
+        // Update Trade Handler Table
+        DB::table('trade_handler')->where('id', $tradeHandler->id)->update([
+            'isWorkerDispatched' => true,
+        ]);
+    }
 }
