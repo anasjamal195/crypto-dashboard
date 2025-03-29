@@ -92,7 +92,7 @@ class BinanceController extends Controller
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
 
-        return view('CoinReports.coin-report', compact('tradeData', 'averageDuration','stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', compact('tradeData', 'averageDuration', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {
@@ -317,7 +317,9 @@ class BinanceController extends Controller
             if ($request->filled('formula'))
                 $orders = $orders->where('formula', 'LIKE', $request->input('formula'));
 
-            $orders = $orders->orderBy('created_at', 'desc')->get();
+            $orders = $orders->orderByRaw("trade_status = 'open' DESC")
+                ->orderBy('created_at', 'desc')
+                ->get();
 
 
             $tradeStatistics = [
