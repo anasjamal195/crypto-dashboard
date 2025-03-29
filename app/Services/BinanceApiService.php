@@ -741,7 +741,7 @@ class BinanceApiService
                 }
             }
 
-            if ($response->successful() || $response->json()['error']) {
+            if ($response->successful() || isset($response->json()['error'])) {
                 return $response->json();
             }
 
