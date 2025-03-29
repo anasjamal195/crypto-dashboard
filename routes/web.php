@@ -76,6 +76,7 @@ Route::get('/process-handler/start-multithread', 'App\Http\Controllers\ProcessCo
 
 // Worker Dashboard 
 Route::get('/worker-handler', 'App\Http\Controllers\ProcessController@workerIndex')->name('worker-handler.index')->middleware('auth');
+Route::get('/worker-handler/flush/{worker_id}', 'App\Http\Controllers\ProcessController@flushWorker')->name('worker-handler.flush')->middleware('auth');
 
 
 

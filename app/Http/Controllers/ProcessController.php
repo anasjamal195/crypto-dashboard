@@ -135,7 +135,13 @@ class ProcessController extends Controller
     public function workerIndex()
     {
         $workers = DB::table('workers')->get();
+        $workerSymbols = DB::table('worker_symbols')->get()->groupBy('worker_id');
 
-        return view('process-handler.index-worker', ['workers' => $workers, 'pageSlug' => 'workerHandler']);
+        return view('process-handler.index-worker', ['workers' => $workers, 'workerSymbols' => $workerSymbols, 'pageSlug' => 'workerHandler']);
+    }
+    public function flushWorker($worker_id)
+    {
+        CommonHelpers::workerFreeAllSymbols($worker_id);
+        return redirect()->back()->withSuccess('Worker  ' . $worker_id . ' flushed');
     }
 }

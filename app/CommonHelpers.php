@@ -639,14 +639,20 @@ class CommonHelpers
     }
 
 
-    public static function workerFreeAllSymbols($workerId, $account)
+    public static function workerFreeAllSymbols($workerId, $account = null)
     {
         $currentWorkerSymbols = DB::table('worker_symbols')->where('worker_id', $workerId)->pluck('symbol');
 
 
-        DB::table('trade_handler')->where('tradeAccount', $account)->whereIn('symbol', $currentWorkerSymbols)->update([
-            'isWorkerDispatched' => false,
-        ]);
+        if ($account) {
+            DB::table('trade_handler')->where('tradeAccount', $account)->whereIn('symbol', $currentWorkerSymbols)->update([
+                'isWorkerDispatched' => false,
+            ]);
+        } else {
+            DB::table('trade_handler')->whereIn('symbol', $currentWorkerSymbols)->update([
+                'isWorkerDispatched' => false,
+            ]);
+        }
 
 
         // Empty Worker Symbols for this worker
