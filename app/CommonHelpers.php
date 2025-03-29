@@ -678,7 +678,7 @@ class CommonHelpers
             [
                 'worker_id' => $workerId,
                 'symbol' => $symbol,
-                'trigger_id' => $triggerId,
+                'trigger_id' => $triggerId->id,
                 'updated_at' => Carbon::now()->toDateTimeString(),
 
             ]

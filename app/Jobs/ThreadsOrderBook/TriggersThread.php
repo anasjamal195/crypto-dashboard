@@ -170,12 +170,12 @@ class TriggersThread implements ShouldQueue
 
                 if ($tradeType === 'LONG' && !CommonHelpers::getSettingsValue('enable_long_multithread', 0)) {
                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                    continue;
+                    $openTrade = false;
                 }
 
                 if ($tradeType === 'SHORT' && !CommonHelpers::getSettingsValue('enable_short_multithread', 0)) {
                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                    continue;
+                    $openTrade = false;
                 }
 
 
