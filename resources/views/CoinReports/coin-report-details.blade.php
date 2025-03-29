@@ -10,7 +10,17 @@
 
 @section('content')
     <div class="container-fluid mt-5">
-        <h2 class="mb-4 text-white">Trade Details for {{ $symbol }} - {{ $interval }} ({{ $market }})</h2>
+        <h2 class="mb-4 text-white">
+            @if (isset($position))
+                @if (strtoupper($position) == 'LONG')
+                    <i class="fa fa-arrow-up text-success" title="Long Position"></i>
+                @elseif(strtoupper($position) == 'SHORT')
+                    <i class="fa fa-arrow-down text-danger" title="Short Position"></i>
+                @endif
+            @endif
+            Trade Details for {{ $symbol }} - {{ $interval }} ({{ $market }})
+
+        </h2>
         <div class="row mb-4">
             <div class="col-md-12">
                 <h4 class="text-white mb-3 ">Current Coin Averages:</h4>
