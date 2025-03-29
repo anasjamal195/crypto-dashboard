@@ -5,6 +5,7 @@
     $sellTriggers = [];
     $lowestTriggers = [];
     $liquidationTriggers = [];
+    $position = request()->get('position');
 
 @endphp
 
