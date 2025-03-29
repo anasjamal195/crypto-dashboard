@@ -17,6 +17,7 @@ class ProcessController extends Controller
 
         return view('process-handler.index', ['processes' => $processes['data'], 'pageSlug' => 'processHandler']);
     }
+
     public function restart($process)
     {
         $process = SupervisorService::restart($process);
@@ -126,5 +127,15 @@ class ProcessController extends Controller
 
 
         return redirect()->back()->withSuccess('Toggled  ' . $position . ' status');
+    }
+
+
+
+    // Worker Handler Cruds
+    public function workerIndex()
+    {
+        $workers = DB::table('workers')->get();
+
+        return view('process-handler.index-worker', ['workers' => $workers, 'pageSlug' => 'workerHandler']);
     }
 }

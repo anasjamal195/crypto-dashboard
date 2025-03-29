@@ -74,6 +74,8 @@ Route::get('/process-handler/toggle-position/{position}','App\Http\Controllers\P
 // Combined workers start for multithread
 Route::get('/process-handler/start-multithread', 'App\Http\Controllers\ProcessController@startMultithread')->name('process-handler.start-multithread')->middleware('auth');
 
+// Worker Dashboard 
+Route::get('/worker-handler', 'App\Http\Controllers\ProcessController@workerIndex')->name('worker-handler.index')->middleware('auth');
 
 
 
