@@ -92,7 +92,7 @@ class OrderBookFormulaLong
                 foreach ($workers as $worker) {
                     // If a worker is available than add its entry
                     if ($worker->symbol_count < $workerLimit && !$worker->trade_status) {
-                        CommonHelpers::workerEngageSymbol($worker->worker_, $trigger->trigger_id, $trigger->symbol, $account);
+                        CommonHelpers::workerEngageSymbol($worker->worker_id, $trigger->trigger_id, $trigger->symbol, $account);
                         break;
                     }
                 }
