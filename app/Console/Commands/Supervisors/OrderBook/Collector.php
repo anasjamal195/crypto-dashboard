@@ -32,7 +32,7 @@ class Collector extends Command
         $symbols  = DB::table('coins')->where('market', 'FUTURE')->pluck('symbol')->toArray();
 
         $interval = 1;
-        $depth = 100;
+        $depth = 1000;
         $cleanup = false;
         $daysToKeep = 2;
 
