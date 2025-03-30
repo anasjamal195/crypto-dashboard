@@ -26,7 +26,7 @@ class TriggersThread implements ShouldQueue
     public $account;
     public $timeout = 360000000;
     public $tries = 1; // The job will only run once
-    public $stopLoss = 1.5;
+    public $stopLoss = 1;
     public $targetProfit = 0.4;
 
     public $tradeInstance;
