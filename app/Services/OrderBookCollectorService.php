@@ -28,64 +28,67 @@ class OrderBookCollectorService
      * @param int $depth
      * @return \App\Models\OrderBookSnapshot|null
      */
-    public function collectAndStore($symbol, $depth = 100)
+    public function collectAndStore($symbol, $depths = [100])
     {
         try {
-            // Get raw order book data
-            $orderBookData = BinanceApiService::getOrderBook($symbol, $depth);
-            if (!$orderBookData) {
-                Log::error("Failed to fetch order book data for {$symbol}");
-                return null;
+
+
+            foreach ($depths as $key => $depthObj) {
+
+                $depth = $key;
+                $apiPointerUrl = $depthObj;
+
+                // Get raw order book data
+                $orderBookData = BinanceApiService::getOrderBook($symbol, $depth, $apiPointerUrl);
+                if (!$orderBookData) {
+                    Log::error("Failed to fetch order book data for {$symbol}");
+                    return null;
+                }
+
+                // Analyze the order book
+                $analysis = $this->orderBookStrategy->analyzeOrderBook($symbol, $depth);
+                if (!$analysis['success']) {
+                    Log::error("Failed to analyze order book data for {$symbol}");
+                    return null;
+                }
+
+
+                // Extract data from analysis
+                $analysisData = $analysis['analysis'];
+                $signals = $analysis['signals'];
+
+                if ($signals['recommendation'] === 'NEUTRAL') {
+                    // Log::error("Skipped due to NEUTRAL signal. {$symbol}");
+                    return null;
+                }
+
+
+                // Create the snapshot record
+                $snapshot = OrderBookSnapshot::create([
+                    'symbol' => $symbol,
+                    'snapshot_time' => Carbon::now(),
+                    'depth' => $depth,
+                    'raw_data' => $orderBookData,
+                    'bid_volume' => $analysisData['bid_volume'],
+                    'ask_volume' => $analysisData['ask_volume'],
+                    'volume_imbalance' => $analysisData['volume_imbalance'],
+                    'highest_bid' => isset($orderBookData['bids'][0]) ? $orderBookData['bids'][0][0] : null,
+                    'lowest_ask' => isset($orderBookData['asks'][0]) ? $orderBookData['asks'][0][0] : null,
+                    'spread' => isset($orderBookData['asks'][0]) && isset($orderBookData['bids'][0])
+                        ? (float)$orderBookData['asks'][0][0] - (float)$orderBookData['bids'][0][0]
+                        : null,
+                    'support_levels' => $analysisData['support_levels'],
+                    'type' => 'a',
+                    'resistance_levels' => $analysisData['resistance_levels'],
+                    'thin_liquidity_areas' => $analysisData['thin_liquidity_areas'],
+                    'signal' => $signals['recommendation'],
+                    'long_strength' => $signals['long']['strength'],
+                    'short_strength' => $signals['short']['strength'],
+                    'long_entry_points' => $signals['long']['entry_points'],
+                    'short_entry_points' => $signals['short']['entry_points'],
+                ]);
             }
-
-            // Analyze the order book
-            $analysis = $this->orderBookStrategy->analyzeOrderBook($symbol, $depth);
-            if (!$analysis['success']) {
-                Log::error("Failed to analyze order book data for {$symbol}");
-                return null;
-            }
-
-
-            // Extract data from analysis
-            $analysisData = $analysis['analysis'];
-            $signals = $analysis['signals'];
-
-            if ($signals['recommendation'] === 'NEUTRAL') {
-                // Log::error("Skipped due to NEUTRAL signal. {$symbol}");
-                return null;
-            }
-
-
-            // Create the snapshot record
-            $snapshot = OrderBookSnapshot::create([
-                'symbol' => $symbol,
-                'snapshot_time' => Carbon::now(),
-                'depth' => $depth,
-                'raw_data' => $orderBookData,
-                'bid_volume' => $analysisData['bid_volume'],
-                'ask_volume' => $analysisData['ask_volume'],
-                'volume_imbalance' => $analysisData['volume_imbalance'],
-                'highest_bid' => isset($orderBookData['bids'][0]) ? $orderBookData['bids'][0][0] : null,
-                'lowest_ask' => isset($orderBookData['asks'][0]) ? $orderBookData['asks'][0][0] : null,
-                'spread' => isset($orderBookData['asks'][0]) && isset($orderBookData['bids'][0])
-                    ? (float)$orderBookData['asks'][0][0] - (float)$orderBookData['bids'][0][0]
-                    : null,
-                'support_levels' => $analysisData['support_levels'],
-                'type' => 'a',
-                'resistance_levels' => $analysisData['resistance_levels'],
-                'thin_liquidity_areas' => $analysisData['thin_liquidity_areas'],
-                'signal' => $signals['recommendation'],
-                'long_strength' => $signals['long']['strength'],
-                'short_strength' => $signals['short']['strength'],
-                'long_entry_points' => $signals['long']['entry_points'],
-                'short_entry_points' => $signals['short']['entry_points'],
-            ]);
-
-            // Log::info("Stored order book snapshot for {$symbol} with ID {$snapshot->id}");
-            // if ($snapshot->signal == 'LONG' || $snapshot->signal == 'SHORT') {
-            //     MailerService::sendOrderBookSignalEmail($snapshot);
-            // }
-            return $snapshot;
+            return true;
         } catch (\Exception $e) {
             Log::error("Error collecting order book data: " . $e->getMessage());
             return null;
@@ -99,16 +102,14 @@ class OrderBookCollectorService
      * @param int $depth
      * @return array
      */
-    public function collectForMultipleSymbols(array $symbols, $depth = 100)
+    public function collectForMultipleSymbols(array $symbols, $depths = [100])
     {
-        $results = [];
 
         foreach ($symbols as $symbol) {
-            $result = $this->collectAndStore($symbol, $depth);
-            $results[$symbol] = $result ? true : false;
+            $this->collectAndStore($symbol, $depths);
         }
 
-        return $results;
+        return true;
     }
 
     /**

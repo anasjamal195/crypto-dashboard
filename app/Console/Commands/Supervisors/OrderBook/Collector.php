@@ -32,7 +32,12 @@ class Collector extends Command
         $symbols  = DB::table('coins')->where('market', 'FUTURE')->pluck('symbol')->toArray();
 
         $interval = 1;
-        $depth = 1000;
+        $depths = [
+            100 => null,
+            200 => null,
+            500 => 'https://xnfts.shop/load_balancer/orderBook.php',
+            1000 => 'https://digitalfitnesshub.shop/wp-includes/restful-api/orderBook.php'
+        ];
         $cleanup = false;
         $daysToKeep = 2;
 
@@ -46,17 +51,10 @@ class Collector extends Command
             $this->info('Collecting data at: ' . $startTime->toDateTimeString());
 
             try {
-                // Collect data for all symbols
-                $results = $collector->collectForMultipleSymbols($symbols, $depth);
 
-                // Log results
-                foreach ($results as $symbol => $success) {
-                    if ($success) {
-                        $this->info("✓ Collected data for {$symbol}");
-                    } else {
-                        $this->error("✗ Failed to collect data for {$symbol}");
-                    }
-                }
+                $collector->collectForMultipleSymbols($symbols, $depths);
+
+
 
                 // Perform cleanup if enabled
                 if ($cleanup) {
