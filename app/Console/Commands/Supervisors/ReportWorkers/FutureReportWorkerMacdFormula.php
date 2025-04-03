@@ -42,7 +42,7 @@ class FutureReportWorkerMacdFormula extends Command
      */
     public function handle()
     {
-        $formula = 'MACD Multithread (Combined Report 20-3-2025)';
+        $formula = 'MACD Multithread (Combined Report)';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
         try {
@@ -52,12 +52,12 @@ class FutureReportWorkerMacdFormula extends Command
                 'FUTURE',
                 $formula,
             );
-            // ReportServiceMacdLongReportService::updateCoinReport(
-            //     '5m',
-            //     1000,
-            //     'FUTURE',
-            //     $formula,
-            // );
+            ReportServiceMacdLongReportService::updateCoinReport(
+                '5m',
+                1000,
+                'FUTURE',
+                $formula,
+            );
         } catch (\Exception $e) {
             Log::error($e);
         }
