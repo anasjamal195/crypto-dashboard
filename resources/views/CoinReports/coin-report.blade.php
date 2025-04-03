@@ -152,22 +152,22 @@
                                                 <td>{{ round($averageDuration) }} min</td>
                                                 <td>Average time a trade is active</td>
                                             </tr>
-                                            <tr class="bg-success text-white">
+                                            <tr>
                                                 <td class="font-weight-bold">Total Profit</td>
                                                 <td>{{ $totalProfit }} %</td>
                                                 <td>From {{ $totalTrades - $stopLossesTrades }} profitable trades</td>
                                             </tr>
-                                            <tr class="bg-danger text-white">
+                                            <tr>
                                                 <td class="font-weight-bold">Total Stop Losses</td>
                                                 <td>{{ $stopLossesTotal }} %</td>
                                                 <td>From {{ $stopLossesTrades }} stop loss trades</td>
                                             </tr>
-                                            <tr class="bg-primary text-white">
+                                            <tr>
                                                 <td class="font-weight-bold">Grand Total</td>
                                                 <td>{{ $totalProfit - $stopLossesTotal }} %</td>
                                                 <td>From {{ $totalTrades }} total trades</td>
                                             </tr>
-                                            <tr class="bg-info text-white">
+                                            <tr>
                                                 <td class="font-weight-bold">Formula Accuracy</td>
                                                 <td>{{ $totalTrades ? round(100 - ($stopLossesTrades / $totalTrades) * 100, 2) : 0 }}
                                                     %</td>
