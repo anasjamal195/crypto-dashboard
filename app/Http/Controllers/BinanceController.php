@@ -50,13 +50,20 @@ class BinanceController extends Controller
         }
         $averageDuration  = $query->average('duration');
 
-        $nearbyTradesQuery = clone $query;
+        $nearbyTradesQuery = DB::table('coin_reports');
+        if ($request->filled('position')) {
+            $nearbyTradesQuery->where('position', $request->position);
+        }
+
+        if ($request->filled('formula')) {
+            $nearbyTradesQuery->where('formula', $request->formula);
+        }
         $maxNearbyTrades = $nearbyTradesQuery->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:00') - INTERVAL (MINUTE(created_at) % 5) MINUTE AS time_interval, COUNT(*) as entry_count")
             ->groupBy('time_interval')
             ->orderBy('entry_count', 'DESC')
             ->first();
 
-            
+
         $tradeData = $query->groupBy('symbol', 'position', 'formula')
             ->orderBy('total_entries', 'DESC')
             ->orderBy('last_updated', 'DESC')
