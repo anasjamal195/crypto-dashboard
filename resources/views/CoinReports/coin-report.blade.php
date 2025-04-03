@@ -129,99 +129,53 @@
 
                                 </tbody>
                             </table>
-                            <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill "><strong>Max Trades at a time:</strong></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ round($maxNearbyTrades?->entry_count) }} at
-                                    {{ $maxNearbyTrades?->time_interval }}</div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                            </div>
-                            <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill "><strong>Average Duration:</strong></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ round($averageDuration) }} min</div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                            </div>
-                            <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill "><strong>Total Profit:</strong></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $totalTrades - $stopLossesTrades }}</div>
-                                <div class="flex-fill ">{{ $totalProfit }} %</div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                            </div>
-                            <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill "><strong>Total Stop Losses:</strong></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $stopLossesTrades }}</div>
-                                <div class="flex-fill ">{{ $stopLossesTotal }} %</div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                            </div>
-                            <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill "><strong>Grand Total:</strong></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">{{ $totalTrades }}</div>
-                                <div class="flex-fill ">{{ $totalProfit - $stopLossesTotal }} %</div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                            </div>
-
-                            <div class="d-flex flex-row text-center text-white">
-                                <div class="flex-fill "><strong>Formula Accuracy:</strong></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill ">
-                                    {{ $totalTrades ? round(100 - ($stopLossesTrades / $totalTrades) * 100, 2) : 0 }} %
+                            <!-- Stats Summary Table -->
+                            <div class="mt-4">
+                                <h5 class="text-primary">Trading Performance Summary</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-stats">
+                                        <thead class="bg-dark text-white">
+                                            <tr>
+                                                <th>Metric</th>
+                                                <th>Value</th>
+                                                <th>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="font-weight-bold">Max Trades at a time</td>
+                                                <td>{{ round($maxNearbyTrades?->entry_count) }}</td>
+                                                <td>at {{ $maxNearbyTrades?->time_interval }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="font-weight-bold">Average Duration</td>
+                                                <td>{{ round($averageDuration) }} min</td>
+                                                <td>Average time a trade is active</td>
+                                            </tr>
+                                            <tr class="bg-success text-white">
+                                                <td class="font-weight-bold">Total Profit</td>
+                                                <td>{{ $totalProfit }} %</td>
+                                                <td>From {{ $totalTrades - $stopLossesTrades }} profitable trades</td>
+                                            </tr>
+                                            <tr class="bg-danger text-white">
+                                                <td class="font-weight-bold">Total Stop Losses</td>
+                                                <td>{{ $stopLossesTotal }} %</td>
+                                                <td>From {{ $stopLossesTrades }} stop loss trades</td>
+                                            </tr>
+                                            <tr class="bg-primary text-white">
+                                                <td class="font-weight-bold">Grand Total</td>
+                                                <td>{{ $totalProfit - $stopLossesTotal }} %</td>
+                                                <td>From {{ $totalTrades }} total trades</td>
+                                            </tr>
+                                            <tr class="bg-info text-white">
+                                                <td class="font-weight-bold">Formula Accuracy</td>
+                                                <td>{{ $totalTrades ? round(100 - ($stopLossesTrades / $totalTrades) * 100, 2) : 0 }}
+                                                    %</td>
+                                                <td>Success rate of profitable trades</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
-                                <div class="flex-fill "></div>
                             </div>
                         </div>
                     </div>
