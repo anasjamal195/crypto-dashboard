@@ -42,7 +42,8 @@ class FutureReportWorkerOrderBookFormula extends Command
      */
     public function handle()
     {
-        $formula = 'Order-Book (Basic: Mixed - Test Latest )';
+
+        $formula = 'Order-Book (Basic: Mixed - New 3)';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
         try {
@@ -52,6 +53,8 @@ class FutureReportWorkerOrderBookFormula extends Command
                 'FUTURE',
                 $formula,
             );
+
+
             // ReportServiceOrderBookLongReportService::updateCoinReport(
             //     '5m',
             //     1000,

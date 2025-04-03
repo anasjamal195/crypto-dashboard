@@ -66,11 +66,11 @@
                                 $formulaDetails = DB::table('formula_details')
                                     ->where('formula', request('formula'))
                                     ->first();
-                                    // dd($formulaDetails);
+                                // dd($formulaDetails);
                             @endphp
                             <div class="form-group">
                                 <label for="formulaDetails">Formula Description</label>
-                                <textarea id="formulaDetails" class="form-control" rows="5" >{{ $formulaDetails ? $formulaDetails->details : 'No details available for the selected formula.' }}</textarea>
+                                <textarea id="formulaDetails" class="form-control" rows="5">{{ $formulaDetails ? $formulaDetails->details : 'No details available for the selected formula.' }}</textarea>
                             </div>
                         @endif
                     </div>
@@ -129,6 +129,22 @@
 
                                 </tbody>
                             </table>
+                            <div class="d-flex flex-row text-center text-white">
+                                <div class="flex-fill "><strong>Max Trades at a time:</strong></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill ">{{ round($maxNearbyTrades?->entry_count) }} at
+                                    {{ $maxNearbyTrades?->time_interval }}</div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                                <div class="flex-fill "></div>
+                            </div>
                             <div class="d-flex flex-row text-center text-white">
                                 <div class="flex-fill "><strong>Average Duration:</strong></div>
                                 <div class="flex-fill "></div>

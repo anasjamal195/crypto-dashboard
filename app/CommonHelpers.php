@@ -432,6 +432,9 @@ class CommonHelpers
 
         $lastHighest = $data[$index]['high'];
         $loopIndex = $index;
+
+
+
         while (true) {
             if ($loopIndex == 0) {
                 break;
@@ -446,10 +449,30 @@ class CommonHelpers
 
 
 
+        $noLightCandle = true;
+        $loopIndex = $index - 1;
+
+
+
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if ($data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram']) {
+                $noLightCandle = false;
+            } else if ($data[$loopIndex]['histogram'] < 0 || $loopIndex == 1) {
+                break;
+            }
+            $loopIndex--;
+        }
+
+// without green candles > 3 condition gives 85% with 81 trades 1.5 SL
+
         $sellShortMACDConditions = $data[$index]['histogram'] > 0
             && $isUpwardWick
             && ($kdjCrossover || $kdjApproachingCrossover)
-            && $totalGreenCandles > 4
+            // && $totalGreenCandles > 3
+            && $noLightCandle
             &&
             !(
                 $data[$index]['dif'] > $data[$index]['dea']
@@ -559,7 +582,22 @@ class CommonHelpers
             $loopIndex--;
         }
 
+        $noDarkCandle = true;
+        $loopIndex = $index - 1;
 
+
+
+        while (true) {
+            if ($loopIndex == 0) {
+                break;
+            }
+            if ($data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram']) {
+                $noDarkCandle = false;
+            } else if ($data[$loopIndex]['histogram'] > 0 || $loopIndex == 1) {
+                break;
+            }
+            $loopIndex--;
+        }
 
         //  ======================================
 
@@ -568,7 +606,8 @@ class CommonHelpers
         $buyLongMACDConditions = $data[$index]['histogram'] < 0
             && $isDownwardWick
             && ($kdjCrossover || $kdjApproachingCrossover)
-            && $totalRedCandles > 4
+            // && $totalRedCandles > 3
+            && $noDarkCandle
             &&
             !(
                 $data[$index]['dif'] < $data[$index]['dea']
