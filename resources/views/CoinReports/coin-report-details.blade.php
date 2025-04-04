@@ -5,6 +5,7 @@
     $sellTriggers = [];
     $lowestTriggers = [];
     $liquidationTriggers = [];
+    $oneHourMarks = [];
     $position = request()->get('position');
 
 @endphp
@@ -154,6 +155,7 @@
                                             $sellTriggers[] = $sellCandle['binance_timestamp'];
                                             $lowestIndex = -1;
                                             $lowestPrice = $data[0]['close'];
+                                            $oneHourCounter = 0;
                                             foreach ($data as $index => $candle) {
                                                 if ($candle['binance_timestamp'] == $buyCandle['binance_timestamp']) {
                                                     $lowestIndex = $index;
@@ -174,6 +176,13 @@
                                                             $lowestPrice = $candle['high'];
                                                             $lowestIndex = $index;
                                                         }
+                                                    }
+
+                                                    if($oneHourCounter == 12){
+                                                        $oneHourMarks[] = $candle['binance_timestamp'];
+                                                        $oneHourCounter = 0;
+                                                    }else{
+                                                        $oneHourCounter++;
                                                     }
                                                 }
                                             }
@@ -550,6 +559,7 @@
                 const liveSell = @json($liveSell);
                 const sellTriggers = @json($sellTriggers);
                 const lowestTriggers = @json($lowestTriggers);
+                const oneHourMarks = @json($oneHourMarks);
 
                 // Extract timestamps and close prices
                 const timestamps = candlestickData.map(data => data.timestamp);
@@ -574,6 +584,14 @@
                         return {
                             backgroundColor: 'white', // Green for buy triggers
                             borderColor: 'red', // Darker green border
+                            radius: 6 // Larger point radius
+                        };
+                    }
+
+                    if (oneHourMarks.includes(binanceTimestamp)) {
+                        return {
+                            backgroundColor: 'orange', // Green for buy triggers
+                            borderColor: 'orange', // Darker green border
                             radius: 6 // Larger point radius
                         };
                     }
