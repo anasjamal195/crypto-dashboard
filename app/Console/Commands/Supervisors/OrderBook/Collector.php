@@ -33,11 +33,17 @@ class Collector extends Command
 
         $interval = 1;
         $depths = [
-            100 => null,
-            200 => null,
-            500 => 'https://xnfts.shop/load_balancer/orderBook.php',
-            1000 => 'https://digitalfitnesshub.shop/wp-includes/restful-api/orderBook.php'
+            1000 => null
         ];
+        if (env('APP_NAME') === 'Crypto Api Bot (Development)') {
+            $depths = [
+                100 => null,
+                200 => null,
+                500 => 'https://xnfts.shop/load_balancer/orderBook.php',
+                1000 => 'https://digitalfitnesshub.shop/wp-includes/restful-api/orderBook.php'
+            ];
+        }
+
         $cleanup = false;
         $daysToKeep = 2;
 
