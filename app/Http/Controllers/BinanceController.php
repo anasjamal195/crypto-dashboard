@@ -96,6 +96,19 @@ class BinanceController extends Controller
         }
         $liquidatedCoins = $liquidatedCoinsQuery->get();
 
+        $tradesAbove1h = DB::table('coin_reports')
+            ->select('symbol', 'interval', 'market', 'profit')
+            ->distinct()
+            ->whereRaw('duration > 60');
+
+        if ($request->filled('position')) {
+            $tradesAbove1h->where('position', $request->position);
+        }
+
+        if ($request->filled('formula')) {
+            $tradesAbove1h->where('formula', $request->formula);
+        }
+        $tradesAbove1h = $tradesAbove1h->count();
         // Stop losses query with position filter if provided
         $stopLossesQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market', 'profit')
@@ -116,7 +129,7 @@ class BinanceController extends Controller
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
 
-        return view('CoinReports.coin-report', compact('tradeData', 'maxNearbyTrades', 'averageDuration', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', compact('tradeData','tradesAbove1h' ,'maxNearbyTrades', 'averageDuration', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {

@@ -143,6 +143,11 @@
                                         </thead>
                                         <tbody>
                                             <tr>
+                                                <td class="font-weight-bold">1h+ Duration</td>
+                                                <td>{{ round($tradesAbove1h ?? 0) }}</td>
+                                                <td>Trades are above one hour</td>
+                                            </tr>
+                                            <tr>
                                                 <td class="font-weight-bold">Max Trades at a time</td>
                                                 <td>{{ round($maxNearbyTrades?->entry_count) }}</td>
                                                 <td>at {{ $maxNearbyTrades?->time_interval }}</td>
