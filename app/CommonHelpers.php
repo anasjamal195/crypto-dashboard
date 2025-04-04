@@ -1,5 +1,5 @@
 <?php
-
+// Support Resistance formula (80 Trades with 87% accuracy) 1.5 SL
 namespace App;
 
 use App\Services\BinanceApiService;
@@ -466,13 +466,14 @@ class CommonHelpers
             $loopIndex--;
         }
 
-// without green candles > 3 condition gives 85% with 81 trades 1.5 SL
+        // without green candles > 3 condition gives 85% with 81 trades 1.5 SL
 
         $sellShortMACDConditions = $data[$index]['histogram'] > 0
-            && $isUpwardWick
+            // && $isUpwardWick
             && ($kdjCrossover || $kdjApproachingCrossover)
-            // && $totalGreenCandles > 3
-            && $noLightCandle
+            // && $totalGreenCandles > 4
+            // && $data[$index]['dif'] < $data[$index - 1]['dif']
+            // && $noLightCandle
             &&
             !(
                 $data[$index]['dif'] > $data[$index]['dea']
@@ -604,10 +605,12 @@ class CommonHelpers
 
 
         $buyLongMACDConditions = $data[$index]['histogram'] < 0
-            && $isDownwardWick
+            // && $isDownwardWick
             && ($kdjCrossover || $kdjApproachingCrossover)
-            // && $totalRedCandles > 3
-            && $noDarkCandle
+            // && $totalRedCandles > 4
+            // && $noDarkCandle
+            // && $data[$index]['dif'] > $data[$index - 1]['dif']
+            
             &&
             !(
                 $data[$index]['dif'] < $data[$index]['dea']

@@ -108,7 +108,7 @@ class TriggersThread implements ShouldQueue
 
                             if ($tradeType == 'SHORT') {
 
-                                if ($data[$index - 1]['high'] >= $triggerPriceLong && $data[$index - 1]['per'] < 0   && $data[$index]['per'] < 0 && CommonHelpers::checkMacdConditionsShort($data, $index)) {
+                                if ($data[$index - 1]['high'] >= $triggerPriceLong && $data[$index - 1]['close'] < $triggerPriceLong && $data[$index]['close'] < $supportResistance[7]['resistance'] && CommonHelpers::checkMacdConditionsShort($data, $index)) {
 
                                     // If price hits trigger than pass current tradeInstance to parent function 
                                     CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
@@ -120,7 +120,7 @@ class TriggersThread implements ShouldQueue
                                 }
                             } else if ($tradeType == 'LONG') {
 
-                                if ($data[$index - 1]['low'] <= $triggerPriceShort  && $data[$index - 1]['per'] < 0  && $data[$index]['per'] > 0  && CommonHelpers::checkMacdConditionsLong($data, $index)) {
+                                if ($data[$index - 1]['low'] <= $triggerPriceShort && $data[$index - 1]['close'] > $triggerPriceShort && $data[$index]['close'] > $supportResistance[7]['support']  && CommonHelpers::checkMacdConditionsLong($data, $index)) {
 
                                     CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
                                     $tradeToOpen =  $tradeInstance;

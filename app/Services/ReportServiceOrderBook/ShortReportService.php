@@ -1,6 +1,6 @@
 <?php
 
-// Order-Book (Basic: Short-Hybrid MACD Added and revers trigger prices - Last successfull formula)
+// Support Resistance formula (80 Trades with 87% accuracy) 1.5 SL
 namespace App\Services\ReportServiceOrderBook;
 
 use App\CommonHelpers;
@@ -155,11 +155,11 @@ class ShortReportService
 
                     $timestamp = $candle['timestamp'];
                     $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
-                        ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                        ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(10))
                         ->where('symbol', $symbol)
                         ->where('signal', 'SHORT')
                         ->where('depth', 1000)
-                        ->where('short_strength', '>=', 8)
+                        // ->where('short_strength', '>=', 8)
                         ->latest('snapshot_time')
                         ->first();
 
@@ -193,22 +193,22 @@ class ShortReportService
                     }
                 } else {
                     if ($tradeType == 'SHORT') {
-                        if ($data[$index - 1]['high'] >= $triggerPrice  && $data[$index]['per'] < 0) {
+                        if ($data[$index - 1]['high'] >= $triggerPrice && $data[$index - 1]['close'] < $triggerPrice && $data[$index]['close'] < $supportResistance[7]['resistance']) {
                             $allowOpening = true;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
-                        } else if ($index - $triggerIndex > 30) {
+                        } else if ($index - $triggerIndex > 10) {
                             $allowOpening = false;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
                             $snapshotOpen = null;
                         }
                     } else if ($tradeType == 'LONG') {
-                        if ($data[$index - 1]['low'] <= $triggerPrice && $data[$index]['per'] > 0) {
+                        if ($data[$index - 1]['low'] <= $triggerPrice && $data[$index - 1]['close'] > $triggerPrice && $data[$index]['close'] > $supportResistance[7]['support']) {
                             $allowOpening = true;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
-                        } else if ($index - $triggerIndex > 30) {
+                        } else if ($index - $triggerIndex > 10) {
                             $allowOpening = false;
                             $triggerPrice = 0;
                             $triggerIndex = 0;

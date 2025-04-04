@@ -55,7 +55,7 @@ class OrderBookFormulaLong
                 ->where('obs1.snapshot_time', '>=', $fiveMinutesAgo)
                 ->where('signal', 'SHORT')
                 ->where('depth', 1000)
-                ->where('short_strength', '>=', 8)
+                // ->where('short_strength', '>=', 8)
                 ->groupBy('obs1.symbol');
 
             $triggers = DB::table('order_book_snapshots as obs2')
