@@ -54,7 +54,7 @@ class OrderBookFormulaLong
                 )
                 ->where('obs1.snapshot_time', '>=', $fiveMinutesAgo)
                 ->where('signal', 'SHORT')
-                ->where('depth', 100)
+                ->where('depth', 1000)
                 ->where('short_strength', '>=', 8)
                 ->groupBy('obs1.symbol');
 
