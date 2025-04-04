@@ -21,6 +21,8 @@ class BinanceController extends Controller
         // =======Testing==========================
         // Fetch all unique symbols from the database
         $interval = $request->interval;
+        $stopLoss = $request->input('stopLoss') ?? 1;
+
         $query = DB::table('coin_reports')
             ->select(
                 'symbol',
@@ -48,7 +50,9 @@ class BinanceController extends Controller
         if ($request->filled('formula')) {
             $query->where('formula', $request->formula);
         }
-        $averageDuration  = $query->average('duration');
+        $averageDurationQuery = clone $query;
+        $averageDuration  = $averageDurationQuery
+            ->whereRaw('lowestPricePercentage < ' . $stopLoss)->average('duration');
 
         $nearbyTradesQuery = DB::table('coin_reports');
         if ($request->filled('position')) {
@@ -60,12 +64,12 @@ class BinanceController extends Controller
         }
         $maxNearbyTrades = $nearbyTradesQuery
             ->selectRaw("
-        DATE_FORMAT(
-            STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s'),
-            '%Y-%m-%d %H:%i:00'
-        ) - INTERVAL (MINUTE(STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s')) % 5) MINUTE AS time_interval,
-        COUNT(*) as entry_count
-    ")
+                DATE_FORMAT(
+                    STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s'),
+                    '%Y-%m-%d %H:%i:00'
+                ) - INTERVAL (MINUTE(STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s')) % 5) MINUTE AS time_interval,
+                COUNT(*) as entry_count
+            ")
             ->groupBy('time_interval')
             ->orderBy('entry_count', 'DESC')
             ->first();
@@ -92,7 +96,6 @@ class BinanceController extends Controller
         }
         $liquidatedCoins = $liquidatedCoinsQuery->get();
 
-        $stopLoss = $request->input('stopLoss') ?? 1;
         // Stop losses query with position filter if provided
         $stopLossesQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market', 'profit')
