@@ -58,7 +58,14 @@ class BinanceController extends Controller
         if ($request->filled('formula')) {
             $nearbyTradesQuery->where('formula', $request->formula);
         }
-        $maxNearbyTrades = $nearbyTradesQuery->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:00') - INTERVAL (MINUTE(created_at) % 5) MINUTE AS time_interval, COUNT(*) as entry_count")
+        $maxNearbyTrades = $nearbyTradesQuery
+            ->selectRaw("
+        DATE_FORMAT(
+            STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s'),
+            '%Y-%m-%d %H:%i:00'
+        ) - INTERVAL (MINUTE(STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s')) % 5) MINUTE AS time_interval,
+        COUNT(*) as entry_count
+    ")
             ->groupBy('time_interval')
             ->orderBy('entry_count', 'DESC')
             ->first();
