@@ -100,11 +100,7 @@ class TriggersThread implements ShouldQueue
                             }
 
 
-                            $snapshot = $snapshots[count($snapshots) - 1];
-
-
-                            $trigger = $snapshot;
-                            // ============================================
+                          //=====================
 
                             $resistanceLevels = array_map(function ($level) {
                                 return $level['price'];
