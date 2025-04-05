@@ -75,6 +75,37 @@ class TriggersThread implements ShouldQueue
 
                             $candle = $data[count($data) - 1];
 
+
+
+                            // ==========================================Consolidated Triggers==========================================
+                            $timestamp = $candle['timestampReadale'];
+                            $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                                ->where('symbol', $symbol)
+                                ->where('depth', 1000)
+                                // ->where('short_strength', '>=', 8)
+                                ->latest('snapshot_time')
+                                ->limit(5)->get();
+
+                            if (count($snapshots) == 0) {
+                                continue;
+                            }
+                            $longWeight = 0;
+                            $shortWeight = 0;
+                            foreach ($snapshots as $snapshot) {
+                                if ($snapshot->signal === 'SHORT') {
+                                    $shortWeight += $snapshot->short_strength;
+                                } else {
+                                    $longWeight += $snapshot->long_strength;
+                                }
+                            }
+
+
+                            $snapshot = $snapshots[count($snapshots) - 1];
+
+
+                            $trigger = $snapshot;
+                            // ============================================
+
                             $resistanceLevels = array_map(function ($level) {
                                 return $level['price'];
                             }, json_decode($trigger->resistance_levels, true));
@@ -91,13 +122,24 @@ class TriggersThread implements ShouldQueue
                             $triggerPricePercentDiffLong =  round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceLong), 2);
 
 
-                            if ($triggerPricePercentDiffShort >=  2 * $triggerPricePercentDiffLong) {
+
+                            if ($longWeight > $shortWeight * 2) {
                                 $tradeType = 'LONG';
-                            } else if ($triggerPricePercentDiffLong >=  2 * $triggerPricePercentDiffShort) {
+                            } else if ($shortWeight > $longWeight * 2) {
                                 $tradeType = 'SHORT';
                             } else {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+
                                 continue;
                             }
+
+                            // if ($triggerPricePercentDiffShort >=  2 * $triggerPricePercentDiffLong) {
+                            //     $tradeType = 'LONG';
+                            // } else if ($triggerPricePercentDiffLong >=  2 * $triggerPricePercentDiffShort) {
+                            //     $tradeType = 'SHORT';
+                            // } else {
+                            //     continue;
+                            // }
 
 
 
@@ -108,24 +150,24 @@ class TriggersThread implements ShouldQueue
 
                             if ($tradeType == 'SHORT') {
 
-                                if ($data[$index - 1]['high'] >= $triggerPriceLong && $data[$index - 1]['close'] < $triggerPriceLong && $data[$index]['close'] < $supportResistance[7]['resistance'] && CommonHelpers::checkMacdConditionsShort($data, $index)) {
+                                if ($data[$index]['high'] >= $triggerPriceShort) {
 
                                     // If price hits trigger than pass current tradeInstance to parent function 
                                     CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
                                     $tradeToOpen =  $tradeInstance;
                                     break;
-                                } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceLong) >  1) {
+                                } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceShort) >  1) {
                                     // In case trigger fails or does not hit, remove the entry from worker_symbols
                                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 }
                             } else if ($tradeType == 'LONG') {
 
-                                if ($data[$index - 1]['low'] <= $triggerPriceShort && $data[$index - 1]['close'] > $triggerPriceShort && $data[$index]['close'] > $supportResistance[7]['support']  && CommonHelpers::checkMacdConditionsLong($data, $index)) {
+                                if ($data[$index]['low'] <= $triggerPriceLong) {
 
                                     CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
                                     $tradeToOpen =  $tradeInstance;
                                     break;
-                                } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceShort) >  1) {
+                                } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceLong) >  1) {
                                     // In case trigger fails or does not hit, remove the entry from worker_symbols
                                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 }

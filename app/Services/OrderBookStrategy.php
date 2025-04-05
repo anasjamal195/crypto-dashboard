@@ -251,6 +251,7 @@ class OrderBookStrategy
             // Strong buying pressure
             $signals['long']['strength'] += 2;
             $signals['long']['reasoning'][] = "Strong buying pressure: bid/ask ratio of {$volumeImbalance}";
+
         } elseif ($volumeImbalance < (1 / $imbalanceThreshold)) {
             // Strong selling pressure
             $signals['short']['strength'] += 2;
@@ -289,7 +290,7 @@ class OrderBookStrategy
                     'price' => $area['start_price'],
                     'type' => 'breakout',
                     'confidence' => min(4, $area['relative_size'] / 2)
-                ];
+                ]; 
                 $signals['long']['strength'] += 1;
                 $signals['long']['reasoning'][] = "Potential upward breakout point at {$area['start_price']} due to thin sell orders";
             } elseif ($area['type'] === 'bid_gap' && $area['relative_size'] > 3) {
