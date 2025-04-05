@@ -78,7 +78,7 @@ class TriggersThread implements ShouldQueue
 
 
                             // ==========================================Consolidated Triggers==========================================
-                            $timestamp = $candle['timestampReadale'];
+                            $timestamp = $candle['timestampReadable'];
                             $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                                 ->where('symbol', $symbol)
                                 ->where('depth', 1000)
