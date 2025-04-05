@@ -12,6 +12,7 @@ use DateTimeZone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Models\OrderBookSnapshot;
 
 class MarketTrendService
 {
@@ -399,7 +400,7 @@ class MarketTrendService
                             // dd($waitingOn);
                         }
                     } else {
-                        if ($candle['close'] < $secondLastLow )  {
+                        if ($candle['close'] < $secondLastLow) {
                             $candle['marketTrend'] = 'green';
                             $waitingOn = 0;
                             $openPrice = $candle['close'];
@@ -730,5 +731,79 @@ class MarketTrendService
             }
         }
         return $trend;
+    }
+
+
+
+
+    public static function getOrderBookGraph(
+        $symbol = 'BTCUSDT',
+        $interval = '5m',
+    ) {
+        // $timestamp = 1740474000000;
+        try {
+            $limit = 1000;
+
+            $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE');
+
+            foreach ($data as $index => &$candle) {
+                $candle['marketTrend'] = 'blue';
+
+
+                if ($index < 5 || $index > count($data) - 5)
+                    continue;
+
+
+                $timestamp = $candle['timestampReadable'];
+
+                $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
+                    ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                    ->where('symbol', $symbol)
+                    ->where('depth', 500)
+                    ->latest('snapshot_time')
+                    ->first();
+
+                if (!$snapshot)
+                    continue;
+
+                // dd($snapshot);
+
+                $candle['marketTrend'] = $snapshot->signal === 'LONG' ? 'green' : 'red';
+
+                $entry_points = array_map(function ($level) {
+                    return $level['price'];
+                }, $snapshot->resistance_levels);
+
+                $entry_points_reverse = array_map(function ($level) {
+                    return $level['price'];
+                }, $snapshot->support_levels);
+
+
+                $triggerPriceShort = $entry_points[0];
+                $triggerPriceLong = $entry_points_reverse[0];
+
+
+                $nextIndex = $index === count($data) - 3 ? $index : $index + 3;
+                
+
+                for ($i = $nextIndex; $i >= $nextIndex - 3; $i--) {
+                    $data[$i]['support'] = $triggerPriceLong;
+                    $data[$i]['resistance'] = $triggerPriceShort;
+                }
+                $candle['support'] = $triggerPriceLong;
+                $candle['resistance'] = $triggerPriceShort;
+            }
+
+
+
+            return [
+                'data' => $data,
+                'totalProfit' => 0,
+            ];
+        } catch (\Throwable $th) {
+            Log::error('DataDumper: Error - ' . $th->getMessage());
+            Log::error($th->getTraceAsString());
+            throw $th;
+        }
     }
 }

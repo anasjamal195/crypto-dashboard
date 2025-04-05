@@ -59,6 +59,7 @@ class ShortReportService
 
                 // Log::info("Updated coin report for $symbol at interval $interval.");
             } catch (\Exception $e) {
+                dd($e);
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
             CommonHelpers::delayMS(10);
@@ -127,6 +128,7 @@ class ShortReportService
 
         $triggerPrice = 0;
         $triggerIndex = 0;
+        $waitingCandles = 0;
         foreach ($data as $index => $candle) {
 
             // Skip First 1000 Candles
@@ -134,6 +136,12 @@ class ShortReportService
                 continue;
             }
 
+            // 20 mins weight after each trade
+            
+            if ($waitingCandles) {
+                $waitingCandles--;
+                continue;
+            }
 
             $obvCandles = 15;
             $idealBuying = IdealTradeService::getIdealOpeningCandlesShort(array_slice($data, $index - 1000, 1000));
@@ -148,24 +156,39 @@ class ShortReportService
             $supportResistanceData = array_slice($data, $index - 300, 300);
             $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [7]);
 
+
             if ($buy_price == 0) {
 
                 $allowOpening = false;
                 if (!$triggerPrice) {
 
                     $timestamp = $candle['timestamp'];
-                    $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
-                        ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(10))
+                    $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
                         ->where('symbol', $symbol)
-                        ->where('signal', 'SHORT')
                         ->where('depth', 1000)
                         // ->where('short_strength', '>=', 8)
                         ->latest('snapshot_time')
-                        ->first();
+                        ->limit(5)->get();
 
-                    if (!$snapshot) {
+                    if (count($snapshots) == 0) {
                         continue;
                     }
+                    $longWeight = 0;
+                    $shortWeight = 0;
+                    foreach ($snapshots as $snapshot) {
+                        if ($snapshot->signal === 'SHORT') {
+                            $shortWeight += $snapshot->short_strength;
+                        } else {
+                            $longWeight += $snapshot->long_strength;
+                        }
+                    }
+
+
+                    $snapshot = $snapshots[count($snapshots) - 1];
+                    // dd($snapshot);
+
+
+
 
                     $entry_points = array_map(function ($level) {
                         return $level['price'];
@@ -176,39 +199,40 @@ class ShortReportService
                     }, $snapshot->support_levels);
 
 
-                    $triggerPriceShort = min($entry_points);
-                    $triggerPriceLong = max($entry_points_reverse);
+                    $triggerPriceShort = $entry_points[0];
+                    $triggerPriceLong = $entry_points_reverse[0];
                     $snapshotOpen = $snapshot;
 
-                    if (round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceShort), 2) >=  2 * round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceLong), 2)) {
+
+                    if ($longWeight > $shortWeight * 2) {
                         $tradeType = 'LONG';
-                        $triggerPrice = $triggerPriceShort;
-                        $triggerIndex = $index;
-                    } else if (2 * round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceShort), 2) <=   round(CommonHelpers::getPercentDiff($data[$index]['close'], $triggerPriceLong), 2)) {
                         $triggerPrice = $triggerPriceLong;
                         $triggerIndex = $index;
+                    } else if ($shortWeight > $longWeight * 2) {
                         $tradeType = 'SHORT';
+                        $triggerPrice = $triggerPriceShort;
+                        $triggerIndex = $index;
                     } else {
                         continue;
                     }
                 } else {
                     if ($tradeType == 'SHORT') {
-                        if ($data[$index - 1]['high'] >= $triggerPrice && $data[$index - 1]['close'] < $triggerPrice && $data[$index]['close'] < $supportResistance[7]['resistance']) {
+                        if ($data[$index]['high'] >= $triggerPrice) {
                             $allowOpening = true;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
-                        } else if ($index - $triggerIndex > 10) {
+                        } else if ($index - $triggerIndex > 20) {
                             $allowOpening = false;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
                             $snapshotOpen = null;
                         }
                     } else if ($tradeType == 'LONG') {
-                        if ($data[$index - 1]['low'] <= $triggerPrice && $data[$index - 1]['close'] > $triggerPrice && $data[$index]['close'] > $supportResistance[7]['support']) {
+                        if ($data[$index]['low'] <= $triggerPrice) {
                             $allowOpening = true;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
-                        } else if ($index - $triggerIndex > 10) {
+                        } else if ($index - $triggerIndex > 20) {
                             $allowOpening = false;
                             $triggerPrice = 0;
                             $triggerIndex = 0;
@@ -225,8 +249,8 @@ class ShortReportService
 
                     if (
                         $allowOpening
-                        &&
-                        CommonHelpers::checkMacdConditionsShort($data, $index)
+                        // &&
+                        // CommonHelpers::checkMacdConditionsShort($data, $index)
 
 
                     ) {
@@ -243,8 +267,8 @@ class ShortReportService
 
                     if (
                         $allowOpening
-                        &&
-                        CommonHelpers::checkMacdConditionsLong($data, $index)
+                        // &&
+                        // CommonHelpers::checkMacdConditionsLong($data, $index)
 
 
                     ) {
@@ -289,6 +313,7 @@ class ShortReportService
                         $buy_price = 0;
                         $snapshotOpen = null;
                         $tradeType = null;
+                        $waitingCandles = 4;
                     }
                 } else if ($tradeType == 'LONG') {
                     if ($lowestPrice > $candle['low'])
@@ -323,6 +348,7 @@ class ShortReportService
                         $buy_price = 0;
                         $snapshotOpen = null;
                         $tradeType = null;
+                        $waitingCandles = 4;
                     }
                 }
             }

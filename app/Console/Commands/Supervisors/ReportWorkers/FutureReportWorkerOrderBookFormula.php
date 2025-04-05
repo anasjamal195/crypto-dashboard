@@ -43,7 +43,7 @@ class FutureReportWorkerOrderBookFormula extends Command
     public function handle()
     {
 
-        $formula = 'Order-Book (Basic: Mixed - New 3)';
+        $formula = 'Order-Book (Basic: Mixed - Consolidated Triggers without Delay)';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
         try {

@@ -29,12 +29,7 @@ class ProcessController extends Controller
     public function stop($process)
     {
         $process = SupervisorService::stop($process);
-        DB::statement('UPDATE trade_handler SET isWorkerDispatched = 0');
-        DB::statement('UPDATE workers SET symbol_count = 0');
-        DB::statement('UPDATE workers SET trade_status = 0');
-        DB::statement('DELETE FROM worker_symbols WHERE 1');
 
-        DB::table('jobs')->truncate();
         if ($process['success'])
             return redirect()->back()->withSuccess('Successfully Stopped');
 
@@ -71,7 +66,7 @@ class ProcessController extends Controller
                 SupervisorService::restart($process);
 
             // Dispatch All threads
-            $threads = DB::table('workers')->where('active_status', true)->pluck('worker_id');
+            $threads = DB::table('workers')->where('active_status', 1)->pluck('worker_id');
             Artisan::call('queue:flush');
             foreach ($threads as $workerId) {
                 TriggersThread::dispatch($workerId, 2);

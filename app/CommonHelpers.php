@@ -468,17 +468,19 @@ class CommonHelpers
 
         // without green candles > 3 condition gives 85% with 81 trades 1.5 SL
 
-        $sellShortMACDConditions = $data[$index]['histogram'] > 0
+        $sellShortMACDConditions =
+            $data[$index]['histogram'] > 0
             // && $isUpwardWick
             && ($kdjCrossover || $kdjApproachingCrossover)
             // && $totalGreenCandles > 4
             // && $data[$index]['dif'] < $data[$index - 1]['dif']
-            // && $noLightCandle
+            && $noLightCandle
             &&
             !(
                 $data[$index]['dif'] > $data[$index]['dea']
                 && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
-            );;
+            );
+        ;
 
         return $sellShortMACDConditions;
     }
@@ -604,19 +606,20 @@ class CommonHelpers
 
 
 
-        $buyLongMACDConditions = $data[$index]['histogram'] < 0
+        $buyLongMACDConditions =
+            $data[$index]['histogram'] < 0
             // && $isDownwardWick
             && ($kdjCrossover || $kdjApproachingCrossover)
             // && $totalRedCandles > 4
-            // && $noDarkCandle
+            && $noDarkCandle
             // && $data[$index]['dif'] > $data[$index - 1]['dif']
-            
+
             &&
             !(
                 $data[$index]['dif'] < $data[$index]['dea']
                 && $data[$index - 1]['dif'] > $data[$index - 1]['dea']
             );
-
+        ;
 
         return $buyLongMACDConditions;
     }
