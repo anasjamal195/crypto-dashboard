@@ -36,13 +36,15 @@ class ShortReportService
         $limit = 1000,
         $market = 'FUTURE',
         $formula = 'Default',
+        $cmd = null
     ) {
 
 
         $tradesTotal = [];
         $coins = DB::table('coins')->where('market', $market)->get();
-
-        foreach ($coins as $coin) {
+        system('clear');
+        $cmd->info('Processing: 0 %');
+        foreach ($coins as $index => $coin) {
 
             $targetProfit = 0.5;
 
@@ -57,13 +59,20 @@ class ShortReportService
                 DB::table('coin_reports')->insert($trades);
                 $tradesTotal[$symbol] = $trades;
 
+                $perProgress = (($index + 1) / count($coins)) * 100;
+                system('clear');
+                $cmd->info('Processing: ' . round($perProgress) . ' %');
+
                 // Log::info("Updated coin report for $symbol at interval $interval.");
             } catch (\Exception $e) {
-                dd($e);
+                // dd($e);
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
             CommonHelpers::delayMS(10);
         }
+
+        $cmd->info('Completed Report for : ' . $formula);
+
         return $tradesTotal;
     }
     public static function getCoinReport(
@@ -102,7 +111,7 @@ class ShortReportService
      */
     protected static function processCandles($symbol, $interval, $market, $data, $targetProfit, $formula)
     {
-        $buy_price = 0;
+        $open_price = 0;
         $snapshotOpen = new stdClass;
         $tradeType = null;
         $buy_triggers = [];
@@ -113,11 +122,16 @@ class ShortReportService
         $currentTrade = [];
         $trades = [];
         $lockedPriceBuy = 0;
-        $lowestPrice = 0;
+        $extremePrice = 0;
+
+        $switchTrade = false;
+        $switchDirection = '';
+        $switchSnapshot = new stdClass;
+
         $buyingCandles = [];
         $timestamp = $data[0]['binance_timestamp'] - (60 * 5000 * 1000);
         $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 1000, $timestamp, $market);
-
+        $isAlreadySwitched = false;
         $data = array_map(function ($candle) {
             $candle['timestamp'] = $candle['timestamp'] / 1000;
             $date = new \DateTime("@{$candle['timestamp']}");
@@ -126,8 +140,6 @@ class ShortReportService
             return $candle;
         }, array_merge($averageAdjustmetCandles, $data));
 
-        $triggerPrice = 0;
-        $triggerIndex = 0;
         $waitingCandles = 0;
         foreach ($data as $index => $candle) {
 
@@ -137,42 +149,147 @@ class ShortReportService
             }
 
             // 20 mins weight after each trade
-            
+
             if ($waitingCandles) {
                 $waitingCandles--;
                 continue;
             }
 
-            $obvCandles = 15;
-            $idealBuying = IdealTradeService::getIdealOpeningCandlesShort(array_slice($data, $index - 1000, 1000));
-            // dd($symbol,$index,$idealBuying);
-            if (empty($idealBuying))
-                continue;
-            $averages = IdealTradeService::getAverages($idealBuying, 'SHORT');
-
-            $rsiThreshold = $averages['rsi6'];
-            $stochDLimit =  $averages['stoch_d'];
-            $obvLimit = $averages['previousObvLow'] ? (($averages['previousObvLow'] - $averages['obv']) / $averages['previousObvLow']) * 100 : 0;
-            $supportResistanceData = array_slice($data, $index - 300, 300);
-            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($supportResistanceData, [7]);
 
 
-            if ($buy_price == 0) {
+
+
+            if ($open_price == 0) {
+                $idealBuying = IdealTradeService::getIdealOpeningCandlesShort(array_slice($data, $index - 1000, 1000));
+                // dd($symbol,$index,$idealBuying);
+                if (empty($idealBuying))
+                    continue;
+
+
+
+                $averages = IdealTradeService::getAverages($idealBuying, 'SHORT');
+
+                // Handle Switched Trades
+
+                // if ($switchTrade) {
+                //     // Open a new trade in opposite direction
+                //     $tradeType = $switchDirection;
+                //     $snapshotOpen = $switchSnapshot;
+                //     $candle['should_buy'] = true;
+                //     $candle['previousObvHigh'] = 0;
+                //     $candle['previousObvHighReduced'] = 0;
+                //     $open_price = $candle['close'];
+                //     $buy_triggers[] = $candle;
+                //     $currentTrade['buyingCandle'] = json_encode($candle);
+                //     $currentTrade['buyingAverages'] = json_encode($averages);
+                //     $extremePrice = $open_price;
+                //     $switchTrade = false;
+                //     continue;
+                // }
 
                 $allowOpening = false;
-                if (!$triggerPrice) {
+
+
+
+
+
+                $timestamp = $candle['timestamp'];
+                $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                    ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+                    ->where('symbol', $symbol)
+                    ->where('depth', 1000)
+                    ->latest('snapshot_time')
+                    ->get();
+                if (count($snapshots) < 5) {
+                    continue;
+                }
+
+
+
+
+                $longWeight = 0;
+                $shortWeight = 0;
+                foreach ($snapshots as $snapshot) {
+                    if ($snapshot->signal === 'SHORT') {
+                        $shortWeight += $snapshot->short_strength;
+                    } else {
+                        $longWeight += $snapshot->long_strength;
+                    }
+                }
+
+
+                $snapshot = $snapshots[count($snapshots) - 1];
+
+                $snapshotOpen = $snapshot;
+
+
+                if ($longWeight > $shortWeight * 2) {
+                    $tradeType = 'LONG';
+                    $allowOpening = true;
+                } else if ($shortWeight > $longWeight * 2) {
+                    $tradeType = 'SHORT';
+                    $allowOpening = true;
+                } else {
+                    $allowOpening = false;
+                }
+
+
+
+                if (!$allowOpening) {
+                    continue;
+                }
+                if (
+                    $allowOpening
+                ) {
+                    $candle['should_buy'] = true;
+                    $candle['previousObvHigh'] = 0;
+                    $candle['previousObvHighReduced'] = 0;
+                    $open_price = $candle['close'];
+                    $buy_triggers[] = $candle;
+                    $currentTrade['buyingCandle'] = json_encode($candle);
+                    $currentTrade['buyingAverages'] = json_encode($averages);
+                    $extremePrice = $open_price;
+                }
+            } else {
+                $closingPrice = 0;
+
+
+                if ($tradeType == 'SHORT') {
+                    // Calculate the extreme price
+                    if ($extremePrice < $candle['high'])
+                        $extremePrice = $candle['high'];
+                    // Calculate Closing in profit 
+                    if ($candle['low'] <= $open_price * (1 - $targetProfit / 100)) {
+                        $closingPrice = $candle['low'];
+                    }
+                } else if ($tradeType == 'LONG') {
+                    // Calculate the extreme price
+                    if ($extremePrice > $candle['low'])
+                        $extremePrice = $candle['low'];
+                    // Calculate Closing in profit 
+                    if ($candle['high'] >= $open_price * (1 + $targetProfit / 100)) {
+
+                        $closingPrice = $candle['high'];
+                    }
+                }
+
+                $allowSwitching = false;
+                if (!$isAlreadySwitched && !$closingPrice) {
+                    // Check for switching Condition
 
                     $timestamp = $candle['timestamp'];
                     $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                        ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
                         ->where('symbol', $symbol)
                         ->where('depth', 1000)
-                        // ->where('short_strength', '>=', 8)
                         ->latest('snapshot_time')
-                        ->limit(5)->get();
-
-                    if (count($snapshots) == 0) {
+                        ->get();
+                    if (count($snapshots) < 5) {
                         continue;
                     }
+
+
+
                     $longWeight = 0;
                     $shortWeight = 0;
                     foreach ($snapshots as $snapshot) {
@@ -183,173 +300,73 @@ class ShortReportService
                         }
                     }
 
+                    if ($longWeight > $shortWeight * 2 && $tradeType === 'SHORT') {
+                        $closingPrice = $candle['close'];
+                        $switchTrade = true;
+                        $isAlreadySwitched = true;
+                        $switchDirection = 'LONG';
+                        $switchSnapshot = $snapshots[count($snapshots) - 1];
+                        $allowSwitching = true;
+                    } else if ($shortWeight > $longWeight * 2 && $tradeType === 'LONG') {
+                        $closingPrice = $candle['close'];
+                        $switchTrade = true;
+                        $isAlreadySwitched = true;
+                        $switchDirection = 'SHORT';
+                        $allowSwitching = true;
 
-                    $snapshot = $snapshots[count($snapshots) - 1];
-                    // dd($snapshot);
-
-
-
-
-                    $entry_points = array_map(function ($level) {
-                        return $level['price'];
-                    }, $snapshot->resistance_levels);
-
-                    $entry_points_reverse = array_map(function ($level) {
-                        return $level['price'];
-                    }, $snapshot->support_levels);
-
-
-                    $triggerPriceShort = $entry_points[0];
-                    $triggerPriceLong = $entry_points_reverse[0];
-                    $snapshotOpen = $snapshot;
-
-
-                    if ($longWeight > $shortWeight * 2) {
-                        $tradeType = 'LONG';
-                        $triggerPrice = $triggerPriceLong;
-                        $triggerIndex = $index;
-                    } else if ($shortWeight > $longWeight * 2) {
-                        $tradeType = 'SHORT';
-                        $triggerPrice = $triggerPriceShort;
-                        $triggerIndex = $index;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    if ($tradeType == 'SHORT') {
-                        if ($data[$index]['high'] >= $triggerPrice) {
-                            $allowOpening = true;
-                            $triggerPrice = 0;
-                            $triggerIndex = 0;
-                        } else if ($index - $triggerIndex > 20) {
-                            $allowOpening = false;
-                            $triggerPrice = 0;
-                            $triggerIndex = 0;
-                            $snapshotOpen = null;
-                        }
-                    } else if ($tradeType == 'LONG') {
-                        if ($data[$index]['low'] <= $triggerPrice) {
-                            $allowOpening = true;
-                            $triggerPrice = 0;
-                            $triggerIndex = 0;
-                        } else if ($index - $triggerIndex > 20) {
-                            $allowOpening = false;
-                            $triggerPrice = 0;
-                            $triggerIndex = 0;
-                        }
+                        $switchSnapshot = $snapshots[count($snapshots) - 1];
                     }
                 }
 
 
-                if (!$allowOpening) {
-                    continue;
-                }
-
-                if ($tradeType == 'SHORT') {
-
-                    if (
-                        $allowOpening
-                        // &&
-                        // CommonHelpers::checkMacdConditionsShort($data, $index)
 
 
-                    ) {
-                        $candle['should_buy'] = true;
-                        $candle['previousObvHigh'] = 0;
-                        $candle['previousObvHighReduced'] = 0;
-                        $buy_price = $candle['close'];
-                        $buy_triggers[] = $candle;
-                        $currentTrade['buyingCandle'] = json_encode($candle);
-                        $currentTrade['buyingAverages'] = json_encode($averages);
-                        $lowestPrice = $buy_price;
+
+
+
+                // Closing Sequence
+
+                if ($closingPrice) {
+                    $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $open_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'short');
+                    $candle['should_sell'] = true;
+                    $buy_triggers[] = $candle;
+                    $currentTrade['sellingCandle'] = json_encode($candle);
+                    $currentTrade['buyingPrice'] = $open_price;
+                    $currentTrade['market'] = $market;
+                    $currentTrade['sellingPrice'] = $closingPrice;
+                    $currentTrade['symbol'] = $symbol;
+                    $currentTrade['interval'] = $interval;
+                    $currentTrade['profit'] = abs(round(($closingPrice - $open_price) / $open_price * 100, 2));
+                    $currentTrade['lowestPrice'] = $extremePrice;
+                    $currentTrade['liquidationPrice'] = $liquidationPrice;
+                    $currentTrade['lowestPricePercentage'] = abs((($open_price - $extremePrice) / $open_price)) * 100;
+                    $currentTrade['position'] = $tradeType;
+                    $currentTrade['formula'] = $formula;
+                    $currentTrade['snapshot_id'] = $snapshotOpen->id;
+                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
+                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
+                    $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
+
+                    // Resetting params
+                    $extremePrice = 0;
+                    $trades[] = $currentTrade;
+                    $currentTrade = [];
+                    $open_price = 0;
+                    $snapshotOpen = null;
+                    $tradeType = null;
+                    $waitingCandles = 4;
+
+
+                    // Stop it from switching multiple times
+                    if (!$allowSwitching && $isAlreadySwitched) {
+                        $isAlreadySwitched = false;
                     }
-                } else if ($tradeType == 'LONG') {
-
-                    if (
-                        $allowOpening
-                        // &&
-                        // CommonHelpers::checkMacdConditionsLong($data, $index)
-
-
-                    ) {
-                        $candle['should_buy'] = true;
-                        $candle['previousObvHigh'] = 0;
-                        $candle['previousObvHighReduced'] = 0;
-                        $buy_price = $candle['close'];
-                        $buy_triggers[] = $candle;
-                        $currentTrade['buyingCandle'] = json_encode($candle);
-                        $currentTrade['buyingAverages'] = json_encode($averages);
-                        $lowestPrice = $buy_price;
-                    }
-                }
-            } else {
-
-                if ($tradeType == 'SHORT') {
-                    if ($lowestPrice < $candle['high'])
-                        $lowestPrice = $candle['high'];
-                    if ($candle['low'] <= $buy_price * (1 - $targetProfit / 100)) {
-                        $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'short');
-                        $candle['should_sell'] = true;
-                        $buy_triggers[] = $candle;
-                        $currentTrade['sellingCandle'] = json_encode($candle);
-                        $currentTrade['buyingPrice'] = $buy_price;
-                        $currentTrade['market'] = $market;
-                        $currentTrade['sellingPrice'] = $candle['low'];
-                        $currentTrade['symbol'] = $symbol;
-                        $currentTrade['interval'] = $interval;
-                        $currentTrade['profit'] = abs(round(($candle['low'] - $buy_price) / $buy_price * 100, 2));
-                        $currentTrade['lowestPrice'] = $lowestPrice;
-                        $currentTrade['liquidationPrice'] = $liquidationPrice;
-                        $currentTrade['lowestPricePercentage'] = abs((($buy_price - $lowestPrice) / $buy_price)) * 100;
-                        $currentTrade['position'] = 'SHORT';
-                        $currentTrade['formula'] = $formula;
-                        $currentTrade['snapshot_id'] = $snapshotOpen->id;
-                        $lowestPrice = 0;
-                        $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
-                        $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
-                        $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
-                        $trades[] = $currentTrade;
-                        $currentTrade = [];
-                        $buy_price = 0;
-                        $snapshotOpen = null;
-                        $tradeType = null;
-                        $waitingCandles = 4;
-                    }
-                } else if ($tradeType == 'LONG') {
-                    if ($lowestPrice > $candle['low'])
-                        $lowestPrice = $candle['low'];
-
-                    if ($candle['close'] >= $buy_price * (1 + $targetProfit / 100)) {
-                        $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $buy_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'long');
-                        $candle['should_sell'] = true;
-                        $buy_triggers[] = $candle;
-                        $currentTrade['sellingCandle'] = json_encode($candle);
-                        $currentTrade['buyingPrice'] = $buy_price;
-                        $currentTrade['market'] = $market;
-                        $currentTrade['sellingPrice'] = $candle['close'];
-                        $currentTrade['symbol'] = $symbol;
-                        $currentTrade['interval'] = $interval;
-                        $currentTrade['profit'] = round(($candle['close'] - $buy_price) / $buy_price * 100, 2);
-                        $currentTrade['lowestPrice'] = $lowestPrice;
-                        $currentTrade['liquidationPrice'] = $liquidationPrice;
-                        $currentTrade['lowestPricePercentage'] = (($buy_price - $lowestPrice) / $buy_price) * 100;
-                        $currentTrade['position'] = 'LONG';
-                        $currentTrade['formula'] = $formula;
-                        $currentTrade['snapshot_id'] = $snapshotOpen->id;
-
-                        $lowestPrice = 0;
-                        $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
-                        $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
-
-                        $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
-
-                        $trades[] = $currentTrade;
-                        $currentTrade = [];
-                        $buy_price = 0;
-                        $snapshotOpen = null;
-                        $tradeType = null;
-                        $waitingCandles = 4;
-                    }
+                    // if ($isAlreadySwitched) {
+                    //     $isAlreadySwitched = false;
+                    //     $switchTrade = false;
+                    //     $switchDirection = '';
+                    //     $switchSnapshot = new stdClass;
+                    // }
                 }
             }
         }

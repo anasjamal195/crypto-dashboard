@@ -129,7 +129,38 @@ class BinanceController extends Controller
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
 
-        return view('CoinReports.coin-report', compact('tradeData','tradesAbove1h' ,'maxNearbyTrades', 'averageDuration', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+
+        // Timeline Data preperation
+        $tradeArr = DB::table('coin_reports');
+
+        if ($request->filled('interval')) {
+            $tradeArr->where('interval', $request->interval);
+        }
+        if ($request->filled('position')) {
+            $tradeArr->where('position', $request->position);
+        }
+
+        if ($request->filled('formula')) {
+            $tradeArr->where('formula', $request->formula);
+        }
+
+
+        $tradeArr = json_decode(json_encode($tradeArr->get()), true);
+
+        $timelineData = array_map(function ($trade) {
+
+            $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
+            $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
+            return [
+                'symbol' => $trade['symbol'] . '( ' . $trade['position'] . ' )',
+                'startTime' => $trade['buyingCandle']['timestampReadable'],
+                'endTime' => $trade['sellingCandle']['timestampReadable'],
+                'color' => $trade['position'] === 'SHORT' ? 'red' : 'green',
+                'id' => $trade['id'],
+            ];
+        }, $tradeArr);
+
+        return view('CoinReports.coin-report', compact('tradeData', 'timelineData', 'tradesAbove1h', 'maxNearbyTrades', 'averageDuration', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {
@@ -257,7 +288,7 @@ class BinanceController extends Controller
 
 
 
-        
+
 
         return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'totalProfit' => round($historicalTrends['totalProfit'], 2)]);
     }

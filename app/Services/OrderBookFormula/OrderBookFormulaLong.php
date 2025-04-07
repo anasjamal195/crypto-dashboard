@@ -45,7 +45,7 @@ class OrderBookFormulaLong
                 ->pluck('symbol');
 
             // Subquery to get the latest snapshot entry per symbol with required conditions
-            $fiveMinutesAgo = Carbon::now()->subMinutes(5);
+            $fiveMinutesAgo = Carbon::now()->subMinutes(10);
 
             $latestSnapshots = DB::table('order_book_snapshots as obs1')
                 ->select(
@@ -53,7 +53,6 @@ class OrderBookFormulaLong
                     DB::raw('MAX(obs1.snapshot_time) as latest_snapshot_time')
                 )
                 ->where('obs1.snapshot_time', '>=', $fiveMinutesAgo)
-                ->where('signal', 'SHORT')
                 ->where('depth', 1000)
                 // ->where('short_strength', '>=', 8)
                 ->groupBy('obs1.symbol');
@@ -86,14 +85,14 @@ class OrderBookFormulaLong
                 ->get()->toArray();
 
 
-
-
-
+                
 
 
 
 
             foreach ($triggers as $trigger) {
+
+                
 
 
                 $workers = DB::table('workers')->where('active_status', 1)->get();

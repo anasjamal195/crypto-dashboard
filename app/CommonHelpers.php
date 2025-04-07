@@ -469,17 +469,22 @@ class CommonHelpers
         // without green candles > 3 condition gives 85% with 81 trades 1.5 SL
 
         $sellShortMACDConditions =
-            $data[$index]['histogram'] > 0
+
+            $noLightCandle
+            // && $data[$index]['per'] < 0
+            // && $data[$index - 1]['per'] < 0
+            && $data[$index]['histogram'] < $data[$index - 1]['histogram']
+            // && $data[$index]['histogram'] > 0
+            // $data[$index]['histogram'] > 0
             // && $isUpwardWick
-            && ($kdjCrossover || $kdjApproachingCrossover)
+            // && ($kdjCrossover || $kdjApproachingCrossover)
             // && $totalGreenCandles > 4
             // && $data[$index]['dif'] < $data[$index - 1]['dif']
-            && $noLightCandle
-            &&
-            !(
-                $data[$index]['dif'] > $data[$index]['dea']
-                && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
-            );
+            // &&
+            // !(
+            //     $data[$index]['dif'] > $data[$index]['dea']
+            //     && $data[$index - 1]['dif'] < $data[$index - 1]['dea']
+            // );
         ;
 
         return $sellShortMACDConditions;
@@ -607,18 +612,26 @@ class CommonHelpers
 
 
         $buyLongMACDConditions =
-            $data[$index]['histogram'] < 0
+
+            $noDarkCandle
+            // && $data[$index]['per'] > 0
+            // && $data[$index - 1]['per'] > 0
+
+            && $data[$index]['histogram'] > $data[$index - 1]['histogram']
+            // && $data[$index]['histogram'] < 0
+
+
+            // $data[$index]['histogram'] < 0
             // && $isDownwardWick
-            && ($kdjCrossover || $kdjApproachingCrossover)
+            // && ($kdjCrossover || $kdjApproachingCrossover)
             // && $totalRedCandles > 4
-            && $noDarkCandle
             // && $data[$index]['dif'] > $data[$index - 1]['dif']
 
-            &&
-            !(
-                $data[$index]['dif'] < $data[$index]['dea']
-                && $data[$index - 1]['dif'] > $data[$index - 1]['dea']
-            );
+            // &&
+            // !(
+            //     $data[$index]['dif'] < $data[$index]['dea']
+            //     && $data[$index - 1]['dif'] > $data[$index - 1]['dea']
+            // );
         ;
 
         return $buyLongMACDConditions;
@@ -747,5 +760,437 @@ class CommonHelpers
         DB::table('trade_handler')->where('id', $tradeHandler->id)->update([
             'isWorkerDispatched' => true,
         ]);
+    }
+
+
+    public static function checkCompleteMACDShort($data, $index, $symbol)
+    {
+
+
+        $candle = $data[$index];
+        $macdDarkGreenDistance = 0;
+        $loopIndex = $index;
+
+        while (true) {
+
+            if ($data[$loopIndex]['histogram'] <= $data[$loopIndex - 1]['histogram']) {
+                $macdDarkGreenDistance++;
+            } else {
+                break;
+            }
+
+            $loopIndex--;
+        }
+
+
+        $totalGreenCandles = 0;
+        $loopIndex = $index;
+
+        while (true) {
+
+            if ($data[$loopIndex]['histogram'] < 0)
+                break;
+            $totalGreenCandles++;
+
+            $loopIndex--;
+        }
+
+        // $volumeCrossover = false;
+        // $loopIndex = $index;
+
+        // while (true) {
+
+        //     if ($data[$loopIndex]['volumeMA5'] < $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] > $data[$loopIndex - 1]['volumeMA10']) {
+        //         $volumeCrossover = true;
+        //         break;
+        //     }
+        //     if ($data[$loopIndex]['volumeMA5'] > $data[$loopIndex]['volumeMA10'] && $data[$loopIndex - 1]['volumeMA5'] < $data[$loopIndex - 1]['volumeMA10']) {
+        //         break;
+        //     }
+        //     $loopIndex--;
+        // }
+
+
+        $kdjCrossover = false;
+        $kdjthreshold = 0;
+        $loopIndex = $index;
+
+        while (true) {
+            if (
+                $data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
+                $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
+                &&
+                $data[$loopIndex]['J'] < $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100) &&
+                $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100)
+            ) {
+                $kdjCrossover = true;
+                break;
+            }
+
+            if (
+                ($data[$loopIndex]['J'] > $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100) &&
+                    $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['K'] * (1 - $kdjthreshold / 100)
+                    &&
+                    $data[$loopIndex]['J'] > $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100) &&
+                    $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['D'] * (1 - $kdjthreshold / 100))
+                ||
+                $loopIndex == 1
+            ) {
+                break;
+            }
+
+            $loopIndex--;
+        }
+
+        // Check KDJ approaching Crossover
+        $kdjApproachingCrossover = abs($data[$index]['K'] - $data[$index]['J']) < abs($data[$index - 1]['K'] - $data[$index - 1]['J']) &&
+            abs($data[$index]['D'] - $data[$index]['J']) < abs($data[$index - 1]['D'] - $data[$index - 1]['J']);
+
+
+
+        // Check downward wick
+        $upperWick = ($data[$index]['high'] - $data[$index]['open']);
+        $lowerWick = ($data[$index]['close'] - $data[$index]['low']);
+        $isUpwardWick = $data[$index]['close'] < $data[$index]['open'] && $upperWick > $lowerWick * 2;
+
+
+        $lastHighest = $data[$index]['high'];
+        $loopIndex = $index;
+        while (true) {
+            if ($data[$loopIndex]['high'] > $lastHighest) {
+                $lastHighest = $data[$loopIndex]['high'];
+            } else if ($data[$loopIndex]['high'] < $data[$index]['high'] || $loopIndex == 1) {
+                break;
+            }
+            $loopIndex--;
+        }
+        $difDeaCondition = $data[$index - 3]['dif'] < $data[$index - 3]['dea'] && $data[$index]['dif'] > $data[$index]['dea'];
+
+
+        $maCondition = $data[$index]['ma7'] > $data[$index]['ma25'] && $data[$index - 5]['ma7'] > $data[$index - 5]['ma25'];
+
+
+        if (
+            // Current and previous MACD should be green
+            $data[$index]['histogram'] > 0
+            && $isUpwardWick
+            && ($kdjCrossover || $kdjApproachingCrossover)
+            && $totalGreenCandles > 4
+            // && $data[$index]['per'] <= -0.2
+            // && $data[$index]['per'] > -0.6
+            // && $data[$index]['close'] < $lastHighest * (1 - 0.7 / 100)
+            && $data[$index]['avl'] < $data[$index - 1]['avl']
+            && $data[$index]['dif'] < $data[$index - 1]['dif']
+            && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] - 10
+            && $data[$index]['per'] < 0 && $data[$index - 1]['per'] > 0
+            && $maCondition
+            && !$difDeaCondition
+        ) {
+
+
+
+
+
+
+
+            // // New Conditions on 2h 
+            // // Fetch 2-hour candlestick data
+            // $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, $candle['binance_timestamp'], 'FUTURE');
+            // $candle2h = end($data2h);
+            // $secondLastCandle2h = prev($data2h);
+            // $thirdLastCandle2h = prev($data2h);
+
+            // // $instantOpen = false;
+
+            // // // Condition 6: Skip trade if MA7 is above both MA25 and MA99, and previous candle's percentage change is non-positive
+            // // if ($candle2h['ma7'] < $candle2h['ma25'] && $candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['per'] >= 0) {
+            // //     return false;
+            // // }
+
+            // // // Condition 5: Check for instant opening
+            // // if (
+            // //     ($candle2h['ma7'] < $candle2h['ma25'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma25']) ||
+            // //     ($candle2h['ma7'] < $candle2h['ma99'] && $secondLastCandle2h['ma7'] > $secondLastCandle2h['ma99'])
+            // // ) {
+            // //     $instantOpen = true;
+            // // }
+
+            // // Calculate wick and solid region sizes
+            // $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
+            // $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
+            // $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
+
+            // // // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+            // // if (
+            // //     !$instantOpen &&
+            // //     !(
+            // //         $secondLastCandle2h['per'] <= 0.15 || // Condition 1
+            // //         ($secondLastCandle2h['per'] > 0 && $lowerWick < $upperWick && $lowerWick < $solidRegion * 0.1) || // Condition 3
+            // //         ($lowerWick == 0 && $upperWick > 0) // Condition 4
+            // //     )
+            // // ) {
+            // //    return false;
+            // // }
+
+            // // // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
+            // // if ($secondLastCandle2h['per'] < 0 && $upperWick < $lowerWick) {
+            // //     return false;
+            // // }
+
+
+            // // Custom Condition
+            // if (
+            //     !(
+
+            //         $secondLastCandle2h['histogram'] < $thirdLastCandle2h['histogram']
+            //     )
+            // ) {
+            //     return false;
+            // }
+            // // dd($candle, $secondLastCandle2h, $thirdLastCandle2h, $symbol);
+
+
+            // $data15m = BinanceApiService::getCandleStickDataPast($symbol, '15m', 100, $candle['binance_timestamp'], 'FUTURE');
+            // $candle15m = end($data15m);
+            // $secondLastCandle15m = prev($data15m);
+            // $thirdLastCandle15m = prev($data15m);
+
+
+            // if (
+
+            //     $secondLastCandle15m['histogram'] > $thirdLastCandle15m['histogram'] && $secondLastCandle15m['histogram'] < 0
+
+            // ) {
+            //     return false;
+            // }
+
+
+            // $data1h = BinanceApiService::getCandleStickDataPast($symbol, '1h', 100, $candle['binance_timestamp'], 'FUTURE');
+            // $candle1h = end($data1h);
+            // $secondLastCandle1h = prev($data1h);
+            // $thirdLastCandle1h = prev($data1h);
+            // $fourthLastCandle1h = prev($data1h);
+            // $fifthLastCandle1h = prev($data1h);
+
+
+            // if (
+            //     (
+            //         $secondLastCandle1h['per'] > 0
+            //         && $thirdLastCandle1h['per'] > 0
+            //         && $fourthLastCandle1h['per'] > 0
+            //         // && $fifthLastCandle1h['per'] > 0
+            //     )
+            // ) {
+            //     return false;
+            // }
+
+            // $data4h = BinanceApiService::getCandleStickDataPast($symbol, '4h', 100, $candle['binance_timestamp'], 'FUTURE');
+            // $candle4h = end($data4h);
+            // $secondLastCandle4h = prev($data4h);
+            // $thirdLastCandle4h = prev($data4h);
+            // $fourthLastCandle4h = prev($data4h);
+            // $fifthLastCandle4h = prev($data4h);
+
+            // if (
+            //     $candle4h['per'] < -0.25
+            // ) {
+            //     return false;
+            // }
+
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public static function checkCompleteMACDLong($data, $index, $symbol)
+    {
+
+        $candle = $data[$index];
+        $macdLightRedDistance = 0;
+        $loopIndex = $index;
+
+        while (true) {
+
+            if ($data[$loopIndex]['histogram'] >= $data[$loopIndex - 1]['histogram']) {
+                $macdLightRedDistance++;
+            } else {
+                break;
+            }
+
+            $loopIndex--;
+        }
+
+
+        $totalRedCandles = 0;
+        $loopIndex = $index;
+
+        while (true) {
+
+            if ($data[$loopIndex]['histogram'] > 0)
+                break;
+
+            if ($data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'])
+                $totalRedCandles++;
+
+            $loopIndex--;
+        }
+
+
+
+
+        $kdjCrossover = false;
+        $kdjthreshold = 0;
+        $loopIndex = $index;
+
+        while (true) {
+            if (
+                $data[$loopIndex]['J'] > $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100) &&
+                $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100)
+                &&
+                $data[$loopIndex]['J'] > $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100) &&
+                $data[$loopIndex - 1]['J'] <= $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100)
+            ) {
+                $kdjCrossover = true;
+                break;
+            }
+
+            if (
+                ($data[$loopIndex]['J'] < $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100) &&
+                    $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['K'] * (1 + $kdjthreshold / 100)
+                    &&
+                    $data[$loopIndex]['J'] < $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100) &&
+                    $data[$loopIndex - 1]['J'] >= $data[$loopIndex]['D'] * (1 + $kdjthreshold / 100))
+                ||
+                $loopIndex == 1
+            ) {
+                break;
+            }
+
+            $loopIndex--;
+        }
+
+
+
+        // Check KDJ approaching Crossover
+        $kdjApproachingCrossover = abs($data[$index]['K'] - $data[$index]['J']) < abs($data[$index - 1]['K'] - $data[$index - 1]['J']) &&
+            abs($data[$index]['D'] - $data[$index]['J']) < abs($data[$index - 1]['D'] - $data[$index - 1]['J']);
+
+        // Check downward wick
+        $upperWick = ($data[$index]['high'] - $data[$index]['close']);
+        $lowerWick = ($data[$index]['open'] - $data[$index]['low']);
+        $isUpwardWick = $data[$index]['close'] > $data[$index]['open'] && $upperWick > $lowerWick * 2;
+        $isDownwardWick = $data[$index]['close'] > $data[$index]['open'] && $lowerWick > $upperWick * 2;
+
+        $lastLowest = $data[$index]['low'];
+        $loopIndex = $index;
+        while (true) {
+            if ($data[$loopIndex]['low'] < $lastLowest) {
+                $lastLowest = $data[$loopIndex]['low'];
+            } else if ($data[$loopIndex]['low'] > $data[$index]['low'] || $loopIndex == 1) {
+                break;
+            }
+            $loopIndex--;
+        }
+
+        $difDeaCondition = $data[$index - 3]['dif'] > $data[$index - 3]['dea'] && $data[$index]['dif'] < $data[$index]['dea'];
+
+
+        $maCondition = $data[$index]['ma7'] < $data[$index]['ma25'] && $data[$index - 5]['ma7'] < $data[$index - 5]['ma25'];
+
+        if (
+            // Current and previous MACD should be red
+
+            $data[$index]['histogram'] < 0
+            && $isDownwardWick
+            && ($kdjCrossover || $kdjApproachingCrossover)
+            && $totalRedCandles > 4
+            // && $data[$index]['per'] >= 0.2
+            // && $data[$index]['per'] < 0.6
+            // && $data[$index]['close'] > $lastLowest * (1 + 0.7 / 100)
+            && $data[$index]['avl'] > $data[$index - 1]['avl']
+            && $data[$index]['dif'] > $data[$index - 1]['dif']
+            && $data[$index]['rsi6'] > $data[$index - 1]['rsi6'] + 10
+            && $data[$index]['per'] > 0 && $data[$index - 1]['per'] < 0
+            && $maCondition
+            && !$difDeaCondition
+        ) {
+            // Fetch 2-hour candlestick data
+            // $data2h = BinanceApiService::getCandleStickDataPast($symbol, '2h', 100, $candle['binance_timestamp'], 'FUTURE');
+            // $candle2h = end($data2h);
+            // $secondLastCandle2h = prev($data2h);
+            // $thirdLastCandle2h = prev($data2h);
+
+
+
+            // // Calculate wick and solid region sizes
+            // $upperWick = $secondLastCandle2h['high'] - max($secondLastCandle2h['close'], $secondLastCandle2h['open']);
+            // $lowerWick = min($secondLastCandle2h['close'], $secondLastCandle2h['open']) - $secondLastCandle2h['low'];
+            // $solidRegion = abs($secondLastCandle2h['close'] - $secondLastCandle2h['open']);
+
+            // // // Skip trade if it's not an instant opening and doesn't meet Conditions 1, 3, or 4
+            // // if (
+            // //     !$instantOpen &&
+            // //     !(
+            // //         $secondLastCandle2h['per'] >= 0.15 || // Condition 1
+            // //         ($secondLastCandle2h['per'] < 0 && $lowerWick > $upperWick && $upperWick < $solidRegion * 0.1) || // Condition 3
+            // //         ($upperWick == 0 && $lowerWick > 0) // Condition 4
+            // //     )
+            // // ) {
+            // //     return false;
+            // // }
+
+            // // // Condition 2: Final check - skip trade if percentage change is positive and upper wick is greater than lower wick
+            // // if ($secondLastCandle2h['per'] > 0 && $upperWick > $lowerWick) {
+            // //     return false;
+            // // }
+
+
+            // if (
+            //     !(
+            //         $secondLastCandle2h['histogram'] > $thirdLastCandle2h['histogram']
+            //     )
+            // ) {
+            //     return false;
+            // }
+
+            // $data15m = BinanceApiService::getCandleStickDataPast($symbol, '15m', 100, $candle['binance_timestamp'], 'FUTURE');
+            // $candle15m = end($data15m);
+            // $secondLastCandle15m = prev($data15m);
+            // $thirdLastCandle15m = prev($data15m);
+
+
+
+
+            // if (
+
+            //     $secondLastCandle15m['histogram'] < $thirdLastCandle15m['histogram'] && $secondLastCandle15m['histogram'] > 0
+
+            // ) {
+            //     return false;
+            // }
+            // $data1h = BinanceApiService::getCandleStickDataPast($symbol, '1h', 100, $candle['binance_timestamp'], 'FUTURE');
+            // $candle1h = end($data1h);
+            // $secondLastCandle1h = prev($data1h);
+            // $thirdLastCandle1h = prev($data1h);
+            // $fourthLastCandle1h = prev($data1h);
+            // $fifthLastCandle1h = prev($data1h);
+
+            // if (
+            //     (
+            //         $secondLastCandle1h['per'] < 0
+            //         && $thirdLastCandle1h['per'] < 0
+            //         && $fourthLastCandle1h['per'] < 0
+            //         // && $fifthLastCandle1h['per'] > 0
+            //     )
+            // ) {
+            //     return false;
+            // }
+
+            return true;
+        } else {
+            return false;
+        }
     }
 }

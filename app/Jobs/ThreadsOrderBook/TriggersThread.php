@@ -31,7 +31,7 @@ class TriggersThread implements ShouldQueue
 
     public $tradeInstance;
     public $supportResistance;
-    public $formula = 'Order Book Snapshots (Support Resistance)';
+    public $formula = 'Order Book Snapshots (Consolidated Triggers)';
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
 
@@ -80,13 +80,14 @@ class TriggersThread implements ShouldQueue
                             // ==========================================Consolidated Triggers==========================================
                             $timestamp = $candle['timestampReadable'];
                             $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                                ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
                                 ->where('symbol', $symbol)
                                 ->where('depth', 1000)
-                                // ->where('short_strength', '>=', 8)
                                 ->latest('snapshot_time')
-                                ->limit(5)->get();
+                                ->get();
 
-                            if (count($snapshots) == 0) {
+                            if (count($snapshots) < 5) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
                             }
                             $longWeight = 0;
@@ -100,7 +101,11 @@ class TriggersThread implements ShouldQueue
                             }
 
 
-                          //=====================
+                            $snapshot = $snapshots[count($snapshots) - 1];
+
+
+                            $trigger = $snapshot;
+                            // ============================================
 
                             $resistanceLevels = array_map(function ($level) {
                                 return $level['price'];
@@ -125,17 +130,8 @@ class TriggersThread implements ShouldQueue
                                 $tradeType = 'SHORT';
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-
                                 continue;
                             }
-
-                            // if ($triggerPricePercentDiffShort >=  2 * $triggerPricePercentDiffLong) {
-                            //     $tradeType = 'LONG';
-                            // } else if ($triggerPricePercentDiffLong >=  2 * $triggerPricePercentDiffShort) {
-                            //     $tradeType = 'SHORT';
-                            // } else {
-                            //     continue;
-                            // }
 
 
 
@@ -146,7 +142,8 @@ class TriggersThread implements ShouldQueue
 
                             if ($tradeType == 'SHORT') {
 
-                                if ($data[$index]['high'] >= $triggerPriceShort) {
+                                // Instant opening of trades for now
+                                if ($data[$index]['high'] >= $triggerPriceShort || true) {
 
                                     // If price hits trigger than pass current tradeInstance to parent function 
                                     CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
@@ -158,7 +155,8 @@ class TriggersThread implements ShouldQueue
                                 }
                             } else if ($tradeType == 'LONG') {
 
-                                if ($data[$index]['low'] <= $triggerPriceLong) {
+                                // Instant opening of trades for now
+                                if ($data[$index]['low'] <= $triggerPriceLong || true) {
 
                                     CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
                                     $tradeToOpen =  $tradeInstance;
@@ -306,14 +304,43 @@ class TriggersThread implements ShouldQueue
             $profitIncrementPercentage = 0.1;
         }
 
+        // Handle Early Closing on Order Books
+
+        $closeEarly = false;
+        $timestamp = $currentCandle['timestampReadable'];
+        $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+            ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+            ->where('symbol', $tradeInstance->symbol)
+            ->where('depth', 1000)
+            ->latest('snapshot_time')
+            ->get();
+
+        if (count($snapshots) > 5) {
+            $longWeight = 0;
+            $shortWeight = 0;
+            foreach ($snapshots as $snapshot) {
+                if ($snapshot->signal === 'SHORT') {
+                    $shortWeight += $snapshot->short_strength;
+                } else {
+                    $longWeight += $snapshot->long_strength;
+                }
+            }
 
 
-        if (($stopLoss > $buy_order['price'] && $currentCandle['close'] < $stopLoss) || ($stopLoss < $buy_order['price'] && $currentCandle['open'] < $stopLoss)) {
+            if ($shortWeight > $longWeight * 2) {
+                $closeEarly = true;
+            }
+        }
+
+
+
+
+        if ($currentCandle['close'] < $stopLoss || $closeEarly) {
             // Checking Upper Wick Formation
 
             $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 5, $stopLoss, $tradeInstance->symbol);
 
-            if (!$lower_wick) {
+            if (!$lower_wick || $closeEarly) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'previousPrice' => $currentCandle['close'],
@@ -383,9 +410,39 @@ class TriggersThread implements ShouldQueue
         } else {
             $profitIncrementPercentage = 0.1;
         }
-        if ($currentCandle['close'] > $stopLoss) {
+
+
+        // Handle Early Closing on Order Books
+
+        $closeEarly = false;
+        $timestamp = $currentCandle['timestampReadable'];
+        $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+            ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+            ->where('symbol', $tradeInstance->symbol)
+            ->where('depth', 1000)
+            ->latest('snapshot_time')
+            ->get();
+
+        if (count($snapshots) > 5) {
+            $longWeight = 0;
+            $shortWeight = 0;
+            foreach ($snapshots as $snapshot) {
+                if ($snapshot->signal === 'SHORT') {
+                    $shortWeight += $snapshot->short_strength;
+                } else {
+                    $longWeight += $snapshot->long_strength;
+                }
+            }
+
+
+            if ($longWeight > $shortWeight * 2) {
+                $closeEarly = true;
+            }
+        }
+
+        if ($currentCandle['close'] > $stopLoss || $closeEarly) {
             $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
-            if (!$upper_wick) {
+            if (!$upper_wick || $closeEarly) {
                 BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
                 DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
                     'previousPrice' => $currentCandle['close'],
