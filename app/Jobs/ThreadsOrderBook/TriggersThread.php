@@ -231,7 +231,7 @@ class TriggersThread implements ShouldQueue
                             BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
                         } catch (\Throwable $th) {
                             CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                            Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
+                            Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $th);
                             Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipping Opening Position due to error: ' . $symbol);
                             continue;
                         }
