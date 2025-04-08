@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\CommonHelpers;
 use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
+use App\Services\BinanceVolumeIndicatorsService;
 use App\Services\IdealTradeService;
 use App\Services\MarketTrendService;
 use App\Services\OrderBookStrategy;
@@ -18,7 +20,14 @@ class BinanceController extends Controller
 {
     public function getCoinReport($market, Request $request)
     {
+
+
+
         // =======Testing==========================
+
+       
+
+        // ========================================
         // Fetch all unique symbols from the database
         $interval = $request->interval;
         $stopLoss = $request->input('stopLoss') ?? 1;
@@ -281,7 +290,7 @@ class BinanceController extends Controller
     public function showTrends($market, Request $request)
     {
         $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
-        $historicalTrends = MarketTrendService::getOrderBookGraph($request->symbol);
+        $historicalTrends = MarketTrendService::getVolumesGraph($request->symbol);
 
 
 

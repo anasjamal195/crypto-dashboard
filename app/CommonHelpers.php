@@ -3,6 +3,7 @@
 namespace App;
 
 use App\Services\BinanceApiService;
+use App\Services\BinanceVolumeIndicatorsService;
 use App\Services\SupervisorService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +11,24 @@ use Illuminate\Support\Facades\Log;
 
 class CommonHelpers
 {
+    public static $binanceIntervals = [
+        '1s'  => 1 / 60,  // 1 second (not commonly used)
+        '1m'  => 1,       // 1 minute
+        '3m'  => 3,       // 3 minutes
+        '5m'  => 5,       // 5 minutes
+        '15m' => 15,      // 15 minutes
+        '30m' => 30,      // 30 minutes
+        '1h'  => 60,      // 1 hour
+        '2h'  => 120,     // 2 hours
+        '4h'  => 240,     // 4 hours
+        '6h'  => 360,     // 6 hours
+        '8h'  => 480,     // 8 hours
+        '12h' => 720,     // 12 hours
+        '1d'  => 1440,    // 1 day
+        '3d'  => 4320,    // 3 days
+        '1w'  => 10080,   // 1 week
+        '1M'  => 43200,   // 1 month (approx 30 days)
+    ];
     /**
      * Create a new class instance.
      */
@@ -1192,5 +1211,95 @@ class CommonHelpers
         } else {
             return false;
         }
+    }
+
+
+
+
+    public static function getVolumeSignals($symbol, $interval, $isArr = true)
+    {
+        $parentLimit = 1000;
+        $isProcessed =  false;
+        $data = BinanceApiService::getCandleStickData($symbol, $interval, $parentLimit, null, 'FUTURE', $isProcessed);
+
+
+        $intervalToMins = self::$binanceIntervals[$interval];
+        $timestamp = $data[0][0] - (60 * $intervalToMins * 1000 * 300);
+        $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 300, $timestamp, 'FUTURE', $isProcessed);
+        $triggers = [];
+        foreach (array_merge($averageAdjustmetCandles, $data) as $index => $candle) {
+
+            if ($index < 300) {
+                continue;
+            }
+            $timestamp = $candle[0] / 1000;
+            $date = new \DateTime("@{$timestamp}");
+            $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
+            $timestamp =  $date->format('Y-m-d H:i:s');
+
+
+
+
+            // Now create seperate objects for each candle of each symbol
+            // Prepare Data for this candle
+
+            $start = 0;
+            $length = $index - $start + 1;
+
+            $subArray = array_slice($data, $start, $length);
+            $volumeSignalService = new BinanceVolumeIndicatorsService([
+                'symbols' => [$symbol],
+                'data' => $subArray,
+                'timeframes' => [$interval], // Suitable for scalping
+                'target_profit' => 0.5, // Your 0.5% target
+                'use_obv' => true,
+                'use_vwap' => true,
+                'use_volume_profile' => true,
+                'use_cvd' => true,
+                'use_mfi' => true,
+            ]);
+
+
+            $signal = $volumeSignalService->getScalpingSignals();
+            $signal = $signal['signals'][0];
+            $signal['timestampReadable'] = $timestamp;
+            $signal['timestamp'] = $candle[0];
+            // if ($signal['potential'])
+
+            if ($isArr)
+                $triggers[] = $signal;
+            else
+                $triggers[$timestamp] = $signal;
+        }
+        return $triggers;
+    }
+
+
+
+
+    public static function getVolumeSignalsRealTime($symbol, $interval)
+    {
+        $parentLimit = 300;
+        $isProcessed =  false;
+        $data = BinanceApiService::getCandleStickData($symbol, $interval, $parentLimit, null, 'FUTURE', $isProcessed);
+
+
+
+        $volumeSignalService = new BinanceVolumeIndicatorsService([
+            'symbols' => [$symbol],
+            'data' => $data,
+            'timeframes' => [$interval], // Suitable for scalping
+            'target_profit' => 0.5, // Your 0.5% target
+            'use_obv' => true,
+            'use_vwap' => true,
+            'use_volume_profile' => true,
+            'use_cvd' => true,
+            'use_mfi' => true,
+        ]);
+
+
+        $signal = $volumeSignalService->getScalpingSignals();
+        $signal = $signal['signals'][0];
+        return $signal;
     }
 }

@@ -4,6 +4,7 @@
 
 namespace App\Services;
 
+use App\CommonHelpers;
 use DateTime;
 use Carbon\Carbon;
 
@@ -736,7 +737,7 @@ class MarketTrendService
 
 
 
-    public static function getOrderBookGraph(
+    public static function getVolumesGraph(
         $symbol = 'BTCUSDT',
         $interval = '5m',
     ) {
@@ -745,53 +746,20 @@ class MarketTrendService
             $limit = 1000;
 
             $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE');
-
+            $volumeSignals = CommonHelpers::getVolumeSignals($symbol,$interval,true);
             foreach ($data as $index => &$candle) {
                 $candle['marketTrend'] = 'blue';
+               $signal  = $volumeSignals[$index];
+              
 
-
-                if ($index < 5 || $index > count($data) - 5)
-                    continue;
-
-
-                $timestamp = $candle['timestampReadable'];
-
-                $snapshot = OrderBookSnapshot::where('snapshot_time', '>=', $timestamp)
-                    ->where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-                    ->where('symbol', $symbol)
-                    ->where('depth', 500)
-                    ->latest('snapshot_time')
-                    ->first();
-
-                if (!$snapshot)
-                    continue;
-
-                // dd($snapshot);
-
-                $candle['marketTrend'] = $snapshot->signal === 'LONG' ? 'green' : 'red';
-
-                $entry_points = array_map(function ($level) {
-                    return $level['price'];
-                }, $snapshot->resistance_levels);
-
-                $entry_points_reverse = array_map(function ($level) {
-                    return $level['price'];
-                }, $snapshot->support_levels);
-
-
-                $triggerPriceShort = $entry_points[0];
-                $triggerPriceLong = $entry_points_reverse[0];
-
-
-                $nextIndex = $index === count($data) - 3 ? $index : $index + 3;
                 
 
-                for ($i = $nextIndex; $i >= $nextIndex - 3; $i--) {
-                    $data[$i]['support'] = $triggerPriceLong;
-                    $data[$i]['resistance'] = $triggerPriceShort;
-                }
-                $candle['support'] = $triggerPriceLong;
-                $candle['resistance'] = $triggerPriceShort;
+             
+
+                // dd($snapshot);
+                if($signal['potential'] )
+                $candle['marketTrend'] = $signal['signal'] === 'buy' ? 'green' : 'red';
+
             }
 
 

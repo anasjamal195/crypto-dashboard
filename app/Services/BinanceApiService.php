@@ -161,8 +161,9 @@ class BinanceApiService
      * @return array
      * @throws \Exception If the API request fails.
      */
-    public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT')
+    public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
+        
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
             'https://digitalfitnesshub.shop/wp-includes/restful-api/',            // Removed due to SSL error
@@ -234,8 +235,10 @@ class BinanceApiService
 
         // Update API weight usage in cache
 
-
-        return self::processData($response->json(), $market);
+        if ($processed)
+            return self::processData($response->json(), $market);
+        else
+            return $response->json();
     }
 
 
