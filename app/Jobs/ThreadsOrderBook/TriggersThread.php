@@ -35,7 +35,7 @@ class TriggersThread implements ShouldQueue
 
     // Meta data
     public $stopLoss = 1.5;
-    public $targetProfit = 0.4;
+    public $targetProfit = 0.5;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
     public $formula = 'MFI , MACD and OrderBook Imbalance';
@@ -62,7 +62,7 @@ class TriggersThread implements ShouldQueue
                     $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->get();
 
                     foreach ($worker_symbols as $worker_symbol) {
-                        
+
                         try {
                             $symbol = $worker_symbol->symbol;
                             $tradeInstance = new stdClass;
