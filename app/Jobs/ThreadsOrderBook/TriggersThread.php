@@ -22,21 +22,24 @@ use stdClass;
 class TriggersThread implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    public $workerId;
-    public $account;
-    public $timeout = 360000000;
+    // Internal Use
     public $tries = 1; // The job will only run once
-    public $stopLoss = 1;
-    public $targetProfit = 0.4;
-
+    public $timeout = 360000000;
     public $tradeInstance;
     public $supportResistance;
-    public $formula = 'MFI and MACD';
-    public $profitIncrementPercentage = 0.05;
-    public $profitIncrementPercentageNext = 0.1;
-
     public $triggerPrice = 0;
     public $triggerIndex = 0;
+    public $workerId;
+    public $account;
+
+
+    // Meta data
+    public $stopLoss = 1.5;
+    public $targetProfit = 0.4;
+    public $profitIncrementPercentage = 0.05;
+    public $profitIncrementPercentageNext = 0.1;
+    public $formula = 'MFI , MACD and OrderBook Imbalance';
+
 
 
     /**
