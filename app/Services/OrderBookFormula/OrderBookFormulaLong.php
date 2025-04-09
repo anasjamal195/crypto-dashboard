@@ -39,69 +39,30 @@ class OrderBookFormulaLong
         // ==================New Strategy========================
         try {
             $workerLimit = 10;
+
             $openSymbols = DB::table('live_trades_future_results')
                 ->where('trade_acc', $account)
                 ->where('trade_status', 'open')
                 ->pluck('symbol');
 
-            // Subquery to get the latest snapshot entry per symbol with required conditions
-            $fiveMinutesAgo = Carbon::now()->subMinutes(10);
-
-            $latestSnapshots = DB::table('order_book_snapshots as obs1')
-                ->select(
-                    'obs1.symbol',
-                    DB::raw('MAX(obs1.snapshot_time) as latest_snapshot_time')
-                )
-                ->where('obs1.snapshot_time', '>=', $fiveMinutesAgo)
-                ->where('depth', 1000)
-                // ->where('short_strength', '>=', 8)
-                ->groupBy('obs1.symbol');
-
-            $triggers = DB::table('order_book_snapshots as obs2')
-                ->joinSub($latestSnapshots, 'latest_obs', function ($join) {
-                    $join->on('obs2.symbol', '=', 'latest_obs.symbol')
-                        ->on('obs2.snapshot_time', '=', 'latest_obs.latest_snapshot_time');
-                })
-                ->join('trade_handler as th', function ($join) use ($account, $openSymbols) {
-                    $join->on('obs2.symbol', '=', 'th.symbol')
-                        ->where('th.position', 'LONG')
-                        ->where('th.tradeAccount', $account)
-                        ->whereNotIn('th.symbol', $openSymbols)
-                        ->where('th.isWorkerDispatched', 0);
-                })
-                ->select(
-                    'obs2.symbol',
-                    'obs2.snapshot_time',
-                    'obs2.resistance_levels',
-                    'obs2.support_levels',
-                    'obs2.signal',
-                    'obs2.long_strength',
-                    'obs2.short_strength',
-                    'th.buyPrice',
-                    'th.isWorkerDispatched',
-                    'th.id as trade_handler_id',
-                    'obs2.id as trigger_id',
-                )
-                ->get()->toArray();
+            $uniqueSymbols = DB::table('trade_handler')
+                ->where('tradeAccount', $account)
+                ->where('market', $market)
+                ->where('isWorkerDispatched', false)
+                ->where('position', 'LONG')
+                ->whereNotIn('symbol', $openSymbols)
+                ->where('isActive', 1)
+                ->distinct()
+                ->pluck('symbol');
 
 
-                
-
-
-
-
-            foreach ($triggers as $trigger) {
-
-                
-
-
+            foreach ($uniqueSymbols as $symbol) {
                 $workers = DB::table('workers')->where('active_status', 1)->get();
-
                 // Check for available workers and check next coins
                 foreach ($workers as $worker) {
                     // If a worker is available than add its entry
                     if ($worker->symbol_count < $workerLimit && !$worker->trade_status) {
-                        CommonHelpers::workerEngageSymbol($worker->worker_id, $trigger->trigger_id, $trigger->symbol, $account);
+                        CommonHelpers::workerEngageSymbol($worker->worker_id, null, $symbol, $account);
                         break;
                     }
                 }

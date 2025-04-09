@@ -43,7 +43,7 @@ class FutureReportWorkerVolumeSignalFormula extends Command
     public function handle()
     {
 
-        $formula = 'Volume Signal with MACD & MFI & MACD 4 candles';
+        $formula = 'MACD & Volume Indicators & Order Book Experiment (latest)';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
 

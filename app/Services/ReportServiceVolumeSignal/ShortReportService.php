@@ -1,5 +1,5 @@
 <?php
-// Volume-Signal & Order-books
+// Volume-Signal & Order-books (Volume Imbalance) & MFI 
 namespace App\Services\ReportServiceVolumeSignal;
 
 use App\CommonHelpers;
@@ -185,77 +185,58 @@ class ShortReportService
                     ->where('depth', 1000)
                     ->latest('snapshot_time')
                     ->get();
-                if (count($snapshots) < 5) {
+                if (count($snapshots) < 1) {
                     continue;
                 }
+
+
+
+                $orderBookSnapshot = $snapshots[0];
 
                 $volumeIndex = $index - 1000;
                 $volumeSignal = $volumeSignals[$volumeIndex];
 
-                // if ($volumeSignal['indicators']['mfi_current'] < 20 && $volumeSignals[$volumeIndex]['indicators']['obv_current'] > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']) {
-
-                //     $tradeType = 'LONG';
-                //     $allowOpening = true;
-                // } else if ($volumeSignal['indicators']['mfi_current'] > 80 && $volumeSignals[$volumeIndex]['indicators']['obv_current'] < $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']) {
-                //     $tradeType = 'SHORT';
-                //     $allowOpening = true;
-                // } else {
-                //     $allowOpening = false;
-                //     continue;
-                // }
 
 
 
-
+                // ==================LOGIC TO CHECK TRADE TYPE AND CONDITIONS==================
 
                 // 5 macd solid RED candles and current macd light red
-                $macdLongCondition = true;
-                $loopIndex = $index - 1;
-                while (true) {
-                    if ($data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0 && $data[$loopIndex]['histogram'] < 0) {
-                        $loopIndex--;
-                    } else {
-                        if ($index - $loopIndex - 1 > 4) {
-                            break;
-                        } else {
-                            $macdLongCondition = false;
-                            break;
-                        }
-                    }
-                }
-                $macdLongCondition = $macdLongCondition && $data[$index]['histogram'] < 0 && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
+                $macdLongCondition =
+
+                    $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
+                    && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
+                    && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
+                    && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
+                    && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
+                    && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
+                ;
+
 
 
                 // 5 macd loght Green candles and current macd Solid green
-
-                $macdShortCondition = true;
-                $loopIndex = $index - 1;
-                while (true) {
-                    if ($data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0 && $data[$loopIndex]['histogram'] > 0) {
-                        $loopIndex--;
-                    } else {
-                        if ($index - $loopIndex - 1 > 4) {
-                            break;
-                        } else {
-                            $macdShortCondition = false;
-                            break;
-                        }
-                    }
-                }
-
-                $macdShortCondition = $macdShortCondition && $data[$index]['histogram'] > 0 && $data[$index]['histogram'] < $data[$index - 1]['histogram'];
+                $macdShortCondition =
+                    $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0 // Current Candle should be solid green
+                    && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0 // // Second Last Candle should be light green
+                    && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0 // // Third Last Candle should be light green
+                    && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
+                    && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
+                    && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
+                ;
 
 
-                if ($macdLongCondition && $volumeSignal['indicators']['mfi_current'] < 30) {
+                if ($macdLongCondition && $volumeSignal['indicators']['mfi_current'] < 30 && $orderBookSnapshot->orderBookSnapshot > 1) {
                     $tradeType = 'LONG';
                     $allowOpening = true;
-                } else if ($macdShortCondition && $volumeSignal['indicators']['mfi_current'] > 70) {
+                } else if ($macdShortCondition && $volumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->orderBookSnapshot < 1) {
                     $tradeType = 'SHORT';
                     $allowOpening = true;
                 } else {
                     continue;
                 }
 
+
+                // ========================================================================
 
 
 

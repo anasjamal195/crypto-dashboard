@@ -62,161 +62,89 @@ class TriggersThread implements ShouldQueue
 
                         try {
                             $symbol = $worker_symbol->symbol;
-                            $trigger = DB::table('order_book_snapshots')->where('id', $worker_symbol->trigger_id)->first();
                             $tradeInstance = new stdClass;
-                            $symbol = $trigger->symbol;
                             $trade_acc = $this->account;
 
 
                             $data = BinanceApiService::getCandleStickData($symbol, '5m', 300, null, 'FUTURE');
                             $index = count($data) - 1;
+                            // Decrement index to get last completed candle
                             $index--;
+                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [7]);
 
+                            // Check candle closing 
+                            $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 30;
 
-                            $candle = $data[count($data) - 1];
-
-
-
-                            // ==========================================Consolidated Triggers==========================================
-                            // $timestamp = $candle['timestampReadable'];
-                            // $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-                            //     ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
-                            //     ->where('symbol', $symbol)
-                            //     ->where('depth', 1000)
-                            //     ->latest('snapshot_time')
-                            //     ->get();
-
-                            // if (count($snapshots) < 5) {
-                            //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                            //     continue;
-                            // }
-                            // $longWeight = 0;
-                            // $shortWeight = 0;
-                            // foreach ($snapshots as $snapshot) {
-                            //     if ($snapshot->signal === 'SHORT') {
-                            //         $shortWeight += $snapshot->short_strength;
-                            //     } else {
-                            //         $longWeight += $snapshot->long_strength;
-                            //     }
-                            // }
-
-
-                            // $snapshot = $snapshots[count($snapshots) - 1];
-
-
-                            // $trigger = $snapshot;
-                            // // ============================================
-
-                            // $resistanceLevels = array_map(function ($level) {
-                            //     return $level['price'];
-                            // }, json_decode(json_encode($trigger->resistance_levels), true));
-
-                            // $supportLevels = array_map(function ($level) {
-                            //     return $level['price'];
-                            // }, json_decode(json_encode($trigger->support_levels), true));
-
-
-                            // $triggerPriceShort = min($resistanceLevels);
-                            // $triggerPricePercentDiffShort = round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceShort), 2);
-
-                            // $triggerPriceLong = max($supportLevels);
-                            // $triggerPricePercentDiffLong =  round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceLong), 2);
-
-
-
-                            // if ($longWeight > $shortWeight * 2) {
-                            //     $tradeType = 'LONG';
-                            // } else if ($shortWeight > $longWeight * 2) {
-                            //     $tradeType = 'SHORT';
-                            // } else {
-                            //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                            //     continue;
-                            // }
-
-
-
-                            // MACD And Volume Trigger Formula
-                            $volumeSignal = CommonHelpers::getVolumeSignalsRealTime($symbol, '5m');
-                            // 5 macd solid RED candles and current macd light red
-                            $macdLongCondition = true;
-                            $loopIndex = $index - 1;
-                            while (true) {
-                                if ($data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0 && $data[$loopIndex]['histogram'] < 0) {
-                                    $loopIndex--;
-                                } else {
-                                    if ($index - $loopIndex - 1 > 4) {
-                                        break;
-                                    } else {
-                                        $macdLongCondition = false;
-                                        break;
-                                    }
-                                }
+                            if (!$isCandleClosing) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                continue;
                             }
-                            $macdLongCondition = $macdLongCondition && $data[$index]['histogram'] < 0 && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
+
+                            $timestamp = $data[$index]['timestampReadable'];
+                            $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                                ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+                                ->where('symbol', $symbol)
+                                ->where('depth', 1000)
+                                ->latest('snapshot_time')
+                                ->get();
+                            if (count($snapshots) < 1) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                continue;
+                            }
+                            $volumeSignals = CommonHelpers::getVolumeSignals($symbol, '5m', true);
+
+                            $currentVolumeSignal = $volumeSignals[count($volumeSignals) - 2];
+                            $orderBookSnapshot = $snapshots[0];
+
+
+
+
+
+                            // ==================LOGIC TO CHECK TRADE TYPE AND CONDITIONS==================
+
+                            // 5 macd solid RED candles and current macd light red
+                            $macdLongCondition =
+
+                                $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
+                                && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
+                                && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
+                                && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
+                                && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
+                                && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
+                            ;
+
 
 
                             // 5 macd loght Green candles and current macd Solid green
-
-                            $macdShortCondition = true;
-                            $loopIndex = $index - 1;
-                            while (true) {
-                                if ($data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0 && $data[$loopIndex]['histogram'] > 0) {
-                                    $loopIndex--;
-                                } else {
-                                    if ($index - $loopIndex - 1 > 4) {
-                                        break;
-                                    } else {
-                                        $macdShortCondition = false;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            $macdShortCondition = $macdShortCondition && $data[$index]['histogram'] > 0 && $data[$index]['histogram'] < $data[$index - 1]['histogram'];
+                            $macdShortCondition =
+                                $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0 // Current Candle should be solid green
+                                && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0 // // Second Last Candle should be light green
+                                && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0 // // Third Last Candle should be light green
+                                && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
+                                && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
+                                && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
+                            ;
 
 
-                            if ($macdLongCondition && $volumeSignal['indicators']['mfi_current'] < 30) {
+                            if ($macdLongCondition && $currentVolumeSignal['indicators']['mfi_current'] < 30 && $orderBookSnapshot->orderBookSnapshot > 1) {
                                 $tradeType = 'LONG';
-                            } else if ($macdShortCondition && $volumeSignal['indicators']['mfi_current'] > 70) {
+                            } else if ($macdShortCondition && $currentVolumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->orderBookSnapshot < 1) {
                                 $tradeType = 'SHORT';
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
                             }
 
-                            // -------------------------------
 
+                            // ========================================================================
+
+                            // ===========Initiate Open Trade Process==================================
                             $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType);
 
 
-                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [7]);
-
-                            if ($tradeType == 'SHORT') {
-
-                                // Instant opening of trades for now
-                                // if ($data[$index]['high'] >= $triggerPriceShort || true) {
-
-                                // If price hits trigger than pass current tradeInstance to parent function 
-                                CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
-                                $tradeToOpen =  $tradeInstance;
-                                break;
-                                // } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceShort) >  1) {
-                                //     // In case trigger fails or does not hit, remove the entry from worker_symbols
-                                //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                // }
-                            } else if ($tradeType == 'LONG') {
-
-                                // // Instant opening of trades for now
-                                // if ($data[$index]['low'] <= $triggerPriceLong || true) {
-
-                                CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
-                                $tradeToOpen =  $tradeInstance;
-                                break;
-                                // } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceLong) >  1) {
-                                //     // In case trigger fails or does not hit, remove the entry from worker_symbols
-                                //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                // }
-                            }
+                            CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
+                            $tradeToOpen =  $tradeInstance;
+                            break;
                         } catch (\Exception $e) {
                             Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                             Log::error($e->getTraceAsString());
@@ -327,26 +255,26 @@ class TriggersThread implements ShouldQueue
         }
     }
 
-    private static function manageOpenOrderLong($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage, $workerId)
+    private static function manageOpenOrderLong($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
     {
 
-        Log::info('TriggersThreadOrderBook ' . $workerId . ': Open order found for ' . $buy_order['symbol']);
-        $targetProfit = $buy_order['targetProfit'];
+        Log::info('TriggersThreadOrderBook ' . $workerId . ': Open order found for ' . $open_order['symbol']);
+        $targetProfit = $open_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $secondLastCandle = $candleData[count($candleData) - 2];
-        $stopLoss = $buy_order['stopLoss'];
+        $stopLoss = $open_order['stopLoss'];
         $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
 
         // Scenerio 1: If Current profit is less than 1%
-        $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100;
+        $currentProfit = (($currentCandle['close'] - $open_order['price']) / $open_order['price']) * 100;
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
         // Change take profit levels when order is stuck for more than 80 mins
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($buy_order['created_at']) > 80) && $targetProfit <= 0.4) {
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']) > 80) && $targetProfit <= 0.4) {
             $targetProfit = 0.2;
-            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $buy_order['symbol']);
+            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
         }
 
         if ($currentProfit < 0.5) {
@@ -392,8 +320,8 @@ class TriggersThread implements ShouldQueue
             $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 5, $stopLoss, $tradeInstance->symbol);
 
             if (!$lower_wick || $closeEarly) {
-                BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
-                DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId']);
+                DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
                     'currentProfit' => $currentProfit,
@@ -410,7 +338,7 @@ class TriggersThread implements ShouldQueue
             }
         } else if ($currentProfit > $targetProfit) {
 
-            DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+            DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'stopLoss' =>  $currentCandle['close'],
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
@@ -421,7 +349,7 @@ class TriggersThread implements ShouldQueue
 
             $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $tradeInstance->tradeAccount)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'open')->orderBy('created_at', 'desc')->first();
 
-            DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+            DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
@@ -433,27 +361,27 @@ class TriggersThread implements ShouldQueue
     }
 
 
-    private static function manageOpenOrderShort($tradeInstance,  $buy_order, $supportResistance, $profitIncrementPercentage, $workerId)
+    private static function manageOpenOrderShort($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
     {
-        Log::info('ShortThreadOrderBook: Open order found for ' . $buy_order['symbol']);
+        Log::info('ShortThreadOrderBook: Open order found for ' . $open_order['symbol']);
 
-        $targetProfit = $buy_order['targetProfit'];
+        $targetProfit = $open_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $secondLastCandle = $candleData[count($candleData) - 2];
 
-        $stopLoss = $buy_order['stopLoss'];
+        $stopLoss = $open_order['stopLoss'];
 
 
 
-        $currentProfit = (($currentCandle['close'] - $buy_order['price']) / $buy_order['price']) * 100 * -1;
+        $currentProfit = (($currentCandle['close'] - $open_order['price']) / $open_order['price']) * 100 * -1;
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
 
         // Change take profit levels when order is stuck for more than 80 mins
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($buy_order['created_at']) > 80) && $targetProfit <= 0.4) {
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']) > 80) && $targetProfit <= 0.4) {
             $targetProfit = 0.2;
-            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $buy_order['symbol']);
+            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
         }
 
         if ($currentProfit < 0.5) {
@@ -494,8 +422,8 @@ class TriggersThread implements ShouldQueue
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
             $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
             if (!$upper_wick || $closeEarly) {
-                BinanceApiService::closeMarketPositionLiveTrader($buy_order['orderId']);
-                DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+                BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId']);
+                DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                     'previousPrice' => $currentCandle['close'],
                     'currentPrice' => $currentCandle['close'],
                     'currentProfit' => $currentProfit,
@@ -512,7 +440,7 @@ class TriggersThread implements ShouldQueue
             }
         } else if ($currentProfit > $targetProfit) {
 
-            DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+            DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'stopLoss' =>  $currentCandle['close'],
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
@@ -520,7 +448,7 @@ class TriggersThread implements ShouldQueue
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
             ]);
         } else {
-            DB::table('live_trades_future_results')->where('orderId', $buy_order['orderId'])->update([
+            DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
