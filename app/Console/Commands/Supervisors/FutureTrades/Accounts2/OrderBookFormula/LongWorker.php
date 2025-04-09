@@ -35,7 +35,7 @@ class LongWorker extends Command
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
-            CommonHelpers::delayMS(10);
+            CommonHelpers::delayS(1);
         }
     }
 }

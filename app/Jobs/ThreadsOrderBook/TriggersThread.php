@@ -62,7 +62,7 @@ class TriggersThread implements ShouldQueue
                     $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->get();
 
                     foreach ($worker_symbols as $worker_symbol) {
-
+                        
                         try {
                             $symbol = $worker_symbol->symbol;
                             $tradeInstance = new stdClass;
