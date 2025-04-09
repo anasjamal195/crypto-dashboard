@@ -78,62 +78,113 @@ class TriggersThread implements ShouldQueue
 
 
                             // ==========================================Consolidated Triggers==========================================
-                            $timestamp = $candle['timestampReadable'];
-                            $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-                                ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
-                                ->where('symbol', $symbol)
-                                ->where('depth', 1000)
-                                ->latest('snapshot_time')
-                                ->get();
+                            // $timestamp = $candle['timestampReadable'];
+                            // $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                            //     ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+                            //     ->where('symbol', $symbol)
+                            //     ->where('depth', 1000)
+                            //     ->latest('snapshot_time')
+                            //     ->get();
 
-                            if (count($snapshots) < 5) {
-                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                continue;
-                            }
-                            $longWeight = 0;
-                            $shortWeight = 0;
-                            foreach ($snapshots as $snapshot) {
-                                if ($snapshot->signal === 'SHORT') {
-                                    $shortWeight += $snapshot->short_strength;
+                            // if (count($snapshots) < 5) {
+                            //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                            //     continue;
+                            // }
+                            // $longWeight = 0;
+                            // $shortWeight = 0;
+                            // foreach ($snapshots as $snapshot) {
+                            //     if ($snapshot->signal === 'SHORT') {
+                            //         $shortWeight += $snapshot->short_strength;
+                            //     } else {
+                            //         $longWeight += $snapshot->long_strength;
+                            //     }
+                            // }
+
+
+                            // $snapshot = $snapshots[count($snapshots) - 1];
+
+
+                            // $trigger = $snapshot;
+                            // // ============================================
+
+                            // $resistanceLevels = array_map(function ($level) {
+                            //     return $level['price'];
+                            // }, json_decode(json_encode($trigger->resistance_levels), true));
+
+                            // $supportLevels = array_map(function ($level) {
+                            //     return $level['price'];
+                            // }, json_decode(json_encode($trigger->support_levels), true));
+
+
+                            // $triggerPriceShort = min($resistanceLevels);
+                            // $triggerPricePercentDiffShort = round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceShort), 2);
+
+                            // $triggerPriceLong = max($supportLevels);
+                            // $triggerPricePercentDiffLong =  round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceLong), 2);
+
+
+
+                            // if ($longWeight > $shortWeight * 2) {
+                            //     $tradeType = 'LONG';
+                            // } else if ($shortWeight > $longWeight * 2) {
+                            //     $tradeType = 'SHORT';
+                            // } else {
+                            //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                            //     continue;
+                            // }
+
+
+
+                            // MACD And Volume Trigger Formula
+                            $volumeSignal = CommonHelpers::getVolumeSignalsRealTime($symbol, '5m');
+                            // 5 macd solid RED candles and current macd light red
+                            $macdLongCondition = true;
+                            $loopIndex = $index - 1;
+                            while (true) {
+                                if ($data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0 && $data[$loopIndex]['histogram'] < 0) {
+                                    $loopIndex--;
                                 } else {
-                                    $longWeight += $snapshot->long_strength;
+                                    if ($index - $loopIndex - 1 > 4) {
+                                        break;
+                                    } else {
+                                        $macdLongCondition = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            $macdLongCondition = $macdLongCondition && $data[$index]['histogram'] < 0 && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
+
+
+                            // 5 macd loght Green candles and current macd Solid green
+
+                            $macdShortCondition = true;
+                            $loopIndex = $index - 1;
+                            while (true) {
+                                if ($data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0 && $data[$loopIndex]['histogram'] > 0) {
+                                    $loopIndex--;
+                                } else {
+                                    if ($index - $loopIndex - 1 > 4) {
+                                        break;
+                                    } else {
+                                        $macdShortCondition = false;
+                                        break;
+                                    }
                                 }
                             }
 
-
-                            $snapshot = $snapshots[count($snapshots) - 1];
-
-
-                            $trigger = $snapshot;
-                            // ============================================
-
-                            $resistanceLevels = array_map(function ($level) {
-                                return $level['price'];
-                            }, json_decode(json_encode($trigger->resistance_levels), true));
-
-                            $supportLevels = array_map(function ($level) {
-                                return $level['price'];
-                            }, json_decode(json_encode($trigger->support_levels), true));
+                            $macdShortCondition = $macdShortCondition && $data[$index]['histogram'] > 0 && $data[$index]['histogram'] < $data[$index - 1]['histogram'];
 
 
-                            $triggerPriceShort = min($resistanceLevels);
-                            $triggerPricePercentDiffShort = round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceShort), 2);
-
-                            $triggerPriceLong = max($supportLevels);
-                            $triggerPricePercentDiffLong =  round(CommonHelpers::getPercentDiff($data[$index - 1]['close'], $triggerPriceLong), 2);
-
-
-
-                            if ($longWeight > $shortWeight * 2) {
+                            if ($macdLongCondition && $volumeSignal['indicators']['mfi_current'] < 30) {
                                 $tradeType = 'LONG';
-                            } else if ($shortWeight > $longWeight * 2) {
+                            } else if ($macdShortCondition && $volumeSignal['indicators']['mfi_current'] > 70) {
                                 $tradeType = 'SHORT';
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
                             }
 
-
+                            // -------------------------------
 
                             $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType);
 
@@ -143,28 +194,28 @@ class TriggersThread implements ShouldQueue
                             if ($tradeType == 'SHORT') {
 
                                 // Instant opening of trades for now
-                                if ($data[$index]['high'] >= $triggerPriceShort || true) {
+                                // if ($data[$index]['high'] >= $triggerPriceShort || true) {
 
-                                    // If price hits trigger than pass current tradeInstance to parent function 
-                                    CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
-                                    $tradeToOpen =  $tradeInstance;
-                                    break;
-                                } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceShort) >  1) {
-                                    // In case trigger fails or does not hit, remove the entry from worker_symbols
-                                    CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                }
+                                // If price hits trigger than pass current tradeInstance to parent function 
+                                CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
+                                $tradeToOpen =  $tradeInstance;
+                                break;
+                                // } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceShort) >  1) {
+                                //     // In case trigger fails or does not hit, remove the entry from worker_symbols
+                                //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                // }
                             } else if ($tradeType == 'LONG') {
 
-                                // Instant opening of trades for now
-                                if ($data[$index]['low'] <= $triggerPriceLong || true) {
+                                // // Instant opening of trades for now
+                                // if ($data[$index]['low'] <= $triggerPriceLong || true) {
 
-                                    CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
-                                    $tradeToOpen =  $tradeInstance;
-                                    break;
-                                } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceLong) >  1) {
-                                    // In case trigger fails or does not hit, remove the entry from worker_symbols
-                                    CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                }
+                                CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
+                                $tradeToOpen =  $tradeInstance;
+                                break;
+                                // } else if (CommonHelpers::getPercentDiff($candle['close'], $triggerPriceLong) >  1) {
+                                //     // In case trigger fails or does not hit, remove the entry from worker_symbols
+                                //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                // }
                             }
                         } catch (\Exception $e) {
                             Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());

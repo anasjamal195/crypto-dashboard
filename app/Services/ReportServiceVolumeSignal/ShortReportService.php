@@ -1,5 +1,5 @@
 <?php
-
+// Volume-Signal & Order-books
 namespace App\Services\ReportServiceVolumeSignal;
 
 use App\CommonHelpers;
@@ -140,8 +140,6 @@ class ShortReportService
 
         $waitingCandles = 0;
 
-
-        // Volume Signal Analysis
         $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true);
 
         foreach ($data as $index => $candle) {
@@ -172,27 +170,95 @@ class ShortReportService
 
                 $averages = IdealTradeService::getAverages($idealBuying, 'SHORT');
 
+
+
                 $allowOpening = false;
 
 
-                $signal = $volumeSignals[$index - 1000];
 
 
-                if ($signal['signal'] === 'buy') {
+
+                $timestamp = $candle['timestamp'];
+                $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                    ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+                    ->where('symbol', $symbol)
+                    ->where('depth', 1000)
+                    ->latest('snapshot_time')
+                    ->get();
+                if (count($snapshots) < 5) {
+                    continue;
+                }
+
+                $volumeIndex = $index - 1000;
+                $volumeSignal = $volumeSignals[$volumeIndex];
+
+                // if ($volumeSignal['indicators']['mfi_current'] < 20 && $volumeSignals[$volumeIndex]['indicators']['obv_current'] > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']) {
+
+                //     $tradeType = 'LONG';
+                //     $allowOpening = true;
+                // } else if ($volumeSignal['indicators']['mfi_current'] > 80 && $volumeSignals[$volumeIndex]['indicators']['obv_current'] < $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']) {
+                //     $tradeType = 'SHORT';
+                //     $allowOpening = true;
+                // } else {
+                //     $allowOpening = false;
+                //     continue;
+                // }
+
+
+
+
+
+                // 5 macd solid RED candles and current macd light red
+                $macdLongCondition = true;
+                $loopIndex = $index - 1;
+                while (true) {
+                    if ($data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0 && $data[$loopIndex]['histogram'] < 0) {
+                        $loopIndex--;
+                    } else {
+                        if ($index - $loopIndex - 1 > 4) {
+                            break;
+                        } else {
+                            $macdLongCondition = false;
+                            break;
+                        }
+                    }
+                }
+                $macdLongCondition = $macdLongCondition && $data[$index]['histogram'] < 0 && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
+
+
+                // 5 macd loght Green candles and current macd Solid green
+
+                $macdShortCondition = true;
+                $loopIndex = $index - 1;
+                while (true) {
+                    if ($data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0 && $data[$loopIndex]['histogram'] > 0) {
+                        $loopIndex--;
+                    } else {
+                        if ($index - $loopIndex - 1 > 4) {
+                            break;
+                        } else {
+                            $macdShortCondition = false;
+                            break;
+                        }
+                    }
+                }
+
+                $macdShortCondition = $macdShortCondition && $data[$index]['histogram'] > 0 && $data[$index]['histogram'] < $data[$index - 1]['histogram'];
+
+
+                if ($macdLongCondition && $volumeSignal['indicators']['mfi_current'] < 30) {
                     $tradeType = 'LONG';
                     $allowOpening = true;
-                } else if ($signal['signal'] === 'sell') {
+                } else if ($macdShortCondition && $volumeSignal['indicators']['mfi_current'] > 70) {
                     $tradeType = 'SHORT';
                     $allowOpening = true;
                 } else {
-                    $allowOpening = false;
-                }
-
-
-
-                if (!$allowOpening) {
                     continue;
                 }
+
+
+
+
                 if (
                     $allowOpening
                 ) {
@@ -228,6 +294,55 @@ class ShortReportService
                     }
                 }
 
+                $allowSwitching = false;
+                if (!$isAlreadySwitched && !$closingPrice) {
+                    // Check for switching Condition
+
+                    $timestamp = $candle['timestamp'];
+                    $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                        ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+                        ->where('symbol', $symbol)
+                        ->where('depth', 1000)
+                        ->latest('snapshot_time')
+                        ->get();
+                    if (count($snapshots) < 5) {
+                        continue;
+                    }
+
+
+
+                    $longWeight = 0;
+                    $shortWeight = 0;
+                    foreach ($snapshots as $snapshot) {
+                        if ($snapshot->signal === 'SHORT') {
+                            $shortWeight += $snapshot->short_strength;
+                        } else {
+                            $longWeight += $snapshot->long_strength;
+                        }
+                    }
+
+                    if ($longWeight > $shortWeight * 2 && $tradeType === 'SHORT') {
+                        $closingPrice = $candle['close'];
+                        $switchTrade = true;
+                        $isAlreadySwitched = true;
+                        $switchDirection = 'LONG';
+                        $switchSnapshot = $snapshots[count($snapshots) - 1];
+                        $allowSwitching = true;
+                    } else if ($shortWeight > $longWeight * 2 && $tradeType === 'LONG') {
+                        $closingPrice = $candle['close'];
+                        $switchTrade = true;
+                        $isAlreadySwitched = true;
+                        $switchDirection = 'SHORT';
+                        $allowSwitching = true;
+
+                        $switchSnapshot = $snapshots[count($snapshots) - 1];
+                    }
+                }
+
+
+
+
+
 
 
                 // Closing Sequence
@@ -248,7 +363,7 @@ class ShortReportService
                     $currentTrade['lowestPricePercentage'] = abs((($open_price - $extremePrice) / $open_price)) * 100;
                     $currentTrade['position'] = $tradeType;
                     $currentTrade['formula'] = $formula;
-
+                    $currentTrade['snapshot_id'] = null;
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
                     $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
@@ -261,6 +376,18 @@ class ShortReportService
                     $snapshotOpen = null;
                     $tradeType = null;
                     $waitingCandles = 4;
+
+
+                    // Stop it from switching multiple times
+                    if (!$allowSwitching && $isAlreadySwitched) {
+                        $isAlreadySwitched = false;
+                    }
+                    // if ($isAlreadySwitched) {
+                    //     $isAlreadySwitched = false;
+                    //     $switchTrade = false;
+                    //     $switchDirection = '';
+                    //     $switchSnapshot = new stdClass;
+                    // }
                 }
             }
         }

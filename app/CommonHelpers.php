@@ -1254,7 +1254,7 @@ class CommonHelpers
                 'target_profit' => 0.5, // Your 0.5% target
                 'use_obv' => true,
                 'use_vwap' => true,
-                'use_volume_profile' => true,
+                'use_volume_profile' => false,
                 'use_cvd' => true,
                 'use_mfi' => true,
             ]);
@@ -1265,7 +1265,7 @@ class CommonHelpers
             $signal['timestampReadable'] = $timestamp;
             $signal['timestamp'] = $candle[0];
             // if ($signal['potential'])
-
+         
             if ($isArr)
                 $triggers[] = $signal;
             else
