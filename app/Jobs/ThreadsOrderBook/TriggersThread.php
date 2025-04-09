@@ -358,30 +358,30 @@ class TriggersThread implements ShouldQueue
         // Handle Early Closing on Order Books
 
         $closeEarly = false;
-        $timestamp = $currentCandle['timestampReadable'];
-        $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-            ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
-            ->where('symbol', $tradeInstance->symbol)
-            ->where('depth', 1000)
-            ->latest('snapshot_time')
-            ->get();
+        // $timestamp = $currentCandle['timestampReadable'];
+        // $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+        //     ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+        //     ->where('symbol', $tradeInstance->symbol)
+        //     ->where('depth', 1000)
+        //     ->latest('snapshot_time')
+        //     ->get();
 
-        if (count($snapshots) > 5) {
-            $longWeight = 0;
-            $shortWeight = 0;
-            foreach ($snapshots as $snapshot) {
-                if ($snapshot->signal === 'SHORT') {
-                    $shortWeight += $snapshot->short_strength;
-                } else {
-                    $longWeight += $snapshot->long_strength;
-                }
-            }
+        // if (count($snapshots) > 5) {
+        //     $longWeight = 0;
+        //     $shortWeight = 0;
+        //     foreach ($snapshots as $snapshot) {
+        //         if ($snapshot->signal === 'SHORT') {
+        //             $shortWeight += $snapshot->short_strength;
+        //         } else {
+        //             $longWeight += $snapshot->long_strength;
+        //         }
+        //     }
 
 
-            if ($shortWeight > $longWeight * 2) {
-                $closeEarly = true;
-            }
-        }
+        //     if ($shortWeight > $longWeight * 2) {
+        //         $closeEarly = true;
+        //     }
+        // }
 
 
 
@@ -466,30 +466,30 @@ class TriggersThread implements ShouldQueue
         // Handle Early Closing on Order Books
 
         $closeEarly = false;
-        $timestamp = $currentCandle['timestampReadable'];
-        $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-            ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
-            ->where('symbol', $tradeInstance->symbol)
-            ->where('depth', 1000)
-            ->latest('snapshot_time')
-            ->get();
+        // $timestamp = $currentCandle['timestampReadable'];
+        // $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+        //     ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+        //     ->where('symbol', $tradeInstance->symbol)
+        //     ->where('depth', 1000)
+        //     ->latest('snapshot_time')
+        //     ->get();
 
-        if (count($snapshots) > 5) {
-            $longWeight = 0;
-            $shortWeight = 0;
-            foreach ($snapshots as $snapshot) {
-                if ($snapshot->signal === 'SHORT') {
-                    $shortWeight += $snapshot->short_strength;
-                } else {
-                    $longWeight += $snapshot->long_strength;
-                }
-            }
+        // if (count($snapshots) > 5) {
+        //     $longWeight = 0;
+        //     $shortWeight = 0;
+        //     foreach ($snapshots as $snapshot) {
+        //         if ($snapshot->signal === 'SHORT') {
+        //             $shortWeight += $snapshot->short_strength;
+        //         } else {
+        //             $longWeight += $snapshot->long_strength;
+        //         }
+        //     }
 
 
-            if ($longWeight > $shortWeight * 2) {
-                $closeEarly = true;
-            }
-        }
+        //     if ($longWeight > $shortWeight * 2) {
+        //         $closeEarly = true;
+        //     }
+        // }
 
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
             $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
