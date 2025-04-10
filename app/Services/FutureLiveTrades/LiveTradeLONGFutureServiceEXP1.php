@@ -193,7 +193,7 @@ class LiveTradeLONGFutureServiceEXP1
             $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('position', 'LONG')->where('market', $market)->where('interval', $interval)->get();
             foreach ($leftoverEntries as $leftoverCoin) {
                 $open_order = CommonHelpers::checkOpenOrder($leftoverCoin->symbol, 'LONG', $market, $user_id);
-                if (!$open_order['is_open']) {
+                if (!$open_order['is_open'] && !$leftoverCoin->isWorkerDispatched) {
                     DB::table('trade_handler')->where('id', $leftoverCoin->id)->delete();
                 }
             }
@@ -203,11 +203,11 @@ class LiveTradeLONGFutureServiceEXP1
                 'market' => $market,
                 'symbol' => $coin,
                 'interval' => $interval,
-                'position' => 'LONG',
+                'position' => 'SHORT',
                 'leverage' => 1,
-                'buyPrice' => CommonHelpers::getMetaValue($user_id, 'buy_price' . $meta_prefix, 6),
+                'buyPrice' => 15,
                 'tradeAccount' => $user_id,
-                'targetProfit' => CommonHelpers::getMetaValue($user_id, 'target_profit' . $meta_prefix, 0.4),
+                'targetProfit' => 0.5,
                 'rsiThreshold' => 0,
                 'obvLimit' => 0,
                 'stochLimit' => 0,
@@ -224,12 +224,12 @@ class LiveTradeLONGFutureServiceEXP1
             }
 
             // Handle SHORT Trades
-            
+
             // Remove Coins that are not in priority queue
             $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('position', 'SHORT')->where('market', $market)->where('interval', $interval)->get();
             foreach ($leftoverEntries as $leftoverCoin) {
                 $open_order = CommonHelpers::checkOpenOrder($leftoverCoin->symbol, 'SHORT', $market, $user_id);
-                if (!$open_order['is_open']) {
+                if (!$open_order['is_open'] && !$leftoverCoin->isWorkerDispatched) {
                     DB::table('trade_handler')->where('id', $leftoverCoin->id)->delete();
                 }
             }
@@ -241,9 +241,9 @@ class LiveTradeLONGFutureServiceEXP1
                 'interval' => $interval,
                 'position' => 'SHORT',
                 'leverage' => 1,
-                'buyPrice' => CommonHelpers::getMetaValue($user_id, 'buy_price' . $meta_prefix, 6),
+                'buyPrice' => 15,
                 'tradeAccount' => $user_id,
-                'targetProfit' => CommonHelpers::getMetaValue($user_id, 'target_profit' . $meta_prefix, 0.4),
+                'targetProfit' => 0.5,
                 'rsiThreshold' => 0,
                 'obvLimit' => 0,
                 'stochLimit' => 0,
