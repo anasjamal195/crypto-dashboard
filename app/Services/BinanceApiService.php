@@ -91,29 +91,41 @@ class BinanceApiService
     }
     public static function fetchTopUSDTPairsByVolume($limit = 10)
     {
-        // Get trading status info
+        // Get trading status info from Binance Futures
         $exchangeInfoUrl = 'https://fapi.binance.com/fapi/v1/exchangeInfo';
         $tickerInfoUrl = 'https://fapi.binance.com/fapi/v1/ticker/24hr';
 
-
+        // Fetch Futures Exchange Info and Ticker Data
         $exchangeResponse = self::getHttpClient()->get($exchangeInfoUrl);
         $exchangeData = $exchangeResponse->json();
 
-        // Build a map of symbol => status
+        $tickerResponse = self::getHttpClient()->get($tickerInfoUrl);
+        $tickers = $tickerResponse->json();
+
+        // Build a map of symbol => status for Futures market
         $statusMap = [];
         foreach ($exchangeData['symbols'] as $symbol) {
             $statusMap[$symbol['symbol']] = $symbol['status'];
         }
 
-        // Get 24hr ticker data
-        $tickerResponse = self::getHttpClient()->get($tickerInfoUrl);
-        $tickers = $tickerResponse->json();
+        // Get Spot Market Trading Pairs
+        $spotMarketUrl = 'https://api.binance.com/api/v3/exchangeInfo'; // Binance Spot market pairs endpoint
+        $spotMarketResponse = json_decode(file_get_contents($spotMarketUrl), true);
+        $spotMarketSymbols = [];
 
-        // Filter USDT pairs that are TRADING
-        $usdtPairs = array_filter($tickers, function ($ticker) use ($statusMap) {
+        // Filter Spot market symbols with USDT as the quoteAsset
+        foreach ($spotMarketResponse['symbols'] as $symbolInfo) {
+            if ($symbolInfo['status'] == 'TRADING' && $symbolInfo['quoteAsset'] == 'USDT') {
+                $spotMarketSymbols[] = $symbolInfo['symbol'];
+            }
+        }
+
+        // Filter USDT pairs that are TRADING and available on the Spot market
+        $usdtPairs = array_filter($tickers, function ($ticker) use ($statusMap, $spotMarketSymbols) {
             return str_ends_with($ticker['symbol'], 'USDT') &&
                 isset($statusMap[$ticker['symbol']]) &&
-                $statusMap[$ticker['symbol']] === 'TRADING';
+                $statusMap[$ticker['symbol']] === 'TRADING' &&
+                in_array($ticker['symbol'], $spotMarketSymbols); // Check if it exists on the Spot market
         });
 
         // Sort by quoteVolume
@@ -121,7 +133,7 @@ class BinanceApiService
             return (float)$b['quoteVolume'] <=> (float)$a['quoteVolume'];
         });
 
-        // Get top N base assets
+        // Get top N base assets based on volume
         $topBaseAssets = array_map(function ($ticker) {
             return $ticker['symbol'];
         }, array_slice($usdtPairs, 0, $limit));
@@ -765,7 +777,7 @@ class BinanceApiService
     public static function getOrderBook(string $symbol, int $limit = 100, $apiPointerUrl = null): ?array
     {
 
-        $url = config('binance.api.base_url') . config('binance.endpoints.depth');
+        $url = config('binance.api.future_base_url') . config('binance.endpoints.depth');
         if ($apiPointerUrl) {
             $url = $apiPointerUrl;
         }
