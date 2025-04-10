@@ -70,7 +70,7 @@ class FutureCoinDumper extends Command
                 $delistedCoins = DB::table('coins')->whereNotIn('symbol', $binanceCoins)->get();
 
                 foreach ($delistedCoins as $delistedCoin) {
-                    CommonHelpers::changeCoinStatus($delistedCoin, 'D');
+                    CommonHelpers::changeCoinStatus($delistedCoin->symbol, 'D');
                 }
 
                 Log::info("Coin List Dumped");
