@@ -294,6 +294,7 @@ class TriggersThread implements ShouldQueue
         $closeEarly = false;
 
 
+        // Close Early after 30 mins if SL is 0.8
 
         if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']) > 30) && $targetProfit <= -0.8) {
             $closeEarly = true;
