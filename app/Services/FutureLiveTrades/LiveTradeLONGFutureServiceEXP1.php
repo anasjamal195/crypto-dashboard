@@ -203,7 +203,7 @@ class LiveTradeLONGFutureServiceEXP1
                 'market' => $market,
                 'symbol' => $coin,
                 'interval' => $interval,
-                'position' => 'SHORT',
+                'position' => 'LONG',
                 'leverage' => 1,
                 'buyPrice' => 15,
                 'tradeAccount' => $user_id,
