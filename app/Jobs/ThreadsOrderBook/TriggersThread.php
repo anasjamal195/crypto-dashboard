@@ -114,6 +114,7 @@ class TriggersThread implements ShouldQueue
                                 && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
                                 && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
                                 && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
+                                && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Sixth Last Candle should be dark red
                             ;
 
 
@@ -129,9 +130,11 @@ class TriggersThread implements ShouldQueue
                             ;
 
 
-                            if ($macdLongCondition && $currentVolumeSignal['indicators']['mfi_current'] < 30 && $orderBookSnapshot->orderBookSnapshot > 1) {
+                            if ($macdLongCondition && $currentVolumeSignal['indicators']['mfi_current'] < 30 && $orderBookSnapshot->volume_imbalance > 1) {
                                 $tradeType = 'LONG';
-                            } else if ($macdShortCondition && $currentVolumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->orderBookSnapshot < 1) {
+                            } else 
+
+                            if ($macdShortCondition && $currentVolumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->volume_imbalance < 1) {
                                 $tradeType = 'SHORT';
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
