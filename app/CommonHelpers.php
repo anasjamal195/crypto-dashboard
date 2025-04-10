@@ -1336,6 +1336,7 @@ class CommonHelpers
         DB::table('coins')->insert([
             'symbol' => $coin,
             'status' => 'T',
+            'market' => 'FUTURE',
             'created_at' => Carbon::now()->toDateTimeString(),
             'updated_at' => Carbon::now()->toDateTimeString(),
         ]);
