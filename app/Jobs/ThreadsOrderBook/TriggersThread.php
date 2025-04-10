@@ -279,7 +279,7 @@ class TriggersThread implements ShouldQueue
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
         // Change take profit levels when order is stuck for more than 80 mins
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']) > 80) && $targetProfit <= 0.4) {
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 80 && $targetProfit <= 0.4) {
             $targetProfit = 0.2;
             Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
         }
@@ -296,8 +296,7 @@ class TriggersThread implements ShouldQueue
 
 
         // Close Early after 30 mins if SL is 0.8
-
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']) > 30) && $targetProfit <= -1) {
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 30 && $targetProfit <= -1) {
             $closeEarly = true;
         }
 
@@ -368,7 +367,7 @@ class TriggersThread implements ShouldQueue
 
 
         // Change take profit levels when order is stuck for more than 80 mins
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']) > 80) && $targetProfit <= 0.4) {
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 80 && $targetProfit <= 0.4) {
             $targetProfit = 0.2;
             Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
         }
@@ -384,7 +383,7 @@ class TriggersThread implements ShouldQueue
 
         $closeEarly = false;
         // Close Early after 30 mins if SL is 0.8
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']) > 30) && $targetProfit <= -1) {
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 30 && $targetProfit <= -1) {
             $closeEarly = true;
         }
 

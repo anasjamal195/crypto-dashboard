@@ -254,7 +254,7 @@
     @auth()
         <div class="wrapper">
             @include('layouts.navbars.sidebar')
-            <div class="main-panel" data="blue">
+            <div class="main-panel" data="green">
                 @include('layouts.navbars.navbar')
 
                 <div class="content">
