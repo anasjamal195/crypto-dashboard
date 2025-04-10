@@ -46,56 +46,38 @@ class FutureCoinDumper extends Command
     public function handle()
     {
 
-        // Combined Worker for all repeptitive Tasks 
 
+        Log::info("Coin List Dumper started");
 
-        Log::info("Combined Background Workers Started");
-        DB::table('coins')->where('market', 'FUTURE')->delete();
         while (true) {
-            $this->minPercentage = CommonHelpers::getSettingsValue('future_coin_worker_min_percentage', -5);
-            $this->maxPercentage = CommonHelpers::getSettingsValue('future_coin_worker_max_percentage', 5);
             $this->quantity = CommonHelpers::getSettingsValue('future_coin_worker_quantity', 20);
             try {
-                $stableCoins = BinanceApiService::getStableCoins($this->minPercentage, $this->maxPercentage, $this->quantity);
-                foreach ($stableCoins as $coin) {
-                    if (DB::table('coins')->where('symbol', $coin['symbol'])->where('market', 'FUTURE')->first()) {
-                        DB::table('coins')->where('symbol', $coin['symbol'])->where('market', 'FUTURE')->update(
-                            [
-                                'symbol' => $coin['symbol'],
-                                'market' => 'FUTURE',
-                            ]
-                        );
+                $binanceCoins = BinanceApiService::fetchTopUSDTPairsByVolume(1000);
+
+                foreach ($binanceCoins as $binanceCoin) {
+                    $systemCoin = DB::table('coins')->where('symbol', $binanceCoin)->first();
+
+                    if ($systemCoin && $systemCoin->status === 'D') {
+                        CommonHelpers::changeCoinStatus($binanceCoin, 'T');
+                    } else if (!$systemCoin) {
+                        CommonHelpers::addNewCoin($binanceCoin);
                     } else {
-                        DB::table('coins')->insert(
-                            [
-                                'symbol' => $coin['symbol'],
-                                'market' => 'FUTURE',
-                            ]
-                        );
+                        continue;
                     }
                 }
 
-                // // Coin Report Worker
-                // $this->interval = CommonHelpers::getSettingsValue('report_worker_interval_future', '1m');
-                // $this->limit = CommonHelpers::getSettingsValue('report_worker_limit_future', 1000);
-                // CoinReportService::updateCoinReport(
-                //     $this->interval,
-                //     $this->limit,
-                //     $this->market,
 
-                // );
+                $delistedCoins = DB::table('coins')->whereNotIn('symbol', $binanceCoins)->get();
 
+                foreach ($delistedCoins as $delistedCoin) {
+                    CommonHelpers::changeCoinStatus($delistedCoin, 'D');
+                }
 
-                // Setting Workers
-                // foreach (User::all() as $user) {
-                //     $interval = CommonHelpers::getMetaValue($user->id, 'live_trade_worker_interval_future', '1m');
-                //     LiveTradeLONGFutureServiceEXP1::updateTradeHandler($interval, 'FUTURE', $user->id);
-                //     CommonHelpers::delayMS(500);
-                // }
+                Log::info("Coin List Dumped");
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
-            CommonHelpers::delayMin(10);
+            CommonHelpers::delayMin(20);
         }
     }
 }

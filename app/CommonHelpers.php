@@ -1265,7 +1265,7 @@ class CommonHelpers
             $signal['timestampReadable'] = $timestamp;
             $signal['timestamp'] = $candle[0];
             // if ($signal['potential'])
-         
+
             if ($isArr)
                 $triggers[] = $signal;
             else
@@ -1301,5 +1301,43 @@ class CommonHelpers
         $signal = $volumeSignalService->getScalpingSignals();
         $signal = $signal['signals'][0];
         return $signal;
+    }
+
+
+
+    public static function changeCoinStatus($coin, $status)
+    {
+        // change status for this entry
+        DB::table('coins')->where('symbol', $coin)->update([
+            'status' => $status,
+        ]);
+
+
+        // Add snapshot in history table
+        DB::table('coin_status_history')->insert([
+            'symbol' => $coin,
+            'status' => $status,
+            'timestamp' => Carbon::now()->toDateTimeString(),
+            'created_at' => Carbon::now()->toDateTimeString(),
+            'updated_at' => Carbon::now()->toDateTimeString(),
+
+        ]);
+    }
+
+
+    public static function addNewCoin($coin)
+    {
+        $systemCoin = DB::table('coins')->where('symbol', $coin)->first();
+        if ($systemCoin) {
+            return false;
+        }
+
+        // Insert New entry entry
+        DB::table('coins')->insert([
+            'symbol' => $coin,
+            'status' => 'T',
+            'created_at' => Carbon::now()->toDateTimeString(),
+            'updated_at' => Carbon::now()->toDateTimeString(),
+        ]);
     }
 }

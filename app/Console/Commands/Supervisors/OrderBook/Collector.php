@@ -29,7 +29,7 @@ class Collector extends Command
      */
     public function handle()
     {
-        $symbols  = DB::table('coins')->where('market', 'FUTURE')->pluck('symbol')->toArray();
+        $symbols  = DB::table('coins')->where('market', 'FUTURE')->where('status','T')->pluck('symbol')->toArray();
 
         $interval = 1;
         $depths = [
