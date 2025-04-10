@@ -72,8 +72,10 @@ class FutureCoinDumper extends Command
                 foreach ($delistedCoins as $delistedCoin) {
                     CommonHelpers::changeCoinStatus($delistedCoin->symbol, 'D');
                 }
-
-                Log::info("Coin List Dumped");
+                Log::info("Coin List Dumped ");
+                Log::info("Generating Trade Handlers...");
+                LiveTradeLONGFutureServiceEXP1::updateTradeHandler('5m', 'FUTURE', 2);
+                Log::info("Trade Handlers Generated");
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }
