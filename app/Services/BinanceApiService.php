@@ -89,7 +89,47 @@ class BinanceApiService
                 return ['symbol' => $value . 'USDT'];
         }, $allowedPairs));
     }
+    public static function fetchTopUSDTPairsByVolume($limit = 10)
+    {
+        // Get trading status info
+        $exchangeInfoUrl = 'https://fapi.binance.com/fapi/v1/exchangeInfo';
+        $tickerInfoUrl = 'https://fapi.binance.com/fapi/v1/ticker/24hr';
 
+        
+        $exchangeResponse = self::getHttpClient()->get($exchangeInfoUrl);
+        $exchangeData = $exchangeResponse->json();
+    
+        // Build a map of symbol => status
+        $statusMap = [];
+        foreach ($exchangeData['symbols'] as $symbol) {
+            $statusMap[$symbol['symbol']] = $symbol['status'];
+        }
+    
+        // Get 24hr ticker data
+        $tickerResponse = self::getHttpClient()->get($tickerInfoUrl);
+        $tickers = $tickerResponse->json();
+    
+        // Filter USDT pairs that are TRADING
+        $usdtPairs = array_filter($tickers, function ($ticker) use ($statusMap) {
+            return str_ends_with($ticker['symbol'], 'USDT') &&
+                   isset($statusMap[$ticker['symbol']]) &&
+                   $statusMap[$ticker['symbol']] === 'TRADING';
+        });
+    
+        // Sort by quoteVolume
+        usort($usdtPairs, function ($a, $b) {
+            return (float)$b['quoteVolume'] <=> (float)$a['quoteVolume'];
+        });
+    
+        // Get top N base assets
+        $topBaseAssets = array_map(function ($ticker) {
+            return str_replace('USDT', '', $ticker['symbol']);
+        }, array_slice($usdtPairs, 0, $limit));
+    
+        return $topBaseAssets;
+    }
+    
+    
     public static function fetchBinanceUSDTPairs()
     {
         $url = config('binance.api.future_base_url') . config('binance.endpoints.exchange_info');

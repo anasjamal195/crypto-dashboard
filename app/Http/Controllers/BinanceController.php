@@ -24,8 +24,8 @@ class BinanceController extends Controller
 
 
         // =======Testing==========================
+      
 
-       
 
         // ========================================
         // Fetch all unique symbols from the database
