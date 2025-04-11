@@ -33,7 +33,7 @@ class SafteyAlertMail extends Mailable
      */
     public function build()
     {
-        return $this->subject('CryptoAPIs Store Safety Alert: ' . $this->details['action'] . ' [Log # ' . $this->details['id'] . ']')
+        return $this->subject('CryptoAPIs Store Safety Alert: ' . $this->details->action . ' [Log # ' . $this->details->id . ']')
             ->view('Emails.safety-log-template', ['safetyLog' => $this->details]);
     }
 }

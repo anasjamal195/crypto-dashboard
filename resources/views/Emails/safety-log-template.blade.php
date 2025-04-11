@@ -141,7 +141,7 @@
         <div class="alert-header">
             Trading Position Status Update
 
-            @switch($safetyLog['action'])
+            @switch($safetyLog->action)
                 @case('STARTED_LOGGING')
                     <span class="action-tag action-info">SYSTEM START</span>
                 @break
@@ -163,17 +163,17 @@
                 @break
 
                 @default
-                    <span class="action-tag action-info">{{ $safetyLog['action'] }}</span>
+                    <span class="action-tag action-info">{{ $safetyLog->action }}</span>
             @endswitch
         </div>
 
         <div class="alert-timestamp">
-            Event Time: {{ \Carbon\Carbon::parse($safetyLog['created_at'])->format('M d, Y \a\t h:i:s A') }}
+            Event Time: {{ \Carbon\Carbon::parse($safetyLog->created_at)->format('M d, Y \a\t h:i:s A') }}
         </div>
 
         <div class="description-box">
             <div class="description-title">
-                @switch($safetyLog['action'])
+                @switch($safetyLog->action)
                     @case('STARTED_LOGGING')
                         <span class="crypto-icon">🔄</span> Trading Bot Monitoring Initiated
                     @break
@@ -205,10 +205,10 @@
         </div>
 
         <div class="alert-details">
-            {{ $safetyLog['details'] }}
+            {{ $safetyLog->details }}
         </div>
 
-        @switch($safetyLog['action'])
+        @switch($safetyLog->action)
             @case('STARTED_LOGGING')
                 <p>The supervisor process has started monitoring Binance trading operations. All systems operational.</p>
             @break
