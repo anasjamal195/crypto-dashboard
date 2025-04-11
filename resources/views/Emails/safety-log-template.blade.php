@@ -104,6 +104,11 @@
             background-color: #dc3545;
         }
 
+        .action-error {
+            background-color: #6f42c1;
+            /* Purple for errors */
+        }
+
         .position-long {
             background-color: #198754;
             /* Green for LONG positions */
@@ -127,6 +132,23 @@
         .crypto-icon {
             font-size: 18px;
             margin-right: 5px;
+        }
+
+        .stack-trace {
+            font-family: monospace;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .action-button {
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -162,6 +184,26 @@
                     <span class="action-tag action-critical position-short">SHORT TERMINATED</span>
                 @break
 
+                @case('STOPPED_LOGGING')
+                    <span class="action-tag action-info">LOGGING STOPPED</span>
+                @break
+
+                @case('MONITORING_ERROR')
+                    <span class="action-tag action-error">MONITORING ERROR</span>
+                @break
+
+                @case('LONG_CHECK_ERROR')
+                    <span class="action-tag action-error position-long">LONG CHECK ERROR</span>
+                @break
+
+                @case('SHORT_CHECK_ERROR')
+                    <span class="action-tag action-error position-short">SHORT CHECK ERROR</span>
+                @break
+
+                @case('WORKER_CRASHED')
+                    <span class="action-tag action-critical">WORKER CRASHED</span>
+                @break
+
                 @default
                     <span class="action-tag action-info">{{ $safetyLog->action }}</span>
             @endswitch
@@ -195,7 +237,23 @@
                     @break
 
                     @case('STOPPED_LOGGING')
-                        <span class="crypto-icon">🛑</span> Logging Stopped
+                        <span class="crypto-icon">🔒</span> Logging Stopped
+                    @break
+
+                    @case('MONITORING_ERROR')
+                        <span class="crypto-icon">⚙️</span> System Monitoring Error
+                    @break
+
+                    @case('LONG_CHECK_ERROR')
+                        <span class="crypto-icon">⚙️</span> LONG Position Check Error
+                    @break
+
+                    @case('SHORT_CHECK_ERROR')
+                        <span class="crypto-icon">⚙️</span> SHORT Position Check Error
+                    @break
+
+                    @case('WORKER_CRASHED')
+                        <span class="crypto-icon">💥</span> Safety Worker Crashed
                     @break
 
                     @default
@@ -233,17 +291,57 @@
                     prevent further risk exposure.</p>
             @break
 
+            @case('STOPPED_LOGGING')
+                <p>The safety monitoring system has been gracefully shut down. Trading may continue without safety monitoring.
+                </p>
+            @break
+
+            @case('MONITORING_ERROR')
+                <p><strong>System Error:</strong> The trading bot monitoring system has encountered an error during operation.
+                    The system will attempt to continue monitoring, but manual intervention may be required.</p>
+                @if (isset($safetyLog->exception))
+                    <div class="stack-trace">{{ $safetyLog->exception }}</div>
+                @endif
+            @break
+
+            @case('LONG_CHECK_ERROR')
+                <p><strong>System Error:</strong> An error occurred while checking LONG positions.
+                    The system will continue monitoring but LONG position safety checks may be affected.</p>
+                @if (isset($safetyLog->exception))
+                    <div class="stack-trace">{{ $safetyLog->exception }}</div>
+                @endif
+            @break
+
+            @case('SHORT_CHECK_ERROR')
+                <p><strong>System Error:</strong> An error occurred while checking SHORT positions.
+                    The system will continue monitoring but SHORT position safety checks may be affected.</p>
+                @if (isset($safetyLog->exception))
+                    <div class="stack-trace">{{ $safetyLog->exception }}</div>
+                @endif
+            @break
+
+            @case('WORKER_CRASHED')
+                <p><strong>Critical Error:</strong> The safety worker process has crashed unexpectedly.
+                    Trading positions are no longer being monitored for safety thresholds.
+                    <strong>Immediate action required</strong> to restore safety monitoring.
+                </p>
+                @if (isset($safetyLog->exception))
+                    <div class="stack-trace">{{ $safetyLog->exception }}</div>
+                @endif
+            @break
+
             @default
                 <p>This automated alert has been generated by the CryptoAPIs Store Trading Bot Supervisor Process.</p>
         @endswitch
 
+      
 
     </div>
 
     <div class="footer">
         <p>This is an automated message from the CryptoAPIs Store trading system. Please do not reply directly to this
             email.</p>
-
+        <p>&copy; {{ date('Y') }} CryptoAPIs Store</p>
     </div>
 </body>
 
