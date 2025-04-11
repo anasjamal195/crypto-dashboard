@@ -75,13 +75,7 @@ class TriggersThread implements ShouldQueue
                             $index--;
                             $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [7]);
 
-                            // Check candle closing 
-                            $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 30;
 
-                            if (!$isCandleClosing) {
-                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                continue;
-                            }
 
                             $timestamp = $data[$index]['timestampReadable'];
                             $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
@@ -209,6 +203,16 @@ class TriggersThread implements ShouldQueue
                     $openTrade = false;
                 }
 
+
+                // Check candle closing 
+                $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
+
+                if (!$isCandleClosing) {
+
+                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to candle closing: ' . $symbol);
+
+                    $openTrade = false;
+                }
 
                 if ($tradeType === 'LONG' && !CommonHelpers::getSettingsValue('enable_long_multithread', 0)) {
                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
