@@ -105,37 +105,55 @@ class TriggersThread implements ShouldQueue
 
                             // ==================LOGIC TO CHECK TRADE TYPE AND CONDITIONS==================
 
-                            // 5 macd solid RED candles and current macd light red
-                            $macdLongCondition =
+                            // // 5 macd solid RED candles and current macd light red
+                            // $macdLongCondition =
 
-                                $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
-                                && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
-                                && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
-                                && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
-                                && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
-                                && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
-                                && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Seventh Last Candle should be dark red
-                            ;
-
-
-
-                            // 5 macd loght Green candles and current macd Solid green
-                            $macdShortCondition =
-                                $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0 // Current Candle should be solid green
-                                && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0 // // Second Last Candle should be light green
-                                && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0 // // Third Last Candle should be light green
-                                && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
-                                && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
-                                && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
-                                && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
-                            ;
+                            //     $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
+                            //     && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
+                            //     && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
+                            //     && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
+                            //     && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
+                            //     && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
+                            //     && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Seventh Last Candle should be dark red
+                            // ;
 
 
-                            if ($macdLongCondition && $currentVolumeSignal['indicators']['mfi_current'] < 30 && $orderBookSnapshot->volume_imbalance > 1) {
+
+                            // // 5 macd loght Green candles and current macd Solid green
+                            // $macdShortCondition =
+                            //     $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0 // Current Candle should be solid green
+                            //     && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0 // // Second Last Candle should be light green
+                            //     && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0 // // Third Last Candle should be light green
+                            //     && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
+                            //     && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
+                            //     && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
+                            //     && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
+                            // ;
+
+
+                            // if ($macdLongCondition && $currentVolumeSignal['indicators']['mfi_current'] < 30 && $orderBookSnapshot->volume_imbalance > 1) {
+                            //     $tradeType = 'LONG';
+                            // } else 
+
+                            // if ($macdShortCondition && $currentVolumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->volume_imbalance < 1) {
+                            //     $tradeType = 'SHORT';
+                            // } else {
+                            //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                            //     continue;
+                            // }
+
+
+
+                            $imbalance = ($orderBookSnapshot->bid_volume - $orderBookSnapshot->ask_volume) / ($orderBookSnapshot->bid_volume + $orderBookSnapshot->ask_volume) * 100;
+                            $spread_pct = ($orderBookSnapshot->lowest_ask - $orderBookSnapshot->highest_bid) / (($orderBookSnapshot->lowest_ask + $orderBookSnapshot->highest_bid) / 2) * 100;
+
+                            if (
+                                $imbalance > 5 && $spread_pct < 0.01
+                            ) {
                                 $tradeType = 'LONG';
-                            } else 
-
-                            if ($macdShortCondition && $currentVolumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->volume_imbalance < 1) {
+                            } elseif (
+                                $imbalance < -5 && $spread_pct < 0.01
+                            ) {
                                 $tradeType = 'SHORT';
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
@@ -294,9 +312,15 @@ class TriggersThread implements ShouldQueue
 
         $closeEarly = false;
 
-
+        $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
         // Close Early after 30 mins if SL is 0.8
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 30 && $targetProfit <= -1) {
+        if (
+            ($timeDiff > 90)
+            ||
+            ($timeDiff > 60 && $timeDiff < 90  && $currentProfit <= -0.5)
+            ||
+            ($timeDiff > 30 && $timeDiff < 60  && $currentProfit <= -1)
+        ) {
             $closeEarly = true;
         }
 
@@ -383,9 +407,18 @@ class TriggersThread implements ShouldQueue
 
         $closeEarly = false;
         // Close Early after 30 mins if SL is 0.8
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 30 && $targetProfit <= -1) {
+        $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
+        // Close Early after 30 mins if SL is 0.8
+        if (
+            ($timeDiff > 90)
+            ||
+            ($timeDiff > 60 && $timeDiff < 90  && $currentProfit <= -0.5)
+            ||
+            ($timeDiff > 30 && $timeDiff < 60  && $currentProfit <= -1)
+        ) {
             $closeEarly = true;
         }
+
 
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
             $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);

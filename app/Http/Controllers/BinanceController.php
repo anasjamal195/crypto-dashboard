@@ -22,9 +22,8 @@ class BinanceController extends Controller
     {
 
 
-
         // =======Testing==========================
-      
+
 
 
         // ========================================
@@ -156,15 +155,20 @@ class BinanceController extends Controller
 
         $tradeArr = json_decode(json_encode($tradeArr->get()), true);
 
-        $timelineData = array_map(function ($trade) {
+        $timelineData = array_map(function ($trade) use ($stopLoss) {
 
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
+
+            $color = '';
+            if ($trade['lowestPricePercentage'] > $stopLoss) {
+                $color = 'yellow';
+            }
             return [
                 'symbol' => $trade['symbol'] . '( ' . $trade['position'] . ' )',
                 'startTime' => $trade['buyingCandle']['timestampReadable'],
                 'endTime' => $trade['sellingCandle']['timestampReadable'],
-                'color' => $trade['position'] === 'SHORT' ? 'red' : 'green',
+                'color' => $color ? $color : ($trade['position'] === 'SHORT' ? 'red' : 'green'),
                 'id' => $trade['id'],
             ];
         }, $tradeArr);
@@ -299,7 +303,7 @@ class BinanceController extends Controller
 
 
 
-        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'totalProfit' => round($historicalTrends['totalProfit'], 2)]);
+        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'volumeSignals' => $historicalTrends['volumeSignals'], 'totalProfit' => round($historicalTrends['totalProfit'], 2)]);
     }
     public function getAvailableBalance(Request $request)
     {

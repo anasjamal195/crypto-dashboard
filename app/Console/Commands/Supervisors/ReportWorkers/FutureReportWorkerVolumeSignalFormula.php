@@ -21,6 +21,7 @@ class FutureReportWorkerVolumeSignalFormula extends Command
      *
      * @var string
      */
+
     protected $signature = 'app:future-report-worker-volume-signal-formula';
     public $interval;
     public $limit;
@@ -43,7 +44,7 @@ class FutureReportWorkerVolumeSignalFormula extends Command
     public function handle()
     {
 
-        $formula = 'MACD & Volume Indicators & Order Book Experiment (latest)';
+        $formula = 'Order Book and Volumes (Experiment with volume indicators)';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
 

@@ -47,15 +47,19 @@ class ShortReportService
             $targetProfit = 0.5;
 
             try {
-                $symbol = $coin->symbol;
-                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
-                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
+                if (DB::table('order_book_snapshots')->where('symbol', $coin->symbol)->count() > 100) {
+                    $symbol = $coin->symbol;
 
-                // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('formula', $formula)->where('market', $market)->where('position', 'SHORT')->delete();
-                DB::table('coin_reports')->insert($trades);
-                $tradesTotal[$symbol] = $trades;
+                    $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
+
+                    $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
+
+                    // Insert trades into the database
+                    DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('formula', $formula)->where('market', $market)->where('position', 'SHORT')->delete();
+                    DB::table('coin_reports')->insert($trades);
+                    $tradesTotal[$symbol] = $trades;
+                }
 
                 $perProgress = (($index + 1) / count($coins)) * 100;
                 system('clear');
@@ -122,6 +126,7 @@ class ShortReportService
         $lockedPriceBuy = 0;
         $extremePrice = 0;
 
+        $openingIndex = 0;
         $switchTrade = false;
         $switchDirection = '';
         $switchSnapshot = new stdClass;
@@ -203,16 +208,14 @@ class ShortReportService
 
                 // 5 macd solid RED candles and current macd light red
                 $macdLongCondition =
-
                     $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
                     && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
                     && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
                     && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
                     && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
                     && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
+                    && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Sixth Last Candle should be dark red
                 ;
-
-
 
                 // 5 macd loght Green candles and current macd Solid green
                 $macdShortCondition =
@@ -222,18 +225,60 @@ class ShortReportService
                     && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
                     && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
                     && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
+                    && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
                 ;
 
-
-                if ($macdLongCondition && $volumeSignal['indicators']['mfi_current'] < 30 && $orderBookSnapshot->orderBookSnapshot > 1) {
+                $imbalance = ($orderBookSnapshot->bid_volume - $orderBookSnapshot->ask_volume) / ($orderBookSnapshot->bid_volume + $orderBookSnapshot->ask_volume) * 100;
+                $spread_pct = ($orderBookSnapshot->lowest_ask - $orderBookSnapshot->highest_bid) / (($orderBookSnapshot->lowest_ask + $orderBookSnapshot->highest_bid) / 2) * 100;
+                // Volume Indicators
+                $mfi = $volumeSignal['indicators']['mfi_current'];
+                $cvd = $volumeSignal['indicators']['cvd_current'];
+                $obv = $volumeSignal['indicators']['obv_current'];
+                $vwap = $volumeSignal['indicators']['vwap_current'];
+                // dd($volumeSignal['indicators']);
+                $priceLong = $orderBookSnapshot->lowest_ask; // For LONG
+                $priceShort = $orderBookSnapshot->highest_bid; // For LONG
+                if (
+                    $imbalance > 5 && $spread_pct < 0.01
+                    &&
+                    // $mfi < 20                  
+                    $cvd > 0 &&
+                    $obv > 0
+                    // $priceLong > $vwap            
+                ) {
                     $tradeType = 'LONG';
                     $allowOpening = true;
-                } else if ($macdShortCondition && $volumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->orderBookSnapshot < 1) {
+                } elseif (
+                    $imbalance < -5 && $spread_pct < 0.01
+
+                    &&
+                    // $mfi > 80                   
+                    $cvd < 0 &&
+                    $obv < 0
+                    // $priceShort < $vwap             
+                ) {
                     $tradeType = 'SHORT';
                     $allowOpening = true;
                 } else {
                     continue;
                 }
+
+
+
+                // dd($orderBookSnapshot);
+                // if ($volumeSignal['indicators']['mfi_current'] < 20 && $orderBookSnapshot->volume_imbalance > 1) {
+                //     $tradeType = 'LONG';
+                //     $allowOpening = true;
+                // } else
+                // if ($volumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->volume_imbalance < 1) {
+                //     $tradeType = 'SHORT';
+                //     $allowOpening = true;
+                // } else {
+                //     continue;
+                // }
+
+
+
 
 
                 // ========================================================================
@@ -251,6 +296,7 @@ class ShortReportService
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $currentTrade['buyingAverages'] = json_encode($averages);
                     $extremePrice = $open_price;
+                    $openingIndex = $index;
                 }
             } else {
                 $closingPrice = 0;
@@ -275,52 +321,35 @@ class ShortReportService
                     }
                 }
 
-                $allowSwitching = false;
-                if (!$isAlreadySwitched && !$closingPrice) {
-                    // Check for switching Condition
-
-                    $timestamp = $candle['timestamp'];
-                    $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-                        ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
-                        ->where('symbol', $symbol)
-                        ->where('depth', 1000)
-                        ->latest('snapshot_time')
-                        ->get();
-                    if (count($snapshots) < 5) {
-                        continue;
-                    }
 
 
 
-                    $longWeight = 0;
-                    $shortWeight = 0;
-                    foreach ($snapshots as $snapshot) {
-                        if ($snapshot->signal === 'SHORT') {
-                            $shortWeight += $snapshot->short_strength;
-                        } else {
-                            $longWeight += $snapshot->long_strength;
-                        }
-                    }
 
-                    if ($longWeight > $shortWeight * 2 && $tradeType === 'SHORT') {
-                        $closingPrice = $candle['close'];
-                        $switchTrade = true;
-                        $isAlreadySwitched = true;
-                        $switchDirection = 'LONG';
-                        $switchSnapshot = $snapshots[count($snapshots) - 1];
-                        $allowSwitching = true;
-                    } else if ($shortWeight > $longWeight * 2 && $tradeType === 'LONG') {
-                        $closingPrice = $candle['close'];
-                        $switchTrade = true;
-                        $isAlreadySwitched = true;
-                        $switchDirection = 'SHORT';
-                        $allowSwitching = true;
-
-                        $switchSnapshot = $snapshots[count($snapshots) - 1];
-                    }
+                $timestamp = $candle['timestamp'];
+                $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+                    ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+                    ->where('symbol', $symbol)
+                    ->where('depth', 1000)
+                    ->latest('snapshot_time')
+                    ->get();
+                if (count($snapshots) < 1) {
+                    continue;
                 }
+                $snapshot = $snapshots[0];
 
+                $allowSwitching = false;
 
+                // Check for 20 mins past
+                // if ($index - $openingIndex  >= 5 && CommonHelpers::getPercentDiff($open_price, $data[$index]['close'] >= 0.8)) {
+                //     $closingPrice = $data[$index]['close'];
+
+                //     // // $closingPrice = $data[$index]['close'];
+                //     // if ($tradeType === 'SHORT' && $snapshot->volume_imbalance > 1) {
+                //     //     $closingPrice = $data[$index]['close'];
+                //     // } else if ($tradeType === 'LONG' && $snapshot->volume_imbalance < 1) {
+                //     //     $closingPrice = $data[$index]['close'];
+                //     // }
+                // }
 
 
 
@@ -357,18 +386,14 @@ class ShortReportService
                     $snapshotOpen = null;
                     $tradeType = null;
                     $waitingCandles = 4;
+                    $openingIndex = 0;
+
 
 
                     // Stop it from switching multiple times
                     if (!$allowSwitching && $isAlreadySwitched) {
                         $isAlreadySwitched = false;
                     }
-                    // if ($isAlreadySwitched) {
-                    //     $isAlreadySwitched = false;
-                    //     $switchTrade = false;
-                    //     $switchDirection = '';
-                    //     $switchSnapshot = new stdClass;
-                    // }
                 }
             }
         }
