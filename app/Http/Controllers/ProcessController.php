@@ -46,9 +46,12 @@ class ProcessController extends Controller
             DB::statement('UPDATE workers SET trade_status = 0');
             DB::statement('DELETE FROM worker_symbols WHERE 1');
             Artisan::call('queue:flush');
+            Artisan::call('queue:clear');
+            SupervisorService::executeCommand('killall -9 php');
 
             DB::table('jobs')->truncate();
             $processes = [
+                'laravel_saftey_worker',
                 'laravel_order_book_signals_worker',
                 'laravel_thread_workers:laravel_thread_workers_00',
                 'laravel_thread_workers:laravel_thread_workers_01',

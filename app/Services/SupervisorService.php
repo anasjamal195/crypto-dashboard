@@ -31,7 +31,7 @@ class SupervisorService
      * @param string $command The command to execute.
      * @return array The formatted output as an associative array.
      */
-    private static function executeCommand($command)
+    public static function executeCommand($command)
     {
         $process = Process::fromShellCommandline($command);
         try {

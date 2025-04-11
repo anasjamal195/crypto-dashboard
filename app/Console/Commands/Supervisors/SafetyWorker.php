@@ -112,7 +112,7 @@ class SafetyWorker extends Command
                     } catch (Exception $logError) {
                         $this->error('Failed to log monitoring error: ' . $logError->getMessage());
                     }
-                    
+                        
                     // Brief pause before continuing
                     sleep(30);
                 }
