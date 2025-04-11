@@ -6,6 +6,7 @@ use App\Mail\DynamicFutureTradeNotification;
 use App\Mail\DynamicSpotTradeNotification;
 use App\Mail\OrderBookSignalEmail;
 use App\Mail\OrderMail;
+use App\Mail\SafteyAlertMail;
 use App\Mail\SkipEmail;
 use App\Mail\WalletEmail;
 use App\Mail\WorkerEmail;
@@ -55,7 +56,11 @@ class MailerService
         foreach (self::$recipients as $recipient)
             Mail::to($recipient)->send(new OrderBookSignalEmail($snapshot));
     }
-
+    public static function sendSafetyAlert($log)
+    {
+        foreach (self::$recipients as $recipient)
+            Mail::to($recipient)->send(new SafteyAlertMail($log));
+    }
 
     public static function sendSkipEmail($tradeInstance, $subject)
     {

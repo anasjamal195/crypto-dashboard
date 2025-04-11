@@ -4,6 +4,7 @@ namespace App;
 
 use App\Services\BinanceApiService;
 use App\Services\BinanceVolumeIndicatorsService;
+use App\Services\MailerService;
 use App\Services\SupervisorService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -1340,5 +1341,45 @@ class CommonHelpers
             'created_at' => Carbon::now()->toDateTimeString(),
             'updated_at' => Carbon::now()->toDateTimeString(),
         ]);
+    }
+    public static function getLatestLog($action)
+    {
+        return DB::table('safety_logs')->where('action', $action)->orderBy('created_at', 'DESC')->first();
+    }
+    public static function addSafetyLog($action, $description = 'Started error Logging')
+    {
+
+        $id = DB::table('safety_logs')->insertGetId([
+            'action' => $action,
+            'details' => $description,
+            'created_at' => Carbon::now()->toDateTimeString(),
+            'updated_at' => Carbon::now()->toDateTimeString(),
+        ]);
+        $log =  DB::table('safety_logs')->find($id); // Returns the newly inserted row
+        MailerService::sendSafetyAlert($log);
+        return $log;
+    }
+
+    public static function killTraderProcess($process = null)
+    {
+
+        if ($process === 'LONG') {
+            DB::table('trade_settings')->where('settings_key', 'enable_long_multithread')->update([
+                'settings_value' => false
+            ]);
+        } else if ($process === 'SHORT') {
+            DB::table('trade_settings')->where('settings_key', 'enable_short_multithread')->update([
+                'settings_value' => false
+            ]);
+        } else {
+
+            DB::table('trade_settings')->where('settings_key', 'enable_long_multithread')->update([
+                'settings_value' => false
+            ]);
+
+            DB::table('trade_settings')->where('settings_key', 'enable_short_multithread')->update([
+                'settings_value' => false
+            ]);
+        }
     }
 }

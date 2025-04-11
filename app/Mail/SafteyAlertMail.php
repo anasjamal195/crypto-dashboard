@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class OrderBookSignalEmail extends Mailable
+class SafteyAlertMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -33,7 +33,7 @@ class OrderBookSignalEmail extends Mailable
      */
     public function build()
     {
-        return $this->subject('Order Book Signal Alert :: Signal: ' . $this->details['signal'])
-            ->view('Emails.order-book-signal-details', ['snapshot' => $this->details]);
+        return $this->subject('CryptoAPIs Store Safety Alert: ' . $this->details['action'] . ' [Log # ' . $this->details['id'] . ']')
+            ->view('Emails.safety-log-template', ['safetyLog' => $this->details]);
     }
 }
