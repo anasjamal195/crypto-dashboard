@@ -13,8 +13,8 @@ use App\Services\ReportService\LongReportService;
 use Carbon\Carbon;
 use DateTime;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-
 
 class BinanceController extends Controller
 {
@@ -31,6 +31,26 @@ class BinanceController extends Controller
         $interval = $request->interval;
         $stopLoss = $request->input('stopLoss') ?? 1;
 
+        if (!request('formula')) {
+            return view('CoinReports.coin-report', [
+                'tradeData'          => [],
+                'profitableTrades'   => 0,
+                'profitsTotal'       => 0,
+                'timelineData'       => [],
+                'tradesAbove1h'      => 0,
+                'maxNearbyTrades'    => 0,
+                'averageDuration'    => 0,
+                'stopLossesTotal'    => 0,
+                'stopLoss'           => 0,
+                'stopLossesTrades'   => 0,
+                'pageSlug'           => 'Coin Report',
+                'interval'           => $interval,
+                'market'             => $market,
+                'liquidatedSymbols'  => [],
+                'liquidatedIntervals' => [],
+                'liquidatedMarkets'  => [],
+            ]);
+        }
         $query = DB::table('coin_reports')
             ->select(
                 'symbol',
@@ -189,7 +209,24 @@ class BinanceController extends Controller
             ];
         }, $tradeArr);
 
-        return view('CoinReports.coin-report', compact('tradeData','profitableTrades','profitsTotal', 'timelineData', 'tradesAbove1h', 'maxNearbyTrades', 'averageDuration', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', [
+            'tradeData'          => $tradeData,
+            'profitableTrades'   => $profitableTrades,
+            'profitsTotal'       => $profitsTotal,
+            'timelineData'       => $timelineData,
+            'tradesAbove1h'      => $tradesAbove1h,
+            'maxNearbyTrades'    => $maxNearbyTrades,
+            'averageDuration'    => $averageDuration,
+            'stopLossesTotal'    => $stopLossesTotal,
+            'stopLoss'           => $stopLoss,
+            'stopLossesTrades'   => $stopLossesTrades,
+            'pageSlug'           => $pageSlug,
+            'interval'           => $interval,
+            'market'             => $market,
+            'liquidatedSymbols'  => $liquidatedSymbols,
+            'liquidatedIntervals' => $liquidatedIntervals,
+            'liquidatedMarkets'  => $liquidatedMarkets,
+        ]);
     }
     public function getCoinReportDetails($market, Request $request)
     {
@@ -323,7 +360,7 @@ class BinanceController extends Controller
     }
     public function getAvailableBalance(Request $request)
     {
-        return BinanceApiService::fetchAvailableQuantity($request->symbol, auth()->user()->id, $request->market);
+        return BinanceApiService::fetchAvailableQuantity($request->symbol, Auth::user()->id, $request->market);
     }
     public function showAverages($market, Request $request)
     {
@@ -367,7 +404,7 @@ class BinanceController extends Controller
 
         if ($market === 'SPOT') {
             $pageSlug = 'liveTradeResults' . $market;
-            $orders = DB::table('orders')->where('market', $market)->where('trade_acc', auth()->user()->id)
+            $orders = DB::table('orders')->where('market', $market)->where('trade_acc', Auth::user()->id)
                 ->where('side', 'BUY');
 
             if ($request->filled('start_date'))
@@ -388,18 +425,18 @@ class BinanceController extends Controller
             $symbols = DB::table('live_trades_future_results')
                 ->select('symbol')
                 ->distinct()
-                ->where('trade_acc', auth()->user()->id)
+                ->where('trade_acc', Auth::user()->id)
                 ->get();
 
             $formulas = DB::table('live_trades_future_results')
                 ->select('formula')
                 ->distinct()
-                ->where('trade_acc', auth()->user()->id)
+                ->where('trade_acc', Auth::user()->id)
                 ->get();
 
 
             $orders = DB::table('live_trades_future_results')
-                ->where('trade_acc', auth()->user()->id)
+                ->where('trade_acc', Auth::user()->id)
                 ->where('type', 'open');
             if ($request->filled('start_date'))
                 $orders = $orders->where(
@@ -461,7 +498,7 @@ class BinanceController extends Controller
     {
         if ($market === 'SPOT') {
             // $pageSlug = 'liveTradeResults' . $market;
-            // $orders = DB::table('orders')->where('market', $market)->where('trade_acc', auth()->user()->id)
+            // $orders = DB::table('orders')->where('market', $market)->where('trade_acc', Auth::user()->id)
             //     ->where('side', 'BUY');
 
             // if ($request->filled('start_date'))
@@ -478,7 +515,7 @@ class BinanceController extends Controller
             $coins = DB::table('trade_handler')->where('market', "FUTURE")
                 ->distinct('symbol')
 
-                ->where('tradeAccount', auth()->user()->id)
+                ->where('tradeAccount', Auth::user()->id)
                 ->get();
 
             // dd($coins);
