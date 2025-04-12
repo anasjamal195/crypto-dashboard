@@ -212,7 +212,7 @@ $position = request()->get('position');
                                         ])
                                         ->get();
                                         @endphp
-                                        <tr @if ($trade->lowestPricePercentage >= $stopLoss) class="bg-danger" @endif>
+                                        <tr @if ($trade->profit < 0) class="bg-danger" @endif>
                                             <td>{{ $trade->id }}</td>
                                             <td>{{ number_format($trade->buyingPrice, 4) }}</td>
                                             <td>{{ number_format($trade->liquidationPrice, 4) }}</td>

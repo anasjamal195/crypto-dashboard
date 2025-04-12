@@ -44,7 +44,7 @@ class FutureReportWorkerVolumeSignalFormula extends Command
     public function handle()
     {
 
-        $formula = 'Order Book and Volumes (Experiment with volume indicators)';
+        $formula = 'Order Book and Volumes (Experiment after bug fixing - All Coins formula 0.5/0.8 TPSL new 3)';
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
 
 

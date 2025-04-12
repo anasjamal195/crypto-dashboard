@@ -39,7 +39,9 @@ class ShortReportService
     ) {
 
         $tradesTotal = [];
-        $coins = DB::table('coins')->where('market', $market)->get();
+        $coins = DB::table('coins')->where('market', $market)
+            ->whereIn('symbol', ['HBARUSDT', 'BTCUSDT', 'AVAXUSDT', 'EGLDUSDT'])
+            ->get();
         system('clear');
         $cmd->info('Processing: 0 %');
         foreach ($coins as $index => $coin) {
@@ -230,6 +232,8 @@ class ShortReportService
 
                 $imbalance = ($orderBookSnapshot->bid_volume - $orderBookSnapshot->ask_volume) / ($orderBookSnapshot->bid_volume + $orderBookSnapshot->ask_volume) * 100;
                 $spread_pct = ($orderBookSnapshot->lowest_ask - $orderBookSnapshot->highest_bid) / (($orderBookSnapshot->lowest_ask + $orderBookSnapshot->highest_bid) / 2) * 100;
+
+
                 // Volume Indicators
                 $mfi = $volumeSignal['indicators']['mfi_current'];
                 $cvd = $volumeSignal['indicators']['cvd_current'];
@@ -238,23 +242,25 @@ class ShortReportService
                 // dd($volumeSignal['indicators']);
                 $priceLong = $orderBookSnapshot->lowest_ask; // For LONG
                 $priceShort = $orderBookSnapshot->highest_bid; // For LONG
+
+
+
                 if (
                     $imbalance > 5 && $spread_pct < 0.01
-                    &&
-                    // $mfi < 20                  
-                    $cvd > 0 &&
-                    $obv > 0
-                    // $priceLong > $vwap            
+                    // && $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0
+                    && $macdLongCondition
+
+
                 ) {
                     $tradeType = 'LONG';
                     $allowOpening = true;
                 } elseif (
                     $imbalance < -5 && $spread_pct < 0.01
 
-                    &&
-                    // $mfi > 80                   
-                    $cvd < 0 &&
-                    $obv < 0
+                    // && $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0
+
+                    && $macdShortCondition
+
                     // $priceShort < $vwap             
                 ) {
                     $tradeType = 'SHORT';
@@ -303,12 +309,18 @@ class ShortReportService
 
 
                 if ($tradeType == 'SHORT') {
+
+
+
+
                     // Calculate the extreme price
                     if ($extremePrice < $candle['high'])
                         $extremePrice = $candle['high'];
                     // Calculate Closing in profit 
                     if ($candle['low'] <= $open_price * (1 - $targetProfit / 100)) {
                         $closingPrice = $candle['low'];
+                    } else if ($index - $openingIndex  >= 5 && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= 0.8 && $open_price < $data[$index]['close']) {
+                        $closingPrice = $data[$index]['close'];
                     }
                 } else if ($tradeType == 'LONG') {
                     // Calculate the extreme price
@@ -318,6 +330,8 @@ class ShortReportService
                     if ($candle['high'] >= $open_price * (1 + $targetProfit / 100)) {
 
                         $closingPrice = $candle['high'];
+                    } else if ($index - $openingIndex  >= 5 && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= 0.8 && $open_price > $data[$index]['close']) {
+                        $closingPrice = $data[$index]['close'];
                     }
                 }
 
@@ -339,17 +353,7 @@ class ShortReportService
 
                 $allowSwitching = false;
 
-                // Check for 20 mins past
-                // if ($index - $openingIndex  >= 5 && CommonHelpers::getPercentDiff($open_price, $data[$index]['close'] >= 0.8)) {
-                //     $closingPrice = $data[$index]['close'];
 
-                //     // // $closingPrice = $data[$index]['close'];
-                //     // if ($tradeType === 'SHORT' && $snapshot->volume_imbalance > 1) {
-                //     //     $closingPrice = $data[$index]['close'];
-                //     // } else if ($tradeType === 'LONG' && $snapshot->volume_imbalance < 1) {
-                //     //     $closingPrice = $data[$index]['close'];
-                //     // }
-                // }
 
 
 
@@ -358,6 +362,7 @@ class ShortReportService
                 // Closing Sequence
 
                 if ($closingPrice) {
+                    $profit = $tradeType === 'LONG' ? round(($closingPrice - $open_price) / $open_price * 100, 2) : round(($open_price - $closingPrice) / $open_price * 100, 2);
                     $liquidationPrice = BinanceApiService::calculateLiquidationPrice($symbol, $open_price, CommonHelpers::getSettingsValue('future_coin_report_leverage', 10), 'short');
                     $candle['should_sell'] = true;
                     $buy_triggers[] = $candle;
@@ -367,7 +372,7 @@ class ShortReportService
                     $currentTrade['sellingPrice'] = $closingPrice;
                     $currentTrade['symbol'] = $symbol;
                     $currentTrade['interval'] = $interval;
-                    $currentTrade['profit'] = abs(round(($closingPrice - $open_price) / $open_price * 100, 2));
+                    $currentTrade['profit'] = $profit;
                     $currentTrade['lowestPrice'] = $extremePrice;
                     $currentTrade['liquidationPrice'] = $liquidationPrice;
                     $currentTrade['lowestPricePercentage'] = abs((($open_price - $extremePrice) / $open_price)) * 100;

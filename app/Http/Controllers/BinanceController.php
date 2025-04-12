@@ -59,8 +59,7 @@ class BinanceController extends Controller
             $query->where('formula', $request->formula);
         }
         $averageDurationQuery = clone $query;
-        $averageDuration  = $averageDurationQuery
-            ->whereRaw('lowestPricePercentage < ' . $stopLoss)->average('duration');
+        $averageDuration  = $averageDurationQuery->average('duration');
 
         $nearbyTradesQuery = DB::table('coin_reports');
         if ($request->filled('position')) {
@@ -121,7 +120,7 @@ class BinanceController extends Controller
         $stopLossesQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market', 'profit')
             ->distinct()
-            ->whereRaw('lowestPricePercentage > ' . $stopLoss);
+            ->whereRaw('profit < 0');
 
         if ($request->filled('position')) {
             $stopLossesQuery->where('position', $request->position);
@@ -131,7 +130,24 @@ class BinanceController extends Controller
             $stopLossesQuery->where('formula', $request->formula);
         }
         $stopLossesTrades = $stopLossesQuery->count();
-        $stopLossesTotal = $stopLossesTrades * $stopLoss;
+        $stopLossesTotal = abs($stopLossesQuery->sum('profit'));
+
+
+        // Total Profitable Trades
+        $profitsQuery = DB::table('coin_reports')
+            ->select('symbol', 'interval', 'market', 'profit')
+            ->distinct()
+            ->whereRaw('profit > 0');
+
+        if ($request->filled('position')) {
+            $profitsQuery->where('position', $request->position);
+        }
+
+        if ($request->filled('formula')) {
+            $profitsQuery->where('formula', $request->formula);
+        }
+        $profitableTrades = $profitsQuery->count();
+        $profitsTotal = abs($profitsQuery->sum('profit'));
         // Extracting unique symbols, intervals, and markets
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
@@ -173,7 +189,7 @@ class BinanceController extends Controller
             ];
         }, $tradeArr);
 
-        return view('CoinReports.coin-report', compact('tradeData', 'timelineData', 'tradesAbove1h', 'maxNearbyTrades', 'averageDuration', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
+        return view('CoinReports.coin-report', compact('tradeData','profitableTrades','profitsTotal', 'timelineData', 'tradesAbove1h', 'maxNearbyTrades', 'averageDuration', 'stopLossesTotal', 'stopLoss', 'stopLossesTrades', 'pageSlug', 'interval', 'market', 'liquidatedSymbols', 'liquidatedIntervals', 'liquidatedMarkets'));
     }
     public function getCoinReportDetails($market, Request $request)
     {
