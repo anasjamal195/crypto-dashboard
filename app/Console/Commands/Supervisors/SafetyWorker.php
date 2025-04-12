@@ -49,22 +49,71 @@ class SafetyWorker extends Command
             $triggerThreshold = 5;
             $warningThreshold = 3;
 
-
+            $immidiateLossThresholdTime = 10;
+            $immidiateLossThresholdCount = 2;
             $loggerLoop = true;
 
             while ($loggerLoop) {
 
                 $checkLong = CommonHelpers::getSettingsValue('enable_long_multithread', true);
                 $checkShort = CommonHelpers::getSettingsValue('enable_short_multithread', true);
+
+
+                // Check if the process is temporarily Paused and resume after time out
+                $checkHoldConditionLong = true;
+                $holdLongLog = CommonHelpers::getLatestLog('PAUSE_LONG');
+                if ($holdLongLog && !$checkLong) {
+
+                    $logTime = Carbon::parse($holdLongLog->created_at);
+                    $killLog = CommonHelpers::getLatestLog('KILLED_LONG');
+                    if ($killLog) {
+                        $killTime = Carbon::parse($killLog->created_at);
+                        if ($killTime->gt($logTime)) {
+                            $checkHoldConditionLong = false;
+                        }
+                    }
+
+
+                    if ($logTime->diffInMinutes(now()) >= 120 && $logTime->diffInMinutes(now()) <= 125 && $checkHoldConditionLong) {
+                        CommonHelpers::addSafetyLog('RESUME_LONG', 'Resumed Long trades');
+                        CommonHelpers::startTraderProcess('LONG');
+                    }
+                }
+
+
+
+                // Check if the process is temporarily Paused and resume after time out
+                $checkHoldConditionShort = true;
+                $holdShortLog = CommonHelpers::getLatestLog('PAUSE_SHORT');
+                if ($holdShortLog && !$checkShort) {
+
+                    $logTime = Carbon::parse($holdShortLog->created_at);
+                    $killLog = CommonHelpers::getLatestLog('KILLED_SHORT');
+                    if ($killLog) {
+                        $killTime = Carbon::parse($killLog->created_at);
+                        if ($killTime->gt($logTime)) {
+                            $checkHoldConditionShort = false;
+                        }
+                    }
+
+
+                    if ($logTime->diffInMinutes(now()) >= 120 && $logTime->diffInMinutes(now()) <= 125 && $checkHoldConditionShort) {
+                        CommonHelpers::addSafetyLog('RESUME_SHORT', 'Resumed Long trades');
+                        CommonHelpers::startTraderProcess('SHORT');
+                    }
+                }
+
+
+
                 try {
                     $lastLog = CommonHelpers::getLatestLog('STARTED_LOGGING');
 
                     if ($checkLong) {
-                        $this->checkLongPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
+                        $this->checkLongPositions($lastLog, $account, $warningThreshold, $triggerThreshold, $immidiateLossThresholdCount, $immidiateLossThresholdTime);
                     }
 
                     if ($checkShort) {
-                        $this->checkShortPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
+                        $this->checkShortPositions($lastLog, $account, $warningThreshold, $triggerThreshold, $immidiateLossThresholdCount, $immidiateLossThresholdTime);
                     }
 
                     if (!$checkLong && !$checkShort) {
@@ -144,7 +193,7 @@ class SafetyWorker extends Command
      * @param int $triggerThreshold
      * @return void
      */
-    private function checkLongPositions($lastLog, $account, $warningThreshold, $triggerThreshold)
+    private function checkLongPositions($lastLog, $account, $warningThreshold, $triggerThreshold, $immidiateLossThresholdCount, $immidiateLossThresholdTime)
     {
         try {
             // Fetch Latest LONG trades
@@ -160,10 +209,18 @@ class SafetyWorker extends Command
             $longTrades = $query->orderBy('created_at', 'ASC')->get();
 
             $lossCount = 0;
+            $immidiateLossCount = 0;
             foreach ($longTrades as $trade) {
                 try {
                     if ($trade->realizedPnl < 0) {
                         $lossCount++;
+                        // Check for immidiate Loss trigger
+                        if ($trade->duration <= $immidiateLossThresholdTime) {
+                            $immidiateLossCount++;
+                        } else {
+                            $immidiateLossCount = 0;
+                        }
+
 
                         $lastWarningLog = CommonHelpers::getLatestLog('WARNING_LONG');
 
@@ -178,6 +235,16 @@ class SafetyWorker extends Command
                         if ($lossCount == $warningThreshold && $lastWarningLogCondition) {
                             $this->warn("LONG position warning threshold reached ($warningThreshold consecutive losses)");
                             CommonHelpers::addSafetyLog('WARNING_LONG', "Detected $warningThreshold consecutive LONG trades that closed in losses.");
+                        }
+
+
+
+
+                        if ($immidiateLossCount == $immidiateLossThresholdCount) {
+                            $this->error("LONG position Pause threshold reached ($immidiateLossThresholdCount consecutive immidate losses)");
+                            CommonHelpers::addSafetyLog('PAUSE_LONG', 'Hold Long trades for next 2 hours');
+                            CommonHelpers::killTraderProcess('LONG');
+                            return false;
                         }
 
                         // If consecutive losses in LONG trades reach trigger threshold, send STOP Command and alert email
@@ -227,7 +294,7 @@ class SafetyWorker extends Command
      * @param int $triggerThreshold
      * @return void
      */
-    private function checkShortPositions($lastLog, $account, $warningThreshold, $triggerThreshold)
+    private function checkShortPositions($lastLog, $account, $warningThreshold, $triggerThreshold, $immidiateLossThresholdCount, $immidiateLossThresholdTime)
     {
         try {
             // Fetch Latest SHORT trades

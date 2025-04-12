@@ -1382,4 +1382,27 @@ class CommonHelpers
             ]);
         }
     }
+
+    public static function startTraderProcess($process = null)
+    {
+
+        if ($process === 'LONG') {
+            DB::table('trade_settings')->where('settings_key', 'enable_long_multithread')->update([
+                'settings_value' => true
+            ]);
+        } else if ($process === 'SHORT') {
+            DB::table('trade_settings')->where('settings_key', 'enable_short_multithread')->update([
+                'settings_value' => true
+            ]);
+        } else {
+
+            DB::table('trade_settings')->where('settings_key', 'enable_long_multithread')->update([
+                'settings_value' => true
+            ]);
+
+            DB::table('trade_settings')->where('settings_key', 'enable_short_multithread')->update([
+                'settings_value' => true
+            ]);
+        }
+    }
 }
