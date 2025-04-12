@@ -40,37 +40,31 @@ class SafetyWorker extends Command
             // Fixed account for now
             $this->info('Starting Safety Worker');
 
-            try {
-                CommonHelpers::addSafetyLog('STARTED_LOGGING');
-                $this->info('Safety logging initialized');
-            } catch (Exception $e) {
-                $this->error('Failed to add initial safety log: ' . $e->getMessage());
-                Log::error('SafetyWorker initialization error: ' . $e->getMessage(), [
-                    'exception' => $e,
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]);
-                return 1;
-            }
+
+            CommonHelpers::addSafetyLog('STARTED_LOGGING');
+            $this->info('Safety logging initialized');
+
 
             $account = 2;
             $triggerThreshold = 5;
             $warningThreshold = 3;
-            $checkLong = true;
-            $checkShort = true;
+
 
             $loggerLoop = true;
 
             while ($loggerLoop) {
+
+                $checkLong = CommonHelpers::getSettingsValue('enable_long_multithread', true);
+                $checkShort = CommonHelpers::getSettingsValue('enable_short_multithread', true);
                 try {
                     $lastLog = CommonHelpers::getLatestLog('STARTED_LOGGING');
 
                     if ($checkLong) {
-                        $checkLong =  $this->checkLongPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
+                        $this->checkLongPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
                     }
 
                     if ($checkShort) {
-                        $checkShort =  $this->checkShortPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
+                        $this->checkShortPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
                     }
 
                     if (!$checkLong && !$checkShort) {
