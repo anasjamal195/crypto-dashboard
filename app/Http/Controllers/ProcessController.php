@@ -39,6 +39,7 @@ class ProcessController extends Controller
 
     public function startMultithread()
     {
+
         try {
             // Run Essential DB Query
             DB::statement('UPDATE trade_handler SET isWorkerDispatched = 0');

@@ -4,6 +4,7 @@ namespace App\Console\Commands\Supervisors;
 
 use App\CommonHelpers;
 use App\Services\SupervisorService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -38,7 +39,7 @@ class SafetyWorker extends Command
         try {
             // Fixed account for now
             $this->info('Starting Safety Worker');
-            
+
             try {
                 CommonHelpers::addSafetyLog('STARTED_LOGGING');
                 $this->info('Safety logging initialized');
@@ -51,7 +52,7 @@ class SafetyWorker extends Command
                 ]);
                 return 1;
             }
-            
+
             $account = 2;
             $triggerThreshold = 5;
             $warningThreshold = 3;
@@ -59,17 +60,17 @@ class SafetyWorker extends Command
             $checkShort = true;
 
             $loggerLoop = true;
-            
+
             while ($loggerLoop) {
                 try {
                     $lastLog = CommonHelpers::getLatestLog('STARTED_LOGGING');
 
                     if ($checkLong) {
-                        $this->checkLongPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
+                        $checkLong =  $this->checkLongPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
                     }
 
                     if ($checkShort) {
-                        $this->checkShortPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
+                        $checkShort =  $this->checkShortPositions($lastLog, $account, $warningThreshold, $triggerThreshold);
                     }
 
                     if (!$checkLong && !$checkShort) {
@@ -97,7 +98,6 @@ class SafetyWorker extends Command
                         // Fallback to PHP's native sleep function
                         sleep(300);
                     }
-                    
                 } catch (Exception $e) {
                     $this->error('Error in main monitoring loop: ' . $e->getMessage());
                     Log::error('SafetyWorker monitoring error: ' . $e->getMessage(), [
@@ -105,22 +105,21 @@ class SafetyWorker extends Command
                         'file' => $e->getFile(),
                         'line' => $e->getLine()
                     ]);
-                    
+
                     // Log this error but continue monitoring
                     try {
                         CommonHelpers::addSafetyLog('MONITORING_ERROR', 'Error in safety monitoring: ' . $e->getMessage());
                     } catch (Exception $logError) {
                         $this->error('Failed to log monitoring error: ' . $logError->getMessage());
                     }
-                        
+
                     // Brief pause before continuing
                     sleep(30);
                 }
             }
-            
+
             $this->info('Safety Worker has been stopped');
             return 0;
-            
         } catch (Throwable $e) {
             // Catch any potential fatal errors
             $this->error('Fatal error in Safety Worker: ' . $e->getMessage());
@@ -130,17 +129,17 @@ class SafetyWorker extends Command
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             try {
                 CommonHelpers::addSafetyLog('WORKER_CRASHED', 'Safety worker crashed: ' . $e->getMessage());
             } catch (Exception $logError) {
                 // Nothing more we can do here if even logging fails
             }
-            
+
             return 1;
         }
     }
-    
+
     /**
      * Check LONG positions for consecutive losses
      * 
@@ -171,8 +170,17 @@ class SafetyWorker extends Command
                     if ($trade->realizedPnl < 0) {
                         $lossCount++;
 
+                        $lastWarningLog = CommonHelpers::getLatestLog('WARNING_LONG');
+
+                        $lastWarningLogCondition = true;
+
+                        if ($lastWarningLog) {
+                            $tradeTime = Carbon::parse($trade->created_at);
+                            $logTime = Carbon::parse($lastWarningLog->created_at);
+                            $lastWarningLogCondition = $tradeTime->gt($logTime);
+                        }
                         // If consecutive losses in LONG trades reach warning threshold, send warning email
-                        if ($lossCount == $warningThreshold) {
+                        if ($lossCount == $warningThreshold && $lastWarningLogCondition) {
                             $this->warn("LONG position warning threshold reached ($warningThreshold consecutive losses)");
                             CommonHelpers::addSafetyLog('WARNING_LONG', "Detected $warningThreshold consecutive LONG trades that closed in losses.");
                         }
@@ -196,26 +204,25 @@ class SafetyWorker extends Command
                     // Continue processing other trades
                 }
             }
-            
+
             return true;
-            
         } catch (Exception $e) {
             $this->error('Error checking LONG positions: ' . $e->getMessage());
             Log::error('Error checking LONG positions in SafetyWorker: ' . $e->getMessage(), [
                 'exception' => $e
             ]);
-            
+
             // Try to log the error but don't stop monitoring
             try {
                 CommonHelpers::addSafetyLog('LONG_CHECK_ERROR', 'Error checking LONG positions: ' . $e->getMessage());
             } catch (Exception $logError) {
                 // Nothing more we can do here
             }
-            
+
             return true; // Return true to keep monitoring
         }
     }
-    
+
     /**
      * Check SHORT positions for consecutive losses
      * 
@@ -245,9 +252,17 @@ class SafetyWorker extends Command
                 try {
                     if ($trade->realizedPnl < 0) {
                         $lossCount++;
+                        $lastWarningLog = CommonHelpers::getLatestLog('WARNING_SHORT');
 
+                        $lastWarningLogCondition = true;
+
+                        if ($lastWarningLog) {
+                            $tradeTime = Carbon::parse($trade->created_at);
+                            $logTime = Carbon::parse($lastWarningLog->created_at);
+                            $lastWarningLogCondition = $tradeTime->gt($logTime);
+                        }
                         // If consecutive losses in SHORT trades reach warning threshold, send warning email
-                        if ($lossCount == $warningThreshold) {
+                        if ($lossCount == $warningThreshold && $lastWarningLogCondition) {
                             $this->warn("SHORT position warning threshold reached ($warningThreshold consecutive losses)");
                             CommonHelpers::addSafetyLog('WARNING_SHORT', "Detected $warningThreshold consecutive SHORT trades that closed in losses.");
                         }
@@ -271,22 +286,21 @@ class SafetyWorker extends Command
                     // Continue processing other trades
                 }
             }
-            
+
             return true;
-            
         } catch (Exception $e) {
             $this->error('Error checking SHORT positions: ' . $e->getMessage());
             Log::error('Error checking SHORT positions in SafetyWorker: ' . $e->getMessage(), [
                 'exception' => $e
             ]);
-            
+
             // Try to log the error but don't stop monitoring
             try {
                 CommonHelpers::addSafetyLog('SHORT_CHECK_ERROR', 'Error checking SHORT positions: ' . $e->getMessage());
             } catch (Exception $logError) {
                 // Nothing more we can do here
             }
-            
+
             return true; // Return true to keep monitoring
         }
     }
