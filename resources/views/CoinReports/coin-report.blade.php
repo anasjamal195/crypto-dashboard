@@ -32,7 +32,7 @@ $totalTrades = 0;
                                 <label for="formula">Filter by Formula</label>
                                 <select name="formula" id="formula" class="form-control select2">
                                     <option value="">All Formulas</option>
-                                    @foreach (DB::table('coin_reports')->select('formula')->distinct()->get() as $formula)
+                                    @foreach (DB::table('coin_reports')->select('formula')->distinct()->orderBy('created_at','DESC')->get() as $formula)
                                     <option value="{{ $formula->formula }}"
                                         {{ request('formula') == $formula->formula ? 'selected' : '' }}>
                                         {{ $formula->formula }}
