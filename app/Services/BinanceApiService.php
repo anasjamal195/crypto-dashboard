@@ -1658,7 +1658,7 @@ class BinanceApiService
         $quantity = $openOrder->qty;
 
         $positionDetails = self::getPositionDetails($symbol, $trader);
-        if ($openOrder->trade_status === 'close' || !$positionDetails['symbol']) {
+        if ($openOrder->trade_status === 'close' || !$positionDetails) {
             return false;
         }
 
