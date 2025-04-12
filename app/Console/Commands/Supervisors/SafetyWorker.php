@@ -72,6 +72,7 @@ class SafetyWorker extends Command
                         try {
                             CommonHelpers::addSafetyLog('STOPPED_LOGGING', 'Stopped error Logging');
                             SupervisorService::stop('laravel_saftey_worker');
+                            SupervisorService::stop('acc_2_order_book_long_worker');
                             $loggerLoop = false;
                         } catch (Exception $e) {
                             $this->error('Failed to stop safety worker: ' . $e->getMessage());
