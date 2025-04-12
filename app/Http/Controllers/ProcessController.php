@@ -41,7 +41,7 @@ class ProcessController extends Controller
     {
 
         try {
-            // Run Essential DB Query
+            // Cleanup
             DB::statement('UPDATE trade_handler SET isWorkerDispatched = 0');
             DB::statement('UPDATE workers SET symbol_count = 0');
             DB::statement('UPDATE workers SET trade_status = 0');
@@ -49,8 +49,10 @@ class ProcessController extends Controller
             Artisan::call('queue:flush');
             Artisan::call('queue:clear');
             SupervisorService::executeCommand('killall -9 php');
-
             DB::table('jobs')->truncate();
+
+
+            // Start Sequence
             $processes = [
                 'laravel_saftey_worker',
                 'laravel_order_book_signals_worker',
@@ -92,6 +94,17 @@ class ProcessController extends Controller
                     SupervisorService::restart($process['processName']);
                 }
             }
+            return redirect()->back()->withSuccess('Action ' . $action);
+        }
+        if ($action == 'CLEANUP') {
+            DB::statement('UPDATE trade_handler SET isWorkerDispatched = 0');
+            DB::statement('UPDATE workers SET symbol_count = 0');
+            DB::statement('UPDATE workers SET trade_status = 0');
+            DB::statement('DELETE FROM worker_symbols WHERE 1');
+            Artisan::call('queue:flush');
+            Artisan::call('queue:clear');
+            SupervisorService::executeCommand('killall -9 php');
+            DB::table('jobs')->truncate();
             return redirect()->back()->withSuccess('Action ' . $action);
         }
         $process = $action == 'START' ? SupervisorService::start() : SupervisorService::stop();

@@ -9,6 +9,7 @@
         <a href="{{ route('process-handler.action', 'START') }}" class="btn btn-primary btn-sm m-2">Restart All</a>
         <a href="{{ route('process-handler.action', 'RESTART') }}" class="btn btn-primary btn-sm m-2">Restart Current</a>
         <a href="{{ route('process-handler.action', 'STOP') }}" class="btn btn-danger btn-sm m-2">Stop All</a>
+        <a href="{{ route('process-handler.action', 'CLEANUP') }}" class="btn btn-secondary btn-sm m-2">Cleanup</a>
 
         <a href="{{ route('user.toggle-position', 'LONG') }}"
             class="btn  btn-sm m-2 {{ \App\CommonHelpers::getSettingsValue('enable_long_multithread', 0) == 1 ? 'btn-success' : 'btn-danger' }}">{{ \App\CommonHelpers::getSettingsValue('enable_long_multithread', 0) == 1 ? 'LONG is Enabled' : 'Long is Disabled' }}</a>
