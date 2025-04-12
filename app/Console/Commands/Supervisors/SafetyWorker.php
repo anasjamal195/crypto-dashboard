@@ -156,7 +156,7 @@ class SafetyWorker extends Command
                 $query->where('created_at', '>=', $lastLog->created_at);
             }
 
-            $longTrades = $query->get();
+            $longTrades = $query->orderBy('created_at', 'ASC')->get();
 
             $lossCount = 0;
             foreach ($longTrades as $trade) {
