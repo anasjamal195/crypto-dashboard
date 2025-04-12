@@ -34,7 +34,9 @@ class TriggersThread implements ShouldQueue
 
 
     // Meta data
-    public $stopLoss = 1.5;
+    public $stopLoss = 1;
+    public $nextSLTriggerTime = 30;
+    public $slTriggerTimeInc = 30;
     public $targetProfit = 0.5;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
@@ -186,18 +188,18 @@ class TriggersThread implements ShouldQueue
                 $tradeInstance = $tradeToOpen;
 
 
-                $lastOrderClose = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
+                // Fixed wait after each trade (Skipped for now)
+                // $lastOrderClose = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
+                // if ($lastOrderClose) {
+                //     $lastOrderClose = $lastOrderClose->created_at;
+                //     $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
+                //     if ($timeDiff < 20) {
+                //         $openTrade = false;
+                //         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipped due to last order close time: ' . $symbol);
+                //     }
+                // }
+
                 $currentOpenOrders = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
-                if ($lastOrderClose) {
-                    $lastOrderClose = $lastOrderClose->created_at;
-                    $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
-                    if ($timeDiff < 20) {
-                        $openTrade = false;
-                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipped due to last order close time: ' . $symbol);
-                    }
-                }
-
-
                 // Condition to limit open orders for a symbol in long or short
                 if ($currentOpenOrders >= 1) {
                     $openTrade = false;
@@ -316,42 +318,32 @@ class TriggersThread implements ShouldQueue
 
         $closeEarly = false;
 
+        // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
-        // Close Early after 30 mins if SL is 0.8
-        if (
-            ($timeDiff > 90)
-            ||
-            ($timeDiff > 60 && $timeDiff < 90  && $currentProfit <= -0.5)
-            ||
-            ($timeDiff > 30 && $timeDiff < 60  && $currentProfit <= -1)
-        ) {
-            $closeEarly = true;
-        }
 
+        if ($timeDiff >= self::$nextSLTriggerTime) {
+
+            self::$nextSLTriggerTime += self::$slTriggerTimeInc;
+            $stopLoss = ($open_order['price'] + $stopLoss) / 2;
+        }
 
 
         if ($currentCandle['close'] < $stopLoss || $closeEarly) {
             // Checking Upper Wick Formation
 
-            $lower_wick = CommonHelpers::isCandleWick($currentCandle, 'lower', 5, $stopLoss, $tradeInstance->symbol);
-
-            if (!$lower_wick || $closeEarly) {
-                BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId']);
-                DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
-                    'previousPrice' => $currentCandle['close'],
-                    'currentPrice' => $currentCandle['close'],
-                    'currentProfit' => $currentProfit,
-                    'targetProfit' => $targetProfit,
-                ]);
-                DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                    'isWorkerDispatched' => false,
-                ]);
-                return false;
-            } else {
-
-                // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing LONG Due to Wick formation ' . $tradeInstance->symbol);
-                Log::info('TriggersThreadOrderBook ' . $workerId . ': Retreating Due to upper wick');
-            }
+            BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId']);
+            DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
+                'previousPrice' => $currentCandle['close'],
+                'currentPrice' => $currentCandle['close'],
+                'currentProfit' => $currentProfit,
+                'targetProfit' => $targetProfit,
+            ]);
+            DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                'isWorkerDispatched' => false,
+            ]);
+            // Reset Trigger Time for stop loss
+            self::$nextSLTriggerTime = 30;
+            return false;
         } else if ($currentProfit > $targetProfit) {
 
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
@@ -363,13 +355,12 @@ class TriggersThread implements ShouldQueue
             ]);
         } else {
 
-            $lastOrderOpen = DB::table('live_trades_future_results')->where('position', 'LONG')->where('trade_acc', $tradeInstance->tradeAccount)->where('symbol', $tradeInstance->symbol)->where('trade_status', 'open')->orderBy('created_at', 'desc')->first();
-
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
-                'targetProfit' => $targetProfit
+                'targetProfit' => $targetProfit,
+                'stopLoss' => $stopLoss,
             ]);
         }
 
@@ -407,42 +398,37 @@ class TriggersThread implements ShouldQueue
         }
 
 
+
         // Handle Early Closing on Order Books
 
         $closeEarly = false;
-        // Close Early after 30 mins if SL is 0.8
+
+        // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
-        // Close Early after 30 mins if SL is 0.8
-        if (
-            ($timeDiff > 90)
-            ||
-            ($timeDiff > 60 && $timeDiff < 90  && $currentProfit <= -0.5)
-            ||
-            ($timeDiff > 30 && $timeDiff < 60  && $currentProfit <= -1)
-        ) {
-            $closeEarly = true;
+
+        if ($timeDiff >= self::$nextSLTriggerTime) {
+
+            self::$nextSLTriggerTime += self::$slTriggerTimeInc;
+            $stopLoss = ($open_order['price'] + $stopLoss) / 2;
         }
 
 
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
-            $upper_wick = CommonHelpers::isCandleWick($currentCandle, 'upper', 5, $stopLoss, $tradeInstance->symbol);
-            if (!$upper_wick || $closeEarly) {
-                BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId']);
-                DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
-                    'previousPrice' => $currentCandle['close'],
-                    'currentPrice' => $currentCandle['close'],
-                    'currentProfit' => $currentProfit,
-                    'targetProfit' => $targetProfit,
 
-                ]);
-                DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
-                    'isWorkerDispatched' => false,
-                ]);
-                return false;
-            } else {
-                Log::info('TriggersThreadOrderBook ' . $workerId . ': Retreating Due to lower wick');
-                // MailerService::sendSkipEmail($tradeInstance, 'Skipped closing SHORT Due to Wick formation ' . $tradeInstance->symbol);
-            }
+            BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId']);
+            DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
+                'previousPrice' => $currentCandle['close'],
+                'currentPrice' => $currentCandle['close'],
+                'currentProfit' => $currentProfit,
+                'targetProfit' => $targetProfit,
+
+            ]);
+            DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
+                'isWorkerDispatched' => false,
+            ]);
+            // Reset Trigger Time for stop loss
+            self::$nextSLTriggerTime = 30;
+            return false;
         } else if ($currentProfit > $targetProfit) {
 
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
@@ -458,7 +444,7 @@ class TriggersThread implements ShouldQueue
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
-
+                'stopLoss' =>  $stopLoss,
             ]);
         }
 
