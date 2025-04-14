@@ -154,7 +154,8 @@
                                             <td>{{ $signal['timestampReadable'] }}</td>
                                             <td>
                                                 <span
-                                                    class="badge {{ $signal['signal'] == 'buy' ? 'bg-success' : 'bg-danger' }}">{{ $signal['signal'] }}</span>
+                                                    class="badge {{ $signal['signal'] == 'buy' ? 'bg-success' : 'bg-danger' }}">{{ $signal['signal'] }}
+                                                </span>
                                             </td>
                                             <td>{{ $signal['price'] }}</td>
                                             <td>{{ $signal['strength'] }}</td>
@@ -283,7 +284,7 @@
                             borderWidth: 1,
                             tension: 0.1,
                             yAxisID: 'y1',
-                           
+
                             order: 2
                         },
                         {
@@ -300,7 +301,7 @@
                         {
                             label: 'CVD',
                             data: cvdValues,
-                            borderColor: '#fd5d93',
+                            borderColor: 'yellow',
                             backgroundColor: 'transparent',
                             borderWidth: 1,
                             tension: 0.1,
