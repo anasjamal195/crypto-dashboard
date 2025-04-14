@@ -10,6 +10,7 @@ use App\Services\ReportServiceVolumeSignal\LongReportService as ReportServiceVol
 use App\Services\ReportServiceVolumeSignal\ShortReportService as ReportServiceVolumeSignalShortReportService;
 use App\Services\SupportResistanceFakeBreakoutReport\LongReportService;
 use App\Services\SupportResistanceFakeBreakoutReport\ShortReportService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -44,9 +45,8 @@ class FutureReportWorkerVolumeSignalFormula extends Command
     public function handle()
     {
 
-        $formula = 'Order Book and Volumes (Experiment after bug fixing - All Coins formula 0.5/0.8 TPSL new 3)';
+        $formula = 'Coin Report - ' . Carbon::now()->format('l, F j, Y h:i A');
         DB::table('coin_reports')->where('market', 'FUTURE')->where('formula', $formula)->delete();
-
 
         try {
 
@@ -58,13 +58,6 @@ class FutureReportWorkerVolumeSignalFormula extends Command
                 $this,
             );
 
-
-            // ReportServiceVolumeSignalLongReportService::updateCoinReport(
-            //     '5m',
-            //     1000,
-            //     'FUTURE',
-            //     $formula,
-            // );
         } catch (\Exception $e) {
             Log::error($e);
         }
