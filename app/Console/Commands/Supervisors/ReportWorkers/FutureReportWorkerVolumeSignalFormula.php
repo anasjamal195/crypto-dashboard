@@ -23,7 +23,7 @@ class FutureReportWorkerVolumeSignalFormula extends Command
      * @var string
      */
 
-    protected $signature = 'app:future-report-worker-volume-signal-formula';
+    protected $signature = 'app:generate-volume-report';
     public $interval;
     public $limit;
     public $rsiThreshold;
@@ -57,7 +57,6 @@ class FutureReportWorkerVolumeSignalFormula extends Command
                 $formula,
                 $this,
             );
-
         } catch (\Exception $e) {
             Log::error($e);
         }
