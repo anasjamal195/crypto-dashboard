@@ -298,14 +298,14 @@ class BinanceApiService
     {
         // Calculate KDJ (predefined function)
         $KDJ = self::calculateKDJ($data);
-        
+
         // Initialize base data arrays
         $closePrices = [];
         $highPrices = [];
         $lowPrices = [];
         $volumes = [];
         $candlesticks = [];
-        
+
         // Initialize technical indicator arrays
         $ema12 = [];
         $ema26 = [];
@@ -321,7 +321,7 @@ class BinanceApiService
         $kValues = [50]; // Initial K value
         $dValues = [50]; // Initial D value
         $shouldBuy = [];
-        
+
         // Initialize parameters for indicators
         $lengthRsi = 14;
         $smoothK = 3;
@@ -329,7 +329,7 @@ class BinanceApiService
         $lookbackPeriod = 14;
         $bbPeriod = 20;
         $bbDeviation = 2;
-        
+
         // SAR parameters
         $af = 0.02;      // Acceleration Factor
         $afStep = 0.02;  // AF increment
@@ -337,7 +337,7 @@ class BinanceApiService
         $trend = 'up';   // Initial trend assumption
         $sar = null;     // Initial SAR
         $ep = null;      // Extreme Point
-        
+
         // ADX parameters
         $adxPeriod = 14;
         $trueRanges = [];
@@ -350,7 +350,7 @@ class BinanceApiService
         $diMinus = [];
         $dx = [];
         $adxValues = [];
-        
+
         // Process each candle
         foreach ($data as $index => $candle) {
             // Extract basic candle data
@@ -360,23 +360,23 @@ class BinanceApiService
             $low = (float) $candle[3];
             $close = (float) $candle[4];
             $volume = (float) $candle[5];
-            
+
             // Store values for future calculations
             $closePrices[] = $close;
             $highPrices[] = $high;
             $lowPrices[] = $low;
             $volumes[] = $volume;
-            
+
             $timestampReadable = \Carbon\Carbon::createFromTimestampMs($timestamp)
                 ->setTimezone('Asia/Karachi')
                 ->toDateTimeString();
-            
+
             // Calculate ADX components
             if ($index > 0) {
                 $prevHigh = $highPrices[$index - 1];
                 $prevLow = $lowPrices[$index - 1];
                 $prevClose = $closePrices[$index - 1];
-                
+
                 // Calculate True Range
                 $tr = max(
                     abs($high - $low),
@@ -384,24 +384,24 @@ class BinanceApiService
                     abs($low - $prevClose)
                 );
                 $trueRanges[] = $tr;
-                
+
                 // Calculate Directional Movement
                 $upMove = $high - $prevHigh;
                 $downMove = $prevLow - $low;
-                
+
                 // +DM and -DM
                 if ($upMove > $downMove && $upMove > 0) {
                     $dmPlus[] = $upMove;
                 } else {
                     $dmPlus[] = 0;
                 }
-                
+
                 if ($downMove > $upMove && $downMove > 0) {
                     $dmMinus[] = $downMove;
                 } else {
                     $dmMinus[] = 0;
                 }
-                
+
                 // Calculate smoothed values after collecting enough data
                 if ($index == $adxPeriod) {
                     // First average for the period
@@ -412,23 +412,23 @@ class BinanceApiService
                     // Wilder's smoothing method
                     $lastTR = end($smoothedTR);
                     $smoothedTR[] = $lastTR - ($lastTR / $adxPeriod) + $tr;
-                    
+
                     $lastDMPlus = end($smoothedDMPlus);
                     $smoothedDMPlus[] = $lastDMPlus - ($lastDMPlus / $adxPeriod) + end($dmPlus);
-                    
+
                     $lastDMMinus = end($smoothedDMMinus);
                     $smoothedDMMinus[] = $lastDMMinus - ($lastDMMinus / $adxPeriod) + end($dmMinus);
-                    
+
                     // Calculate +DI and -DI
                     $lastSmoothedTR = end($smoothedTR);
                     $diPlus[] = 100 * (end($smoothedDMPlus) / $lastSmoothedTR);
                     $diMinus[] = 100 * (end($smoothedDMMinus) / $lastSmoothedTR);
-                    
+
                     // Calculate DX
                     $diDiff = abs(end($diPlus) - end($diMinus));
                     $diSum = end($diPlus) + end($diMinus);
                     $dx[] = 100 * ($diDiff / max(0.000001, $diSum)); // Avoid division by zero
-                    
+
                     // Calculate ADX
                     if (count($dx) >= $adxPeriod) {
                         if (count($dx) == $adxPeriod) {
@@ -446,7 +446,7 @@ class BinanceApiService
                 $dmPlus[] = 0;
                 $dmMinus[] = 0;
             }
-            
+
             // Calculate Parabolic SAR
             if ($index == 0) {
                 $trend = 'up';
@@ -456,7 +456,7 @@ class BinanceApiService
             } else {
                 $prevLow = $lowPrices[$index - 1];
                 $prevHigh = $highPrices[$index - 1];
-                
+
                 // SAR calculation based on trend
                 if ($trend == 'up') {
                     // In uptrend
@@ -465,7 +465,7 @@ class BinanceApiService
                         $af = min($af + $afStep, $afMax);
                     }
                     $sar = min($sar + $af * ($ep - $sar), $low, $prevLow);
-                    
+
                     // Check for trend reversal
                     if ($low < $sar) {
                         $trend = 'down';
@@ -480,7 +480,7 @@ class BinanceApiService
                         $af = min($af + $afStep, $afMax);
                     }
                     $sar = max($sar - $af * ($sar - $ep), $high, $prevHigh);
-                    
+
                     // Check for trend reversal
                     if ($high > $sar) {
                         $trend = 'up';
@@ -490,7 +490,7 @@ class BinanceApiService
                     }
                 }
             }
-            
+
             // Calculate EMA12 and EMA26
             if ($index == 0) {
                 $ema12[] = $close;
@@ -499,7 +499,7 @@ class BinanceApiService
                 $ema12[] = self::calculateEMA($close, $ema12[$index - 1], 12);
                 $ema26[] = self::calculateEMA($close, $ema26[$index - 1], 26);
             }
-            
+
             // Calculate OBV (On Balance Volume)
             if ($index > 0) {
                 $prevClose = $closePrices[$index - 1];
@@ -510,23 +510,23 @@ class BinanceApiService
                 }
                 // If close equals previous close, OBV remains unchanged
             }
-            
+
             // Calculate MACD and Signal Line
             $dif = $ema12[$index] - $ema26[$index];
             $macd[] = $dif;
-            
+
             if ($index < 9) {
                 $signalLine[] = $dif; // Initialize signal line
             } else {
                 $signalLine[] = self::calculateEMA($dif, $signalLine[$index - 1], 9);
             }
-            
+
             // Calculate RSI
             if ($index >= 1) {
                 $change = $close - $closePrices[$index - 1];
                 $gains[$index] = $change > 0 ? $change : 0;
                 $losses[$index] = $change < 0 ? abs($change) : 0;
-                
+
                 if ($index == 5) {
                     $avgGain = array_sum(array_slice($gains, 1, 6)) / 6;
                     $avgLoss = array_sum(array_slice($losses, 1, 6)) / 6;
@@ -534,21 +534,21 @@ class BinanceApiService
                     $avgGain = (($avgGain * 5) + $gains[$index]) / 6;
                     $avgLoss = (($avgLoss * 5) + $losses[$index]) / 6;
                 }
-                
+
                 $rs = $avgLoss == 0 ? 100 : $avgGain / $avgLoss;
                 $rsi6 = 100 - (100 / (1 + $rs));
                 $rsiValues[] = $rsi6;
             } else {
                 $rsi6 = null;
             }
-            
+
             // Stochastic RSI calculation
             $stochRsi = null;
             if (count($rsiValues) >= $lengthRsi) {
                 $recentRsi = array_slice($rsiValues, -$lengthRsi);
                 $lowestRsi = min($recentRsi);
                 $highestRsi = max($recentRsi);
-                
+
                 if ($highestRsi != $lowestRsi) {
                     $stochRsi = ($rsi6 - $lowestRsi) / ($highestRsi - $lowestRsi);
                 } else {
@@ -556,29 +556,29 @@ class BinanceApiService
                 }
             }
             $stochRsiValues[] = $stochRsi;
-            
+
             // Add %K values
             if (!is_null($stochRsi)) {
                 $kValues[] = $stochRsi * 100; // Scale to percentage
             }
-            
+
             // Calculate smoothed %K
             $smoothedK = null;
             if (count($kValues) >= $smoothK) {
                 $smoothedK = array_sum(array_slice($kValues, -$smoothK)) / $smoothK;
             }
-            
+
             // Add %D values
             if (!is_null($smoothedK)) {
                 $dValues[] = $smoothedK;
             }
-            
+
             // Calculate smoothed %D
             $smoothedD = null;
             if (count($dValues) >= $smoothD) {
                 $smoothedD = array_sum(array_slice($dValues, -$smoothD)) / $smoothD;
             }
-            
+
             // Williams %R calculation
             $wr = null;
             if ($index >= $lookbackPeriod - 1) {
@@ -586,48 +586,48 @@ class BinanceApiService
                 $periodLows = array_slice($lowPrices, -$lookbackPeriod);
                 $highestHigh = max($periodHighs);
                 $lowestLow = min($periodLows);
-                
+
                 if ($highestHigh != $lowestLow) {
                     $wr = (($highestHigh - $close) / ($highestHigh - $lowestLow)) * -100;
                 } else {
                     $wr = 0; // Avoid division by zero
                 }
             }
-            
+
             // Calculate Moving Averages
             $ma7 = $index >= 6 ? array_sum(array_slice($closePrices, -7)) / 7 : null;
             $ma14 = $index >= 13 ? array_sum(array_slice($closePrices, -14)) / 14 : null;
             $ma25 = $index >= 24 ? array_sum(array_slice($closePrices, -25)) / 25 : null;
             $ma99 = $index >= 98 ? array_sum(array_slice($closePrices, -99)) / 99 : null;
-            
+
             // Calculate Bollinger Bands
             $bbMiddle = null;
             $bbUpper = null;
             $bbLower = null;
-            
+
             if ($index >= ($bbPeriod - 1)) {
                 $recentPrices = array_slice($closePrices, -$bbPeriod);
                 $bbMiddle = array_sum($recentPrices) / $bbPeriod;
-                
+
                 // Calculate standard deviation
                 $sumSquaredDiff = 0;
                 foreach ($recentPrices as $price) {
                     $sumSquaredDiff += pow($price - $bbMiddle, 2);
                 }
                 $standardDeviation = sqrt($sumSquaredDiff / $bbPeriod);
-                
+
                 // Calculate upper and lower bands
                 $bbUpper = $bbMiddle + ($bbDeviation * $standardDeviation);
                 $bbLower = $bbMiddle - ($bbDeviation * $standardDeviation);
             }
-            
+
             // Calculate Percentage Change
             $percentageChange = null;
             if ($index > 0) {
                 $prevClose = $closePrices[$index - 1];
                 $percentageChange = (($close - $prevClose) / $prevClose) * 100;
             }
-            
+
             // Determine buy signal
             $buySignal = false;
             if ($index > 9) {
@@ -640,7 +640,7 @@ class BinanceApiService
                 }
             }
             $shouldBuy[] = $buySignal;
-            
+
             // Get KDJ values
             if ($index <= 9) {
                 $K = 0;
@@ -651,14 +651,14 @@ class BinanceApiService
                 $D = $KDJ[$index - 9]['D'];
                 $J = $KDJ[$index - 9]['J'];
             }
-            
+
             // Calculate OBV levels
             $previousObvHigh = 0;
             $previousObvLow = 0;
             if ($index > 15) {
                 $previousObvHigh = $candlesticks[$index - 15]['obv'];
                 $previousObvLow = $previousObvHigh;
-                
+
                 for ($i = $index - 15; $i < $index; $i++) {
                     if ($previousObvHigh < $candlesticks[$i]['obv']) {
                         $previousObvHigh = $candlesticks[$i]['obv'];
@@ -668,19 +668,19 @@ class BinanceApiService
                     }
                 }
             }
-            
+
             // Calculate Volume MAs
             $ma5_volume = $index >= 4 ? array_sum(array_slice($volumes, -5)) / 5 : null;
             $ma10_volume = $index >= 9 ? array_sum(array_slice($volumes, -10)) / 10 : null;
-            
+
             // AVL Calculation
             $avl = ($high + $low) / 2;
-            
+
             // Get current ADX values
             $currentDiPlus = count($diPlus) ? end($diPlus) : null;
             $currentDiMinus = count($diMinus) ? end($diMinus) : null;
             $currentADX = count($adxValues) ? end($adxValues) : null;
-            
+
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp' => $timestamp,
@@ -720,16 +720,332 @@ class BinanceApiService
                 'J' => $J,
                 'previousObvHigh' => $previousObvHigh,
                 'previousObvLow' => $previousObvLow,
+
                 // ADX components
+
                 'adx' => $currentADX,
+                // PDI (Red)
                 'di_plus' => $currentDiPlus,
+                // MDI (Blue)
                 'di_minus' => $currentDiMinus,
             ];
         }
-    
+
         return $candlesticks;
     }
-    
+
+    public static function getCoinCategoryDetails($symbol)
+    {
+
+
+
+        $url = config('binance.cmcApi.base_url') . config('binance.cmcApi.info');
+
+        // Set up the headers
+        $headers = [
+            'X-CMC_PRO_API_KEY: ' . config('binance.cmcApi.api_key'),
+            'Accept: application/json'
+        ];
+
+        // Set up the query parameters
+        $queryParams = http_build_query([
+            'symbol' => strtoupper($symbol) // Ensure symbol is uppercase
+        ]);
+
+        // Initialize cURL session
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url . '?' . $queryParams,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => false
+        ]);
+
+        // Execute the request
+        $response = curl_exec($curl);
+        $error = curl_error($curl);
+        curl_close($curl);
+
+        // Handle any errors
+        if ($error) {
+            error_log("CoinMarketCap API Error: " . $error);
+            return null;
+        }
+
+        // Parse the response
+        $data = json_decode($response, true);
+
+        // Check if the request was successful
+        if (isset($data['status']) && $data['status']['error_code'] === 0) {
+            // Extract the coin data
+            if (isset($data['data'][strtoupper($symbol)])) {
+                $coinData = $data['data'][strtoupper($symbol)];
+
+                // Get category and tags
+                $category = $coinData['category'] ?? null;
+                $tags = $coinData['tags'] ?? [];
+
+                // Determine if it's a meme coin, alt coin, or other category
+                $isMeme = self::checkIfMemeCoin($coinData);
+                $isAltcoin = self::checkIfAltcoin($symbol, $coinData);
+                $isNFT = self::checkIfNFT($coinData);
+                $isDeFi = self::checkIfDeFi($coinData);
+                $isMetaverse = self::checkIfMetaverse($coinData);
+                $isWeb3 = self::checkIfWeb3($coinData);
+
+
+                $classifications = [
+                    'is_meme_coin' => $isMeme,
+                    'is_altcoin' => $isAltcoin,
+                    'is_nft' => $isNFT,
+                    'is_defi' => $isDeFi,
+                    'is_metaverse' => $isMetaverse,
+                    'is_web3' => $isWeb3,
+                ];
+
+
+                $priorityMap = [
+                    'is_meme_coin'   => 'Meme Coin',
+                    'is_defi'        => 'DeFi',
+                    'is_nft'         => 'NFT',
+                    'is_metaverse'   => 'Metaverse',
+                    'is_web3'        => 'Web3',
+                    'is_altcoin'     => 'Altcoin',
+                ];
+
+                $primaryClassification = null;
+                foreach ($priorityMap as $key => $label) {
+                    if (!empty($classifications[$key])) {
+                        $primaryClassification =  $label;
+                    }
+                }
+
+
+
+                // Optional fallback to primary_classification if nothing is matched
+                if (!$primaryClassification) {
+                    $primaryClassification =  'Unclassified';
+                }
+
+                // Extract and return relevant category information
+                return [
+                    'symbol' => $symbol,
+                    'name' => $coinData['name'] ?? null,
+                    'category' => $category,
+                    'tags' => $tags,
+                    'classifications' => $classifications,
+                    'primary_classification' => $primaryClassification,
+                    'platform' => $coinData['platform'] ?? null,
+                    'description' => $coinData['description'] ?? null,
+                    'logo' => $coinData['logo'] ?? null,
+                    'date_added' => $coinData['date_added'] ?? null,
+                    'urls' => $coinData['urls'] ?? null
+                ];
+            }
+        } else {
+            // Log the error
+            $errorMessage = isset($data['status']['error_message'])
+                ? $data['status']['error_message']
+                : 'Unknown error';
+            error_log("CoinMarketCap API Error: " . $errorMessage);
+        }
+
+        return null;
+    }
+
+    public static function checkIfMemeCoin($coinData)
+    {
+        $category = strtolower($coinData['category'] ?? '');
+        $tags = array_map('strtolower', $coinData['tags'] ?? []);
+        $name = strtolower($coinData['name'] ?? '');
+        $description = strtolower($coinData['description'] ?? '');
+
+        // Check for explicit meme category or tags
+        if ($category === 'meme' || in_array('meme', $tags) || in_array('meme coin', $tags)) {
+            return true;
+        }
+
+        // List of keywords commonly associated with meme coins
+        $memeKeywords = ['meme', 'dog', 'shiba', 'doge', 'pepe', 'elon', 'moon', 'safe', 'shib', 'inu'];
+
+        // Check name for meme keywords
+        foreach ($memeKeywords as $keyword) {
+            if (strpos($name, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        // Check description for meme indicators
+        $memeDescriptionKeywords = ['meme', 'community driven', 'joke', 'fun', 'viral', 'community coin'];
+        foreach ($memeDescriptionKeywords as $keyword) {
+            if (strpos($description, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a coin is an altcoin
+     * 
+     * @param string $symbol Coin symbol
+     * @param array $coinData Coin data from CoinMarketCap
+     * @return bool True if it's an altcoin
+     */
+    public static function checkIfAltcoin($symbol, $coinData)
+    {
+        // Bitcoin is not an altcoin, everything else is
+        if (strtoupper($symbol) === 'BTC') {
+            return false;
+        }
+
+        // All others are considered altcoins
+        return true;
+    }
+
+    /**
+     * Check if a coin is NFT-related
+     * 
+     * @param array $coinData Coin data from CoinMarketCap
+     * @return bool True if it's NFT-related
+     */
+    public static function checkIfNFT($coinData)
+    {
+        $category = strtolower($coinData['category'] ?? '');
+        $tags = array_map('strtolower', $coinData['tags'] ?? []);
+        $description = strtolower($coinData['description'] ?? '');
+
+        // Check for explicit NFT category or tags
+        if ($category === 'nft' || in_array('nft', $tags) || in_array('collectibles', $tags)) {
+            return true;
+        }
+
+        // Check description for NFT indicators
+        $nftKeywords = ['non-fungible token', 'nft', 'collectible', 'digital art', 'digital collectible'];
+        foreach ($nftKeywords as $keyword) {
+            if (strpos($description, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a coin is DeFi-related
+     * 
+     * @param array $coinData Coin data from CoinMarketCap
+     * @return bool True if it's DeFi-related
+     */
+    public static function checkIfDeFi($coinData)
+    {
+        $category = strtolower($coinData['category'] ?? '');
+        $tags = array_map('strtolower', $coinData['tags'] ?? []);
+        $description = strtolower($coinData['description'] ?? '');
+
+        // Check for explicit DeFi category or tags
+        if ($category === 'defi' || in_array('defi', $tags) || in_array('decentralized finance', $tags)) {
+            return true;
+        }
+
+        // Check description for DeFi indicators
+        $defiKeywords = ['decentralized finance', 'defi', 'yield farming', 'lending', 'borrowing', 'decentralized exchange', 'dex', 'amm', 'liquidity', 'staking'];
+        foreach ($defiKeywords as $keyword) {
+            if (strpos($description, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a coin is Metaverse-related
+     * 
+     * @param array $coinData Coin data from CoinMarketCap
+     * @return bool True if it's Metaverse-related
+     */
+    public static function checkIfMetaverse($coinData)
+    {
+        $category = strtolower($coinData['category'] ?? '');
+        $tags = array_map('strtolower', $coinData['tags'] ?? []);
+        $description = strtolower($coinData['description'] ?? '');
+
+        // Check for explicit Metaverse category or tags
+        if ($category === 'metaverse' || in_array('metaverse', $tags) || in_array('virtual world', $tags)) {
+            return true;
+        }
+
+        // Check description for Metaverse indicators
+        $metaverseKeywords = ['metaverse', 'virtual world', 'virtual reality', 'vr', 'augmented reality', 'ar', 'digital land'];
+        foreach ($metaverseKeywords as $keyword) {
+            if (strpos($description, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a coin is Web3-related
+     * 
+     * @param array $coinData Coin data from CoinMarketCap
+     * @return bool True if it's Web3-related
+     */
+    public static function checkIfWeb3($coinData)
+    {
+        $category = strtolower($coinData['category'] ?? '');
+        $tags = array_map('strtolower', $coinData['tags'] ?? []);
+        $description = strtolower($coinData['description'] ?? '');
+
+        // Check for explicit Web3 category or tags
+        if ($category === 'web3' || in_array('web3', $tags) || in_array('web 3.0', $tags)) {
+            return true;
+        }
+
+        // Check description for Web3 indicators
+        $web3Keywords = ['web3', 'web 3.0', 'decentralized web', 'decentralized internet', 'decentralized application', 'dapp'];
+        foreach ($web3Keywords as $keyword) {
+            if (strpos($description, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine the primary classification of the coin
+     * 
+     * @param bool $isMeme Is it a meme coin
+     * @param bool $isAltcoin Is it an altcoin
+     * @param bool $isNFT Is it NFT-related
+     * @param bool $isDeFi Is it DeFi-related
+     * @param bool $isMetaverse Is it Metaverse-related
+     * @param bool $isWeb3 Is it Web3-related
+     * @return string Primary classification
+     */
+    public static function determinePrimaryClassification($isMeme, $isAltcoin, $isNFT, $isDeFi, $isMetaverse, $isWeb3)
+    {
+        if ($isMeme) {
+            return "MEME";
+        } else if ($isNFT) {
+            return "NFT";
+        } else if ($isDeFi) {
+            return "DEFI";
+        } else if ($isMetaverse) {
+            return "METAVERSE";
+        } else if ($isWeb3) {
+            return "WEB3";
+        } else if ($isAltcoin) {
+            return "ALTCOIN";
+        } else {
+            return "OTHER";
+        }
+    }
     /**
      * Helper method for calculating Exponential Moving Average
      * 

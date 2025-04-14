@@ -37,28 +37,15 @@ class TestCron extends Command
     public function handle()
     {
 
-       
-        // $symbol = 'BTCUSDT';
-        // $depth = 1000;
-        // $orderBookData = BinanceApiService::getOrderBook($symbol, $depth);
-        // if (!$orderBookData) {
-        //     Log::error("Failed to fetch order book data for {$symbol}");
-        //     return null;
-        // }
 
-        // $orderBookStrategy = new OrderBookStrategy;
-        // // Analyze the order book
-        // $analysis = $orderBookStrategy->analyzeOrderBook($symbol, $depth);
-        // if (!$analysis['success']) {
-        //     Log::error("Failed to analyze order book data for {$symbol}");
-        //     return null;
-        // }
+        foreach (DB::table('coins')->get() as $coin) {
+            $details = BinanceApiService::getCoinCategoryDetails(str_replace('USDT', '', $coin->symbol));
 
-        $blockchainService = new BlockchainTradingSignalService();
-        $signalResult = $blockchainService->generateBlockchainTradingSignal('BTC');
-        
-        dd($signalResult);
 
-       
+            DB::table('coins')->where('id', $coin->id)->update([
+                'classification' => $details['primary_classification'],
+            ]);
+        }
+        dd('Done');
     }
 }

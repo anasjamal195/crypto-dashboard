@@ -24,7 +24,7 @@ class BinanceController extends Controller
 
         // =======Testing==========================
 
-      
+      dd(BinanceApiService::getCoinCategoryDetails('XRP'));
         // ========================================
         // Fetch all unique symbols from the database
         $interval = $request->interval;
