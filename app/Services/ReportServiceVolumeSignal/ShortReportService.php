@@ -40,7 +40,9 @@ class ShortReportService
 
         $tradesTotal = [];
         $coins = DB::table('coins')->where('market', $market)
-            ->whereIn('symbol', ['HBARUSDT', 'BTCUSDT', 'AVAXUSDT', 'EGLDUSDT'])
+            ->where('status', 'T')
+            // ->whereIn('symbol', ['HBARUSDT', 'BTCUSDT', 'AVAXUSDT', 'EGLDUSDT'])
+            ->limit(20)
             ->get();
         system('clear');
         $cmd->info('Processing: 0 %');
@@ -50,18 +52,19 @@ class ShortReportService
 
             try {
 
-                if (DB::table('order_book_snapshots')->where('symbol', $coin->symbol)->count() > 100) {
-                    $symbol = $coin->symbol;
 
-                    $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
-                    $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
+                $symbol = $coin->symbol;
 
-                    // Insert trades into the database
-                    DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('formula', $formula)->where('market', $market)->where('position', 'SHORT')->delete();
-                    DB::table('coin_reports')->insert($trades);
-                    $tradesTotal[$symbol] = $trades;
-                }
+                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
+
+                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
+
+                // Insert trades into the database
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('formula', $formula)->where('market', $market)->where('position', 'SHORT')->delete();
+                DB::table('coin_reports')->insert($trades);
+                $tradesTotal[$symbol] = $trades;
+
 
                 $perProgress = (($index + 1) / count($coins)) * 100;
                 system('clear');
@@ -69,7 +72,7 @@ class ShortReportService
 
                 // Log::info("Updated coin report for $symbol at interval $interval.");
             } catch (\Exception $e) {
-                // dd($e);
+                dd($e);
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
             CommonHelpers::delayMS(10);
@@ -152,7 +155,7 @@ class ShortReportService
         foreach ($data as $index => $candle) {
 
             // Skip First 1000 Candles
-            if ($index < 1000) {
+            if ($index < 1001) {
                 continue;
             }
 
@@ -208,27 +211,30 @@ class ShortReportService
 
                 // ==================LOGIC TO CHECK TRADE TYPE AND CONDITIONS==================
 
-                // 5 macd solid RED candles and current macd light red
-                $macdLongCondition =
-                    $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
-                    && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
-                    && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
-                    && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
-                    && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
-                    && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
-                    && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Sixth Last Candle should be dark red
-                ;
+                // // 5 macd solid RED candles and current macd light red
+                // $macdLongCondition =
+                //     $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
+                //     && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
+                //     && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
+                //     && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
+                //     && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
+                //     && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
+                //     && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Sixth Last Candle should be dark red
+                // ;
 
-                // 5 macd loght Green candles and current macd Solid green
-                $macdShortCondition =
-                    $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0 // Current Candle should be solid green
-                    && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0 // // Second Last Candle should be light green
-                    && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0 // // Third Last Candle should be light green
-                    && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
-                    && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
-                    && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
-                    && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
-                ;
+                // // 5 macd loght Green candles and current macd Solid green
+                // $macdShortCondition =
+                //     $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0 // Current Candle should be solid green
+                //     && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0 // // Second Last Candle should be light green
+                //     && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0 // // Third Last Candle should be light green
+                //     && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
+                //     && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
+                //     && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
+                //     && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
+                // ;
+
+
+                // 
 
                 $imbalance = ($orderBookSnapshot->bid_volume - $orderBookSnapshot->ask_volume) / ($orderBookSnapshot->bid_volume + $orderBookSnapshot->ask_volume) * 100;
                 $spread_pct = ($orderBookSnapshot->lowest_ask - $orderBookSnapshot->highest_bid) / (($orderBookSnapshot->lowest_ask + $orderBookSnapshot->highest_bid) / 2) * 100;
@@ -238,6 +244,7 @@ class ShortReportService
                 $mfi = $volumeSignal['indicators']['mfi_current'];
                 $cvd = $volumeSignal['indicators']['cvd_current'];
                 $obv = $volumeSignal['indicators']['obv_current'];
+                $obv_previous = $volumeSignals[$volumeIndex - 1]['indicators']['obv_current'];
                 $vwap = $volumeSignal['indicators']['vwap_current'];
                 // dd($volumeSignal['indicators']);
                 $priceLong = $orderBookSnapshot->lowest_ask; // For LONG
@@ -247,21 +254,30 @@ class ShortReportService
 
                 if (
                     $imbalance > 5 && $spread_pct < 0.01
-                    // && $data[$index]['per'] > 0 && $data[$index - 1]['per'] > 0
-                    && $macdLongCondition
+                    && $obv > $obv_previous
+                    // && $data[$index]['close'] < $vwap
+                    && $mfi < 20
 
+                    && $data[$index]['per'] > 0
+
+                    // ADX Trend Check Upwards
+                    && $data[$index]['adx'] > 20
+                    && $data[$index]['adx'] < 50
+                    && $data[$index]['di_plus'] > $data[$index]['di_minus']
 
                 ) {
                     $tradeType = 'LONG';
                     $allowOpening = true;
                 } elseif (
                     $imbalance < -5 && $spread_pct < 0.01
+                    && $obv < $obv_previous
+                    // && $data[$index]['close'] > $vwap
+                    && $mfi > 80
+                    && $data[$index]['per'] < 0
 
-                    // && $data[$index]['per'] < 0 && $data[$index - 1]['per'] < 0
-
-                    && $macdShortCondition
-
-                    // $priceShort < $vwap             
+                    && $data[$index]['adx'] > 20
+                    && $data[$index]['adx'] < 50
+                    && $data[$index]['di_plus'] < $data[$index]['di_minus']
                 ) {
                     $tradeType = 'SHORT';
                     $allowOpening = true;
@@ -271,17 +287,7 @@ class ShortReportService
 
 
 
-                // dd($orderBookSnapshot);
-                // if ($volumeSignal['indicators']['mfi_current'] < 20 && $orderBookSnapshot->volume_imbalance > 1) {
-                //     $tradeType = 'LONG';
-                //     $allowOpening = true;
-                // } else
-                // if ($volumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->volume_imbalance < 1) {
-                //     $tradeType = 'SHORT';
-                //     $allowOpening = true;
-                // } else {
-                //     continue;
-                // }
+
 
 
 
@@ -310,17 +316,21 @@ class ShortReportService
 
                 if ($tradeType == 'SHORT') {
 
-
-
-
                     // Calculate the extreme price
                     if ($extremePrice < $candle['high'])
                         $extremePrice = $candle['high'];
                     // Calculate Closing in profit 
                     if ($candle['low'] <= $open_price * (1 - $targetProfit / 100)) {
                         $closingPrice = $candle['low'];
-                    } else if ($index - $openingIndex  >= 5 && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= 0.8 && $open_price < $data[$index]['close']) {
-                        $closingPrice = $data[$index]['close'];
+                    } else if (
+                        $index - $openingIndex  >= 4
+                        && CommonHelpers::getPercentDiff($open_price, $data[$index]['high']) >= 0.8
+                        && $open_price < $data[$index]['high']
+                        // && $data[$index]['per'] > 0
+                        // && $data[$index - 1]['per'] > 0
+
+                    ) {
+                        $closingPrice = $data[$index]['high'];
                     }
                 } else if ($tradeType == 'LONG') {
                     // Calculate the extreme price
@@ -330,8 +340,14 @@ class ShortReportService
                     if ($candle['high'] >= $open_price * (1 + $targetProfit / 100)) {
 
                         $closingPrice = $candle['high'];
-                    } else if ($index - $openingIndex  >= 5 && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= 0.8 && $open_price > $data[$index]['close']) {
-                        $closingPrice = $data[$index]['close'];
+                    } else if (
+                        $index - $openingIndex  >= 4
+                        && CommonHelpers::getPercentDiff($open_price, $data[$index]['low']) >= 0.8
+                        && $open_price > $data[$index]['low']
+                        // && $data[$index]['per'] < 0
+                        // && $data[$index - 1]['per'] < 0
+                    ) {
+                        $closingPrice = $data[$index]['low'];
                     }
                 }
 

@@ -835,7 +835,7 @@ class BinanceApiService
                     'category' => $category,
                     'tags' => $tags,
                     'classifications' => $classifications,
-                    'primary_classification' => $primaryClassification,
+                    'primary_classification' => self::determinePrimaryClassification($isMeme, $isAltcoin, $isNFT, $isDeFi, $isMetaverse, $isWeb3),
                     'platform' => $coinData['platform'] ?? null,
                     'description' => $coinData['description'] ?? null,
                     'logo' => $coinData['logo'] ?? null,
