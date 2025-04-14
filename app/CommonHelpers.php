@@ -1226,28 +1226,28 @@ class CommonHelpers
 
         $intervalToMins = self::$binanceIntervals[$interval];
         $timestamp = $data[0][0] - (60 * $intervalToMins * 1000 * 300);
-        $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 300, $timestamp, 'FUTURE', $isProcessed);
-        $triggers = [];
-        foreach (array_merge($averageAdjustmetCandles, $data) as $index => $candle) {
+        // $adjustmentCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 300, $timestamp, 'FUTURE', $isProcessed);
+        // $merged = [...$adjustmentCandles, ...$data];
 
-            if ($index < 300) {
-                continue;
-            }
+
+        $triggers = [];
+
+        foreach ($data as $index => $candle) {
+
             $timestamp = $candle[0] / 1000;
             $date = new \DateTime("@{$timestamp}");
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
             $timestamp =  $date->format('Y-m-d H:i:s');
 
 
-
-
             // Now create seperate objects for each candle of each symbol
             // Prepare Data for this candle
 
             $start = 0;
-            $length = $index - $start + 1;
+            $length = $index + 1;
 
             $subArray = array_slice($data, $start, $length);
+
             $volumeSignalService = new BinanceVolumeIndicatorsService([
                 'symbols' => [$symbol],
                 'data' => $subArray,
@@ -1271,6 +1271,9 @@ class CommonHelpers
                 $triggers[] = $signal;
             else
                 $triggers[$timestamp] = $signal;
+
+
+            unset($volumeSignalService);
         }
         return $triggers;
     }

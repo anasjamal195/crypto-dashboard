@@ -18,13 +18,28 @@ use Illuminate\Support\Facades\DB;
 
 class BinanceController extends Controller
 {
+
+    public function volumeSignal()
+    {
+        $pageSlug = 'Volume Signal Dashboard';
+        $symbol = request('symbol', 'BTCUSDT');
+        $interval = request('interval', '5m');
+        $limit = request('limit', 100);
+        $signals = CommonHelpers::getVolumeSignals($symbol, $interval, true);
+
+        $volumeSignals = array_slice($signals, -$limit, $limit, false);
+
+        $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
+
+        return view('volume-signals.index', compact('volumeSignals', 'symbol', 'pageSlug', 'coinData'));
+    }
     public function getCoinReport($market, Request $request)
     {
 
 
         // =======Testing==========================
 
-      dd(BinanceApiService::getCoinCategoryDetails('XRP'));
+        dd();
         // ========================================
         // Fetch all unique symbols from the database
         $interval = $request->interval;

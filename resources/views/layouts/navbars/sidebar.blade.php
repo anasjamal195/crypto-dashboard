@@ -151,6 +151,27 @@
                     </ul>
                 </div>
             </li>
+
+            <li class="{{ request()->is('volume-signals*') ? 'active' : '' }}">
+                <a data-toggle="collapse" href="#volumeSignalsMenu"
+                    aria-expanded="{{ request()->is('volume-signals*') ? 'true' : 'false' }}">
+                    <i class="tim-icons icon-notes"></i>
+                    <p>{{ __('Volume Analysis') }}
+                        <b class="caret"></b>
+                    </p>
+                </a>
+                <div class="collapse {{ request()->is('volume-signals*') ? 'show' : '' }}" id="orderBooksMenu">
+                    <ul class="nav">
+                        <li class="{{ request()->routeIs('volume-signals.index') ? 'active' : '' }}">
+                            <a href="{{ route('volume-signals.index') }}">
+                                <i class="tim-icons icon-bullet-list-67"></i>
+                                <p>{{ __('Analyze Symbol') }}</p>
+                            </a>
+                        </li>
+                      
+                    </ul>
+                </div>
+            </li>
             {{-- New Trade Handlers Menu --}}
             <li class="{{ request()->is('trade-handlers*') ? 'active' : '' }}">
                 <a data-toggle="collapse" href="#tradeHandlersMenu"

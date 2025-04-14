@@ -58,6 +58,10 @@ Route::get('/order-book/check-status', [App\Http\Controllers\OrderBookSnapshotCo
 Route::get('/order-book/{id}', [App\Http\Controllers\OrderBookSnapshotController::class, 'show'])->name('order-book.show')->middleware('auth');
 
 
+// Volume Signals UI
+Route::get('/volume-signals', [App\Http\Controllers\BinanceController::class, 'volumeSignal'])->name('volume-signals.index')->middleware('auth');
+
+
 
 Route::get('/trade-handler/delete/all', [TradeHandlerController::class, 'deleteAll'])->name('trade-handler.delete.all')->middleware('auth');
 Route::resource('trade-handler', TradeHandlerController::class)->middleware('auth');
