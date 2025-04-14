@@ -39,7 +39,6 @@ class BinanceController extends Controller
 
         // =======Testing==========================
 
-        dd();
         // ========================================
         // Fetch all unique symbols from the database
         $interval = $request->interval;
