@@ -283,7 +283,7 @@
                             borderWidth: 1,
                             tension: 0.1,
                             yAxisID: 'y1',
-                            hidden: true,
+                           
                             order: 2
                         },
                         {
@@ -319,7 +319,9 @@
                             type: 'scatter',
                             showLine: false,
                             yAxisID: 'y',
-                            order: -1
+                            order: -1,
+                            hidden: true,
+
                         },
                         {
                             label: 'Sell Signals',
@@ -332,7 +334,9 @@
                             type: 'scatter',
                             showLine: false,
                             yAxisID: 'y',
-                            order: -1
+                            order: -1,
+                            hidden: true,
+
                         }
                     ]
                 },
