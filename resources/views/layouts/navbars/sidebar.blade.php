@@ -160,7 +160,7 @@
                         <b class="caret"></b>
                     </p>
                 </a>
-                <div class="collapse {{ request()->is('volume-signals*') ? 'show' : '' }}" id="orderBooksMenu">
+                <div class="collapse {{ request()->is('volume-signals*') ? 'show' : '' }}" id="volumeSignalsMenu">
                     <ul class="nav">
                         <li class="{{ request()->routeIs('volume-signals.index') ? 'active' : '' }}">
                             <a href="{{ route('volume-signals.index') }}">
