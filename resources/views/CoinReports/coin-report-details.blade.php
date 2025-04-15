@@ -158,11 +158,11 @@
                                             <button class="btn btn-info btn-sm"
                                                 onclick="window.showDetails({{ $trade->id }},this)">Show
                                                 Details</button>
-                                            @if ($trade->snapshot_id)
+                                            {{-- @if ($trade->snapshot_id)
                                                 <a target="_blank" class="btn btn-info btn-sm"
                                                     href="{{ route('order-book.show', $trade->snapshot_id) }}">Show
                                                     Trigger</a>
-                                            @endif
+                                            @endif --}}
                                         </td>
                                     </tr>
 
