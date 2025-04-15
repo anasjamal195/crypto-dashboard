@@ -67,10 +67,9 @@ class BinanceVolumeIndicatorsService
     public function getKlineData(string $symbol, string $interval, int $limit = 100, $timestamp = null): array
     {
 
-        
+
         try {
             return array_slice($this->data, -$limit);
-            
         } catch (\Exception $e) {
             Log::error('Exception while fetching kline data: ' . $e->getMessage());
             dd($e);
@@ -350,7 +349,7 @@ class BinanceVolumeIndicatorsService
         if ($this->useVWAP) {
             $indicators['vwap'] = $this->calculateVWAP($klines);
             $indicators['vwap_current'] = end($indicators['vwap']);
-            $indicators['price_to_vwap'] = $indicators['current_price'] / $indicators['vwap_current'] - 1;
+            $indicators['price_to_vwap'] = $indicators['vwap_current'] - 1 ? $indicators['current_price'] / $indicators['vwap_current'] - 1 : 0;
         }
 
         if ($this->useVolumeProfile) {
