@@ -1217,23 +1217,24 @@ class CommonHelpers
 
 
 
-    public static function getVolumeSignals($symbol, $interval, $isArr = true, $timestamp = null)
+    public static function getVolumeSignals($symbol, $interval, $isArr = true, $timestamp = null, $parentLimit = 1000)
     {
-        $parentLimit = 1000;
+
         $isProcessed =  false;
         $data = BinanceApiService::getCandleStickData($symbol, $interval, $parentLimit, $timestamp, 'FUTURE', $isProcessed);
 
-
         $intervalToMins = self::$binanceIntervals[$interval];
         $timestamp = $data[0][0] - (60 * $intervalToMins * 1000 * 300);
-        // $adjustmentCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 300, $timestamp, 'FUTURE', $isProcessed);
-        // $merged = [...$adjustmentCandles, ...$data];
-
+        $adjustmentCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 300, $timestamp, 'FUTURE', $isProcessed);
+        $merged = [...$adjustmentCandles, ...$data];
 
         $triggers = [];
 
-        foreach ($data as $index => $candle) {
+        foreach ($merged as $index => $candle) {
 
+            if ($index < 300) {
+                continue;
+            }
             $timestamp = $candle[0] / 1000;
             $date = new \DateTime("@{$timestamp}");
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
@@ -1246,7 +1247,7 @@ class CommonHelpers
             $start = 0;
             $length = $index + 1;
 
-            $subArray = array_slice($data, $start, $length);
+            $subArray = array_slice($merged, $start, $length);
 
             $volumeSignalService = new BinanceVolumeIndicatorsService([
                 'symbols' => [$symbol],
@@ -1275,7 +1276,9 @@ class CommonHelpers
 
             unset($volumeSignalService);
         }
-        return $triggers;
+
+
+        return array_slice($triggers, -$parentLimit);
     }
 
 

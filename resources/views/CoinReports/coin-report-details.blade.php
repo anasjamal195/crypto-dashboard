@@ -844,6 +844,9 @@
 
             const timestamps = candlestickData.map(data => data.timestamp);
             const closePrices = candlestickData.map(data => data.close);
+            const openPrices = candlestickData.map(data => data.open);
+            const highPrices = candlestickData.map(data => data.high);
+            const lowPrices = candlestickData.map(data => data.low);
 
             // Volume Indicators
             const mfiValues = volumeSignals.map(signal => signal.indicators.mfi_current);

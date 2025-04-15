@@ -158,13 +158,13 @@ class ReportService
 
         $waitingCandles = 0;
         $openingIndex = 0;
-        $volumeSignals = CommonHelpers::getVolumeSignals($symbol, self::$interval, true, $data[0]['binance_timestamp']);
+        $volumeSignals = CommonHelpers::getVolumeSignals($symbol, self::$interval, true, $data[0]['binance_timestamp'], 1000);
 
         foreach ($data as $index => $candle) {
             $volumeIndex = $index - 1000;
 
             // Skip Adjustment Candles and Volume Adjustment
-            if ($index < 1000 + 300) {
+            if ($index < 1000) {
                 continue;
             }
 
@@ -192,7 +192,6 @@ class ReportService
                     $candle['orderBookSnapshot'] = $orderBookSnapshot->id;
                     $candle['openingVolumes'] = json_encode($volumeSignals[$volumeIndex]);
 
-                    
                     $open_price = $candle['close'];
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $extremePrice = $open_price;
@@ -278,9 +277,6 @@ class ReportService
 
         if (!$orderBookSnapshot)
             return null;
-
-
-
 
 
         $volumeSignal = $volumeSignals[$volumeIndex];

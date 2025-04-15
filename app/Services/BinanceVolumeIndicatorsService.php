@@ -67,16 +67,10 @@ class BinanceVolumeIndicatorsService
     public function getKlineData(string $symbol, string $interval, int $limit = 100, $timestamp = null): array
     {
 
-        // $cacheKey = "binance_kline_{$symbol}_{$interval}_{$limit}_{$timestamp}";
-
-        // // Try to get from cache first (30 seconds TTL for scalping)
-        // if (Cache::has($cacheKey)) {
-        //     return Cache::get($cacheKey);
-        // }
-
+        
         try {
-            return $this->getKlinesFromData($limit, count($this->data) - 1);
-            // return BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, 'FUTURE', false);
+            return array_slice($this->data, -$limit);
+            
         } catch (\Exception $e) {
             Log::error('Exception while fetching kline data: ' . $e->getMessage());
             dd($e);
@@ -628,6 +622,9 @@ class BinanceVolumeIndicatorsService
             foreach ($this->timeframes as $timeframe) {
                 // Get all indicators
                 $indicators = $this->getAllVolumeIndicators($symbol, $timeframe);
+
+
+
                 $indicatorList = [
                     'mfi_current' => $indicators['mfi_current'] ?? null,
                     'cvd_current' => $indicators['cvd_current'] ?? null,
@@ -640,7 +637,7 @@ class BinanceVolumeIndicatorsService
                 // dd($indicators);
                 // Analyze and generate signal
                 $signal = $this->analyzeVolumeIndicators($indicators);
-                $signal['indicators']= $indicatorList;
+                $signal['indicators'] = $indicatorList;
                 // Only include non-neutral signals with strength >= 6
                 if (($signal['signal'] !== 'neutral' && $signal['strength'] >= 6 && $signal['potential']) || true) {
                     $results['signals'][] = $signal;

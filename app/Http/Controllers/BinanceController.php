@@ -25,9 +25,9 @@ class BinanceController extends Controller
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '5m');
         $limit = request('limit', 100);
-        $signals = CommonHelpers::getVolumeSignals($symbol, $interval, true);
+        $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true, null, $limit);
 
-        $volumeSignals = array_slice($signals, -$limit, $limit, false);
+
 
         $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
 
@@ -337,12 +337,11 @@ class BinanceController extends Controller
             }
         }
 
-        // dd($liveBuy,$liveSell);
 
 
 
-        $volumeSignals = CommonHelpers::getVolumeSignals($symbol,$interval,true,$data[0]['binance_timestamp']);
-        
+        $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true, $data[0]['binance_timestamp'], 1000);
+
 
         return view('CoinReports.coin-report-details', [
             'pageSlug' => 'Report Details',
