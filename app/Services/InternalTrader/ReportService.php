@@ -20,7 +20,7 @@ class ReportService
 
     // Essential Properties
     public static $delayMs = 10;
-    public static $supportResistanceCandleSpan = 7;
+    public static $supportResistanceCandleSpan = 5;
     public static $backTestTimeUnix = null;
 
     public static $interval = '5m';
@@ -28,11 +28,22 @@ class ReportService
     public static $stopLoss = 0.8;
     public static $stopLossWaitingDuration = 20;
     public static $longEnabled = true;
-    public static $shortEnabled = true;
+    public static $shortEnabled = false;
     public static $formula = 'Internal Report';
     public static $earlyClosingEnabled = true;
 
-    public static $coinLimit = 0;
+    // Coin Selection Filters
+    public static $coinLimit = 0; // Use 0 for all coins
+    public static $shuffleCoins = true;
+
+
+    public static $filterOnCoinType = true;
+    public static $coinTypeMetaverse = true;
+    public static $coinTypeAlt = false;
+    public static $coinTypeMeme = false;
+    public static $coinTypeDefi = false;
+    public static $coinTypeNft = false;
+    public static $coinTypeWeb3 = false;
 
 
 
@@ -63,6 +74,13 @@ class ReportService
                     <li class="list-group-item bg-transparent">📉 <strong>Short Position Enabled:</strong> ' . (self::$shortEnabled ? 'Yes' : 'No') . '</li>
                     <li class="list-group-item bg-transparent">⏩ <strong>Early Closing Enabled:</strong> ' . (self::$earlyClosingEnabled ? 'Yes' : 'No') . '</li>
                     <li class="list-group-item bg-transparent">💰 <strong>Coin Limit:</strong> ' . self::$coinLimit . '</li>
+                    <li class="list-group-item bg-transparent">🧮 <strong>Filter on Coin Type:</strong> ' . (self::$filterOnCoinType ? 'Yes' : 'No') . '</li>
+                    <li class="list-group-item bg-transparent">🌐 <strong>Metaverse:</strong> ' . (self::$coinTypeMetaverse ? 'Yes' : 'No') . '</li>
+                    <li class="list-group-item bg-transparent">📉 <strong>Alt:</strong> ' . (self::$coinTypeAlt ? 'Yes' : 'No') . '</li>
+                    <li class="list-group-item bg-transparent">😂 <strong>Meme:</strong> ' . (self::$coinTypeMeme ? 'Yes' : 'No') . '</li>
+                    <li class="list-group-item bg-transparent">📈 <strong>DeFi:</strong> ' . (self::$coinTypeDefi ? 'Yes' : 'No') . '</li>
+                    <li class="list-group-item bg-transparent">🎨 <strong>NFT:</strong> ' . (self::$coinTypeNft ? 'Yes' : 'No') . '</li>
+                    <li class="list-group-item bg-transparent">🌍 <strong>Web3:</strong> ' . (self::$coinTypeWeb3 ? 'Yes' : 'No') . '</li>
                 </ul>
             </div>
         </div>
@@ -83,15 +101,35 @@ class ReportService
     ) {
 
         $tradesTotal = [];
-        $coinsQuery = DB::table('coins')->where('market', 'FUTURE');
+        $coinsQuery = DB::table('coins')->where('market', 'FUTURE')->where('status', 'T');
+
+
+
+
+        // Coin Type Filters
+        if (self::$filterOnCoinType) {
+            if (self::$coinTypeMetaverse)
+                $coinsQuery->where('is_metaverse', true);
+            if (self::$coinTypeAlt)
+                $coinsQuery->where('is_altcoin', true);
+            if (self::$coinTypeMeme)
+                $coinsQuery->where('is_meme_coin', true);
+            if (self::$coinTypeNft)
+                $coinsQuery->where('is_nft', true);
+            if (self::$coinTypeDefi)
+                $coinsQuery->where('is_defi', true);
+            if (self::$coinTypeWeb3)
+                $coinsQuery->where('is_web3', true);
+        }
+        if (self::$shuffleCoins) {
+            $coinsQuery->inRandomOrder();
+        }
 
         if (self::$coinLimit) {
             $coinsQuery->limit(self::$coinLimit);
-        }else{
+        } else {
             self::$coinLimit = (clone $coinsQuery)->count();
         }
-
-
         $coins = $coinsQuery->get();
 
         // Clear Console
@@ -281,7 +319,7 @@ class ReportService
     public static function handleOpeningConditions($symbol, $data, $index, $volumeSignals, $volumeIndex, $supportResistance, $orderBookSnapshot)
     {
 
-        if ($volumeIndex < 1)
+        if ($volumeIndex < 4)
             return null;
         if (!$orderBookSnapshot)
             return null;
@@ -317,20 +355,29 @@ class ReportService
         if (
             $imbalance < -5 && $spread_pct < 0.01
             && $obv < $obv_previous
-            && $data[$index]['K'] > 70 && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
+            && $mfi > 80
+            && $data[$index]['K'] > 70
+            && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
+            // && $data[$index]['close'] < $supportResistance['resistance']
+            // && $data[$index]['open'] > $supportResistance['resistance']
         ) {
             return  self::$shortEnabled ? 'SHORT' : null;
         }
 
 
 
-
-
         // Long condition
         if (
-            $imbalance > 5 && $spread_pct < 0.01
-            && $obv > $obv_previous
-            && $data[$index]['K'] < 30 && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
+            // $imbalance > 20 && $spread_pct < 0.01
+            $obv > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
+            && $volumeSignals[$volumeIndex - 1]['indicators']['obv_current'] > $volumeSignals[$volumeIndex - 2]['indicators']['obv_current']
+            // && $mfi < 20
+
+            
+            && $data[$index]['K'] < 30
+            && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
+            && $data[$index]['close'] > $supportResistance['support']
+            && $data[$index]['open'] < $supportResistance['support']
         ) {
             return self::$longEnabled ? 'LONG' : null;
         }
