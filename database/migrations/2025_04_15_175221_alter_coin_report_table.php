@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('coins', function (Blueprint $table) {
+        Schema::table('coin_reports', function (Blueprint $table) {
             $table->dropColumn('buyingAverages');
             $table->dropColumn('snapshot_id');
 
@@ -25,6 +25,13 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::table('coin_reports', function (Blueprint $table) {
+            $table->json('buyingAverages')->nullable();
+            $table->string('snapshot_id')->nullable()->after('market');
+
+
+            $table->dropColumn('openingVolumes');
+            $table->dropColumn('closingVolumes');
+        });
     }
 };

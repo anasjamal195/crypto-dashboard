@@ -167,10 +167,6 @@
                                     </tr>
 
 
-
-
-
-
                                     <tr id="details-{{ $trade->id }}" class="trade-details d-none">
                                         <td colspan="10">
 
