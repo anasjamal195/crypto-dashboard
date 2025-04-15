@@ -120,7 +120,7 @@ class ReportService
                 system('clear');
                 $cmd->info('Processing: ' . round($perProgress) . ' %');
             } catch (\Exception $e) {
-                // dd($e);
+                dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
@@ -190,7 +190,9 @@ class ReportService
                     $candle['currentSupport'] = $supportResistance['support'];
                     $candle['currentResistance'] = $supportResistance['resistance'];
                     $candle['orderBookSnapshot'] = $orderBookSnapshot->id;
-                    $currentTrade['openingVolumes'] = json_encode($volumeSignals[$volumeIndex]);
+                    $candle['openingVolumes'] = json_encode($volumeSignals[$volumeIndex]);
+
+                    
                     $open_price = $candle['close'];
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $extremePrice = $open_price;
@@ -215,10 +217,9 @@ class ReportService
                     $candle['should_sell'] = true;
                     $candle['currentSupport'] = $supportResistance['support'];
                     $candle['currentResistance'] = $supportResistance['resistance'];
-                    $candle['orderBookSnapshot'] = $orderBookSnapshot->id;
+                    $candle['orderBookSnapshot'] = $orderBookSnapshot ? $orderBookSnapshot->id : null;
+                    $candle['closingVolumes'] = json_encode($volumeSignals[$volumeIndex]);
 
-
-                    $currentTrade['closingVolumes'] = json_encode($volumeSignals[$volumeIndex]);
                     $currentTrade['sellingCandle'] = json_encode($candle);
                     $currentTrade['buyingPrice'] = $open_price;
                     $currentTrade['market'] = 'FUTURE';
@@ -231,7 +232,7 @@ class ReportService
                     $currentTrade['lowestPricePercentage'] = abs((($open_price - $extremePrice) / $open_price)) * 100;
                     $currentTrade['position'] = $tradeType;
                     $currentTrade['formula'] = self::$formula;
-                    $currentTrade['snapshot_id'] = null;
+
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
                     $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
