@@ -185,8 +185,7 @@
                                                     <td class="font-weight-bold">Formula Accuracy</td>
                                                     <td>{{ $totalTrades ? round(100 - ($stopLossesTrades / $totalTrades) * 100, 2) : 0 }}
                                                         %</td>
-                                                    <td>Success rate of profitable trades with {{ request('stopLoss', 1) }}
-                                                        % Stop Loss</td>
+                                                    <td>Success rate of profitable trades </td>
                                                 </tr>
                                             </tbody>
                                         </table>
