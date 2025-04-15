@@ -349,7 +349,7 @@ class BinanceVolumeIndicatorsService
         if ($this->useVWAP) {
             $indicators['vwap'] = $this->calculateVWAP($klines);
             $indicators['vwap_current'] = end($indicators['vwap']);
-            $indicators['price_to_vwap'] = $indicators['vwap_current'] - 1 ? $indicators['current_price'] / $indicators['vwap_current'] - 1 : 0;
+            $indicators['price_to_vwap'] = $indicators['current_price'] / max(1, $indicators['vwap_current'] - 1);
         }
 
         if ($this->useVolumeProfile) {

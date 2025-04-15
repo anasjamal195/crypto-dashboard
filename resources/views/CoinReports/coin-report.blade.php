@@ -2,15 +2,27 @@
 @php
     $totalProfit = 0;
     $totalTrades = 0;
+    $percentageProgress = DB::table('formula_details')->where('formula', request('formula'))->first();
+    $percentageProgress = $percentageProgress ? $percentageProgress->progress : 100;
 @endphp
 @section('content')
     <div class="container-fluid">
+
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header card-header-primary">
                         <h4 class="card-title ">Internal Trades Report (Recent 1000 Candles)</h4>
-                        <p class="card-category"> Here is a list of the latest trades across all coins</p>
+                        <p class="card-category"> Here is a list of the latest trades across all coins.
+                            ({{ $percentageProgress }} % Completed)</p>
+
+                        <div class="progress m-2" style="height: 5px; ">
+                            <div class="progress-bar" role="progressbar"
+                                style="width: {{ $percentageProgress }}%; background-color: #00f2c3;"
+                                aria-valuenow="{{ $percentageProgress }}" aria-valuemin="0" aria-valuemax="100">
+
+                            </div>
+                        </div>
                     </div>
                     <form method="GET" action="{{ url()->current() }}" class="p-3">
                         <input type="hidden" name="interval" value="{{ request()->get('interval') }}">
