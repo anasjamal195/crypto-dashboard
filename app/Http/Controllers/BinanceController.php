@@ -92,7 +92,7 @@ class BinanceController extends Controller
             $query->where('formula', $request->formula);
         }
         $averageDurationQuery = clone $query;
-        $averageDuration  = $averageDurationQuery->average('duration');
+        $averageDuration  = $averageDurationQuery->where('profit', '>', '0')->where('duration', '<=', '60')->average('duration');
 
         $nearbyTradesQuery = DB::table('coin_reports');
         if ($request->filled('position')) {
@@ -341,7 +341,8 @@ class BinanceController extends Controller
 
 
 
-
+        $volumeSignals = CommonHelpers::getVolumeSignals($symbol,$interval,true,$data[0]['binance_timestamp']);
+        
 
         return view('CoinReports.coin-report-details', [
             'pageSlug' => 'Report Details',
@@ -353,6 +354,7 @@ class BinanceController extends Controller
             'liveBuy' => $liveBuy,
             'liveSell' => $liveSell,
             'data' => $data,
+            'volumeSignals' => $volumeSignals,
             'liveTradesData' => $liveTradesData,
         ]);
     }

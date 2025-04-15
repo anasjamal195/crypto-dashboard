@@ -40,9 +40,7 @@ class ShortReportService
 
         $tradesTotal = [];
         $coins = DB::table('coins')->where('market', $market)
-            ->where('status', 'T')
             // ->whereIn('symbol', ['HBARUSDT', 'BTCUSDT', 'AVAXUSDT', 'EGLDUSDT'])
-            ->limit(20)
             ->get();
         system('clear');
         $cmd->info('Processing: 0 %');
@@ -52,19 +50,18 @@ class ShortReportService
 
             try {
 
+                if (DB::table('order_book_snapshots')->where('symbol', $coin->symbol)->count() > 100) {
+                    $symbol = $coin->symbol;
 
+                    $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
 
-                $symbol = $coin->symbol;
+                    $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
 
-                $data = BinanceApiService::getCandleStickData($symbol, '5m', 1000, null, 'FUTURE');
-
-                $trades = self::processCandles($symbol, '5m', 'FUTURE', $data, $targetProfit, $formula);
-
-                // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('formula', $formula)->where('market', $market)->where('position', 'SHORT')->delete();
-                DB::table('coin_reports')->insert($trades);
-                $tradesTotal[$symbol] = $trades;
-
+                    // Insert trades into the database
+                    DB::table('coin_reports')->where('symbol', $symbol)->where('interval', $interval)->where('formula', $formula)->where('market', $market)->where('position', 'SHORT')->delete();
+                    DB::table('coin_reports')->insert($trades);
+                    $tradesTotal[$symbol] = $trades;
+                }
 
                 $perProgress = (($index + 1) / count($coins)) * 100;
                 system('clear');
@@ -72,7 +69,7 @@ class ShortReportService
 
                 // Log::info("Updated coin report for $symbol at interval $interval.");
             } catch (\Exception $e) {
-                dd($e);
+                // dd($e);
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
             CommonHelpers::delayMS(10);
@@ -155,7 +152,7 @@ class ShortReportService
         foreach ($data as $index => $candle) {
 
             // Skip First 1000 Candles
-            if ($index < 1001) {
+            if ($index < 1300) {
                 continue;
             }
 
@@ -252,43 +249,57 @@ class ShortReportService
 
 
 
+                // if (
+                //     $imbalance > 5 && $spread_pct < 0.01
+                // ) {
+                //     $tradeType = 'LONG';
+                //     $allowOpening = true;
+
+                // } elseif (
+                //     $imbalance < -5 && $spread_pct < 0.01
+                // ) {
+                //     $tradeType = 'SHORT';
+                //     $allowOpening = true;
+
+                // } else {
+                //     continue;
+                // }
+
+
+
+
+                // Calculate spread
+                $spread_pct = ($orderBookSnapshot->lowest_ask - $orderBookSnapshot->highest_bid) / $orderBookSnapshot->highest_bid * 100;
+
+                // Immediate Volume Imbalance
+                $volume_imbalance = ($orderBookSnapshot->bid_volume - $orderBookSnapshot->ask_volume) / ($orderBookSnapshot->bid_volume + $orderBookSnapshot->ask_volume) * 100;
+
+
+
+
+                // Short condition
                 if (
-                    $imbalance > 5 && $spread_pct < 0.01
-                    && $obv > $obv_previous
-                    // && $data[$index]['close'] < $vwap
-                    && $mfi < 20
 
-                    && $data[$index]['per'] > 0
-
-                    // ADX Trend Check Upwards
-                    && $data[$index]['adx'] > 20
-                    && $data[$index]['adx'] < 50
-                    && $data[$index]['di_plus'] > $data[$index]['di_minus']
-
-                ) {
-                    $tradeType = 'LONG';
-                    $allowOpening = true;
-                } elseif (
                     $imbalance < -5 && $spread_pct < 0.01
                     && $obv < $obv_previous
-                    // && $data[$index]['close'] > $vwap
-                    && $mfi > 80
-                    && $data[$index]['per'] < 0
+                    && $data[$index]['K'] > 70 && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
 
-                    && $data[$index]['adx'] > 20
-                    && $data[$index]['adx'] < 50
-                    && $data[$index]['di_plus'] < $data[$index]['di_minus']
+
                 ) {
                     $tradeType = 'SHORT';
                     $allowOpening = true;
-                } else {
-                    continue;
                 }
 
-
-
-
-
+                // Long condition
+                if (
+                    $imbalance > 5 && $spread_pct < 0.01
+                    && $obv > $obv_previous
+                   
+                    && $data[$index]['K'] < 30 && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
+                ) {
+                    $tradeType = 'LONG';
+                    $allowOpening = true;
+                }
 
 
 
@@ -316,21 +327,17 @@ class ShortReportService
 
                 if ($tradeType == 'SHORT') {
 
+
+
+
                     // Calculate the extreme price
                     if ($extremePrice < $candle['high'])
                         $extremePrice = $candle['high'];
                     // Calculate Closing in profit 
                     if ($candle['low'] <= $open_price * (1 - $targetProfit / 100)) {
                         $closingPrice = $candle['low'];
-                    } else if (
-                        $index - $openingIndex  >= 4
-                        && CommonHelpers::getPercentDiff($open_price, $data[$index]['high']) >= 0.8
-                        && $open_price < $data[$index]['high']
-                        // && $data[$index]['per'] > 0
-                        // && $data[$index - 1]['per'] > 0
-
-                    ) {
-                        $closingPrice = $data[$index]['high'];
+                    } else if ($index - $openingIndex  >= 5 && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= 0.8 && $open_price < $data[$index]['close']) {
+                        $closingPrice = $data[$index]['close'];
                     }
                 } else if ($tradeType == 'LONG') {
                     // Calculate the extreme price
@@ -340,14 +347,8 @@ class ShortReportService
                     if ($candle['high'] >= $open_price * (1 + $targetProfit / 100)) {
 
                         $closingPrice = $candle['high'];
-                    } else if (
-                        $index - $openingIndex  >= 4
-                        && CommonHelpers::getPercentDiff($open_price, $data[$index]['low']) >= 0.8
-                        && $open_price > $data[$index]['low']
-                        // && $data[$index]['per'] < 0
-                        // && $data[$index - 1]['per'] < 0
-                    ) {
-                        $closingPrice = $data[$index]['low'];
+                    } else if ($index - $openingIndex  >= 5 && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= 0.8 && $open_price > $data[$index]['close']) {
+                        $closingPrice = $data[$index]['close'];
                     }
                 }
 

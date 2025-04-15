@@ -1217,11 +1217,11 @@ class CommonHelpers
 
 
 
-    public static function getVolumeSignals($symbol, $interval, $isArr = true)
+    public static function getVolumeSignals($symbol, $interval, $isArr = true, $timestamp = null)
     {
         $parentLimit = 1000;
         $isProcessed =  false;
-        $data = BinanceApiService::getCandleStickData($symbol, $interval, $parentLimit, null, 'FUTURE', $isProcessed);
+        $data = BinanceApiService::getCandleStickData($symbol, $interval, $parentLimit, $timestamp, 'FUTURE', $isProcessed);
 
 
         $intervalToMins = self::$binanceIntervals[$interval];

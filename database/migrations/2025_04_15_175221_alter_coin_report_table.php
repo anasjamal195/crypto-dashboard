@@ -11,11 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('formula_details', function (Blueprint $table) {
-            $table->id();
-            $table->string('formula', 1024)->nullable();
-            $table->string('details', 1024)->nullable();
-            $table->timestamps();
+        Schema::table('coins', function (Blueprint $table) {
+            $table->dropColumn('buyingAverages');
+            $table->dropColumn('snapshot_id');
+
+            $table->json('openingVolumes')->nullable();
+            $table->json('closingVolumes')->nullable();
         });
     }
 
@@ -24,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('formula_details');
+        //
     }
 };
