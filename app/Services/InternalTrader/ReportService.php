@@ -32,7 +32,7 @@ class ReportService
     public static $formula = 'Internal Report';
     public static $earlyClosingEnabled = true;
 
-    public static $coinLimit = 30;
+    public static $coinLimit = 0;
 
 
 
@@ -87,7 +87,10 @@ class ReportService
 
         if (self::$coinLimit) {
             $coinsQuery->limit(self::$coinLimit);
+        }else{
+            self::$coinLimit = (clone $coinsQuery)->count();
         }
+
 
         $coins = $coinsQuery->get();
 
