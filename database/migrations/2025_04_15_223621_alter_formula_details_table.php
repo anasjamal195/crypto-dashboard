@@ -11,11 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('formula_details', function (Blueprint $table) {
-            $table->id();
-            $table->longText('formula')->nullable();
-            $table->longText('details')->nullable();
-            $table->timestamps();
+        Schema::table('formula_details', function (Blueprint $table) {
+            $table->integer('progress')->nullable()->default(0);
         });
     }
 
@@ -24,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('formula_details');
+        Schema::table('formula_details', function (Blueprint $table) {
+            $table->dropColumn('progress');
+        });
     }
 };

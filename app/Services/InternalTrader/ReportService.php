@@ -62,7 +62,7 @@ class ReportService
                     <li class="list-group-item bg-transparent">📈 <strong>Long Position Enabled:</strong> ' . (self::$longEnabled ? 'Yes' : 'No') . '</li>
                     <li class="list-group-item bg-transparent">📉 <strong>Short Position Enabled:</strong> ' . (self::$shortEnabled ? 'Yes' : 'No') . '</li>
                     <li class="list-group-item bg-transparent">⏩ <strong>Early Closing Enabled:</strong> ' . (self::$earlyClosingEnabled ? 'Yes' : 'No') . '</li>
-                    <li class="list-group-item bg-transparent">🪙 <strong>Coin Limit:</strong> ' . self::$coinLimit . '</li>
+                    <li class="list-group-item bg-transparent">💰 <strong>Coin Limit:</strong> ' . self::$coinLimit . '</li>
                 </ul>
             </div>
         </div>
@@ -119,6 +119,9 @@ class ReportService
                 $perProgress = (($index + 1) / count($coins)) * 100;
                 system('clear');
                 $cmd->info('Processing: ' . round($perProgress) . ' %');
+                DB::table('formula_details')->where('formula', self::$formula)->update([
+                    'progress' => $perProgress,
+                ]);
             } catch (\Exception $e) {
                 dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
@@ -275,6 +278,8 @@ class ReportService
     public static function handleOpeningConditions($symbol, $data, $index, $volumeSignals, $volumeIndex, $supportResistance, $orderBookSnapshot)
     {
 
+        if ($volumeIndex < 1)
+            return null;
         if (!$orderBookSnapshot)
             return null;
 
