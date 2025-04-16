@@ -293,7 +293,6 @@ class BinanceApiService
             return $response->json();
     }
 
-
     protected static function processData($data, $market = 'SPOT')
     {
         // Calculate KDJ (predefined function)
@@ -407,38 +406,45 @@ class BinanceApiService
                 // Calculate smoothed values after collecting enough data
                 if ($index == $adxPeriod) {
                     // First average for the period
-                    $smoothedTR[] = array_sum($trueRanges) / $adxPeriod;
-                    $smoothedDMPlus[] = array_sum($dmPlus) / $adxPeriod;
-                    $smoothedDMMinus[] = array_sum($dmMinus) / $adxPeriod;
+                    // FIX: Ensure adxPeriod is not zero
+                    $smoothedTR[] = $adxPeriod > 0 ? array_sum($trueRanges) / $adxPeriod : 0;
+                    $smoothedDMPlus[] = $adxPeriod > 0 ? array_sum($dmPlus) / $adxPeriod : 0;
+                    $smoothedDMMinus[] = $adxPeriod > 0 ? array_sum($dmMinus) / $adxPeriod : 0;
                 } elseif ($index > $adxPeriod) {
                     // Wilder's smoothing method
+                    // FIX: Ensure adxPeriod is not zero
                     $lastTR = end($smoothedTR);
-                    $smoothedTR[] = $lastTR - ($lastTR / $adxPeriod) + $tr;
+                    $smoothedTR[] = $adxPeriod > 0 ? $lastTR - ($lastTR / $adxPeriod) + $tr : $lastTR;
 
                     $lastDMPlus = end($smoothedDMPlus);
-                    $smoothedDMPlus[] = $lastDMPlus - ($lastDMPlus / $adxPeriod) + end($dmPlus);
+                    $smoothedDMPlus[] = $adxPeriod > 0 ? $lastDMPlus - ($lastDMPlus / $adxPeriod) + end($dmPlus) : $lastDMPlus;
 
                     $lastDMMinus = end($smoothedDMMinus);
-                    $smoothedDMMinus[] = $lastDMMinus - ($lastDMMinus / $adxPeriod) + end($dmMinus);
+                    $smoothedDMMinus[] = $adxPeriod > 0 ? $lastDMMinus - ($lastDMMinus / $adxPeriod) + end($dmMinus) : $lastDMMinus;
 
                     // Calculate +DI and -DI
                     $lastSmoothedTR = end($smoothedTR);
-                    $diPlus[] = 100 * (end($smoothedDMPlus) / $lastSmoothedTR);
-                    $diMinus[] = 100 * (end($smoothedDMMinus) / $lastSmoothedTR);
+                    // FIX: Avoid division by zero in DI calculations
+                    $diPlus[] = $lastSmoothedTR > 0 ? 100 * (end($smoothedDMPlus) / $lastSmoothedTR) : 0;
+                    $diMinus[] = $lastSmoothedTR > 0 ? 100 * (end($smoothedDMMinus) / $lastSmoothedTR) : 0;
 
                     // Calculate DX
                     $diDiff = abs(end($diPlus) - end($diMinus));
                     $diSum = end($diPlus) + end($diMinus);
-                    $dx[] = 100 * ($diDiff / max(0.000001, $diSum)); // Avoid division by zero
+                    // FIX: Avoid division by zero in DX calculation
+                    $dx[] = $diSum > 0 ? 100 * ($diDiff / $diSum) : 0;
 
                     // Calculate ADX
                     if (count($dx) >= $adxPeriod) {
                         if (count($dx) == $adxPeriod) {
                             // First ADX is simple average of DX
-                            $adxValues[] = array_sum(array_slice($dx, -$adxPeriod)) / $adxPeriod;
+                            // FIX: Ensure adxPeriod is not zero
+                            $adxValues[] = $adxPeriod > 0 ? array_sum(array_slice($dx, -$adxPeriod)) / $adxPeriod : 0;
                         } else {
                             // Subsequent ADX uses smoothing
-                            $adxValues[] = ((end($adxValues) * ($adxPeriod - 1)) + end($dx)) / $adxPeriod;
+                            // FIX: Ensure adxPeriod is not zero
+                            $adxValues[] = $adxPeriod > 0 ?
+                                ((end($adxValues) * ($adxPeriod - 1)) + end($dx)) / $adxPeriod : end($adxValues);
                         }
                     }
                 }
@@ -502,7 +508,6 @@ class BinanceApiService
                 $ema26[] = self::calculateEMA($close, $ema26[$index - 1], 26);
             }
 
-
             // Calculate OBV (On Balance Volume)
             if ($index > 0) {
                 $prevClose = $closePrices[$index - 1];
@@ -531,13 +536,15 @@ class BinanceApiService
                 $losses[$index] = $change < 0 ? abs($change) : 0;
 
                 if ($index == 5) {
-                    $avgGain = array_sum(array_slice($gains, 1, 6)) / 6;
-                    $avgLoss = array_sum(array_slice($losses, 1, 6)) / 6;
+                    // FIX: Ensure we don't divide by zero
+                    $avgGain = count(array_slice($gains, 1, 6)) > 0 ? array_sum(array_slice($gains, 1, 6)) / 6 : 0;
+                    $avgLoss = count(array_slice($losses, 1, 6)) > 0 ? array_sum(array_slice($losses, 1, 6)) / 6 : 0;
                 } elseif ($index > 5) {
                     $avgGain = (($avgGain * 5) + $gains[$index]) / 6;
                     $avgLoss = (($avgLoss * 5) + $losses[$index]) / 6;
                 }
 
+                // RSI calculation - already has division by zero check
                 $rs = $avgLoss == 0 ? 100 : $avgGain / $avgLoss;
                 $rsi6 = 100 - (100 / (1 + $rs));
                 $rsiValues[] = $rsi6;
@@ -545,7 +552,7 @@ class BinanceApiService
                 $rsi6 = null;
             }
 
-            // Stochastic RSI calculation
+            // Stochastic RSI calculation - already has division by zero check
             $stochRsi = null;
             if (count($rsiValues) >= $lengthRsi) {
                 $recentRsi = array_slice($rsiValues, -$lengthRsi);
@@ -568,7 +575,8 @@ class BinanceApiService
             // Calculate smoothed %K
             $smoothedK = null;
             if (count($kValues) >= $smoothK) {
-                $smoothedK = array_sum(array_slice($kValues, -$smoothK)) / $smoothK;
+                // FIX: Ensure smoothK is not zero
+                $smoothedK = $smoothK > 0 ? array_sum(array_slice($kValues, -$smoothK)) / $smoothK : 0;
             }
 
             // Add %D values
@@ -579,10 +587,11 @@ class BinanceApiService
             // Calculate smoothed %D
             $smoothedD = null;
             if (count($dValues) >= $smoothD) {
-                $smoothedD = array_sum(array_slice($dValues, -$smoothD)) / $smoothD;
+                // FIX: Ensure smoothD is not zero
+                $smoothedD = $smoothD > 0 ? array_sum(array_slice($dValues, -$smoothD)) / $smoothD : 0;
             }
 
-            // Williams %R calculation
+            // Williams %R calculation - already has division by zero check
             $wr = null;
             if ($index >= $lookbackPeriod - 1) {
                 $periodHighs = array_slice($highPrices, -$lookbackPeriod);
@@ -598,10 +607,11 @@ class BinanceApiService
             }
 
             // Calculate Moving Averages
-            $ma7 = $index >= 6 ? array_sum(array_slice($closePrices, -7)) / 7 : null;
-            $ma14 = $index >= 13 ? array_sum(array_slice($closePrices, -14)) / 14 : null;
-            $ma25 = $index >= 24 ? array_sum(array_slice($closePrices, -25)) / 25 : null;
-            $ma99 = $index >= 98 ? array_sum(array_slice($closePrices, -99)) / 99 : null;
+            // FIX: Ensure we don't divide by zero in moving averages
+            $ma7 = $index >= 6 && 7 > 0 ? array_sum(array_slice($closePrices, -7)) / 7 : null;
+            $ma14 = $index >= 13 && 14 > 0 ? array_sum(array_slice($closePrices, -14)) / 14 : null;
+            $ma25 = $index >= 24 && 25 > 0 ? array_sum(array_slice($closePrices, -25)) / 25 : null;
+            $ma99 = $index >= 98 && 99 > 0 ? array_sum(array_slice($closePrices, -99)) / 99 : null;
 
             // Calculate Bollinger Bands
             $bbMiddle = null;
@@ -610,14 +620,16 @@ class BinanceApiService
 
             if ($index >= ($bbPeriod - 1)) {
                 $recentPrices = array_slice($closePrices, -$bbPeriod);
-                $bbMiddle = array_sum($recentPrices) / $bbPeriod;
+                // FIX: Ensure bbPeriod is not zero
+                $bbMiddle = $bbPeriod > 0 ? array_sum($recentPrices) / $bbPeriod : 0;
 
                 // Calculate standard deviation
                 $sumSquaredDiff = 0;
                 foreach ($recentPrices as $price) {
                     $sumSquaredDiff += pow($price - $bbMiddle, 2);
                 }
-                $standardDeviation = sqrt($sumSquaredDiff / $bbPeriod);
+                // FIX: Ensure bbPeriod is not zero for standard deviation
+                $standardDeviation = $bbPeriod > 0 ? sqrt($sumSquaredDiff / $bbPeriod) : 0;
 
                 // Calculate upper and lower bands
                 $bbUpper = $bbMiddle + ($bbDeviation * $standardDeviation);
@@ -628,7 +640,8 @@ class BinanceApiService
             $percentageChange = null;
             if ($index > 0) {
                 $prevClose = $closePrices[$index - 1];
-                $percentageChange = (($close - $prevClose) / $prevClose) * 100;
+                // FIX: Ensure prevClose is not zero
+                $percentageChange = $prevClose != 0 ? (($close - $prevClose) / $prevClose) * 100 : 0;
             }
 
             // Determine buy signal
@@ -673,8 +686,9 @@ class BinanceApiService
             }
 
             // Calculate Volume MAs
-            $ma5_volume = $index >= 4 ? array_sum(array_slice($volumes, -5)) / 5 : null;
-            $ma10_volume = $index >= 9 ? array_sum(array_slice($volumes, -10)) / 10 : null;
+            // FIX: Ensure we don't divide by zero in volume MAs
+            $ma5_volume = $index >= 4 && 5 > 0 ? array_sum(array_slice($volumes, -5)) / 5 : null;
+            $ma10_volume = $index >= 9 && 10 > 0 ? array_sum(array_slice($volumes, -10)) / 10 : null;
 
             // AVL Calculation
             $avl = ($high + $low) / 2;
@@ -727,7 +741,6 @@ class BinanceApiService
                 'previousObvLow' => $previousObvLow,
 
                 // ADX components
-
                 'adx' => $currentADX,
                 // PDI (Red)
                 'di_plus' => $currentDiPlus,

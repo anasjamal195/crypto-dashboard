@@ -187,6 +187,70 @@
                                                         %</td>
                                                     <td>Success rate of profitable trades </td>
                                                 </tr>
+
+
+
+                                                {{-- Testing Section --}}
+                                                {{-- <tr>
+                                                    @php
+                                                      
+                                                        $profitsRaw = DB::table('coin_reports')
+                                                            ->select('symbol', 'interval', 'market', 'profit')
+                                                            ->distinct()
+                                                            ->whereRaw('profit > 0');
+
+
+                                                        if (request()->filled('position')) {
+                                                            $profitsRaw->where('position', request()->position);
+                                                        }
+
+                                                        if (request()->filled('formula')) {
+                                                            $profitsRaw->where('formula', request()->formula);
+                                                        }
+                                                        $profitsRaw = $profitsRaw->get();
+                                                       
+                                                    @endphp
+
+                                                    <td class="font-weight-bold">Profits Raw </td>
+                                                    <td>{{ count($profitsRaw) }} {{$profitsRaw->sum('profit')}}</td>
+                                                    <td>
+                                                        @foreach ($profitsRaw as $index => $trade)
+                                                            {{ $trade->profit }}{{ $index != count($profitsRaw) - 1 ? '+' : '' }}
+                                                        @endforeach
+                                                    </td>
+                                                </tr>
+
+
+                                                <tr>
+                                                    @php
+                                                        $lossesRaw = DB::table('coin_reports')
+                                                            ->select('symbol', 'interval', 'market', 'profit')
+                                                            ->distinct()
+                                                            ->whereRaw('profit < 0')
+
+                                                            ->select('profit');
+
+                                                        if (request()->filled('position')) {
+                                                            $lossesRaw->where('position', request()->input('position'));
+                                                        }
+
+                                                        if (request()->filled('formula')) {
+                                                            $lossesRaw->where('formula', request()->input('formula'));
+                                                        }
+                                                        $lossesRaw = $lossesRaw->get();
+                                                    @endphp
+                                                    <td class="font-weight-bold">Losses Raw</td>
+                                                    <td>{{ count($lossesRaw) }}</td>
+
+                                                    <td>
+
+
+
+                                                        @foreach ($lossesRaw as $index => $trade)
+                                                            {{ abs($trade->profit) }}{{ $index != count($lossesRaw) - 1 ? '+' : '' }}
+                                                        @endforeach
+                                                    </td>
+                                                </tr> --}}
                                             </tbody>
                                         </table>
                                     </div>

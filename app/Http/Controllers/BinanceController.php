@@ -125,7 +125,7 @@ class BinanceController extends Controller
         // Liquidated coins query with position filter if provided
         $liquidatedCoinsQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market')
-            ->distinct()
+            // ->distinct()
             ->whereRaw('liquidationPrice >= lowestPrice');
 
         if ($request->filled('position')) {
@@ -138,7 +138,7 @@ class BinanceController extends Controller
 
         $tradesAbove1h = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market', 'profit')
-            ->distinct()
+            // ->distinct()
             ->whereRaw('duration > 60');
 
         if ($request->filled('position')) {
@@ -152,7 +152,7 @@ class BinanceController extends Controller
         // Stop losses query with position filter if provided
         $stopLossesQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market', 'profit')
-            ->distinct()
+            // ->distinct()
             ->whereRaw('profit < 0');
 
         if ($request->filled('position')) {
@@ -169,9 +169,10 @@ class BinanceController extends Controller
         // Total Profitable Trades
         $profitsQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market', 'profit')
-            ->distinct()
+            // ->distinct()
             ->whereRaw('profit > 0');
-        
+            
+
         if ($request->filled('position')) {
             $profitsQuery->where('position', $request->position);
         }
@@ -179,13 +180,18 @@ class BinanceController extends Controller
         if ($request->filled('formula')) {
             $profitsQuery->where('formula', $request->formula);
         }
+        $profitsQuery = $profitsQuery->get();
+
         $profitableTrades = $profitsQuery->count();
+
+
         $profitsTotal = abs($profitsQuery->sum('profit'));
+
         // Extracting unique symbols, intervals, and markets
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
-
+        // dd($profitableTrades,$profitsTotal,$request->position,$request->formula);
 
         // Timeline Data preperation
         $tradeArr = DB::table('coin_reports');

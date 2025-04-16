@@ -33,11 +33,11 @@ class ReportService
     public static $earlyClosingEnabled = true;
 
     // Coin Selection Filters
-    public static $coinLimit = 0; // Use 0 for all coins
+    public static $coinLimit = 30; // Use 0 for all coins
     public static $shuffleCoins = true;
 
 
-    public static $filterOnCoinType = true;
+    public static $filterOnCoinType = false;
     public static $coinTypeMetaverse = true;
     public static $coinTypeAlt = true;
     public static $coinTypeMeme = false;
@@ -325,67 +325,17 @@ class ReportService
             return null;
 
 
-        $volumeSignal = $volumeSignals[$volumeIndex];
 
+        $last5Volumes = array_map(function ($candle) {
+            return $candle['volume'];
+        }, array_slice($data, $index - 4, 5)); // gets $index - 4 to $index
 
-
-
-
-
-        $imbalance = ($orderBookSnapshot->bid_volume - $orderBookSnapshot->ask_volume) / ($orderBookSnapshot->bid_volume + $orderBookSnapshot->ask_volume) * 100;
-        $spread_pct = ($orderBookSnapshot->lowest_ask - $orderBookSnapshot->highest_bid) / (($orderBookSnapshot->lowest_ask + $orderBookSnapshot->highest_bid) / 2) * 100;
-
-
-        // Volume Indicators
-        $mfi = $volumeSignal['indicators']['mfi_current'];
-        $cvd = $volumeSignal['indicators']['cvd_current'];
-        $obv = $volumeSignal['indicators']['obv_current'];
-        $obv_previous = $volumeSignals[$volumeIndex - 1]['indicators']['obv_current'];
-        $vwap = $volumeSignal['indicators']['vwap_current'];
-        // dd($volumeSignal['indicators']);
-        $priceLong = $orderBookSnapshot->lowest_ask; // For LONG
-        $priceShort = $orderBookSnapshot->highest_bid; // For LONG
-
-        // 5 macd solid RED candles and current macd light red
-        $macdLongCondition =
-            $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
-            && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
-            && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
-            && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
-            && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
-            && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
-            // && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Sixth Last Candle should be dark red
-        ;
-
-        // 5 macd loght Green candles and current macd Solid green
-        $macdShortCondition =
-            $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0 // Current Candle should be solid green
-            && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0 // // Second Last Candle should be light green
-            && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0 // // Third Last Candle should be light green
-            && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
-            && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
-            && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
-            // && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
-        ;
-
-
+        $last5VolumeAverage = array_sum($last5Volumes) / count($last5Volumes);
 
 
         // Short condition
         if (
-
-            $obv < $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
-
-            && $mfi > 80
-
-            && $macdShortCondition
-            && $data[$index]['adx'] > 20
-
-            && $data[$index]['K'] > 70
-            && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
-            && $data[$index]['close'] < $supportResistance['resistance']
-            && $data[$index]['per'] < 0
-
+            false
         ) {
             return  self::$shortEnabled ? 'SHORT' : null;
         }
@@ -393,20 +343,19 @@ class ReportService
 
         // Long condition
         if (
-            // $imbalance > 20 && $spread_pct < 0.01
-            $obv > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
+            // Layer 1
+            $orderBookSnapshot->volume_imbalance  > 1.5
+            && $data[$index]['volume'] > $last5VolumeAverage * 1.5
+            
+            // Layer 2
+            && $data[$index]['ma7'] > $data[$index]['ma25']
+            && $data[$index]['histogram'] > $data[$index - 1]['histogram']
+            && $data[$index]['rsi6'] > 30
+            && $data[$index - 1]['rsi6'] < 30
 
-            && $mfi < 20
-
-            && $macdLongCondition
-
-            && $data[$index]['adx'] > 20
-            && $data[$index]['K'] < 30
-            && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
-            && $data[$index]['close'] > $supportResistance['support']
-            && $data[$index]['per'] > 0
-            // && $data[$index]['open'] < $supportResistance['resistance']
-
+            // Layer 3
+            && $data[$index]['K'] > $data[$index]['D']
+            && $data[$index - 1]['K'] < $data[$index - 1]['D']
 
         ) {
             return self::$longEnabled ? 'LONG' : null;
@@ -438,7 +387,12 @@ class ReportService
             // Calculate Closing in profit 
             if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
                 $closingPrice = $candle['high'];
-            } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
+            } else if (
+                $index - $openingIndex  >= $waitingCandlesBeforeStopLoss
+                ||
+                (CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss
+                    && $open_price > $data[$index]['close'])
+            ) {
                 $closingPrice = $data[$index]['close'];
             }
         }
@@ -464,7 +418,7 @@ class ReportService
         // Fetch OrderBook snapshot
         $timestamp = $data[$index]['timestampReadable'];
         $snapshot = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-            ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+            ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(10))
             ->where('symbol', $symbol)
             ->where('depth', 1000)
             ->latest('snapshot_time')
