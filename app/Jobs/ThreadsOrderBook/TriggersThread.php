@@ -322,6 +322,7 @@ class TriggersThread implements ShouldQueue
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $secondLastCandle = $candleData[count($candleData) - 2];
+        $thirdLastCandle = $candleData[count($candleData) - 3];
         $stopLoss = $open_order['stopLoss'];
         $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
@@ -355,6 +356,14 @@ class TriggersThread implements ShouldQueue
             $stopLoss = ($open_order['price'] + $stopLoss) / 2;
         }
 
+        if (
+            $secondLastCandle['close'] < $supportResistance[7]['support']
+            && $thirdLastCandle['close'] < $supportResistance[7]['support']
+            && $secondLastCandle['per'] < 0
+            && $thirdLastCandle['per'] < 0
+        ) {
+            $closeEarly = true;
+        }
 
         if ($currentCandle['close'] < $stopLoss || $closeEarly) {
             // Checking Upper Wick Formation
@@ -404,6 +413,7 @@ class TriggersThread implements ShouldQueue
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
         $secondLastCandle = $candleData[count($candleData) - 2];
+        $thirdLastCandle = $candleData[count($candleData) - 3];
 
         $stopLoss = $open_order['stopLoss'];
 
@@ -431,14 +441,28 @@ class TriggersThread implements ShouldQueue
 
         $closeEarly = false;
 
+
+
+        if (
+            $secondLastCandle['close'] > $supportResistance[7]['resistance']
+            && $thirdLastCandle['close'] > $supportResistance[7]['resistance']
+            && $secondLastCandle['per'] > 0
+            && $thirdLastCandle['per'] > 0
+        ) {
+            $closeEarly = true;
+        }
+
         // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
         if ($timeDiff >= self::$nextSLTriggerTime) {
-
             self::$nextSLTriggerTime += self::$slTriggerTimeInc;
             $stopLoss = ($open_order['price'] + $stopLoss) / 2;
         }
+
+
+
+
 
 
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
@@ -449,7 +473,6 @@ class TriggersThread implements ShouldQueue
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
-
             ]);
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                 'isWorkerDispatched' => false,
