@@ -171,7 +171,7 @@ class BinanceController extends Controller
             ->select('symbol', 'interval', 'market', 'profit')
             ->distinct()
             ->whereRaw('profit > 0');
-
+        
         if ($request->filled('position')) {
             $profitsQuery->where('position', $request->position);
         }
