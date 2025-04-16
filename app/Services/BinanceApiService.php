@@ -309,6 +309,8 @@ class BinanceApiService
         // Initialize technical indicator arrays
         $ema12 = [];
         $ema26 = [];
+        $ema5 = [];
+        $ema21 = [];
         $macd = [];
         $signalLine = [];
         $gains = [];
@@ -499,6 +501,7 @@ class BinanceApiService
                 $ema12[] = self::calculateEMA($close, $ema12[$index - 1], 12);
                 $ema26[] = self::calculateEMA($close, $ema26[$index - 1], 26);
             }
+
 
             // Calculate OBV (On Balance Volume)
             if ($index > 0) {
@@ -695,6 +698,8 @@ class BinanceApiService
                 'volumeMA5' => $ma5_volume,
                 'volumeMA10' => $ma10_volume,
                 'avl' => $avl,
+                'ema12' => $ema12,
+                'ema26' => $ema26,
                 'ma7' => $ma7,
                 'ma14' => $ma14,
                 'ma25' => $ma25,
