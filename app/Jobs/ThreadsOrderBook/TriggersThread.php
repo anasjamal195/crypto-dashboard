@@ -397,6 +397,7 @@ class TriggersThread implements ShouldQueue
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
+                
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
                 'stopLoss' => $stopLoss,
