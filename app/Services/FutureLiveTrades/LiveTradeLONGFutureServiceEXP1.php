@@ -247,6 +247,7 @@ class LiveTradeLONGFutureServiceEXP1
                 'rsiThreshold' => 0,
                 'obvLimit' => 0,
                 'stochLimit' => 0,
+                
                 'isActive' => 1
             ];
 
