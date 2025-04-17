@@ -51,43 +51,28 @@ class ProcessController extends Controller
             SupervisorService::executeCommand('killall -9 php');
             DB::table('jobs')->truncate();
 
+            $threads = DB::table('workers')->where('active_status', 1)->pluck('worker_id');
 
+            // Prepare Processes for start sequence
             // Start Sequence
             $processes = [
                 'laravel_saftey_worker',
                 'laravel_order_book_signals_worker',
-
-                // Batch 1
-                'laravel_thread_workers:laravel_thread_workers_00',
-                'laravel_thread_workers:laravel_thread_workers_01',
-                'laravel_thread_workers:laravel_thread_workers_02',
-                'laravel_thread_workers:laravel_thread_workers_03',
-                'laravel_thread_workers:laravel_thread_workers_04',
-                'laravel_thread_workers:laravel_thread_workers_05',
-                'laravel_thread_workers:laravel_thread_workers_06',
-                'laravel_thread_workers:laravel_thread_workers_07',
-                'laravel_thread_workers:laravel_thread_workers_08',
-                'laravel_thread_workers:laravel_thread_workers_09',
-
-                // Batch 2
-                'laravel_thread_workers:laravel_thread_workers_10',
-                'laravel_thread_workers:laravel_thread_workers_11',
-                'laravel_thread_workers:laravel_thread_workers_12',
-                'laravel_thread_workers:laravel_thread_workers_13',
-                'laravel_thread_workers:laravel_thread_workers_14',
-                'laravel_thread_workers:laravel_thread_workers_15',
-                'laravel_thread_workers:laravel_thread_workers_16',
-                'laravel_thread_workers:laravel_thread_workers_17',
-                'laravel_thread_workers:laravel_thread_workers_18',
-                'laravel_thread_workers:laravel_thread_workers_19',
-
-                'acc_2_order_book_long_worker',
             ];
+
+            foreach ($threads as $index => $thread) {
+                $processes[] = 'laravel_thread_workers:laravel_thread_workers_' . sprintf("%02d", $index);
+            }
+            $processes[] = 'acc_2_order_book_long_worker';
+
+            // ===================================
+
+
+
             foreach ($processes as $process)
                 SupervisorService::restart($process);
 
             // Dispatch All threads
-            $threads = DB::table('workers')->where('active_status', 1)->pluck('worker_id');
             Artisan::call('queue:flush');
             foreach ($threads as $workerId) {
                 TriggersThread::dispatch($workerId, 2);
