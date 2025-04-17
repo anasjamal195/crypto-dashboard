@@ -157,25 +157,24 @@ class TriggersThread implements ShouldQueue
 
                                 $obv > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
 
-                                && $mfi < 20
+                                // && $mfi < 20
                                 && $macdLongCondition
 
-                                && $data[$index]['adx'] > 20
+                                // && $data[$index]['adx'] > 20
                                 && $data[$index]['K'] < 30
                                 && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
-                                && $data[$index]['close'] > $supportResistance[7]['support']
+                                // && $data[$index]['close'] > $supportResistance[7]['support']
                                 && $data[$index]['per'] > 0
-                                // && $data[$index]['open'] < $supportResistance['resistance']
                             ) {
                                 $tradeType = 'LONG';
                             } elseif (
                                 $obv < $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
-                                && $mfi > 80
+                                // && $mfi > 80
                                 && $macdShortCondition
-                                && $data[$index]['adx'] > 20
+                                // && $data[$index]['adx'] > 20
                                 && $data[$index]['K'] > 70
                                 && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
-                                && $data[$index]['close'] < $supportResistance[7]['resistance']
+                                // && $data[$index]['close'] < $supportResistance[7]['resistance']
                                 && $data[$index]['per'] < 0
                             ) {
                                 $tradeType = 'SHORT';

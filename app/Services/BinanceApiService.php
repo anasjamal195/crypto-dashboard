@@ -249,6 +249,7 @@ class BinanceApiService
             $params['nextServer'] = $serverUrlKey;
             $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($balancerServerSequence[$serverUrlKey], $params);
             $response->getHeaders();
+            // dd($response->body());
         } else {
             // Choose the base URL based on the trade type
             // Log::info("Using Master Server: ($usedWeight/1200). Retaining...");
