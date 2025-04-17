@@ -218,7 +218,7 @@ class BinanceApiService
 
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
-            // 'https://digitalfitnesshub.shop/wp-includes/restful-api/',            // Removed due to SSL error
+            'https://digitalfitnesshub.shop/wp-includes/restful-api/',            // Removed due to SSL error
             'https://xnfts.shop/load_balancer/index.php',                         // Chain Server II     
             // 'https://pompsplace.cc/load_balancer/',                            // Unavailable due to binance.com restrictions on its location
             // 'https://egeniuscare.com/load_balancer/',                          // Unavailable due to binance.com restrictions on its location
