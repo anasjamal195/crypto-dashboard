@@ -110,7 +110,7 @@ class TriggersThread implements ShouldQueue
                                 && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
                                 && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
                                 && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
-                                && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Seventh Last Candle should be dark red
+                                // && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Seventh Last Candle should be dark red
                             ;
 
 
@@ -123,7 +123,7 @@ class TriggersThread implements ShouldQueue
                                 && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
                                 && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
                                 && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
-                                && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
+                                // && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
                             ;
 
 
@@ -154,9 +154,7 @@ class TriggersThread implements ShouldQueue
 
 
                             if (
-
                                 $obv > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
-
                                 // && $mfi < 20
                                 && $macdLongCondition
 
@@ -165,6 +163,7 @@ class TriggersThread implements ShouldQueue
                                 && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
                                 // && $data[$index]['close'] > $supportResistance[7]['support']
                                 && $data[$index]['per'] > 0
+
                             ) {
                                 $tradeType = 'LONG';
                             } elseif (
@@ -176,6 +175,7 @@ class TriggersThread implements ShouldQueue
                                 && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
                                 // && $data[$index]['close'] < $supportResistance[7]['resistance']
                                 && $data[$index]['per'] < 0
+
                             ) {
                                 $tradeType = 'SHORT';
                             } else {
