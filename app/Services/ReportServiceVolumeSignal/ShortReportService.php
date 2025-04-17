@@ -294,7 +294,7 @@ class ShortReportService
                 if (
                     $imbalance > 5 && $spread_pct < 0.01
                     && $obv > $obv_previous
-                   
+
                     && $data[$index]['K'] < 30 && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
                 ) {
                     $tradeType = 'LONG';

@@ -146,6 +146,7 @@ class TriggersThread implements ShouldQueue
                             $mfi = $currentVolumeSignal['indicators']['mfi_current'];
                             $cvd = $currentVolumeSignal['indicators']['cvd_current'];
                             $obv = $currentVolumeSignal['indicators']['obv_current'];
+                            $obv_previous = $volumeSignals[$volumeIndex - 1]['indicators']['obv_current'];
                             $vwap = $currentVolumeSignal['indicators']['vwap_current'];
                             // dd($volumeSignal['indicators']);
                             $priceLong = $orderBookSnapshot->lowest_ask; // For LONG
@@ -154,29 +155,18 @@ class TriggersThread implements ShouldQueue
 
 
                             if (
-                                $imbalance > 5 && $spread_pct < 0.1
 
-                                && $obv > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
-                                && $mfi < 20
-                                && $macdLongCondition
-                                && $data[$index]['adx'] > 20
-                                && $data[$index]['K'] < 30
-                                && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
-                                && $data[$index]['close'] > $supportResistance[7]['support']
-                                // && $data[$index]['per'] > 0
+                                $imbalance > 5 && $spread_pct < 0.01
+                                && $obv > $obv_previous
+
                             ) {
                                 $tradeType = 'LONG';
                             } elseif (
-                                $imbalance < -5 && $spread_pct < 0.1
 
-                                && $obv < $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
-                                && $mfi > 80
-                                && $macdShortCondition
-                                && $data[$index]['adx'] > 20
-                                && $data[$index]['K'] > 70
-                                && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
-                                && $data[$index]['close'] < $supportResistance[7]['resistance']
-                                // && $data[$index]['per'] < 0
+                                $imbalance < -5 && $spread_pct < 0.01
+                                && $obv < $obv_previous
+
+
                             ) {
                                 $tradeType = 'SHORT';
                             } else {
@@ -356,20 +346,25 @@ class TriggersThread implements ShouldQueue
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
 
-        $halfCount = intval($timeDiff / 30);
-        if ($halfCount != 0)
-            $stopLoss = ($open_order['price'] + $stopLoss) / (2 ** $halfCount);
+        // $halfCount = intval($timeDiff / 30);
+        // if ($halfCount != 0)
+        //     $stopLoss = ($open_order['price'] + $stopLoss) / (2 ** $halfCount);
 
 
 
-        if (
-            $secondLastCandle['close'] < $supportResistance[7]['support']
-            && $thirdLastCandle['close'] < $supportResistance[7]['support']
-            && $secondLastCandle['per'] < 0
-            && $thirdLastCandle['per'] < 0
-        ) {
-            $closeEarly = true;
-        }
+        $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
+
+        $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
+
+
+        // if (
+        //     $secondLastCandle['close'] < $supportResistance[7]['support']
+        //     && $thirdLastCandle['close'] < $supportResistance[7]['support']
+        //     && $secondLastCandle['per'] < 0
+        //     && $thirdLastCandle['per'] < 0
+        // ) {
+        //     $closeEarly = true;
+        // }
 
         if ($currentCandle['close'] < $stopLoss || $closeEarly) {
             // Checking Upper Wick Formation
@@ -449,21 +444,26 @@ class TriggersThread implements ShouldQueue
 
 
 
-        if (
-            $secondLastCandle['close'] > $supportResistance[7]['resistance']
-            && $thirdLastCandle['close'] > $supportResistance[7]['resistance']
-            && $secondLastCandle['per'] > 0
-            && $thirdLastCandle['per'] > 0
-        ) {
-            $closeEarly = true;
-        }
+        // if (
+        //     $secondLastCandle['close'] > $supportResistance[7]['resistance']
+        //     && $thirdLastCandle['close'] > $supportResistance[7]['resistance']
+        //     && $secondLastCandle['per'] > 0
+        //     && $thirdLastCandle['per'] > 0
+        // ) {
+        //     $closeEarly = true;
+        // }
 
         // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
-        $halfCount = intval($timeDiff / 30);
-        if ($halfCount != 0)
-            $stopLoss = ($open_order['price'] + $stopLoss) / (2 ** $halfCount);
+        // $halfCount = intval($timeDiff / 30);
+        // if ($halfCount != 0)
+        //     $stopLoss = ($open_order['price'] + $stopLoss) / (2 ** $halfCount);
+
+
+        $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
+
+        $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
 
 
 
