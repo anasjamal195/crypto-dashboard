@@ -154,34 +154,38 @@ class TriggersThread implements ShouldQueue
 
 
                             if (
-                                $obv > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
-                                // && $mfi < 20
-                                && $macdLongCondition
+                                $imbalance > 5 && $spread_pct < 0.1
 
-                                // && $data[$index]['adx'] > 20
+                                && $obv > $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
+                                && $mfi < 20
+                                && $macdLongCondition
+                                && $data[$index]['adx'] > 20
                                 && $data[$index]['K'] < 30
                                 && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
-                                // && $data[$index]['close'] > $supportResistance[7]['support']
+                                && $data[$index]['close'] > $supportResistance[7]['support']
                                 // && $data[$index]['per'] > 0
-
                             ) {
                                 $tradeType = 'LONG';
                             } elseif (
-                                $obv < $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
-                                // && $mfi > 80
+                                $imbalance < -5 && $spread_pct < 0.1
+
+                                && $obv < $volumeSignals[$volumeIndex - 1]['indicators']['obv_current']
+                                && $mfi > 80
                                 && $macdShortCondition
-                                // && $data[$index]['adx'] > 20
+                                && $data[$index]['adx'] > 20
                                 && $data[$index]['K'] > 70
                                 && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
-                                // && $data[$index]['close'] < $supportResistance[7]['resistance']
+                                && $data[$index]['close'] < $supportResistance[7]['resistance']
                                 // && $data[$index]['per'] < 0
-
                             ) {
                                 $tradeType = 'SHORT';
                             } else {
+
+
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
                             }
+
 
 
                             // ========================================================================
@@ -234,7 +238,7 @@ class TriggersThread implements ShouldQueue
 
 
                 // Check candle closing 
-                $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
+                $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 60;
 
                 if (!$isCandleClosing) {
 
@@ -246,11 +250,13 @@ class TriggersThread implements ShouldQueue
                 if ($tradeType === 'LONG' && !CommonHelpers::getSettingsValue('enable_long_multithread', 0)) {
                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                     $openTrade = false;
+                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to LONG Disabled: ' . $symbol);
                 }
 
                 if ($tradeType === 'SHORT' && !CommonHelpers::getSettingsValue('enable_short_multithread', 0)) {
                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                     $openTrade = false;
+                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SHORT Disabled: ' . $symbol);
                 }
 
 
@@ -379,7 +385,7 @@ class TriggersThread implements ShouldQueue
                 'isWorkerDispatched' => false,
             ]);
             // Reset Trigger Time for stop loss
-            self::$nextSLTriggerTime = 30;
+            // self::$nextSLTriggerTime = 30;
             return false;
         } else if ($currentProfit > $targetProfit) {
 
@@ -477,7 +483,7 @@ class TriggersThread implements ShouldQueue
                 'isWorkerDispatched' => false,
             ]);
             // Reset Trigger Time for stop loss
-            self::$nextSLTriggerTime = 30;
+            // self::$nextSLTriggerTime = 30;
             return false;
         } else if ($currentProfit > $targetProfit) {
 
