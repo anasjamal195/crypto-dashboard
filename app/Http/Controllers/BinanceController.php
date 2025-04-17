@@ -19,6 +19,15 @@ use Illuminate\Support\Facades\DB;
 class BinanceController extends Controller
 {
 
+    public function deleteCoinReport()
+    {
+        $formula = request('formula');
+        if (!$formula)
+            return redirect()->back()->withError('Error Deleting Report!');
+        DB::table('coin_reports')->where('formula', $formula)->delete();
+        DB::table('formula_details')->where('formula', $formula)->delete();
+        return redirect()->back()->withSuccess('Report Deleted Successfully!');
+    }
     public function volumeSignal()
     {
         $pageSlug = 'Volume Signal Dashboard';
@@ -38,7 +47,7 @@ class BinanceController extends Controller
 
 
         // =======Testing==========================
-      
+
         // ========================================
         // Fetch all unique symbols from the database
         $interval = $request->interval;
@@ -171,7 +180,7 @@ class BinanceController extends Controller
             ->select('symbol', 'interval', 'market', 'profit')
             // ->distinct()
             ->whereRaw('profit > 0');
-            
+
 
         if ($request->filled('position')) {
             $profitsQuery->where('position', $request->position);

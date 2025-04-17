@@ -12,10 +12,18 @@
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header card-header-primary">
-                        <h4 class="card-title ">Internal Trades Report (Recent 1000 Candles)</h4>
-                        <p class="card-category"> Here is a list of the latest trades across all coins.
-                            ({{ $percentageProgress }} % Completed)</p>
+                        <div class="" style="display:flex;align-items:center;justify-content:space-between;">
+                            
+                            <div>
+                                <h4 class="card-title ">Internal Trades Report (Recent 1000 Candles)</h4>
+                                <p class="card-category"> Here is a list of the latest trades across all coins.
+                                    ({{ $percentageProgress }} % Completed)</p>
+                            </div>
 
+
+                            <a href="{{ route('coinReport.delete', ['formula' => request('formula')]) }}"
+                                class="btn btn-danger my-2">Delete</a>
+                        </div>
                         <div class="progress m-2" style="height: 5px; ">
                             <div class="progress-bar" role="progressbar"
                                 style="width: {{ $percentageProgress }}%; background-color: #00f2c3;"
@@ -69,6 +77,7 @@
                             <div class="col-md-2 ">
                                 <button type="submit" class="btn btn-primary my-2">Apply</button>
                             </div>
+
                             <div class="col-md-2 ">
                                 <a href="{{ route('coinReport', ['market' => 'FUTURE', 'interval' => '5m']) }}"
                                     class="btn btn-secondary my-2">Clear</a>
