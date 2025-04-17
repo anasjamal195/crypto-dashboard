@@ -172,7 +172,7 @@ class LiveTradeLONGFutureServiceEXP1
         //     return $value['symbol'];
         // }, json_decode(json_encode(CommonHelpers::getPriorityQueue($interval, $market, $limit)), true));
 
-        $coins = DB::table('coins')->pluck('symbol');
+        $coins = DB::table('coins')->where('status', 'T')->pluck('symbol');
         // dd($coins);
         foreach ($coins as $coin) {
 
@@ -247,7 +247,7 @@ class LiveTradeLONGFutureServiceEXP1
                 'rsiThreshold' => 0,
                 'obvLimit' => 0,
                 'stochLimit' => 0,
-                
+
                 'isActive' => 1
             ];
 

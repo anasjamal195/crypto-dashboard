@@ -162,7 +162,7 @@ class TriggersThread implements ShouldQueue
                                 && $data[$index]['K'] < 30
                                 && $data[$index]['J'] > $data[$index]['K'] && $data[$index]['J'] > $data[$index]['D']
                                 // && $data[$index]['close'] > $supportResistance[7]['support']
-                                && $data[$index]['per'] > 0
+                                // && $data[$index]['per'] > 0
 
                             ) {
                                 $tradeType = 'LONG';
@@ -174,7 +174,7 @@ class TriggersThread implements ShouldQueue
                                 && $data[$index]['K'] > 70
                                 && $data[$index]['J'] < $data[$index]['K'] && $data[$index]['J'] < $data[$index]['D']
                                 // && $data[$index]['close'] < $supportResistance[7]['resistance']
-                                && $data[$index]['per'] < 0
+                                // && $data[$index]['per'] < 0
 
                             ) {
                                 $tradeType = 'SHORT';
