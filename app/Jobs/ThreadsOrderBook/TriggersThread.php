@@ -350,11 +350,12 @@ class TriggersThread implements ShouldQueue
         // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
-        if ($timeDiff >= self::$nextSLTriggerTime) {
 
-            self::$nextSLTriggerTime += self::$slTriggerTimeInc;
-            $stopLoss = ($open_order['price'] + $stopLoss) / 2;
-        }
+        $halfCount = intval($timeDiff / 30);
+        if ($halfCount != 0)
+            $stopLoss = ($open_order['price'] + $stopLoss) / (2 ** $halfCount);
+
+
 
         if (
             $secondLastCandle['close'] < $supportResistance[7]['support']
@@ -455,10 +456,9 @@ class TriggersThread implements ShouldQueue
         // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
-        if ($timeDiff >= self::$nextSLTriggerTime) {
-            self::$nextSLTriggerTime += self::$slTriggerTimeInc;
-            $stopLoss = ($open_order['price'] + $stopLoss) / 2;
-        }
+        $halfCount = intval($timeDiff / 30);
+        if ($halfCount != 0)
+            $stopLoss = ($open_order['price'] + $stopLoss) / (2 ** $halfCount);
 
 
 
