@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\CommonHelpers;
 use App\Models\User;
 use Carbon\Carbon;
 use Exception;
@@ -278,6 +279,10 @@ class BinanceApiService
                 Log::info('Error Delete Invalid Coin, Order Open for symbol: ' . $symbol);
             }
             Log::error('Error Fetching Coin data: ' . $symbol . ' ' . json_encode($response->json()));
+
+            $log = CommonHelpers::addSafetyLog('API_ERROR', 'Error Occured on fetching coin data: ' . $symbol);
+            DB::table('trade_handler')->where('symbol', $symbol)->delete();
+            MailerService::sendSafetyAlert($log);
             // dd($response->json());
         }
 

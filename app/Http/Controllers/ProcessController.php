@@ -56,6 +56,8 @@ class ProcessController extends Controller
             $processes = [
                 'laravel_saftey_worker',
                 'laravel_order_book_signals_worker',
+
+                // Batch 1
                 'laravel_thread_workers:laravel_thread_workers_00',
                 'laravel_thread_workers:laravel_thread_workers_01',
                 'laravel_thread_workers:laravel_thread_workers_02',
@@ -66,6 +68,19 @@ class ProcessController extends Controller
                 'laravel_thread_workers:laravel_thread_workers_07',
                 'laravel_thread_workers:laravel_thread_workers_08',
                 'laravel_thread_workers:laravel_thread_workers_09',
+
+                // Batch 2
+                'laravel_thread_workers:laravel_thread_workers_10',
+                'laravel_thread_workers:laravel_thread_workers_11',
+                'laravel_thread_workers:laravel_thread_workers_12',
+                'laravel_thread_workers:laravel_thread_workers_13',
+                'laravel_thread_workers:laravel_thread_workers_14',
+                'laravel_thread_workers:laravel_thread_workers_15',
+                'laravel_thread_workers:laravel_thread_workers_16',
+                'laravel_thread_workers:laravel_thread_workers_17',
+                'laravel_thread_workers:laravel_thread_workers_18',
+                'laravel_thread_workers:laravel_thread_workers_19',
+
                 'acc_2_order_book_long_worker',
             ];
             foreach ($processes as $process)
