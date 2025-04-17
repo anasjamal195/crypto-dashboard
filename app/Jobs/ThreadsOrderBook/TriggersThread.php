@@ -354,7 +354,8 @@ class TriggersThread implements ShouldQueue
 
         $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
 
-        $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
+        if ($stopLoss < $open_order['price'])
+            $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
 
 
         // if (
@@ -462,8 +463,8 @@ class TriggersThread implements ShouldQueue
 
 
         $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
-
-        $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
+        if ($stopLoss > $open_order['price'])
+            $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
 
 
 
