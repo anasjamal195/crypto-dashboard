@@ -98,80 +98,114 @@ class TriggersThread implements ShouldQueue
 
 
 
+                            // ==================Decision Block==================
 
-                            // ==================LOGIC TO CHECK TRADE TYPE AND CONDITIONS==================
+                            $buyLongCondition = false;
 
-                            // // 5 macd solid RED candles and current macd light red
-                            $macdLongCondition =
+                            if ($data[$index]['per'] > 0.08) {
 
-                                $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
-                                && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
-                                && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
-                                && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
-                                && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
-                                && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
-                                // && $data[$index - 6]['histogram'] < $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] < 0 // // Seventh Last Candle should be dark red
-                            ;
+                                $loopIndex = $index;
+                                while ($data[$loopIndex]['per'] < 0 || $loopIndex == $index) {
 
+                                    $volumeIndexLoop = $volumeIndex - ($index - $loopIndex);
 
+                                    $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
 
-                            // // 5 macd loght Green candles and current macd Solid green
-                            $macdShortCondition =
-                                $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0 // Current Candle should be solid green
-                                && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0 // // Second Last Candle should be light green
-                                && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0 // // Third Last Candle should be light green
-                                && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
-                                && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
-                                && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
-                                // && $data[$index - 6]['histogram'] > $data[$index - 7]['histogram'] && $data[$index - 6]['histogram'] > 0 // // Sixth Last Candle should be light green
-                            ;
+                                    if (!$orderBookSnapshotLoop) {
+                                        break;
+                                    }
+                                    $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
+                                    $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
 
+                                    // Volume Indicators
+                                    $mfi = $volumeSignals[$volumeIndexLoop]['indicators']['mfi_current'];
+                                    $cvd = $volumeSignals[$volumeIndexLoop]['indicators']['cvd_current'];
+                                    $obv = $volumeSignals[$volumeIndexLoop]['indicators']['obv_current'];
+                                    $obv_previous = $volumeSignals[$volumeIndexLoop - 1]['indicators']['obv_current'];
+                                    $vwap = $volumeSignals[$volumeIndexLoop]['indicators']['vwap_current'];
 
-                            // if ($macdLongCondition && $currentVolumeSignal['indicators']['mfi_current'] < 30 && $orderBookSnapshot->volume_imbalance > 1) {
-                            //     $tradeType = 'LONG';
-                            // } else 
-
-                            // if ($macdShortCondition && $currentVolumeSignal['indicators']['mfi_current'] > 70 && $orderBookSnapshot->volume_imbalance < 1) {
-                            //     $tradeType = 'SHORT';
-                            // } else {
-                            //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                            //     continue;
-                            // }
+                                    $macdLongConditionLoop =
+                                        $data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0 // Current Candle should be light red
+                                        && $data[$loopIndex - 1]['histogram'] < $data[$loopIndex - 2]['histogram'] && $data[$loopIndex - 1]['histogram'] < 0 // // Second Last Candle should be dark red
+                                        && $data[$loopIndex - 2]['histogram'] < $data[$loopIndex - 3]['histogram'] && $data[$loopIndex - 2]['histogram'] < 0 // // Third Last Candle should be dark red
+                                        && $data[$loopIndex - 3]['histogram'] < $data[$loopIndex - 4]['histogram'] && $data[$loopIndex - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
+                                        && $data[$loopIndex - 4]['histogram'] < $data[$loopIndex - 5]['histogram'] && $data[$loopIndex - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
+                                        && $data[$loopIndex - 5]['histogram'] < $data[$loopIndex - 6]['histogram'] && $data[$loopIndex - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
+                                    ;
 
 
+                                    $buyLongCondition =  $imbalance > 5 && $spread_pct < 0.1
+                                        && $macdLongConditionLoop && $volumeSignals[$volumeIndexLoop]['indicators']['mfi_current'] < 30 && $orderBookSnapshot->volume_imbalance > 1
+                                        && $data[$loopIndex]['K'] < 30
+                                        && $data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
 
-                            $imbalance = ($orderBookSnapshot->bid_volume - $orderBookSnapshot->ask_volume) / ($orderBookSnapshot->bid_volume + $orderBookSnapshot->ask_volume) * 100;
-                            $spread_pct = ($orderBookSnapshot->lowest_ask - $orderBookSnapshot->highest_bid) / (($orderBookSnapshot->lowest_ask + $orderBookSnapshot->highest_bid) / 2) * 100;
-                            // Volume Indicators
-                            $mfi = $currentVolumeSignal['indicators']['mfi_current'];
-                            $cvd = $currentVolumeSignal['indicators']['cvd_current'];
-                            $obv = $currentVolumeSignal['indicators']['obv_current'];
-                            $obv_previous = $volumeSignals[$volumeIndex - 1]['indicators']['obv_current'];
-                            $vwap = $currentVolumeSignal['indicators']['vwap_current'];
-                            // dd($volumeSignal['indicators']);
-                            $priceLong = $orderBookSnapshot->lowest_ask; // For LONG
-                            $priceShort = $orderBookSnapshot->highest_bid; // For LONG
+
+                                    $loopIndex--;
+
+                                    if ($buyLongCondition || $volumeIndex <= 1)
+                                        break;
+                                }
+                            }
+
+
+
+
+                            $sellShortCondition = false;
+
+                            if ($data[$index]['per'] < -0.08) {
+
+                                $loopIndex = $index;
+                                while ($data[$loopIndex]['per'] > 0 || $loopIndex == $index) {
+
+                                    $volumeIndexLoop = $volumeIndex - ($index - $loopIndex);
+
+
+                                    $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
+                                    if (!$orderBookSnapshotLoop) {
+                                        break;
+                                    }
+                                    $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
+                                    $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
+
+                                    // Volume Indicators
+                                    $mfi = $volumeSignals[$volumeIndexLoop]['indicators']['mfi_current'];
+                                    $cvd = $volumeSignals[$volumeIndexLoop]['indicators']['cvd_current'];
+                                    $obv = $volumeSignals[$volumeIndexLoop]['indicators']['obv_current'];
+                                    $obv_previous = $volumeSignals[$volumeIndexLoop - 1]['indicators']['obv_current'];
+                                    $vwap = $volumeSignals[$volumeIndexLoop]['indicators']['vwap_current'];
+
+                                    $macdShortConditionLoop =
+                                        $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0 // Current Candle should be solid green
+                                        && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] && $data[$loopIndex - 1]['histogram'] > 0 // // Second Last Candle should be light green
+                                        && $data[$loopIndex - 2]['histogram'] > $data[$loopIndex - 3]['histogram'] && $data[$loopIndex - 2]['histogram'] > 0 // // Third Last Candle should be light green
+                                        && $data[$loopIndex - 3]['histogram'] > $data[$loopIndex - 4]['histogram'] && $data[$loopIndex - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
+                                        && $data[$loopIndex - 4]['histogram'] > $data[$loopIndex - 5]['histogram'] && $data[$loopIndex - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
+                                        && $data[$loopIndex - 5]['histogram'] > $data[$loopIndex - 6]['histogram'] && $data[$loopIndex - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
+                                    ;
+
+                                    $sellShortCondition = $imbalance < -5 && $spread_pct < 0.1
+                                        && $macdShortConditionLoop && $volumeSignals[$volumeIndexLoop]['indicators']['mfi_current'] > 70 && $orderBookSnapshot->volume_imbalance < 1
+
+                                        && $data[$loopIndex]['K'] > 70
+                                        && $data[$loopIndex]['J'] < $data[$loopIndex]['K'] && $data[$loopIndex]['J'] < $data[$loopIndex]['D'];
+
+                                    $loopIndex--;
+                                }
+                            }
+
+
 
 
 
                             if (
-
-                                $imbalance > 5 && $spread_pct < 0.01
-                                && $obv > $obv_previous
-
+                                $buyLongCondition
                             ) {
                                 $tradeType = 'LONG';
                             } elseif (
-
-                                $imbalance < -5 && $spread_pct < 0.01
-                                && $obv < $obv_previous
-
-
+                                $sellShortCondition
                             ) {
                                 $tradeType = 'SHORT';
                             } else {
-
-
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
                             }
@@ -179,6 +213,9 @@ class TriggersThread implements ShouldQueue
 
 
                             // ========================================================================
+
+
+
 
                             // ===========Initiate Open Trade Process==================================
                             $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType);
@@ -326,11 +363,11 @@ class TriggersThread implements ShouldQueue
         $currentProfit = (($currentCandle['close'] - $open_order['price']) / $open_order['price']) * 100;
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
-        // // Change take profit levels when order is stuck for more than 80 mins
-        // if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 80 && $targetProfit <= 0.4) {
-        //     $targetProfit = 0.2;
-        //     Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
-        // }
+        // Change take profit levels when order is stuck for more than 80 mins
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 40 && $targetProfit <= 0.4) {
+            $targetProfit = 0.2;
+            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
+        }
 
         if ($currentProfit < 0.5) {
             $profitIncrementPercentage = 0.05;
@@ -346,9 +383,7 @@ class TriggersThread implements ShouldQueue
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
 
-        // $halfCount = intval($timeDiff / 30);
-        // if ($halfCount != 0)
-        //     $stopLoss = ($open_order['price'] + $stopLoss) / (2 ** $halfCount);
+
 
 
 
@@ -357,15 +392,6 @@ class TriggersThread implements ShouldQueue
         if ($stopLoss < $open_order['price'])
             $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
 
-
-        // if (
-        //     $secondLastCandle['close'] < $supportResistance[7]['support']
-        //     && $thirdLastCandle['close'] < $supportResistance[7]['support']
-        //     && $secondLastCandle['per'] < 0
-        //     && $thirdLastCandle['per'] < 0
-        // ) {
-        //     $closeEarly = true;
-        // }
 
         if ($currentCandle['close'] < $stopLoss || $closeEarly) {
             // Checking Upper Wick Formation
@@ -397,7 +423,7 @@ class TriggersThread implements ShouldQueue
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
-                
+
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
                 'stopLoss' => $stopLoss,
@@ -421,16 +447,15 @@ class TriggersThread implements ShouldQueue
         $stopLoss = $open_order['stopLoss'];
 
 
-
         $currentProfit = (($currentCandle['close'] - $open_order['price']) / $open_order['price']) * 100 * -1;
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
 
-        // // Change take profit levels when order is stuck for more than 80 mins
-        // if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 80 && $targetProfit <= 0.4) {
-        //     $targetProfit = 0.2;
-        //     Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
-        // }
+        // Change take profit levels when order is stuck for more than 80 mins
+        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 40 && $targetProfit <= 0.4) {
+            $targetProfit = 0.2;
+            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
+        }
 
         if ($currentProfit < 0.5) {
             $profitIncrementPercentage = 0.05;
@@ -439,35 +464,18 @@ class TriggersThread implements ShouldQueue
         }
 
 
-
         // Handle Early Closing on Order Books
 
         $closeEarly = false;
 
 
-
-        // if (
-        //     $secondLastCandle['close'] > $supportResistance[7]['resistance']
-        //     && $thirdLastCandle['close'] > $supportResistance[7]['resistance']
-        //     && $secondLastCandle['per'] > 0
-        //     && $thirdLastCandle['per'] > 0
-        // ) {
-        //     $closeEarly = true;
-        // }
-
         // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
-
-        // $halfCount = intval($timeDiff / 30);
-        // if ($halfCount != 0)
-        //     $stopLoss = ($open_order['price'] + $stopLoss) / (2 ** $halfCount);
 
 
         $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
         if ($stopLoss > $open_order['price'])
             $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
-
-
 
 
 
@@ -507,5 +515,19 @@ class TriggersThread implements ShouldQueue
         }
 
         return true;
+    }
+
+    public static function getOrderBookSnapshot($symbol, $data, $index)
+    {
+
+        // Fetch OrderBook snapshot
+        $timestamp = $data[$index]['timestampReadable'];
+        $snapshot = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
+            ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
+            ->where('symbol', $symbol)
+            ->where('depth', 1000)
+            ->latest('snapshot_time')
+            ->first();
+        return $snapshot;
     }
 }
