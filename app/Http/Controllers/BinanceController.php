@@ -184,7 +184,7 @@ class BinanceController extends Controller
         }
 
         if ($request->filled('formula')) {
-            $tradesAbove1htradesAbove1hLossrofit->where('formula', $request->formula);
+            $tradesAbove1hLoss->where('formula', $request->formula);
         }
         $tradesAbove1hLoss = $tradesAbove1hLoss->get();
         $tradesAbove1hLoss = count($tradesAbove1hLoss);
