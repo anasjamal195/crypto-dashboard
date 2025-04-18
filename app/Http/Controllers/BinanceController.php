@@ -47,8 +47,7 @@ class BinanceController extends Controller
 
 
         // =======Testing========================== 
-        // dd(array_slice(BinanceApiService::getCandleStickData('BTCUSDT', '5m', 1000, null, 'FUTURE', true), -10));
-        dd(CommonHelpers::getVolumeSignals('BTCUSDT', '5m', true)[0]);
+       
         // ========================================
         // Fetch all unique symbols from the database
         $interval = $request->interval;
