@@ -37,7 +37,7 @@ class TriggersThread implements ShouldQueue
     public $stopLoss = 1;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.5;
+    public $targetProfit = 0.4;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
     public $formula = 'MFI , MACD and OrderBook Imbalance';
