@@ -47,7 +47,7 @@ class BinanceController extends Controller
 
 
         // =======Testing========================== 
-        dd(array_slice(BinanceApiService::getCandleStickData('BTCUSDT', '5m', 1000, null, 'FUTURE', true), -10));
+        // dd(array_slice(BinanceApiService::getCandleStickData('BTCUSDT', '5m', 1000, null, 'FUTURE', true), -10));
 
         // ========================================
         // Fetch all unique symbols from the database
