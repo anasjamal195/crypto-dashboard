@@ -13,7 +13,7 @@
                 <div class="card">
                     <div class="card-header card-header-primary">
                         <div class="" style="display:flex;align-items:center;justify-content:space-between;">
-                            
+
                             <div>
                                 <h4 class="card-title ">Internal Trades Report (Recent 1000 Candles)</h4>
                                 <p class="card-category"> Here is a list of the latest trades across all coins.
@@ -164,6 +164,16 @@
                                                     <td class="font-weight-bold">1h+ Duration</td>
                                                     <td>{{ round($tradesAbove1h ?? 0) }}</td>
                                                     <td>Trades are above one hour</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">1h+ Duration Profit</td>
+                                                    <td>{{ round($tradesAbove1hProfit ?? 0) }}</td>
+                                                    <td>Trades are above one hour that closed in profit</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">1h+ Duration Loss</td>
+                                                    <td>{{ round($tradesAbove1hLoss ?? 0) }}</td>
+                                                    <td>Trades are above one hour that closed in Loss</td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Max Trades at a time</td>

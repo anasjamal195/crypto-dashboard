@@ -48,7 +48,7 @@ class BinanceController extends Controller
 
         // =======Testing========================== 
         // dd(array_slice(BinanceApiService::getCandleStickData('BTCUSDT', '5m', 1000, null, 'FUTURE', true), -10));
-        dd(CommonHelpers::getVolumeSignals('BTCUSDT','5m',true)[0]);
+        dd(CommonHelpers::getVolumeSignals('BTCUSDT', '5m', true)[0]);
         // ========================================
         // Fetch all unique symbols from the database
         $interval = $request->interval;
@@ -148,7 +148,7 @@ class BinanceController extends Controller
 
         $tradesAbove1h = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market', 'profit')
-            // ->distinct()
+
             ->whereRaw('duration > 60');
 
         if ($request->filled('position')) {
@@ -159,7 +159,37 @@ class BinanceController extends Controller
             $tradesAbove1h->where('formula', $request->formula);
         }
         $tradesAbove1h = $tradesAbove1h->count();
-        // Stop losses query with position filter if provided
+
+        $tradesAbove1hProfit = DB::table('coin_reports')
+            ->select('symbol', 'interval', 'market', 'profit')
+            ->whereRaw('profit > 0')
+            ->whereRaw('duration > 60');
+
+        if ($request->filled('position')) {
+            $tradesAbove1hProfit->where('position', $request->position);
+        }
+
+        if ($request->filled('formula')) {
+            $tradesAbove1hProfit->where('formula', $request->formula);
+        }
+        $tradesAbove1hProfit = $tradesAbove1hProfit->get();
+        $tradesAbove1hProfit = count($tradesAbove1hProfit);
+
+        $tradesAbove1hLoss = DB::table('coin_reports')
+            ->select('symbol', 'interval', 'market', 'profit')
+            ->whereRaw('profit < 0')
+            ->whereRaw('duration > 60');
+
+        if ($request->filled('position')) {
+            $tradesAbove1hLoss->where('position', $request->position);
+        }
+
+        if ($request->filled('formula')) {
+            $tradesAbove1htradesAbove1hLossrofit->where('formula', $request->formula);
+        }
+        $tradesAbove1hLoss = $tradesAbove1hLoss->get();
+        $tradesAbove1hLoss = count($tradesAbove1hLoss);
+
         $stopLossesQuery = DB::table('coin_reports')
             ->select('symbol', 'interval', 'market', 'profit')
             // ->distinct()
@@ -244,6 +274,8 @@ class BinanceController extends Controller
             'profitsTotal'       => $profitsTotal,
             'timelineData'       => $timelineData,
             'tradesAbove1h'      => $tradesAbove1h,
+            'tradesAbove1hLoss'      => $tradesAbove1hLoss,
+            'tradesAbove1hProfit'      => $tradesAbove1hProfit,
             'maxNearbyTrades'    => $maxNearbyTrades,
             'averageDuration'    => $averageDuration,
             'stopLossesTotal'    => $stopLossesTotal,
