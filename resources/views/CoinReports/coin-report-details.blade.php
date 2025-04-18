@@ -109,7 +109,6 @@
                                             'timestamp' => $sellCandle['timestamp'],
                                             'value' => $sellCandle['currentResistance'],
                                         ];
-
                                         $lowestIndex = -1;
                                         $lowestPrice = $data[0]['close'];
                                         $oneHourCounter = 0;
@@ -134,6 +133,7 @@
                                                         $lowestIndex = $index;
                                                     }
                                                 }
+                                                
 
                                                 if ($oneHourCounter == 12) {
                                                     $oneHourMarks[] = $candle['binance_timestamp'];
@@ -144,6 +144,9 @@
                                             }
                                         }
 
+                                        if($lowestIndex == -1){
+                                            $lowestIndex = 0;
+                                        }
                                         $lowestTriggers[] = $data[$lowestIndex]['binance_timestamp'];
                                         $lowestCandle = $data[$lowestIndex];
 
@@ -170,6 +173,8 @@
                                             ])
                                             ->get();
                                     @endphp
+
+                                    
                                     <tr @if ($trade->profit < 0) class="bg-danger" @endif>
                                         <td>{{ $indexTrades + 1 }}</td>
                                         <td>{{ number_format($trade->buyingPrice, 4) }}</td>
@@ -457,6 +462,7 @@
                                                                     </div>
                                                                 @endif
 
+                                                               
                                                                 <!-- Order Book -->
                                                                 @if (!empty($buy['orderBookSnapshot']))
                                                                     <div class="col-12 text-center">
