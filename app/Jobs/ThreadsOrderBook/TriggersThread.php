@@ -367,7 +367,7 @@ class TriggersThread implements ShouldQueue
 
         $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
 
-        if ($stopLoss < $open_order['price'])
+        if ($stopLoss < $open_order['price'] && $currentCandle['per'] < 0)
             $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
 
         // Gradually Narrow Stop Loss if profit is between volatility zone
@@ -457,7 +457,7 @@ class TriggersThread implements ShouldQueue
 
 
         $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
-        if ($stopLoss > $open_order['price'])
+        if ($stopLoss > $open_order['price'] && $currentCandle['per'] > 0)
             $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
 
 
