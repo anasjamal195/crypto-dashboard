@@ -382,15 +382,15 @@ class TriggersThread implements ShouldQueue
         // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
-
-
-
-
-
         $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
 
         if ($stopLoss < $open_order['price'])
             $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
+
+        // Gradually Narrow Stop Loss if profit is between volatility zone
+        if ($currentProfit > $open_order['currentProfit'] && $currentProfit > 0.2 && $currentProfit < 0.5) {
+            $stopLoss = $currentCandle['close'] * (1 - 0.2 / 100);
+        }
 
 
         if ($currentCandle['close'] < $stopLoss || $closeEarly) {
@@ -478,7 +478,10 @@ class TriggersThread implements ShouldQueue
             $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
 
 
-
+        // Gradually Narrow Stop Loss if profit is between volatility zone
+        if ($currentProfit > $open_order['currentProfit'] && $currentProfit > 0.2 && $currentProfit < 0.5) {
+            $stopLoss = $currentCandle['close'] * (1 + 0.2 / 100);
+        }
 
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
 
