@@ -90,9 +90,7 @@ class TriggersThread implements ShouldQueue
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
                             }
-                            $volumeSignals = CommonHelpers::getVolumeSignals($symbol, '5m', true);
-                            $volumeIndex = count($volumeSignals) - 2;
-                            $currentVolumeSignal = $volumeSignals[$volumeIndex];
+
                             $orderBookSnapshot = $snapshots[0];
 
 
@@ -107,7 +105,7 @@ class TriggersThread implements ShouldQueue
                                 $loopIndex = $index;
                                 while ($data[$loopIndex]['per'] < 0 || $loopIndex == $index) {
 
-                                    $volumeIndexLoop = $volumeIndex - ($index - $loopIndex);
+
 
                                     $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
 
@@ -117,12 +115,6 @@ class TriggersThread implements ShouldQueue
                                     $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
                                     $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
 
-                                    // Volume Indicators
-                                    $mfi = $volumeSignals[$volumeIndexLoop]['indicators']['mfi_current'];
-                                    $cvd = $volumeSignals[$volumeIndexLoop]['indicators']['cvd_current'];
-                                    $obv = $volumeSignals[$volumeIndexLoop]['indicators']['obv_current'];
-                                    $obv_previous = $volumeSignals[$volumeIndexLoop - 1]['indicators']['obv_current'];
-                                    $vwap = $volumeSignals[$volumeIndexLoop]['indicators']['vwap_current'];
 
                                     $macdLongConditionLoop =
                                         $data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0 // Current Candle should be light red
@@ -135,14 +127,14 @@ class TriggersThread implements ShouldQueue
 
 
                                     $buyLongCondition =  $imbalance > 5 && $spread_pct < 0.1
-                                        && $macdLongConditionLoop && $volumeSignals[$volumeIndexLoop]['indicators']['mfi_current'] < 30 && $orderBookSnapshot->volume_imbalance > 1
+                                        && $macdLongConditionLoop && $data[$loopIndex]['mfi'] < 30 && $orderBookSnapshot->volume_imbalance > 1
                                         && $data[$loopIndex]['K'] < 30
                                         && $data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
 
 
                                     $loopIndex--;
 
-                                    if ($buyLongCondition || $volumeIndex <= 1)
+                                    if ($buyLongCondition)
                                         break;
                                 }
                             }
@@ -157,7 +149,6 @@ class TriggersThread implements ShouldQueue
                                 $loopIndex = $index;
                                 while ($data[$loopIndex]['per'] > 0 || $loopIndex == $index) {
 
-                                    $volumeIndexLoop = $volumeIndex - ($index - $loopIndex);
 
 
                                     $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
@@ -167,12 +158,6 @@ class TriggersThread implements ShouldQueue
                                     $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
                                     $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
 
-                                    // Volume Indicators
-                                    $mfi = $volumeSignals[$volumeIndexLoop]['indicators']['mfi_current'];
-                                    $cvd = $volumeSignals[$volumeIndexLoop]['indicators']['cvd_current'];
-                                    $obv = $volumeSignals[$volumeIndexLoop]['indicators']['obv_current'];
-                                    $obv_previous = $volumeSignals[$volumeIndexLoop - 1]['indicators']['obv_current'];
-                                    $vwap = $volumeSignals[$volumeIndexLoop]['indicators']['vwap_current'];
 
                                     $macdShortConditionLoop =
                                         $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0 // Current Candle should be solid green
@@ -182,21 +167,19 @@ class TriggersThread implements ShouldQueue
                                         && $data[$loopIndex - 4]['histogram'] > $data[$loopIndex - 5]['histogram'] && $data[$loopIndex - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
                                         && $data[$loopIndex - 5]['histogram'] > $data[$loopIndex - 6]['histogram'] && $data[$loopIndex - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
                                     ;
-
-                                    $sellShortCondition = $imbalance < -5 && $spread_pct < 0.1
-                                        && $macdShortConditionLoop && $volumeSignals[$volumeIndexLoop]['indicators']['mfi_current'] > 70 && $orderBookSnapshot->volume_imbalance < 1
-
+                                    $sellShortCondition =
+                                        $macdShortConditionLoop
+                                        && $data[$loopIndex]['ma7'] > $data[$loopIndex]['ma25']
+                                        && $data[$loopIndex - 1]['ma7'] > $data[$loopIndex - 1]['ma25']
+                                        && $data[$loopIndex]['obv'] < $data[$loopIndex - 1]['obv']
                                         && $data[$loopIndex]['K'] > 70
                                         && $data[$loopIndex]['J'] < $data[$loopIndex]['K'] && $data[$loopIndex]['J'] < $data[$loopIndex]['D'];
-
                                     $loopIndex--;
+
+                                    if ($sellShortCondition)
+                                        break;
                                 }
                             }
-
-
-
-
-
                             if (
                                 $buyLongCondition
                             ) {
@@ -265,7 +248,7 @@ class TriggersThread implements ShouldQueue
 
 
                 // Check candle closing 
-                $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 60;
+                $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
 
                 if (!$isCandleClosing) {
 
