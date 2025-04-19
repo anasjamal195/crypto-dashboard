@@ -131,6 +131,25 @@ class TriggersThread implements ShouldQueue
                                         && $data[$loopIndex]['K'] < 30
                                         && $data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
 
+                                    $imbalanceCheck = $imbalance > 5;
+                                    $spreadCheck = $spread_pct < 0.1;
+                                    $macdCheck = $macdLongConditionLoop;
+                                    $mfiCheck = $data[$loopIndex]['mfi'] < 30;
+                                    $volumeImbalanceCheck = $orderBookSnapshot->volume_imbalance > 1;
+                                    $kCheck = $data[$loopIndex]['K'] < 30;
+                                    $jOverKCheck = $data[$loopIndex]['J'] > $data[$loopIndex]['K'];
+                                    $jOverDCheck = $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
+
+                                    Log::debug('Buy Long Condition Debug Check', [
+                                        'imbalance > 5'              => ['result' => $imbalanceCheck, 'value' => $imbalance],
+                                        'spread_pct < 0.1'           => ['result' => $spreadCheck, 'value' => $spread_pct],
+                                        'macdLongConditionLoop'      => ['result' => $macdCheck, 'value' => $macdLongConditionLoop],
+                                        'mfi < 30'                   => ['result' => $mfiCheck, 'value' => $data[$loopIndex]['mfi']],
+                                        'volume_imbalance > 1'       => ['result' => $volumeImbalanceCheck, 'value' => $orderBookSnapshot->volume_imbalance],
+                                        'K < 30'                     => ['result' => $kCheck, 'value' => $data[$loopIndex]['K']],
+                                        'J > K'                      => ['result' => $jOverKCheck, 'J' => $data[$loopIndex]['J'], 'K' => $data[$loopIndex]['K']],
+                                        'J > D'                      => ['result' => $jOverDCheck, 'J' => $data[$loopIndex]['J'], 'D' => $data[$loopIndex]['D']],
+                                    ]);
 
                                     $loopIndex--;
 
