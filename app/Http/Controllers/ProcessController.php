@@ -57,6 +57,7 @@ class ProcessController extends Controller
             // Start Sequence
             $processes = [
                 'laravel_saftey_worker',
+                'laravel_future_coin_dumper',
                 'laravel_order_book_signals_worker',
             ];
 
