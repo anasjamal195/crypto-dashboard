@@ -87,11 +87,13 @@ class OrderBookCollectorService
                     'long_entry_points' => $signals['long']['entry_points'],
                     'short_entry_points' => $signals['short']['entry_points'],
                 ]);
+                
+                //   Delete 1 month older snapshot
                 $snapshot = OrderBookSnapshot::where('symbol', $symbol)
                     ->orderBy('created_at', 'ASC')
                     ->first();
 
-                if ($snapshot) {
+                if ($snapshot && $snapshot->created_at < Carbon::now()->subMonth()) {
                     $snapshot->delete();
                 }
             }
