@@ -78,7 +78,7 @@ class TriggersThread implements ShouldQueue
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
                             $index--;
-                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [$this->supportResistanceCandleSpan]);
+                            $supportResistance = $this->getSupportResistance($data, $index);
 
 
                             // ==================Decision Block==================
