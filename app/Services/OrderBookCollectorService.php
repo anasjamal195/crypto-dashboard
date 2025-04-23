@@ -87,6 +87,13 @@ class OrderBookCollectorService
                     'long_entry_points' => $signals['long']['entry_points'],
                     'short_entry_points' => $signals['short']['entry_points'],
                 ]);
+                $snapshot = OrderBookSnapshot::where('symbol', $symbol)
+                    ->orderBy('created_at', 'ASC')
+                    ->first();
+
+                if ($snapshot) {
+                    $snapshot->delete();
+                }
             }
             return true;
         } catch (\Exception $e) {

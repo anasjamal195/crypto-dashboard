@@ -4,6 +4,7 @@
     $totalTrades = 0;
     $percentageProgress = DB::table('formula_details')->where('formula', request('formula'))->first();
     $percentageProgress = $percentageProgress ? $percentageProgress->progress : 100;
+
 @endphp
 @section('content')
     <div class="container-fluid">
@@ -33,7 +34,6 @@
                         </div>
                     </div>
                     <form method="GET" action="{{ url()->current() }}" class="p-3">
-                        <input type="hidden" name="interval" value="{{ request()->get('interval') }}">
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group">
@@ -79,7 +79,7 @@
                             </div>
 
                             <div class="col-md-2 ">
-                                <a href="{{ route('coinReport', ['market' => 'FUTURE', 'interval' => '5m']) }}"
+                                <a href="{{ route('coinReport', ['market' => 'FUTURE', 'interval' => $interval]) }}"
                                     class="btn btn-secondary my-2">Clear</a>
                             </div>
 
@@ -137,7 +137,7 @@
                                                 <td>{{ \Carbon\Carbon::parse($trade->last_updated)->timezone('Asia/Karachi')->format('h:i A') }}
                                                 </td>
                                                 <td>
-                                                    <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'formula' => $trade->formula, 'stopLoss' => request('stopLoss'), 'interval' => '5m']) }}"
+                                                    <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'formula' => $trade->formula, 'stopLoss' => request('stopLoss'), 'interval' => $interval]) }}"
                                                         class="btn btn-info btn-sm">
                                                         <i class="fa fa-eye"></i>
                                                     </a>
@@ -160,6 +160,11 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
+                                                <tr>
+                                                    <td class="font-weight-bold">Below TP</td>
+                                                    <td>{{ round($tradesBelowTP ?? 0) }}</td>
+                                                    <td>Trades that closed early below 0.5%</td>
+                                                </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">1h+ Duration</td>
                                                     <td>{{ round($tradesAbove1h ?? 0) }}</td>
@@ -208,7 +213,54 @@
                                                 </tr>
 
 
+                                              
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
 
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">RSI Above 50</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Profitable</td>
+                                                    <td>{{ $rsiAbove40Profitable }}</td>
+                                                    <td>Trades having rsi above 50 and profitable </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Loss</td>
+                                                    <td>{{ $rsiAbove40Loss }}</td>
+                                                    <td>Trades having rsi above 50 and Loss </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Total</td>
+                                                    <td>{{ $rsiAbove40Total }}</td>
+                                                    <td>Total trades having rsi above 50 </td>
+                                                </tr>
+
+
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">RSI Below and equal 50</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Profitable</td>
+                                                    <td>{{ $rsiBelow40Profitable }}</td>
+                                                    <td>Trades having rsi Below 50 and profitable </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Loss</td>
+                                                    <td>{{ $rsiBelow40Loss }}</td>
+                                                    <td>Trades having rsi Below 50 and Loss </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Total</td>
+                                                    <td>{{ $rsiBelow40Total }}</td>
+                                                    <td>Total trades having rsi Below 50 </td>
+                                                </tr>
+
+                                               
                                                 {{-- Testing Section --}}
                                                 {{-- <tr>
                                                     @php

@@ -363,7 +363,7 @@ class CommonHelpers
 
     public static function getPercentDiff($pivot, $value)
     {
-        return (abs($pivot - $value) / $pivot) * 100;
+        return (abs($pivot - $value) / max(0.00000001, $pivot)) * 100;
     }
 
 

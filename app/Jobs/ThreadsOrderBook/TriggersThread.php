@@ -26,6 +26,7 @@ class TriggersThread implements ShouldQueue
     public $tries = 1; // The job will only run once
     public $timeout = 360000000;
     public $tradeInstance;
+    public static $supportResistanceCandleSpan = 3;
     public $supportResistance;
     public $triggerPrice = 0;
     public $triggerIndex = 0;
@@ -71,142 +72,48 @@ class TriggersThread implements ShouldQueue
                             $trade_acc = $this->account;
 
 
-                            $data = BinanceApiService::getCandleStickData($symbol, '5m', 300, null, 'FUTURE');
+                            $data = BinanceApiService::getCandleStickData($symbol, '1m', 300, null, 'FUTURE');
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
                             $index--;
-                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [7]);
-
-
-
-                            $timestamp = $data[$index]['timestampReadable'];
-                            $snapshots = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
-                                ->where('snapshot_time', '>=', Carbon::parse($timestamp)->subMinutes(60))
-                                ->where('symbol', $symbol)
-                                ->where('depth', 1000)
-                                ->latest('snapshot_time')
-                                ->get();
-                            if (count($snapshots) < 1) {
-                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                continue;
-                            }
-
-                            $orderBookSnapshot = $snapshots[0];
-
-
+                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, self::$supportResistanceCandleSpan);
 
 
                             // ==================Decision Block==================
 
                             $buyLongCondition = false;
+                            $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $index);
 
-                            if ($data[$index]['per'] > 0.08) {
-
-                                $loopIndex = $index;
-                                while ($data[$loopIndex]['per'] < 0 || $loopIndex == $index) {
-
-
-
-                                    $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
-
-                                    if (!$orderBookSnapshotLoop) {
-                                        break;
-                                    }
-                                    $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
-                                    $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
-
-
-                                    $macdLongConditionLoop =
-                                        $data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0 // Current Candle should be light red
-                                        && $data[$loopIndex - 1]['histogram'] < $data[$loopIndex - 2]['histogram'] && $data[$loopIndex - 1]['histogram'] < 0 // // Second Last Candle should be dark red
-                                        && $data[$loopIndex - 2]['histogram'] < $data[$loopIndex - 3]['histogram'] && $data[$loopIndex - 2]['histogram'] < 0 // // Third Last Candle should be dark red
-                                        && $data[$loopIndex - 3]['histogram'] < $data[$loopIndex - 4]['histogram'] && $data[$loopIndex - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
-                                        && $data[$loopIndex - 4]['histogram'] < $data[$loopIndex - 5]['histogram'] && $data[$loopIndex - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
-                                        && $data[$loopIndex - 5]['histogram'] < $data[$loopIndex - 6]['histogram'] && $data[$loopIndex - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
-                                    ;
-
-
-                                    $buyLongCondition =  $imbalance > 5 && $spread_pct < 0.1
-                                        && $macdLongConditionLoop && $data[$loopIndex]['mfi'] < 30 && $orderBookSnapshot->volume_imbalance > 1
-                                        && $data[$loopIndex]['K'] < 30
-                                        && $data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
-
-                                    $imbalanceCheck = $imbalance > 5;
-                                    $spreadCheck = $spread_pct < 0.1;
-                                    $macdCheck = $macdLongConditionLoop;
-                                    $mfiCheck = $data[$loopIndex]['mfi'] < 30;
-                                    $volumeImbalanceCheck = $orderBookSnapshot->volume_imbalance > 1;
-                                    $kCheck = $data[$loopIndex]['K'] < 30;
-                                    $jOverKCheck = $data[$loopIndex]['J'] > $data[$loopIndex]['K'];
-                                    $jOverDCheck = $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
-
-                                    Log::debug('Buy Long Condition Debug Check', [
-                                        'imbalance > 5'              => ['result' => $imbalanceCheck, 'value' => $imbalance],
-                                        'spread_pct < 0.1'           => ['result' => $spreadCheck, 'value' => $spread_pct],
-                                        'macdLongConditionLoop'      => ['result' => $macdCheck, 'value' => $macdLongConditionLoop],
-                                        'mfi < 30'                   => ['result' => $mfiCheck, 'value' => $data[$loopIndex]['mfi']],
-                                        'volume_imbalance > 1'       => ['result' => $volumeImbalanceCheck, 'value' => $orderBookSnapshot->volume_imbalance],
-                                        'K < 30'                     => ['result' => $kCheck, 'value' => $data[$loopIndex]['K']],
-                                        'J > K'                      => ['result' => $jOverKCheck, 'J' => $data[$loopIndex]['J'], 'K' => $data[$loopIndex]['K']],
-                                        'J > D'                      => ['result' => $jOverDCheck, 'J' => $data[$loopIndex]['J'], 'D' => $data[$loopIndex]['D']],
-                                    ]);
-
-                                    $loopIndex--;
-
-                                    if ($buyLongCondition)
-                                        break;
-                                }
+                            if (!$orderBookSnapshotLoop) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                break;
                             }
 
 
+                            $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
+                            $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
 
+
+                            $supportResistanceFirst = self::getSupportResistance($data, $index);
+
+                            $supportResistanceSecond = self::getSupportResistance($data, $index - max($supportResistanceFirst['resistanceDistance'], $supportResistanceFirst['supportDistance']));
+
+
+                            $buyLongConditionInitial =
+                                $imbalance > 5 && $spread_pct < 0.1
+                                && $data[$index]['per'] > 0
+                                && $data[$index - 1]['close'] > $supportResistanceFirst['resistance']
+                                && $data[$index - 1]['open'] < $supportResistanceFirst['resistance']
+                                && $data[$index]['J'] > $data[$index]['K']
+                                && $data[$index]['J'] > $data[$index]['D'];
 
                             $sellShortCondition = false;
 
-                            if ($data[$index]['per'] < -0.08) {
 
-                                $loopIndex = $index;
-                                while ($data[$loopIndex]['per'] > 0 || $loopIndex == $index) {
-
-
-
-                                    $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
-                                    if (!$orderBookSnapshotLoop) {
-                                        break;
-                                    }
-                                    $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
-                                    $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
-
-
-                                    $macdShortConditionLoop =
-                                        $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0 // Current Candle should be solid green
-                                        && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] && $data[$loopIndex - 1]['histogram'] > 0 // // Second Last Candle should be light green
-                                        && $data[$loopIndex - 2]['histogram'] > $data[$loopIndex - 3]['histogram'] && $data[$loopIndex - 2]['histogram'] > 0 // // Third Last Candle should be light green
-                                        && $data[$loopIndex - 3]['histogram'] > $data[$loopIndex - 4]['histogram'] && $data[$loopIndex - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
-                                        && $data[$loopIndex - 4]['histogram'] > $data[$loopIndex - 5]['histogram'] && $data[$loopIndex - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
-                                        && $data[$loopIndex - 5]['histogram'] > $data[$loopIndex - 6]['histogram'] && $data[$loopIndex - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
-                                    ;
-                                    $sellShortCondition =
-                                        $macdShortConditionLoop
-                                        && $data[$loopIndex]['ma7'] > $data[$loopIndex]['ma25']
-                                        && $data[$loopIndex - 1]['ma7'] > $data[$loopIndex - 1]['ma25']
-                                        && $data[$loopIndex]['obv'] < $data[$loopIndex - 1]['obv']
-                                        && $data[$loopIndex]['K'] > 70
-                                        && $data[$loopIndex]['J'] < $data[$loopIndex]['K'] && $data[$loopIndex]['J'] < $data[$loopIndex]['D'];
-                                    $loopIndex--;
-
-                                    if ($sellShortCondition)
-                                        break;
-                                }
-                            }
                             if (
-                                $buyLongCondition
+                                $buyLongConditionInitial
                             ) {
                                 $tradeType = 'LONG';
-                            } elseif (
-                                $sellShortCondition
-                            ) {
-                                $tradeType = 'SHORT';
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
@@ -315,7 +222,7 @@ class TriggersThread implements ShouldQueue
                                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
-                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '5m', 'FUTURE', [7]);
+                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '1m', 'FUTURE', self::$supportResistanceCandleSpan);
                                 if ($tradeType === 'LONG')
                                     $tradeLoop = self::manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
@@ -521,7 +428,16 @@ class TriggersThread implements ShouldQueue
 
         return true;
     }
+    public static function getSupportResistance($data, $index)
+    {
+        $end = $index + 1; // +1 to include the $index item
+        $length = 300;
 
+        $start = max(0, $end - $length); // make sure we donâ€™t go negative
+        $slicedData = array_slice($data, $start, $length);
+
+        return MarketTrendService::getCurrentSupportResistanceValueFromData($slicedData, [self::$supportResistanceCandleSpan])[self::$supportResistanceCandleSpan];
+    }
     public static function getOrderBookSnapshot($symbol, $data, $index)
     {
 

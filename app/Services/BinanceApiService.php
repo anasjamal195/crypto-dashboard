@@ -242,18 +242,18 @@ class BinanceApiService
         ];
 
         // Check if the remaining weight is too low to make another request to next available server
-        if (intval($remainingWeight) < 100) {
-            // Log::warning("Approaching rate limit for Binance API ($usedWeight/1200). Switching server...");
+        if (intval($remainingWeight) < 100 || true) {
+
+
 
             // Increment balancer index and loop if out of bounds
             $params['balancerServerSequence'] = $balancerServerSequence;
             $params['nextServer'] = $serverUrlKey;
             $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($balancerServerSequence[$serverUrlKey], $params);
             $response->getHeaders();
-            // dd($response->body());
         } else {
-            // Choose the base URL based on the trade type
-            // Log::info("Using Master Server: ($usedWeight/1200). Retaining...");
+
+
 
             $base_url = $market === 'FUTURE' ?
                 config('binance.api.future_base_url') . config('binance.endpoints.klines') :
@@ -272,18 +272,10 @@ class BinanceApiService
 
         // Handle the API response
         if (!$response->successful()) {
-            $openSymbols = DB::table('live_trades_future_results')->where('trade_status', 'open')->where('symbol', $symbol)->first();
-            if (!$openSymbols) {
-                DB::table('coins')->where('symbol', $symbol)->delete();
-            } else {
-                Log::info('Error Delete Invalid Coin, Order Open for symbol: ' . $symbol);
-            }
+
             Log::error('Error Fetching Coin data: ' . $symbol . ' ' . json_encode($response->json()));
 
             $log = CommonHelpers::addSafetyLog('API_ERROR', 'Error Occured on fetching coin data: ' . $symbol);
-            DB::table('trade_handler')->where('symbol', $symbol)->delete();
-            MailerService::sendSafetyAlert($log);
-            // dd($response->json());
         }
 
 

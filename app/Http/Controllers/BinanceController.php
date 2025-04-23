@@ -45,12 +45,11 @@ class BinanceController extends Controller
     public function getCoinReport($market, Request $request)
     {
 
-
         // =======Testing========================== 
-       
+
         // ========================================
         // Fetch all unique symbols from the database
-        $interval = $request->interval;
+
         $stopLoss = $request->input('stopLoss') ?? 1;
 
         if (!request('formula')) {
@@ -66,7 +65,7 @@ class BinanceController extends Controller
                 'stopLoss'           => 0,
                 'stopLossesTrades'   => 0,
                 'pageSlug'           => 'Coin Report',
-                'interval'           => $interval,
+                'interval'           => '5m',
                 'market'             => $market,
                 'liquidatedSymbols'  => [],
                 'liquidatedIntervals' => [],
@@ -78,6 +77,7 @@ class BinanceController extends Controller
                 'symbol',
                 'formula',
                 'position',
+                'interval',
                 DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
                 DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
                 DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
@@ -89,8 +89,8 @@ class BinanceController extends Controller
                 DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),       // Minimum of lowestPrice per symbol
                 DB::raw('MAX(created_at) as last_updated')                     // Last updated timestamp
             )
-            ->where('market', $market)
-            ->where('interval', $interval);
+            ->where('market', $market);
+
 
         // Request based filter for position in tradeData query
         if ($request->filled('position')) {
@@ -124,10 +124,15 @@ class BinanceController extends Controller
             ->first();
 
 
-        $tradeData = $query->groupBy('symbol', 'position', 'formula')
+        $tradeData = $query->groupBy('symbol', 'position', 'formula', 'interval')
             ->orderBy('total_entries', 'DESC')
             ->orderBy('last_updated', 'DESC')
             ->get();
+
+            $interval = '';
+        if (count($tradeData)) {
+            $interval = $tradeData[0]->interval;
+        }
 
         $pageSlug = 'CoinReport' . $market;
 
@@ -235,9 +240,6 @@ class BinanceController extends Controller
         // Timeline Data preperation
         $tradeArr = DB::table('coin_reports');
 
-        if ($request->filled('interval')) {
-            $tradeArr->where('interval', $request->interval);
-        }
         if ($request->filled('position')) {
             $tradeArr->where('position', $request->position);
         }
@@ -248,6 +250,48 @@ class BinanceController extends Controller
 
 
         $tradeArr = json_decode(json_encode($tradeArr->get()), true);
+
+
+        // RSI Stats
+        $rsiAbove40Profitable = 0;
+        $rsiAbove40Loss = 0;
+        $rsiAbove40Total = 0;
+
+        $rsiBelow40Profitable = 0;
+        $rsiBelow40Loss = 0;
+        $rsiBelow40Total = 0;
+        $tradesBelowTP = 0;
+
+
+
+        foreach ($tradeArr as $trade) {
+            $buyingCandle = json_decode($trade['buyingCandle'], true);
+
+            if ($buyingCandle['rsi6'] >= 50) {
+                if ($trade['profit'] > 0) {
+                    $rsiAbove40Profitable++;
+                } else {
+                    $rsiAbove40Loss++;
+                }
+                $rsiAbove40Total++;
+            } else {
+                if ($trade['profit'] > 0) {
+                    $rsiBelow40Profitable++;
+                } else {
+                    $rsiBelow40Loss++;
+                }
+                $rsiBelow40Total++;
+            }
+
+
+
+            if($trade['profit'] > 0 && $trade['profit'] < 0.5){
+                $tradesBelowTP++;
+            }
+        }
+
+
+
 
         $timelineData = array_map(function ($trade) use ($stopLoss) {
 
@@ -286,6 +330,17 @@ class BinanceController extends Controller
             'liquidatedSymbols'  => $liquidatedSymbols,
             'liquidatedIntervals' => $liquidatedIntervals,
             'liquidatedMarkets'  => $liquidatedMarkets,
+
+            // RSI Stats
+            'rsiAbove40Profitable' => $rsiAbove40Profitable,
+            'rsiAbove40Loss' => $rsiAbove40Loss,
+            'rsiAbove40Total' => $rsiAbove40Total,
+    
+            'rsiBelow40Profitable' => $rsiBelow40Profitable,
+            'rsiBelow40Loss' => $rsiBelow40Loss,
+            'rsiBelow40Total' => $rsiBelow40Total,
+
+            'tradesBelowTP' => $tradesBelowTP,
         ]);
     }
     public function getCoinReportDetails($market, Request $request)
@@ -317,7 +372,7 @@ class BinanceController extends Controller
         $startTime = $trades->first()->buyingCandle->binance_timestamp;
 
         $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startTime, $market);
-
+            
         foreach ($data as $index => &$candle) {
 
             $candle['timestamp'] = $candle['timestamp'] / 1000;

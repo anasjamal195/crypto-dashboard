@@ -21,16 +21,17 @@ class ReportService
 
     // Essential Properties
     public static $delayMs = 10;
-    public static $supportResistanceCandleSpan = 10;
-    public static $backTestTimeUnix = 1743163200000;
+    public static $supportResistanceCandleSpan = 3;
+    public static $backTestTimeUnix = null;
+    // public static $backTestTimeUnix = 1743163200000;
 
-    public static $interval = '5m';
+    public static $interval = '1m';
     public static $targetProfit = 0.5;
     public static $stopLoss = 0.8;
-    public static $stopLossWaitingDuration = 20;
-    public static $longEnabled = false;
+    public static $stopLossWaitingDuration = 0;
+    public static $longEnabled = true;
     public static $shortEnabled = true;
-    public static $formula = 'Internal Report';
+    public static $formula = 'Test Internal Report (Long)';
     public static $earlyClosingEnabled = true;
 
     // Coin Selection Filters
@@ -47,6 +48,10 @@ class ReportService
 
 
 
+    // Confirmed Trades table settings
+
+    public static $candlesToCheck = 30;
+    public static $volumeMA5ValidFor = 3;
 
 
     public static function addFormulaDetails()
@@ -246,7 +251,7 @@ class ReportService
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                // dd($e);
+                dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
@@ -287,6 +292,7 @@ class ReportService
 
 
         foreach ($data as $index => $candle) {
+
 
 
             $volumeSignal  = [
@@ -364,6 +370,7 @@ class ReportService
                     $candle['currentSupport'] = $supportResistance['support'];
                     $candle['currentResistance'] = $supportResistance['resistance'];
                     $candle['orderBookSnapshot'] = $orderBookSnapshot ? $orderBookSnapshot->id : null;
+
                     $candle['closingVolumes'] = json_encode($volumeSignal);
 
                     $currentTrade['sellingCandle'] = json_encode($candle);
@@ -413,10 +420,6 @@ class ReportService
 
 
 
-
-
-
-
     // Function to check opening Conditions
 
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot)
@@ -426,97 +429,71 @@ class ReportService
             return null;
 
 
+
+        // ############################### BUY LONG CONDITIONS ##################################
         $buyLongCondition = false;
-
-        // Temporarily Disabled Buy Long
-        // if ($data[$index]['per'] > 0.08) {
-
-        //     $loopIndex = $index;
-        //     while ($data[$loopIndex]['per'] < 0 || $loopIndex == $index) {
+        if (!self::checkConfirmTradeValidity($symbol, $data, $index)) {
 
 
+            $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $index);
 
-        //         $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
-
-        //         if (!$orderBookSnapshotLoop) {
-        //             break;
-        //         }
-        //         $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
-        //         $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
+            if (!$orderBookSnapshotLoop) {
+                return null;
+            }
+            $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
+            $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
 
 
 
-        //         $macdLongConditionLoop =
-        //             $data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0 // Current Candle should be light red
-        //             && $data[$loopIndex - 1]['histogram'] < $data[$loopIndex - 2]['histogram'] && $data[$loopIndex - 1]['histogram'] < 0 // // Second Last Candle should be dark red
-        //             && $data[$loopIndex - 2]['histogram'] < $data[$loopIndex - 3]['histogram'] && $data[$loopIndex - 2]['histogram'] < 0 // // Third Last Candle should be dark red
-        //             && $data[$loopIndex - 3]['histogram'] < $data[$loopIndex - 4]['histogram'] && $data[$loopIndex - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
-        //             && $data[$loopIndex - 4]['histogram'] < $data[$loopIndex - 5]['histogram'] && $data[$loopIndex - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
-        //             && $data[$loopIndex - 5]['histogram'] < $data[$loopIndex - 6]['histogram'] && $data[$loopIndex - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
-        //         ;
-
-
-        //         $buyLongCondition =  $imbalance > 5 && $spread_pct < 0.1
-        //             && $macdLongConditionLoop && $data[$index]['mfi'] < 30 && $orderBookSnapshot->volume_imbalance > 1
-        //             && $data[$loopIndex]['K'] < 30
-        //             && $data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
-
-
-        //         $loopIndex--;
-
-        //         if ($buyLongCondition )
-        //             break;
-        //     }
-        // }
+            $macdLongConditionLoop =
+                $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0 // Current Candle should be light red
+                && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0 // // Second Last Candle should be dark red
+                && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0 // // Third Last Candle should be dark red
+                && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0 // // Fourth Last Candle should be dark red
+                && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0 // // Fifth Last Candle should be dark red
+                && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0 // // Sixth Last Candle should be dark red
+            ;
 
 
 
+            $supportResistanceFirst = self::getSupportResistance($data, $index);
 
-        $sellShortCondition = false;
-
-        if ($data[$index]['per'] < -0.08) {
-
-            $loopIndex = $index;
-            while ($data[$loopIndex]['per'] > 0 || $loopIndex == $index) {
+            $supportResistanceSecond = self::getSupportResistance($data, $index - max($supportResistanceFirst['resistanceDistance'], $supportResistanceFirst['supportDistance']));
 
 
+            $buyLongConditionInitial =
+                $imbalance > 5 && $spread_pct < 0.1
+                // && $data[$index]['obv'] > $data[$index - 1]['obv']
+
+                // $macdLongConditionLoop
+
+                // && $data[$index]['histogram'] < 0
+                // && $data[$index - 1]['histogram'] < 0
+                // && $data[$index - 2]['histogram'] < 0
+                // && $data[$index - 3]['histogram'] < 0
+
+                // && $data[$index - 1]['volume'] < $data[$index - 2]['volume']
+                // && $data[$index - 2]['volume'] > $data[$index - 3]['volume']
+                // && $data[$index]['per'] > 0
+                // && $data[$index - 1]['per'] < 0
+                // && $data[$index - 2]['per'] < 0
+                // && $data[$index - 3]['per'] < 0
+                && $data[$index]['per'] > 0
+                && $data[$index - 1]['close'] > $supportResistanceFirst['resistance']
+                && $data[$index - 1]['open'] < $supportResistanceFirst['resistance']
+                && $data[$index]['J'] > $data[$index]['K']
+                && $data[$index]['J'] > $data[$index]['D']
+
+                // && $data[$index]['mfi'] < 30
+                // && $orderBookSnapshot->volume_imbalance > 1
+            ;
 
 
-                $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
-                if (!$orderBookSnapshotLoop) {
-                    break;
-                }
-                $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
-                $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
 
-
-
-                $macdShortConditionLoop =
-                    $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0 // Current Candle should be solid green
-                    && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] && $data[$loopIndex - 1]['histogram'] > 0 // // Second Last Candle should be light green
-                    && $data[$loopIndex - 2]['histogram'] > $data[$loopIndex - 3]['histogram'] && $data[$loopIndex - 2]['histogram'] > 0 // // Third Last Candle should be light green
-                    && $data[$loopIndex - 3]['histogram'] > $data[$loopIndex - 4]['histogram'] && $data[$loopIndex - 3]['histogram'] > 0 // // Fourth Last Candle should be light green
-                    && $data[$loopIndex - 4]['histogram'] > $data[$loopIndex - 5]['histogram'] && $data[$loopIndex - 4]['histogram'] > 0 // // Fifth Last Candle should be light green
-                    && $data[$loopIndex - 5]['histogram'] > $data[$loopIndex - 6]['histogram'] && $data[$loopIndex - 5]['histogram'] > 0 // // Sixth Last Candle should be light green
-                ;
-
-                $sellShortCondition =
-
-                    $imbalance < -5
-                    && $spread_pct < 0.1
-                    && $macdShortConditionLoop
-                    && $data[$index]['mfi'] > 70
-
-                    // && $orderBookSnapshot->volume_imbalance < 1
-
-                    // && $data[$loopIndex]['K'] > 70
-                    // && $data[$loopIndex]['J'] < $data[$loopIndex]['K'] && $data[$loopIndex]['J'] < $data[$loopIndex]['D']
-                ;
-
-                $loopIndex--;
-
-                if ($sellShortCondition)
-                    break;
+            if ($buyLongConditionInitial) {
+                return 'LONG';
+                self::insertConfirmBasicTradeEntry($symbol, $data, $index);
+                // return null;
             }
         }
 
@@ -526,13 +503,43 @@ class ReportService
 
 
 
-        // Short condition
-        if (
 
-            $sellShortCondition
-        ) {
-            return  self::$shortEnabled ? 'SHORT' : null;
+
+
+
+
+
+
+        // -------------------------------------------------------------
+        if (self::checkConfirmTradeValidity($symbol, $data, $index)) {
+
+
+
+            // Handles MA 5 condition and checks for validity , will update only if index is valid and already no value is assigned
+            self::updateVolumeMA5ConditionLong($symbol, $data, $index);
+
+            $bollConditions = self::checkBollingerBandCrossing($data, $index);
+
+
+            if (
+                self::checkMA5Validity($symbol, $data, $index)
+                && $data[$index]['per'] > 0
+
+
+                && $data[$index]['dif'] > max($data[$index - 1]['dif'], $data[$index - 2]['dif'])
+                // && $data[$index]['obv'] > min($data[$index - 1]['obv'], $data[$index - 2]['obv'])
+                && $bollConditions
+                && $bollConditions['position'] === 'LONG'
+
+                // && $data[$index]['close'] > $data[$index]['bb_middle']
+                // && $data[$index]['open'] < $data[$index]['bb_middle']
+
+            ) {
+                $buyLongCondition = self::confirmOpening($symbol, $data, $index);
+            }
         }
+        // ###############################################################################
+
 
 
         // Long condition
@@ -542,7 +549,6 @@ class ReportService
         ) {
             return self::$longEnabled ? 'LONG' : null;
         }
-
 
         // No conditions met so return null
         return null;
@@ -569,7 +575,12 @@ class ReportService
             // Calculate Closing in profit 
             if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
                 $closingPrice = $candle['high'];
-            } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
+            } else if (
+                ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close'])
+                ||
+                ($data[$index]['close'] > $open_price && ($data[$index]['high'] - max($data[$index]['close'], $data[$index]['open']) > min($data[$index]['close'], $data[$index]['open']) - $data[$index]['low']) && abs($data[$index]['per']) < 0.05)
+
+            ) {
                 $closingPrice = $data[$index]['close'];
             }
         }
@@ -584,7 +595,7 @@ class ReportService
         $end = $index + 1; // +1 to include the $index item
         $length = 300;
 
-        $start = max(0, $end - $length); // make sure we don’t go negative
+        $start = max(0, $end - $length); // make sure we donâ€™t go negative
         $slicedData = array_slice($data, $start, $length);
 
         return MarketTrendService::getCurrentSupportResistanceValueFromData($slicedData, [self::$supportResistanceCandleSpan])[self::$supportResistanceCandleSpan];
@@ -601,5 +612,201 @@ class ReportService
             ->latest('snapshot_time')
             ->first();
         return $snapshot;
+    }
+
+
+    public static function getFormulaId($formulaName)
+    {
+        $formula = DB::table('formula_details')->where('formula', $formulaName)->first();
+        return $formula ? $formula->id : null;
+    }
+    public static function getCoinReportsOnFormula($formula_id)
+    {
+        return  DB::table('coin_reports')
+            ->join('formula_details', 'coin_reports.formula', '=', 'formula_details.formula')
+            ->where('formula_details.id', $formula_id)
+            ->select('coin_reports.*')
+            ->get();
+    }
+
+    public static function checkBollingerBandCrossing($data, $index, $candleSpan = 10)
+    {
+
+        // Detecting LONG
+        if ($data[$index]['close'] > $data[$index]['bb_upper']  && $data[$index]['open'] < $data[$index]['bb_upper'] && $index > $candleSpan) {
+
+            $currentDiff = CommonHelpers::getPercentDiff($data[$index]['bb_lower'], $data[$index]['bb_upper']);
+
+            $minDiff = $currentDiff;
+            $minIndex = $index;
+            for ($i = $index; $i >= $index - $candleSpan; $i--) {
+                if ($minDiff > CommonHelpers::getPercentDiff($data[$i]['bb_lower'], $data[$i]['bb_upper'])) {
+                    $minDiff = CommonHelpers::getPercentDiff($data[$i]['bb_lower'], $data[$i]['bb_upper']);
+                    $minIndex = $i;
+                }
+            }
+
+            return [
+                'current_difference' => $currentDiff,
+                'current_index' => $index,
+                'current_close_price' => $data[$index]['close'],
+                'min_difference' => $minDiff,
+                'min_index' => $minIndex,
+                'current_close_price' => $data[$index]['close'],
+                'position' => 'LONG',
+
+
+            ];
+        }
+        // Detecting SHORT
+
+        else if ($data[$index]['close'] < $data[$index]['bb_lower']  && $data[$index]['open'] > $data[$index]['bb_lower'] && $index > $candleSpan) {
+
+            $currentDiff = CommonHelpers::getPercentDiff($data[$index]['bb_lower'], $data[$index]['bb_upper']);
+
+            $minDiff = $currentDiff;
+            $minIndex = $index;
+            for ($i = $index; $i >= $index - $candleSpan; $i--) {
+                if ($minDiff > CommonHelpers::getPercentDiff($data[$i]['bb_lower'], $data[$i]['bb_upper'])) {
+                    $minDiff = CommonHelpers::getPercentDiff($data[$i]['bb_lower'], $data[$i]['bb_upper']);
+                    $minIndex = $i;
+                }
+            }
+
+            return [
+                'current_difference' => $currentDiff,
+                'current_index' => $index,
+                'current_close_price' => $data[$index]['close'],
+                'min_difference' => $minDiff,
+                'min_index' => $minIndex,
+                'current_close_price' => $data[$index]['close'],
+                'min_close_price' => $data[$minIndex]['close'],
+                'position' => 'SHORT',
+            ];
+        } else {
+            return null;
+        }
+    }
+
+
+
+    // #########################Functions for confirmed Trades table###############################
+
+    public static function insertConfirmBasicTradeEntry($symbol, $data, $index)
+    {
+
+        $reportId = self::getFormulaId(self::$formula);
+        DB::table('confirmed_trades')->insert([
+            'report_id' => $reportId,
+            'coin_name' => $symbol,
+            'confirm_candle_index' => $index,
+            'candles_to_check' => self::$candlesToCheck,
+            'trade_confirmed' => 1,
+            'update_time' => Carbon::now()->toDateTimeString(),
+
+        ]);
+    }
+
+
+    public static function checkConfirmTradeValidity($symbol, $data, $index)
+    {
+
+        $reportId = self::getFormulaId(self::$formula);
+        $lastEntry = DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->first();
+        if (
+            !$lastEntry
+        ) {
+            return null;
+        }
+        if ($index > ($lastEntry->confirm_candle_index + $lastEntry->candles_to_check)) {
+            DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->delete();
+            return null;
+        }
+        return $lastEntry;
+    }
+
+
+    public static function checkMA5Validity($symbol, $data, $index)
+    {
+
+        $reportId = self::getFormulaId(self::$formula);
+        $lastEntry = DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->first();
+        if (
+            !$lastEntry
+            ||
+            $index > ($lastEntry->confirm_candle_index + $lastEntry->candles_to_check)
+
+        ) {
+            return false;
+        }
+
+        // Return true if index is within last confirm trade bounds for MA5
+
+        if (
+            $lastEntry->volume_ma5_confirmed
+            && $index <= ($lastEntry->volume_ma5_confirm_index + $lastEntry->volume_ma5_valid_for)
+            && $index >= ($lastEntry->volume_ma5_confirm_index)
+        ) {
+            return true;
+        } else {
+            DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->update(
+                [
+                    'volume_ma5_confirmed' => 0,
+                    'volume_ma5_confirm_index' => null,
+                    'volume_ma5_valid_for' => null,
+                    'update_time' => Carbon::now()->toDateTimeString(),
+                ]
+            );
+            return false;
+        }
+    }
+
+
+    public static function updateVolumeMA5ConditionLong($symbol, $data, $index)
+    {
+        $reportId = self::getFormulaId(self::$formula);
+
+        $lastEntry = DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->first();
+        if ($data[$index]['volumeMA5'] > min($data[$index - 1]['volumeMA5'], $data[$index - 2]['volumeMA5']) && !$lastEntry->volume_ma5_confirmed) {
+            DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->update(
+                [
+                    'volume_ma5_confirmed' => 1,
+                    'volume_ma5_confirm_index' => $index,
+                    'volume_ma5_valid_for' => self::$volumeMA5ValidFor,
+                    'update_time' => Carbon::now()->toDateTimeString(),
+                ]
+            );
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public static function updateVolumeMA5ConditionShort($symbol, $data, $index)
+    {
+        $reportId = self::getFormulaId(self::$formula);
+
+        $lastEntry = DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->first();
+        if ($data[$index]['volumeMA5'] > min($data[$index - 1]['volumeMA5'], $data[$index - 2]['volumeMA5']) && !$lastEntry->volume_ma5_confirmed) {
+            DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->update(
+                [
+                    'volume_ma5_confirmed' => 1,
+                    'volume_ma5_confirm_index' => $index,
+                    'volume_ma5_valid_for' => self::$volumeMA5ValidFor,
+                    'update_time' => Carbon::now()->toDateTimeString(),
+                ]
+            );
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+
+    public static function confirmOpening($symbol, $data, $index)
+    {
+        $reportId = self::getFormulaId(self::$formula);
+
+        DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->delete();
+        return true;
     }
 }
