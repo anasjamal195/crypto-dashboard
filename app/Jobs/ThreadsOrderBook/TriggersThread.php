@@ -78,7 +78,7 @@ class TriggersThread implements ShouldQueue
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
                             $index--;
-                            $supportResistance = $this->getSupportResistance($data, $index);
+                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [$this->supportResistanceCandleSpan]);
 
 
                             // ==================Decision Block==================
@@ -226,7 +226,9 @@ class TriggersThread implements ShouldQueue
                                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
-                                $supportResistance = $this->getSupportResistance($data, $index);
+                            $supportResistanceFirst = $this->getSupportResistance($data, $index);
+
+                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, $this->interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
                                 if ($tradeType === 'LONG')
                                     $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
