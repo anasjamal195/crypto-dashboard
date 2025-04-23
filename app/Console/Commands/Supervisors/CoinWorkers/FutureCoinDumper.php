@@ -69,9 +69,9 @@ class FutureCoinDumper extends Command
     {
 
         Log::info("Coin List Dumper started");
-        // Fetch Setting Values
-        self::$interval = CommonHelpers::getSettingsValue('live_trade_worker_interval_future','1m');
-        self::$openPrice = CommonHelpers::getSettingsValue('buy_price_future','5');
+        // Fetch Meta Values
+        self::$interval = CommonHelpers::getMetaValue(self::$user_id,'live_trade_worker_interval_future','1m');
+        self::$openPrice = CommonHelpers::getMetaValue(self::$user_id,'buy_price_future','5');
 
         
         while (true) {
