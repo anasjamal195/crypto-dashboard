@@ -26,8 +26,8 @@ class TriggersThread implements ShouldQueue
     public $tries = 1; // The job will only run once
     public $timeout = 360000000;
     public $tradeInstance;
-    public static $supportResistanceCandleSpan = 3;
-    public static $interval;
+    public $supportResistanceCandleSpan = 3;
+    public $interval;
     public $supportResistance;
     public $triggerPrice = 0;
     public $triggerIndex = 0;
@@ -53,7 +53,7 @@ class TriggersThread implements ShouldQueue
     {
         $this->workerId = $workerId;
         $this->account = $account;
-        self::$interval = CommonHelpers::getMetaValue($this->$account, 'live_trade_worker_interval_future', '1m');
+        $this->interval = CommonHelpers::getMetaValue($this->account, 'live_trade_worker_interval_future', '1m');
     }
 
     public function handle(): void
@@ -74,17 +74,17 @@ class TriggersThread implements ShouldQueue
                             $trade_acc = $this->account;
 
 
-                            $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 300, null, 'FUTURE');
+                            $data = BinanceApiService::getCandleStickData($symbol, $this->interval, 300, null, 'FUTURE');
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
                             $index--;
-                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [self::$supportResistanceCandleSpan]);
+                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [$this->supportResistanceCandleSpan]);
 
 
                             // ==================Decision Block==================
 
                             $buyLongCondition = false;
-                            $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $index);
+                            $orderBookSnapshotLoop = $this->getOrderBookSnapshot($symbol, $data, $index);
 
                             if (!$orderBookSnapshotLoop) {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
@@ -96,9 +96,9 @@ class TriggersThread implements ShouldQueue
                             $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
 
 
-                            $supportResistanceFirst = self::getSupportResistance($data, $index);
+                            $supportResistanceFirst = $this->getSupportResistance($data, $index);
 
-                            $supportResistanceSecond = self::getSupportResistance($data, $index - max($supportResistanceFirst['resistanceDistance'], $supportResistanceFirst['supportDistance']));
+                            $supportResistanceSecond = $this->getSupportResistance($data, $index - max($supportResistanceFirst['resistanceDistance'], $supportResistanceFirst['supportDistance']));
 
 
                             $buyLongConditionInitial =
@@ -129,7 +129,7 @@ class TriggersThread implements ShouldQueue
 
 
                             // ===========Initiate Open Trade Process==================================
-                            $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType, self::$interval);
+                            $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType, $this->interval);
 
                             if (!$tradeInstance) {
                                 break;
@@ -226,11 +226,11 @@ class TriggersThread implements ShouldQueue
                                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
-                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'FUTURE', self::$supportResistanceCandleSpan);
+                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, $this->interval, 'FUTURE', $this->supportResistanceCandleSpan);
                                 if ($tradeType === 'LONG')
-                                    $tradeLoop = self::manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
+                                    $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
-                                    $tradeLoop = self::manageOpenOrderShort($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
+                                    $tradeLoop = $this->manageOpenOrderShort($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                             } catch (\Exception $e) {
                                 Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                                 Log::error($e->getTraceAsString());
@@ -259,7 +259,7 @@ class TriggersThread implements ShouldQueue
         }
     }
 
-    private static function manageOpenOrderLong($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
+    private  function manageOpenOrderLong($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
     {
 
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Open order found for ' . $open_order['symbol']);
@@ -320,7 +320,7 @@ class TriggersThread implements ShouldQueue
                 'isWorkerDispatched' => false,
             ]);
             // Reset Trigger Time for stop loss
-            // self::$nextSLTriggerTime = 30;
+            // $this->nextSLTriggerTime = 30;
             return false;
         } else if ($currentProfit > $targetProfit) {
 
@@ -347,7 +347,7 @@ class TriggersThread implements ShouldQueue
     }
 
 
-    private static function manageOpenOrderShort($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
+    private function manageOpenOrderShort($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
     {
         Log::info('ShortThreadOrderBook: Open order found for ' . $open_order['symbol']);
 
@@ -409,7 +409,7 @@ class TriggersThread implements ShouldQueue
                 'isWorkerDispatched' => false,
             ]);
             // Reset Trigger Time for stop loss
-            // self::$nextSLTriggerTime = 30;
+            // $this->nextSLTriggerTime = 30;
             return false;
         } else if ($currentProfit > $targetProfit) {
 
@@ -432,7 +432,7 @@ class TriggersThread implements ShouldQueue
 
         return true;
     }
-    public static function getSupportResistance($data, $index)
+    public function getSupportResistance($data, $index)
     {
         $end = $index + 1; // +1 to include the $index item
         $length = 300;
@@ -440,9 +440,9 @@ class TriggersThread implements ShouldQueue
         $start = max(0, $end - $length); // make sure we donâ€™t go negative
         $slicedData = array_slice($data, $start, $length);
 
-        return MarketTrendService::getCurrentSupportResistanceValueFromData($slicedData, [self::$supportResistanceCandleSpan])[self::$supportResistanceCandleSpan];
+        return MarketTrendService::getCurrentSupportResistanceValueFromData($slicedData, [$this->supportResistanceCandleSpan])[$this->supportResistanceCandleSpan];
     }
-    public static function getOrderBookSnapshot($symbol, $data, $index)
+    public function getOrderBookSnapshot($symbol, $data, $index)
     {
 
         // Fetch OrderBook snapshot
