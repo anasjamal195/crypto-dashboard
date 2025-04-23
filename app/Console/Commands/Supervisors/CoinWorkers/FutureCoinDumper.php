@@ -42,6 +42,19 @@ class FutureCoinDumper extends Command
     public static $openPrice = 15;
     public static $user_id = 2;
     public static $tp = 0.5;
+    // This list contains coins that are purposely ignored because they are equal to 1 USDT (Not Fit for trading)
+    public static $ignoreList =  [
+        "USDCUSDT",
+        "TUSDUSDT",
+        "BUSDUSDT", // Deprecated but still available in some markets
+        "DAIUSDT",
+        "FDUSDUSDT",
+        "SUSDUSDT",
+        "USDPUSDT",
+        "LUSDUSDT"
+    ];
+
+
     /**
      * The console command description.
      *
@@ -61,7 +74,11 @@ class FutureCoinDumper extends Command
                 $binanceCoins = BinanceApiService::fetchTopUSDTPairsByVolume(1000);
 
                 foreach ($binanceCoins as $binanceCoin) {
+                    if (in_array($binanceCoin, self::$ignoreList)) {
+                        continue;
+                    }
                     $systemCoin = DB::table('coins')->where('symbol', $binanceCoin)->first();
+
 
                     if ($systemCoin && $systemCoin->status === 'D') {
                         CommonHelpers::changeCoinStatus($binanceCoin, 'T');
