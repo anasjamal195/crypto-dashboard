@@ -49,7 +49,7 @@ class SafetyWorker extends Command
             $triggerThreshold = 5;
             $warningThreshold = 3;
 
-            $immidiateLossThresholdTime = 10;
+            $immidiateLossThresholdTime = 5;
             $immidiateLossThresholdCount = 2;
             $loggerLoop = true;
 
@@ -63,7 +63,6 @@ class SafetyWorker extends Command
                 $checkHoldConditionLong = true;
                 $holdLongLog = CommonHelpers::getLatestLog('PAUSE_LONG');
                 if ($holdLongLog && !$checkLong) {
-
                     $logTime = Carbon::parse($holdLongLog->created_at);
                     $killLog = CommonHelpers::getLatestLog('KILLED_LONG');
                     if ($killLog) {

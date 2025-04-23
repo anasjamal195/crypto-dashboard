@@ -39,7 +39,7 @@ class TriggersThread implements ShouldQueue
     public $stopLoss = 1;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.4;
+    public $targetProfit = 0.3;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
     public $formula = 'Support Resistance Breakout (Order Book)';
@@ -72,7 +72,6 @@ class TriggersThread implements ShouldQueue
                             $symbol = $worker_symbol->symbol;
                             $tradeInstance = new stdClass;
                             $trade_acc = $this->account;
-
 
                             $data = BinanceApiService::getCandleStickData($symbol, $this->interval, 300, null, 'FUTURE');
                             $index = count($data) - 1;
@@ -226,7 +225,7 @@ class TriggersThread implements ShouldQueue
                                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
-                            $supportResistanceFirst = $this->getSupportResistance($data, $index);
+                                $supportResistanceFirst = $this->getSupportResistance($data, $index);
 
                                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, $this->interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
                                 if ($tradeType === 'LONG')
