@@ -39,7 +39,7 @@ class OrderBookFormulaLong
         // ==================New Strategy========================
         try {
             $workerLimit = 10;
-
+            $interval = '5m';
             $openSymbols = DB::table('live_trades_future_results')
                 ->where('trade_acc', $account)
                 ->where('trade_status', 'open')
@@ -62,7 +62,7 @@ class OrderBookFormulaLong
                 foreach ($workers as $worker) {
                     // If a worker is available than add its entry
                     if ($worker->symbol_count < $workerLimit && !$worker->trade_status) {
-                        CommonHelpers::workerEngageSymbol($worker->worker_id, null, $symbol, $account);
+                        CommonHelpers::workerEngageSymbol($worker->worker_id, null, $symbol, $account, $interval);
                         break;
                     }
                 }

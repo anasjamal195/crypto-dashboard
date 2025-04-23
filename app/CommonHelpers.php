@@ -657,24 +657,24 @@ class CommonHelpers
         return $buyLongMACDConditions;
     }
 
-    public static function getTradeHandler($symbol, $account, $position,$interval)
+    public static function getTradeHandler($symbol, $account, $position, $interval)
     {
         return DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $account)->where('position', $position)->where('interval', $interval)->first();
     }
 
-    public static function workerEngageSymbol($workerId, $triggerId, $symbol, $trade_acc, $position = '')
+    public static function workerEngageSymbol($workerId, $triggerId, $symbol, $trade_acc,$interval, $position = '')
     {
 
         // Engage symbol in trade Handler
         if ($position) {
-            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->update([
+            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', $interval)->update([
                 'isWorkerDispatched' => false,
             ]);
-            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->where('position', $position)->update([
+            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', $interval)->where('position', $position)->update([
                 'isWorkerDispatched' => true,
             ]);
         } else {
-            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', '5m')->update([
+            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $trade_acc)->where('interval', $interval)->update([
                 'isWorkerDispatched' => true,
             ]);
         }
