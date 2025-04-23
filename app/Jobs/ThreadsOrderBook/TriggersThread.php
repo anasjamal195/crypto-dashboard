@@ -226,7 +226,7 @@ class TriggersThread implements ShouldQueue
                                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
-                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, $this->interval, 'FUTURE', $this->supportResistanceCandleSpan);
+                                $supportResistance = $this->getSupportResistance($data, $index);
                                 if ($tradeType === 'LONG')
                                     $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
