@@ -9,6 +9,7 @@ use App\Services\CoinReportService;
 use App\Services\FutureLiveTrades\LiveTradeLONGFutureServiceEXP1;
 use App\Services\FutureLiveTrades\LiveTradeSHORTFutureServiceEXP1;
 use App\Services\MailerService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,7 @@ class FutureCoinDumper extends Command
     public $minPercentage;
     public $maxPercentage;
     public $quantity;
-    public $interval;
+
     public $limit;
     public $rsiThreshold;
     public $obvCandles;
@@ -33,6 +34,14 @@ class FutureCoinDumper extends Command
     public $stochLimit;
     public $targetProfit;
     public $market;
+
+
+    // For trade handler table
+    public $interval = '1m';
+    public $leverage = 1;
+    public $openPrice = 15;
+    public $user_id = 2;
+    public $tp = 0.5;
     /**
      * The console command description.
      *
@@ -46,11 +55,8 @@ class FutureCoinDumper extends Command
     public function handle()
     {
 
-
         Log::info("Coin List Dumper started");
-
         while (true) {
-            $this->quantity = CommonHelpers::getSettingsValue('future_coin_worker_quantity', 20);
             try {
                 $binanceCoins = BinanceApiService::fetchTopUSDTPairsByVolume(1000);
 
@@ -59,8 +65,12 @@ class FutureCoinDumper extends Command
 
                     if ($systemCoin && $systemCoin->status === 'D') {
                         CommonHelpers::changeCoinStatus($binanceCoin, 'T');
+                        self::insertTradeHandlerEntry($binanceCoin, self::$interval, self::$leverage, self::$openPrice, self::$user_id, self::$tp);
+                        Log::info("Trade Handlers Generated for: " . $binanceCoin);
                     } else if (!$systemCoin) {
                         CommonHelpers::addNewCoin($binanceCoin);
+                        self::insertTradeHandlerEntry($binanceCoin, self::$interval, self::$leverage, self::$openPrice, self::$user_id, self::$tp);
+                        Log::info("Trade Handlers Generated for: " . $binanceCoin);
                     } else {
                         continue;
                     }
@@ -70,16 +80,101 @@ class FutureCoinDumper extends Command
                 $delistedCoins = DB::table('coins')->whereNotIn('symbol', $binanceCoins)->get();
 
                 foreach ($delistedCoins as $delistedCoin) {
-                    CommonHelpers::changeCoinStatus($delistedCoin->symbol, 'D');
+
+                    if (self::removeTradeHandlerEntry($delistedCoin->symbol, self::$user_id)) {
+                        CommonHelpers::changeCoinStatus($delistedCoin->symbol, 'D');
+                        Log::info("Trade Handlers Removed for: " . $binanceCoin);
+                    } else {
+                        Log::error("Skipped Delisting Coin due to open order: " . $binanceCoin);
+                    }
                 }
                 Log::info("Coin List Dumped ");
-                Log::info("Generating Trade Handlers...");
-                LiveTradeLONGFutureServiceEXP1::updateTradeHandler('5m', 'FUTURE', 2);
-                Log::info("Trade Handlers Generated");
+
+                // Coin type updates
+                Log::info("Starting coin type updates: ");
+
+                foreach (DB::table('coins')->where('status', 'T')->whereNull('classification')->get() as $coin) {
+                    try {
+                        $details = BinanceApiService::getCoinCategoryDetails(str_replace('USDT', '', $coin->symbol));
+                        DB::table('coins')->where('id', $coin->id)->update([
+                            'classification' => $details['primary_classification'],
+                            'is_meme_coin' => $details['classifications']['is_meme_coin'],
+                            'is_altcoin' => $details['classifications']['is_altcoin'],
+                            'is_nft' => $details['classifications']['is_nft'],
+                            'is_defi' => $details['classifications']['is_defi'],
+                            'is_metaverse' => $details['classifications']['is_metaverse'],
+                            'is_web3' => $details['classifications']['is_web3'],
+                        ]);
+                        $this->info('Updated ' . $coin->symbol . ' Category: ' . $details['primary_classification']);
+                    } catch (\Exception $e) {
+                        $this->error($e->getMessage());
+                        $current = Carbon::now();
+                        $secondsToWait = 60 - $current->second;
+                        $this->info('Waiting for ' . $secondsToWait . ' seconds...');
+                        sleep($secondsToWait);
+                    }
+
+                    sleep(1);
+                }
+                Log::info("Coin Type updates completed successfully, Putting to sleep for 20 mins... ");
+                CommonHelpers::delayMin(20);
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
+                Log::error('Retrying in 1 min: ');
             }
-            CommonHelpers::delayMin(20);
+            CommonHelpers::delayMin(1);
         }
+    }
+
+    public static function removeTradeHandlerEntry($symbol, $user_id)
+    {
+        $open_order = CommonHelpers::checkOpenOrder($symbol, 'SHORT', 'FUTURE', $user_id);
+        if (!$open_order['is_open']) {
+            DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $user_id)->delete();
+            DB::table('worker_symbols')->where('symbol', $symbol)->delete();
+            return true;
+        }
+        return false;
+    }
+    public static function insertTradeHandlerEntry($symbol, $interval, $leverage, $openPrice, $user_id, $tp)
+    {
+        $trade_handlerLong = [
+            'market' => 'FUTURE',
+            'symbol' => $symbol,
+            'interval' => $interval,
+            'position' => 'LONG',
+            'leverage' => $leverage,
+            'buyPrice' => $openPrice,
+            'tradeAccount' => $user_id,
+            'targetProfit' => $tp,
+            'rsiThreshold' => 0,
+            'obvLimit' => 0,
+            'stochLimit' => 0,
+            'isActive' => 1
+        ];
+
+        $trade_handlerShort = [
+            'market' => 'FUTURE',
+            'symbol' => $symbol,
+            'interval' => $interval,
+            'position' => 'SHORT',
+            'leverage' => $leverage,
+            'buyPrice' => $openPrice,
+            'tradeAccount' => $user_id,
+            'targetProfit' => $tp,
+            'rsiThreshold' => 0,
+            'obvLimit' => 0,
+            'stochLimit' => 0,
+            'isActive' => 1
+        ];
+
+        $idLong = DB::table('trade_handler')->insertGetId($trade_handlerLong);
+        $idShort = DB::table('trade_handler')->insertGetId($trade_handlerShort);
+
+
+        return [
+            'LONG' => DB::table('trade_handler')->find($idLong),
+            'SHORT' => DB::table('trade_handler')->find($idShort),
+        ];
     }
 }

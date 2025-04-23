@@ -657,9 +657,9 @@ class CommonHelpers
         return $buyLongMACDConditions;
     }
 
-    public static function getTradeHandler($symbol, $account, $position)
+    public static function getTradeHandler($symbol, $account, $position,$interval)
     {
-        return DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $account)->where('position', $position)->where('interval', '5m')->first();
+        return DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $account)->where('position', $position)->where('interval', $interval)->first();
     }
 
     public static function workerEngageSymbol($workerId, $triggerId, $symbol, $trade_acc, $position = '')

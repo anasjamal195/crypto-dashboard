@@ -38,31 +38,31 @@ class TestCron extends Command
     {
 
 
-        dd(BinanceApiService::getCandleStickData('BTCUSDT','5m',400,null,'FUTURE')[398]);
+        // dd(BinanceApiService::getCandleStickData('BTCUSDT','5m',400,null,'FUTURE')[398]);
 
-        // foreach (DB::table('coins')->where('status', 'T')->whereNull('classification')->get() as $coin) {
-        //     try {
-        //         $details = BinanceApiService::getCoinCategoryDetails(str_replace('USDT', '', $coin->symbol));
-        //         DB::table('coins')->where('id', $coin->id)->update([
-        //             'classification' => $details['primary_classification'],
-        //             'is_meme_coin' => $details['classifications']['is_meme_coin'],
-        //             'is_altcoin' => $details['classifications']['is_altcoin'],
-        //             'is_nft' => $details['classifications']['is_nft'],
-        //             'is_defi' => $details['classifications']['is_defi'],
-        //             'is_metaverse' => $details['classifications']['is_metaverse'],
-        //             'is_web3' => $details['classifications']['is_web3'],
-        //         ]);
-        //         $this->info('Updated ' . $coin->symbol . ' Category: ' . $details['primary_classification']);
-        //     } catch (\Exception $e) {
-        //         $this->error($e->getMessage());
-        //         $current = Carbon::now();
-        //         $secondsToWait = 60 - $current->second;
-        //         $this->info('Waiting for ' . $secondsToWait . ' seconds...');
-        //         sleep($secondsToWait);
-        //     }
+        foreach (DB::table('coins')->where('status', 'T')->whereNull('classification')->get() as $coin) {
+            try {
+                $details = BinanceApiService::getCoinCategoryDetails(str_replace('USDT', '', $coin->symbol));
+                DB::table('coins')->where('id', $coin->id)->update([
+                    'classification' => $details['primary_classification'],
+                    'is_meme_coin' => $details['classifications']['is_meme_coin'],
+                    'is_altcoin' => $details['classifications']['is_altcoin'],
+                    'is_nft' => $details['classifications']['is_nft'],
+                    'is_defi' => $details['classifications']['is_defi'],
+                    'is_metaverse' => $details['classifications']['is_metaverse'],
+                    'is_web3' => $details['classifications']['is_web3'],
+                ]);
+                $this->info('Updated ' . $coin->symbol . ' Category: ' . $details['primary_classification']);
+            } catch (\Exception $e) {
+                $this->error($e->getMessage());
+                $current = Carbon::now();
+                $secondsToWait = 60 - $current->second;
+                $this->info('Waiting for ' . $secondsToWait . ' seconds...');
+                sleep($secondsToWait);
+            }
 
-        //     sleep(1);
-        // }
-        // dd('Done');
+            sleep(1);
+        }
+        dd('Done');
     }
 }

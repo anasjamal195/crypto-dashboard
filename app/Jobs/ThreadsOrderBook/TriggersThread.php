@@ -27,6 +27,7 @@ class TriggersThread implements ShouldQueue
     public $timeout = 360000000;
     public $tradeInstance;
     public static $supportResistanceCandleSpan = 3;
+    public static $interval = '1m';
     public $supportResistance;
     public $triggerPrice = 0;
     public $triggerIndex = 0;
@@ -41,7 +42,7 @@ class TriggersThread implements ShouldQueue
     public $targetProfit = 0.4;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
-    public $formula = 'MFI , MACD and OrderBook Imbalance';
+    public $formula = 'Support Resistance Breakout (Order Book)';
 
 
 
@@ -72,7 +73,7 @@ class TriggersThread implements ShouldQueue
                             $trade_acc = $this->account;
 
 
-                            $data = BinanceApiService::getCandleStickData($symbol, '1m', 300, null, 'FUTURE');
+                            $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 300, null, 'FUTURE');
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
                             $index--;
@@ -127,9 +128,11 @@ class TriggersThread implements ShouldQueue
 
 
                             // ===========Initiate Open Trade Process==================================
-                            $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType);
+                            $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType, self::$interval);
 
-
+                            if (!$tradeInstance) {
+                                break;
+                            }
                             CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
                             $tradeToOpen =  $tradeInstance;
                             break;
@@ -174,14 +177,14 @@ class TriggersThread implements ShouldQueue
 
 
                 // Check candle closing 
-                $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
+                // $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
 
-                if (!$isCandleClosing) {
+                // if (!$isCandleClosing) {
 
-                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to candle closing: ' . $symbol);
+                //     Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to candle closing: ' . $symbol);
 
-                    $openTrade = false;
-                }
+                //     $openTrade = false;
+                // }
 
                 if ($tradeType === 'LONG' && !CommonHelpers::getSettingsValue('enable_long_multithread', 0)) {
                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
@@ -222,7 +225,7 @@ class TriggersThread implements ShouldQueue
                                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
-                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, '1m', 'FUTURE', self::$supportResistanceCandleSpan);
+                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'FUTURE', self::$supportResistanceCandleSpan);
                                 if ($tradeType === 'LONG')
                                     $tradeLoop = self::manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
