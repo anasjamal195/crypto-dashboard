@@ -37,9 +37,9 @@ class FutureCoinDumper extends Command
 
 
     // For trade handler table
-    public static $interval = '1m';
+    public static $interval;
     public static $leverage = 1;
-    public static $openPrice = 15;
+    public static $openPrice;
     public static $user_id = 2;
     public static $tp = 0.5;
     // This list contains coins that are purposely ignored because they are equal to 1 USDT (Not Fit for trading)
@@ -69,6 +69,11 @@ class FutureCoinDumper extends Command
     {
 
         Log::info("Coin List Dumper started");
+        // Fetch Setting Values
+        self::$interval = CommonHelpers::getSettingsValue('live_trade_worker_interval_future','1m');
+        self::$openPrice = CommonHelpers::getSettingsValue('buy_price_future','5');
+
+        
         while (true) {
             try {
                 $binanceCoins = BinanceApiService::fetchTopUSDTPairsByVolume(1000);

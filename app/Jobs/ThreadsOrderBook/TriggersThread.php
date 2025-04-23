@@ -27,7 +27,7 @@ class TriggersThread implements ShouldQueue
     public $timeout = 360000000;
     public $tradeInstance;
     public static $supportResistanceCandleSpan = 3;
-    public static $interval = '1m';
+    public static $interval;
     public $supportResistance;
     public $triggerPrice = 0;
     public $triggerIndex = 0;
@@ -53,6 +53,7 @@ class TriggersThread implements ShouldQueue
     {
         $this->workerId = $workerId;
         $this->account = $account;
+        self::$interval = CommonHelpers::getSettingsValue('live_trade_worker_interval_future', '1m');
     }
 
     public function handle(): void
