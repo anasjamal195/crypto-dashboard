@@ -491,7 +491,7 @@ class ReportService
 
 
             if ($buyLongConditionInitial) {
-                return 'LONG';
+                // return 'LONG';
                 self::insertConfirmBasicTradeEntry($symbol, $data, $index);
                 // return null;
             }
