@@ -3,6 +3,8 @@
 @php
     $buyTriggers = [];
     $sellTriggers = [];
+    $confirmTriggers = [];
+    $highestTriggers = [];
     $lowestTriggers = [];
     $liquidationTriggers = [];
     $oneHourMarks = [];
@@ -36,6 +38,11 @@
                         <button class="btn btn-warning btn-sm me-2" onclick="resetZoom()">Reset Zoom</button>
                         <button id="gridToggleBtn" class="btn btn-outline-info btn-sm" onclick="toggleGrid()">Hide
                             Grid</button>
+                        <a target="_blank" href="https://www.binance.com/en/futures/{{ request('symbol') }}"
+                            class="btn btn-outline-primary btn-sm">Show on Binance</a>
+
+
+
                     </div>
 
 
@@ -87,6 +94,14 @@
                                         $buyCandle = json_decode(json_encode($trade->buyingCandle), true);
                                         $sellCandle = json_decode(json_encode($trade->sellingCandle), true);
 
+                                        $confirmCandle = json_decode(json_encode($trade->confirmCandle), true);
+                                        $highestCandle = json_decode(json_encode($trade->highestCandle), true);
+
+                                        if ($confirmCandle && $highestCandle) {
+                                            $confirmTriggers[] = $confirmCandle['binance_timestamp'];
+                                            $highestTriggers[] = $highestCandle['binance_timestamp'];
+                                        }
+
                                         $buyTriggers[] = $buyCandle['binance_timestamp'];
                                         $sellTriggers[] = $sellCandle['binance_timestamp'];
 
@@ -133,7 +148,6 @@
                                                         $lowestIndex = $index;
                                                     }
                                                 }
-                                                
 
                                                 if ($oneHourCounter == 12) {
                                                     $oneHourMarks[] = $candle['binance_timestamp'];
@@ -144,7 +158,7 @@
                                             }
                                         }
 
-                                        if($lowestIndex == -1){
+                                        if ($lowestIndex == -1) {
                                             $lowestIndex = 0;
                                         }
                                         $lowestTriggers[] = $data[$lowestIndex]['binance_timestamp'];
@@ -174,7 +188,7 @@
                                             ->get();
                                     @endphp
 
-                                    
+
                                     <tr @if ($trade->profit < 0) class="bg-danger" @endif>
                                         <td>{{ $indexTrades + 1 }}</td>
                                         <td>{{ number_format($trade->buyingPrice, 4) }}</td>
@@ -462,7 +476,7 @@
                                                                     </div>
                                                                 @endif
 
-                                                               
+
                                                                 <!-- Order Book -->
                                                                 @if (!empty($buy['orderBookSnapshot']))
                                                                     <div class="col-12 text-center">
@@ -475,6 +489,40 @@
                                                                     </div>
                                                                 @endif
                                                             </div>
+
+                                                            <!-- Boll Section -->
+                                                            @if ($confirmCandle)
+                                                                <div class="col-12">
+                                                                    <div class="card bg-dark mb-3 shadow">
+
+                                                                        <div class="card-body py-2">
+
+
+                                                                            <small
+                                                                                class="text-muted d-block mb-1">Bollinger
+                                                                                Bands Information</small>
+                                                                            <div class="bg-gray-800 rounded p-2"
+                                                                                style="max-height: 100px; overflow-y: auto;">
+
+                                                                                <ul class="mb-0 ps-3 small text-white">
+
+                                                                                    <li>Difference at Highest Point:
+                                                                                        {{ round($confirmCandle['bb_diff_highest'], 2) }}
+                                                                                        %</li>
+                                                                                    <li>Difference at Confirmation Point:
+                                                                                        {{ round($confirmCandle['bb_diff_confirmed'], 2) }}
+                                                                                        %</li>
+                                                                                    <li>Difference between highest and
+                                                                                        confirmation point:
+                                                                                        {{ round($confirmCandle['bb_diff'], 2) }}
+                                                                                        % </li>
+
+                                                                                </ul>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            @endif
                                                         </div>
 
                                                         <!-- Sell Candle Panel -->
@@ -658,65 +706,56 @@
                                                                     </div>
                                                                 </div>
 
-                                                                <!-- Volume Signal -->
-                                                                @if (!empty($sell['closingVolumes']))
-                                                                    @php $closing = is_string($sell['closingVolumes']) ? json_decode($sell['closingVolumes'], true) : $sell['closingVolumes']; @endphp
-                                                                    <div class="col-12">
-                                                                        <div class="card bg-dark mb-3 shadow">
-                                                                            <div
-                                                                                class="card-header py-2 d-flex align-items-center bg-gradient-dark border-bottom border-gray-800">
-                                                                                <span class="text-info"><i
-                                                                                        class="fas fa-signal me-2"></i>Volume
-                                                                                    Signal</span>
-                                                                                <span
-                                                                                    class="ms-auto badge {{ $closing['signal'] == 'buy' ? 'bg-success' : 'bg-danger' }}">
-                                                                                    {{ ucfirst($closing['signal']) }}
-                                                                                    ({{ $closing['strength'] }}/10)
-                                                                                </span>
-                                                                            </div>
-                                                                            <div class="card-body py-2">
-                                                                                <div class="row g-2 mb-2">
-                                                                                    <div class="col-3">
-                                                                                        <small
-                                                                                            class="text-muted d-block">Price</small>
-                                                                                        <span
-                                                                                            class="text-white">{{ number_format($closing['price'], 4) }}</span>
-                                                                                    </div>
-                                                                                    <div class="col-3">
-                                                                                        <small
-                                                                                            class="text-muted d-block">VWAP</small>
-                                                                                        <span
-                                                                                            class="text-white">{{ number_format($closing['indicators']['vwap_current'], 4) }}</span>
-                                                                                    </div>
-                                                                                    <div class="col-3">
-                                                                                        <small
-                                                                                            class="text-muted d-block">OBV</small>
-                                                                                        <span
-                                                                                            class="text-white">{{ number_format($closing['indicators']['obv_current'], 2) }}</span>
-                                                                                    </div>
-                                                                                    <div class="col-3">
-                                                                                        <small
-                                                                                            class="text-muted d-block">MFI</small>
-                                                                                        <span
-                                                                                            class="text-white">{{ number_format($closing['indicators']['mfi_current'], 2) }}</span>
+
+                                                                <div class="col-12">
+                                                                    <div class="card bg-dark mb-3 shadow">
+                                                                        <div
+                                                                            class="card-header py-2 d-flex align-items-center bg-gradient-dark border-bottom border-gray-800">
+                                                                            <span class="text-info"><i
+                                                                                    class="fas fa-tachometer-alt me-2 "></i>Volume
+                                                                                & Trend</span>
+                                                                        </div>
+                                                                        <div class="card-body py-2">
+                                                                            <div class="row g-2">
+                                                                                <div class="col-md-4">
+                                                                                    <small
+                                                                                        class="text-muted d-block">Bollinger
+                                                                                        Bands</small>
+                                                                                    <div
+                                                                                        class="d-flex justify-content-between small text-white">
+                                                                                        <span>U:
+                                                                                            {{ number_format($sell['bb_upper'], 4) }}</span>
+                                                                                        <span>L:
+                                                                                            {{ number_format($sell['bb_lower'], 4) }}</span>
                                                                                     </div>
                                                                                 </div>
-
-                                                                                <small
-                                                                                    class="text-muted d-block mb-1">Signal
-                                                                                    Reasons:</small>
-                                                                                <div class="bg-gray-800 rounded p-2"
-                                                                                    style="max-height: 100px; overflow-y: auto;">
-                                                                                    <ul class="mb-0 ps-3 small text-white">
-                                                                                        @foreach ($closing['reasons'] as $reason)
-                                                                                            <li>{{ $reason }}</li>
-                                                                                        @endforeach
-                                                                                    </ul>
+                                                                                <div class="col-md-4">
+                                                                                    <small
+                                                                                        class="text-muted d-block">DMI</small>
+                                                                                    <div
+                                                                                        class="d-flex justify-content-between small">
+                                                                                        <span class="text-success">+D:
+                                                                                            {{ number_format($sell['di_plus'], 2) }}</span>
+                                                                                        <span class="text-danger">-D:
+                                                                                            {{ number_format($sell['di_minus'], 2) }}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="col-md-4">
+                                                                                    <small class="text-muted d-block">S/R
+                                                                                        Levels</small>
+                                                                                    <div
+                                                                                        class="d-flex justify-content-between small text-white">
+                                                                                        <span>S:
+                                                                                            {{ $sell['currentSupport'] }}</span>
+                                                                                        <span>R:
+                                                                                            {{ $sell['currentResistance'] }}</span>
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                @endif
+                                                                </div>
+
 
                                                                 <!-- Order Book -->
                                                                 @if (!empty($sell['orderBookSnapshot']))
@@ -843,6 +882,8 @@
             const trades = @json($trades);
             const buyTriggers = @json($buyTriggers);
             const sellTriggers = @json($sellTriggers);
+            const confirmTriggers = @json($confirmTriggers);
+            const highestTriggers = @json($highestTriggers);
             const lowestTriggers = @json($lowestTriggers);
             const oneHourMarks = @json($oneHourMarks);
             const supportTriggers = @json($supportTriggers);
@@ -876,6 +917,18 @@
                     return {
                         backgroundColor: 'salmon',
                         borderColor: 'darkred',
+                        radius: 6
+                    };
+                } else if (confirmTriggers.includes(binanceTimestamp)) {
+                    return {
+                        backgroundColor: '#ffffff', // white
+                        borderColor: '#d3d3d3', // light gray for slight border visibility (optional)
+                        radius: 6
+                    };
+                } else if (highestTriggers.includes(binanceTimestamp)) {
+                    return {
+                        backgroundColor: '#ffff00', // yellow
+                        borderColor: '#ffd700', // gold (slightly deeper yellow for border)
                         radius: 6
                     };
                 } else {

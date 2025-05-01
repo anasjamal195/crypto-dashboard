@@ -69,6 +69,7 @@ class BinanceController extends Controller
                 'market'             => $market,
                 'liquidatedSymbols'  => [],
                 'liquidatedIntervals' => [],
+                'accuracyThreshold' => 0,
                 'liquidatedMarkets'  => [],
             ]);
         }
@@ -80,6 +81,7 @@ class BinanceController extends Controller
                 'interval',
                 DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
                 DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
+                DB::raw('SUM(CASE WHEN profit < 0 THEN 1 ELSE 0 END) as number_of_sl'),       
                 DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
                 DB::raw('AVG(duration) as average_duration'),                  // Average duration per symbol
                 DB::raw('SUM(duration) as total_duration'),                    // Total duration per symbol
@@ -129,7 +131,7 @@ class BinanceController extends Controller
             ->orderBy('last_updated', 'DESC')
             ->get();
 
-            $interval = '';
+        $interval = '';
         if (count($tradeData)) {
             $interval = $tradeData[0]->interval;
         }
@@ -261,13 +263,44 @@ class BinanceController extends Controller
         $rsiBelow40Loss = 0;
         $rsiBelow40Total = 0;
         $tradesBelowTP = 0;
+        $rsiLimit = 55;
 
 
+
+
+
+        $bb_lower_count = 0;
+        $bb_lower_profit = 0;
+        $bb_lower_loss = 0;
+
+        $bb_upper_count = 0;
+        $bb_upper_profit = 0;
+        $bb_upper_loss = 0;
+
+
+
+        $squeezDiff = 0.1;
+        $squeezProfitable = 0;
+        $squeezLoss = 0;
+        $squeezTotal = 0;
+
+
+        $bullishOpenings = 0;
+        $bullishOpeningsProfit = 0;
+        $bullishOpeningsLoss = 0;
+
+
+        $berishOpenings = 0;
+        $berishOpeningsProfit = 0;
+        $berishOpeningsLoss = 0;
 
         foreach ($tradeArr as $trade) {
             $buyingCandle = json_decode($trade['buyingCandle'], true);
+            $confirmCandle = json_decode($trade['confirmCandle'], true);
+            // $highestCandle = json_decode($trade['highestCandle'], true);
+            // $sellingCandle = json_decode($trade['sellingCandle'], true);
 
-            if ($buyingCandle['rsi6'] >= 50) {
+            if ($buyingCandle['rsi6'] >= $rsiLimit) {
                 if ($trade['profit'] > 0) {
                     $rsiAbove40Profitable++;
                 } else {
@@ -275,9 +308,12 @@ class BinanceController extends Controller
                 }
                 $rsiAbove40Total++;
             } else {
+
                 if ($trade['profit'] > 0) {
                     $rsiBelow40Profitable++;
                 } else {
+                    // dd($trade['symbol']);
+
                     $rsiBelow40Loss++;
                 }
                 $rsiBelow40Total++;
@@ -285,13 +321,66 @@ class BinanceController extends Controller
 
 
 
-            if($trade['profit'] > 0 && $trade['profit'] < 0.5){
+            if ($trade['profit'] > 0 && $trade['profit'] < 0.5) {
                 $tradesBelowTP++;
+            }
+
+
+            if (min($buyingCandle['open'], $buyingCandle['close']) > $buyingCandle['bb_middle']) {
+                $bb_upper_count++;
+                if ($trade['profit'] > 0) {
+                    $bb_upper_profit++;
+                } else {
+                    $bb_upper_loss++;
+                }
+            }
+
+
+            if ($buyingCandle['open'] < $buyingCandle['bb_middle'] && $buyingCandle['close'] > $buyingCandle['bb_middle']) {
+                $bb_lower_count++;
+                if ($trade['profit'] > 0) {
+                    $bb_lower_profit++;
+                } else {
+                    $bb_lower_loss++;
+                }
+            }
+
+            // CommonHelpers::prettyEcho(CommonHelpers::getPercentDiff($highestCandle['close'], $confirmCandle['open'], true) );
+            // if (CommonHelpers::getPercentDiff($highestCandle['close'], $confirmCandle['open'], true) < -2) {
+            //     if ($trade['profit'] > 0) {
+            //         $squeezProfitable++;
+            //     } else {
+            //         $squeezLoss++;
+            //     }
+            //     $squeezTotal++;
+            // }
+
+            if ($trade['position'] === 'LONG') {
+
+                if ($buyingCandle['per'] > 0) {
+                    $bullishOpenings++;
+                    if ($trade['profit'] > 0) {
+                        $bullishOpeningsProfit++;
+                    } else {
+                        $bullishOpeningsLoss++;
+                    }
+                }
+
+                if ($buyingCandle['per'] < 0) {
+                    $berishOpenings++;
+                    if ($trade['profit'] > 0) {
+                        $berishOpeningsProfit++;
+                    } else {
+                        $berishOpeningsLoss++;
+                    }
+                }
             }
         }
 
+        // dd($squeezProfitable, $squeezLoss, $squeezTotal);
+        // dd("Lower Region",$bb_lower_count,$bb_lower_profit,$bb_lower_loss,"Upper Region",$bb_upper_count,$bb_upper_profit,$bb_upper_loss);
 
-
+        $accuracyThreshold = 90;
 
         $timelineData = array_map(function ($trade) use ($stopLoss) {
 
@@ -335,12 +424,25 @@ class BinanceController extends Controller
             'rsiAbove40Profitable' => $rsiAbove40Profitable,
             'rsiAbove40Loss' => $rsiAbove40Loss,
             'rsiAbove40Total' => $rsiAbove40Total,
-    
+
             'rsiBelow40Profitable' => $rsiBelow40Profitable,
             'rsiBelow40Loss' => $rsiBelow40Loss,
             'rsiBelow40Total' => $rsiBelow40Total,
+            'rsiLimit' => $rsiLimit,
 
             'tradesBelowTP' => $tradesBelowTP,
+
+
+            'bullishOpenings' => $bullishOpenings,
+            'bullishOpeningsProfit' => $bullishOpeningsProfit,
+            'bullishOpeningsLoss' => $bullishOpeningsLoss,
+
+
+            'berishOpenings' => $berishOpenings,
+            'berishOpeningsProfit' => $berishOpeningsProfit,
+            'berishOpeningsLoss' => $berishOpeningsLoss,
+            'accuracyThreshold' => $accuracyThreshold,
+
         ]);
     }
     public function getCoinReportDetails($market, Request $request)
@@ -365,6 +467,9 @@ class BinanceController extends Controller
             ->map(function ($trade) {
                 $trade->buyingCandle = json_decode($trade->buyingCandle);
                 $trade->sellingCandle = json_decode($trade->sellingCandle);
+                $trade->confirmCandle = json_decode($trade->confirmCandle);
+                $trade->highestCandle = json_decode($trade->highestCandle);
+
                 return $trade;
             });
 
@@ -372,7 +477,7 @@ class BinanceController extends Controller
         $startTime = $trades->first()->buyingCandle->binance_timestamp;
 
         $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startTime, $market);
-            
+
         foreach ($data as $index => &$candle) {
 
             $candle['timestamp'] = $candle['timestamp'] / 1000;

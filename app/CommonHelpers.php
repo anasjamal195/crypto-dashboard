@@ -361,9 +361,16 @@ class CommonHelpers
         return array_chunk($triggers, $entriesPerWorker);
     }
 
-    public static function getPercentDiff($pivot, $value)
+    public static function getPercentDiff($pivot, $value, $signed = false)
     {
-        return (abs($pivot - $value) / max(0.00000001, $pivot)) * 100;
+        // Avoid divide-by-zero by using a very small number or explicitly returning null/0
+        $denominator = abs($pivot) > 0 ? abs($pivot) : 0.00000001;
+
+        if ($signed) {
+            return (($value - $pivot) / $denominator) * 100;
+        } else {
+            return (abs($value - $pivot) / $denominator) * 100;
+        }
     }
 
 
@@ -662,7 +669,7 @@ class CommonHelpers
         return DB::table('trade_handler')->where('symbol', $symbol)->where('tradeAccount', $account)->where('position', $position)->where('interval', $interval)->first();
     }
 
-    public static function workerEngageSymbol($workerId, $triggerId, $symbol, $trade_acc,$interval, $position = '')
+    public static function workerEngageSymbol($workerId, $triggerId, $symbol, $trade_acc, $interval, $position = '')
     {
 
         // Engage symbol in trade Handler
@@ -1410,5 +1417,26 @@ class CommonHelpers
                 'settings_value' => true
             ]);
         }
+    }
+
+
+    // Trade indicator analysis table helpers
+
+    public static function insertIndicatorLogs($symbol, $indicatorName, $indicatorValue, $currentTrade)
+    {
+        return DB::table('indicator_analysis')->insert([
+            'symbol' => $symbol,
+            'indicator_name' => $indicatorName,
+            'indicator_value' => $indicatorValue,
+            'trade_profit' =>  $currentTrade['profit'],
+            'trade_duration' =>  $currentTrade['duration'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    public static function truncateIndicatorLogs($indicatorName = null)
+    {
+        return $indicatorName ? DB::table('indicator_analysis')->where('indicator_name', $indicatorName)->delete() : DB::table('indicator_analysis')->truncate();
     }
 }

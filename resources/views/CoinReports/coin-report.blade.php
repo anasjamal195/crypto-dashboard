@@ -4,7 +4,7 @@
     $totalTrades = 0;
     $percentageProgress = DB::table('formula_details')->where('formula', request('formula'))->first();
     $percentageProgress = $percentageProgress ? $percentageProgress->progress : 100;
-
+    $bestPerformingSymbols = [];
 @endphp
 @section('content')
     <div class="container-fluid">
@@ -52,7 +52,7 @@
                                     <label for="formula">Filter by Formula</label>
                                     <select name="formula" id="formula" class="form-control select2">
                                         <option value="">All Formulas</option>
-                                        @foreach (DB::table('formula_details')->distinct('formula')->orderBy('created_at', 'DESC')->get() as $formula)
+                                        @foreach (DB::table('formula_details')->distinct('formula')->orderBy('created_at', 'DESC')->limit(10)->get() as $formula)
                                             <option value="{{ $formula->formula }}"
                                                 {{ request('formula') == $formula->formula ? 'selected' : '' }}>
                                                 {{ $formula->formula }}
@@ -103,12 +103,13 @@
                                             <th>Total Duration (min)</th>
                                             <th>Average Duration (min)</th>
                                             <th>Total Trades</th>
+                                            <th>Accuracy</th>
                                             <th>Total Profit (%)</th>
                                             <th>Average Profit (%)</th>
                                             <th>Max Profit (%)</th>
                                             <th>Min Profit (%)</th>
-                                            <th>Max Lowest Price (%)</th>
-                                            <th>Min Lowest Price (%)</th>
+                                            {{-- <th>Max Lowest Price (%)</th>
+                                            <th>Min Lowest Price (%)</th> --}}
                                             <th>Formula</th>
                                             <th>Updated at</th>
                                             <th>Actions</th>
@@ -119,6 +120,11 @@
                                             @php
                                                 $totalProfit += number_format($trade->total_profit, 2);
                                                 $totalTrades += $trade->total_entries;
+                                                $symbolAccuracy = (($trade->total_entries - $trade->number_of_sl)/$trade->total_entries) * 100;
+
+                                                if($symbolAccuracy >= $accuracyThreshold){
+                                                    $bestPerformingSymbols[$trade->symbol]= $symbolAccuracy;
+                                                }
                                             @endphp
                                             <tr @if ($trade->min_profit < 0) class="bg-danger" @endif>
                                                 <td>{{ $index + 1 }}</td>
@@ -126,18 +132,20 @@
                                                 <td>{{ $trade->symbol }}</td>
                                                 <td>{{ $trade->total_duration }}</td>
                                                 <td>{{ number_format($trade->average_duration, 2) }}</td>
-                                                <td>{{ $trade->total_entries }}</td>
-                                                <td>{{ number_format($trade->total_profit, 2) }} %</td>
+                                                <td>{{ $trade->total_entries }} / {{ $trade->number_of_sl }}</td>
+                                                <td>{{ number_format($symbolAccuracy, 2) }} % </td>
+                                                <td>{{ number_format($trade->total_profit, 2) }} % </td>
                                                 <td>{{ number_format($trade->average_profit, 2) }} %</td>
                                                 <td>{{ number_format($trade->max_profit, 2) }} %</td>
                                                 <td>{{ number_format($trade->min_profit, 2) }} %</td>
-                                                <td>{{ number_format($trade->max_lowestPrice, 2) }} %</td>
-                                                <td>{{ number_format($trade->min_lowestPrice, 2) }} %</td>
+                                                {{-- <td>{{ number_format($trade->max_lowestPrice, 2) }} %</td>
+                                                <td>{{ number_format($trade->min_lowestPrice, 2) }} %</td> --}}
                                                 <td>{{ $trade->formula }}</td>
                                                 <td>{{ \Carbon\Carbon::parse($trade->last_updated)->timezone('Asia/Karachi')->format('h:i A') }}
                                                 </td>
                                                 <td>
-                                                    <a href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'formula' => $trade->formula, 'stopLoss' => request('stopLoss'), 'interval' => $interval]) }}"
+                                                    <a target="_blank"
+                                                        href="{{ route('coinReportDetails', ['market' => $market, 'symbol' => $trade->symbol, 'position' => $trade->position, 'formula' => $trade->formula, 'stopLoss' => request('stopLoss'), 'interval' => $interval]) }}"
                                                         class="btn btn-info btn-sm">
                                                         <i class="fa fa-eye"></i>
                                                     </a>
@@ -205,6 +213,19 @@
                                                     <td>{{ $profitsTotal - $stopLossesTotal }} %</td>
                                                     <td>From {{ $totalTrades }} total trades</td>
                                                 </tr>
+
+                                                <tr>
+                                                    <td class="font-weight-bold">Fee Estimate</td>
+                                                    <td>{{ $totalTrades ? round($totalTrades * 0.15, 2) : 0 }}
+                                                        %</td>
+                                                    <td>Average Estimated fee </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Grand Total (after fee deduction)</td>
+                                                    <td>{{ $profitsTotal - $stopLossesTotal - $totalTrades * 0.15 }} %
+                                                    </td>
+                                                    <td>From {{ $totalTrades }} total trades after fee deduction</td>
+                                                </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Formula Accuracy</td>
                                                     <td>{{ $totalTrades ? round(100 - ($stopLossesTrades / $totalTrades) * 100, 2) : 0 }}
@@ -213,28 +234,31 @@
                                                 </tr>
 
 
-                                              
+
                                                 <tr>
                                                     <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
                                                 </tr>
 
                                                 <tr>
-                                                    <td colspan="3" class="font-weight-bold text-center">RSI Above 50</td>
+                                                    <td colspan="3" class="font-weight-bold text-center">RSI Above
+                                                        {{ $rsiLimit }}</td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Profitable</td>
                                                     <td>{{ $rsiAbove40Profitable }}</td>
-                                                    <td>Trades having rsi above 50 and profitable </td>
+                                                    <td>Trades having rsi above {{ $rsiLimit }} and profitable </td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Loss</td>
                                                     <td>{{ $rsiAbove40Loss }}</td>
-                                                    <td>Trades having rsi above 50 and Loss </td>
+                                                    <td>Trades having rsi above {{ $rsiLimit }} and Loss </td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Total</td>
-                                                    <td>{{ $rsiAbove40Total }}</td>
-                                                    <td>Total trades having rsi above 50 </td>
+                                                    <td>{{ $rsiAbove40Total }}
+                                                        ({{ round(($rsiAbove40Profitable / max(0.000001, $rsiAbove40Total)) * 100) }}%)
+                                                    </td>
+                                                    <td>Total trades having rsi above {{ $rsiLimit }} </td>
                                                 </tr>
 
 
@@ -242,25 +266,96 @@
                                                     <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
                                                 </tr>
                                                 <tr>
-                                                    <td colspan="3" class="font-weight-bold text-center">RSI Below and equal 50</td>
+                                                    <td colspan="3" class="font-weight-bold text-center">RSI Below and
+                                                        equal {{ $rsiLimit }}</td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Profitable</td>
                                                     <td>{{ $rsiBelow40Profitable }}</td>
-                                                    <td>Trades having rsi Below 50 and profitable </td>
+                                                    <td>Trades having rsi Below {{ $rsiLimit }} and profitable </td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Loss</td>
                                                     <td>{{ $rsiBelow40Loss }}</td>
-                                                    <td>Trades having rsi Below 50 and Loss </td>
+                                                    <td>Trades having rsi Below {{ $rsiLimit }} and Loss </td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Total</td>
-                                                    <td>{{ $rsiBelow40Total }}</td>
-                                                    <td>Total trades having rsi Below 50 </td>
+                                                    <td>{{ $rsiBelow40Total }}
+                                                        ({{ round(($rsiBelow40Profitable / max(0.000001, $rsiBelow40Total)) * 100) }}%)
+                                                    </td>
+                                                    <td>Total trades having rsi Below {{ $rsiLimit }} </td>
                                                 </tr>
 
+
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">Opening on
+                                                        Bullish Candle</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Profitable</td>
+                                                    <td>{{ $bullishOpeningsProfit }}</td>
+                                                    <td>Trades opened on bullish candles that closed in Profit </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Loss</td>
+                                                    <td>{{ $bullishOpeningsLoss }}</td>
+                                                    <td>Trades opened on bullish candles that closed in Loss </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Total</td>
+                                                    <td>{{ $bullishOpenings }}
+                                                        ({{ round(($bullishOpeningsProfit / max(0.000001, $bullishOpenings)) * 100) }}%)
+                                                    </td>
+                                                    <td>Total trades openend on bullish candle </td>
+                                                </tr>
+
+
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">Opening on
+                                                        Berish Candle</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Profitable</td>
+                                                    <td>{{ $berishOpeningsProfit }}</td>
+                                                    <td>Trades opened on berish candles that closed in Profit </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Loss</td>
+                                                    <td>{{ $berishOpeningsLoss }}</td>
+                                                    <td>Trades opened on berish candles that closed in Loss </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Total</td>
+                                                    <td>{{ $berishOpenings }}
+                                                        ({{ round(($berishOpeningsProfit / max(0.000001, $berishOpenings)) * 100) }}%)
+                                                    </td>
+                                                    <td>Total trades openend on berish candle </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">Symbols above {{$accuracyThreshold}} % accuracy</td>
+                                                </tr>
+                                                @foreach($bestPerformingSymbols as $symbol => $accuracy)
+                                                <tr>
+                                                    <td class="font-weight-bold">{{$symbol}}</td>
+                                                    <td>{{ $accuracy }} %</td>
+                                                    <td>&nbsp;</td>
+                                                </tr>
+                                                @endforeach
+                                              
                                                
+
+
+
+
+
                                                 {{-- Testing Section --}}
                                                 {{-- <tr>
                                                     @php
