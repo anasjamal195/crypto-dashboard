@@ -21,9 +21,19 @@
                                     ({{ $percentageProgress }} % Completed)</p>
                             </div>
 
+                            <div>
+                                @if (request('formula'))
+                                    <a href="{{ route('coinReport.delete', ['formula' => request('formula'), 'current_formula_only' => true]) }}"
+                                        class="btn btn-primary my-2 mx-1">Delete Current</a>
+                                @endif
+                                <a href="{{ route('coinReport.delete', ['incomplete_only' => true]) }}"
+                                    class="btn btn-warning my-2 mx-1">Delete Incomplete</a>
+                                <a href="{{ route('coinReport.delete', ['delete_all' => true]) }}"
+                                    class="btn btn-danger my-2 mx-1">Delete All</a>
 
-                            <a href="{{ route('coinReport.delete', ['formula' => request('formula')]) }}"
-                                class="btn btn-danger my-2">Delete</a>
+                            </div>
+
+
                         </div>
                         <div class="progress m-2" style="height: 5px; ">
                             <div class="progress-bar" role="progressbar"
@@ -120,10 +130,13 @@
                                             @php
                                                 $totalProfit += number_format($trade->total_profit, 2);
                                                 $totalTrades += $trade->total_entries;
-                                                $symbolAccuracy = (($trade->total_entries - $trade->number_of_sl)/$trade->total_entries) * 100;
+                                                $symbolAccuracy =
+                                                    (($trade->total_entries - $trade->number_of_sl) /
+                                                        $trade->total_entries) *
+                                                    100;
 
-                                                if($symbolAccuracy >= $accuracyThreshold){
-                                                    $bestPerformingSymbols[$trade->symbol]= $symbolAccuracy;
+                                                if ($symbolAccuracy >= $accuracyThreshold) {
+                                                    $bestPerformingSymbols[$trade->symbol] = $symbolAccuracy;
                                                 }
                                             @endphp
                                             <tr @if ($trade->min_profit < 0) class="bg-danger" @endif>
@@ -340,17 +353,18 @@
                                                 </tr>
 
                                                 <tr>
-                                                    <td colspan="3" class="font-weight-bold text-center">Symbols above {{$accuracyThreshold}} % accuracy</td>
+                                                    <td colspan="3" class="font-weight-bold text-center">Symbols above
+                                                        {{ $accuracyThreshold }} % accuracy</td>
                                                 </tr>
-                                                @foreach($bestPerformingSymbols as $symbol => $accuracy)
-                                                <tr>
-                                                    <td class="font-weight-bold">{{$symbol}}</td>
-                                                    <td>{{ $accuracy }} %</td>
-                                                    <td>&nbsp;</td>
-                                                </tr>
+                                                @foreach ($bestPerformingSymbols as $symbol => $accuracy)
+                                                    <tr>
+                                                        <td class="font-weight-bold">{{ $symbol }}</td>
+                                                        <td>{{ $accuracy }} %</td>
+                                                        <td>&nbsp;</td>
+                                                    </tr>
                                                 @endforeach
-                                              
-                                               
+
+
 
 
 
