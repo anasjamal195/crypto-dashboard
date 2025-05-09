@@ -43,7 +43,6 @@ class BinanceController extends Controller
         } else {
             return redirect()->back()->withError('Error Deleting Report!');
         }
-        
     }
     public function volumeSignal()
     {
@@ -61,15 +60,12 @@ class BinanceController extends Controller
     }
     public function getCoinReport($market, Request $request)
     {
-
-        // =======Testing========================== 
-
-        // ========================================
-        // Fetch all unique symbols from the database
-
         $stopLoss = $request->input('stopLoss') ?? 1;
-
-        if (!request('formula')) {
+        $position = $request->input('position');
+        $formula = $request->input('formula');
+    
+        // Return early with default values if no formula provided
+        if (!$request->has('formula')) {
             return view('CoinReports.coin-report', [
                 'tradeData'          => [],
                 'profitableTrades'   => 0,
@@ -90,47 +86,52 @@ class BinanceController extends Controller
                 'liquidatedMarkets'  => [],
             ]);
         }
-        $query = DB::table('coin_reports')
-            ->select(
+    
+        // Build base query with common filters
+        $baseQuery = DB::table('coin_reports')->where('market', $market);
+        
+        if ($position) {
+            $baseQuery->where('position', $position);
+        }
+        
+        if ($formula) {
+            $baseQuery->where('formula', $formula);
+        }
+    
+        // Clone the base query for reuse
+        $tradeDataQuery = clone $baseQuery;
+        
+        // Get aggregated trade data
+        $tradeData = $tradeDataQuery->select(
                 'symbol',
                 'formula',
                 'position',
                 'interval',
-                DB::raw('COUNT(*) as total_entries'),                          // Total number of entries per symbol
-                DB::raw('SUM(profit) as total_profit'),                        // Sum of profit per symbol
+                DB::raw('COUNT(*) as total_entries'),
+                DB::raw('SUM(profit) as total_profit'),
                 DB::raw('SUM(CASE WHEN profit < 0 THEN 1 ELSE 0 END) as number_of_sl'),
-                DB::raw('AVG(profit) as average_profit'),                      // Average profit per symbol
-                DB::raw('AVG(duration) as average_duration'),                  // Average duration per symbol
-                DB::raw('SUM(duration) as total_duration'),                    // Total duration per symbol
-                DB::raw('MAX(profit) as max_profit'),                          // Maximum profit per symbol
-                DB::raw('MIN(profit) as min_profit'),                          // Minimum profit per symbol
-                DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),       // Maximum of lowestPrice per symbol
-                DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),       // Minimum of lowestPrice per symbol
-                DB::raw('MAX(created_at) as last_updated')                     // Last updated timestamp
+                DB::raw('AVG(profit) as average_profit'),
+                DB::raw('AVG(duration) as average_duration'),
+                DB::raw('SUM(duration) as total_duration'),
+                DB::raw('MAX(profit) as max_profit'),
+                DB::raw('MIN(profit) as min_profit'),
+                DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),
+                DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),
+                DB::raw('MAX(created_at) as last_updated')
             )
-            ->where('market', $market);
-
-
-        // Request based filter for position in tradeData query
-        if ($request->filled('position')) {
-            $query->where('position', $request->position);
-        }
-
-        if ($request->filled('formula')) {
-            $query->where('formula', $request->formula);
-        }
-        $averageDurationQuery = clone $query;
-        $averageDuration  = $averageDurationQuery->where('profit', '>', '0')->where('duration', '<=', '60')->average('duration');
-
-        $nearbyTradesQuery = DB::table('coin_reports');
-        if ($request->filled('position')) {
-            $nearbyTradesQuery->where('position', $request->position);
-        }
-
-        if ($request->filled('formula')) {
-            $nearbyTradesQuery->where('formula', $request->formula);
-        }
-        $maxNearbyTrades = $nearbyTradesQuery
+            ->groupBy('symbol', 'position', 'formula', 'interval')
+            ->orderBy('total_entries', 'DESC')
+            ->orderBy('last_updated', 'DESC')
+            ->get();
+    
+        // Get average duration for profitable trades under 60 minutes
+        $averageDuration = (clone $baseQuery)
+            ->where('profit', '>', 0)
+            ->where('duration', '<=', 60)
+            ->average('duration');
+    
+        // Get max nearby trades
+        $maxNearbyTrades = (clone $baseQuery)
             ->selectRaw("
                 DATE_FORMAT(
                     STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s'),
@@ -141,273 +142,128 @@ class BinanceController extends Controller
             ->groupBy('time_interval')
             ->orderBy('entry_count', 'DESC')
             ->first();
-
-
-        $tradeData = $query->groupBy('symbol', 'position', 'formula', 'interval')
-            ->orderBy('total_entries', 'DESC')
-            ->orderBy('last_updated', 'DESC')
-            ->get();
-
-        $interval = '';
-        if (count($tradeData)) {
-            $interval = $tradeData[0]->interval;
-        }
-
+    
+        // Extract interval from tradeData
+        $interval = count($tradeData) ? $tradeData[0]->interval : '';
         $pageSlug = 'CoinReport' . $market;
-
-        // Liquidated coins query with position filter if provided
-        $liquidatedCoinsQuery = DB::table('coin_reports')
+    
+        // Consolidated statistics queries
+        $statsQuery = clone $baseQuery;
+        $stats = $statsQuery->selectRaw('
+            COUNT(*) as total_trades,
+            SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as profitable_trades,
+            SUM(CASE WHEN profit > 0 THEN profit ELSE 0 END) as profits_total,
+            COUNT(CASE WHEN duration > 60 THEN 1 END) as trades_above_1h,
+            COUNT(CASE WHEN profit > 0 AND duration > 60 THEN 1 END) as trades_above_1h_profit,
+            COUNT(CASE WHEN profit < 0 AND duration > 60 THEN 1 END) as trades_above_1h_loss,
+            COUNT(CASE WHEN profit < 0 THEN 1 END) as stop_losses_trades,
+            SUM(CASE WHEN profit < 0 THEN ABS(profit) ELSE 0 END) as stop_losses_total
+        ')->first();
+    
+        // Liquidated coins query
+        $liquidatedCoins = (clone $baseQuery)
             ->select('symbol', 'interval', 'market')
-            // ->distinct()
-            ->whereRaw('liquidationPrice >= lowestPrice');
-
-        if ($request->filled('position')) {
-            $liquidatedCoinsQuery->where('position', $request->position);
-        }
-        if ($request->filled('formula')) {
-            $liquidatedCoinsQuery->where('formula', $request->formula);
-        }
-        $liquidatedCoins = $liquidatedCoinsQuery->get();
-
-        $tradesAbove1h = DB::table('coin_reports')
-            ->select('symbol', 'interval', 'market', 'profit')
-
-            ->whereRaw('duration > 60');
-
-        if ($request->filled('position')) {
-            $tradesAbove1h->where('position', $request->position);
-        }
-
-        if ($request->filled('formula')) {
-            $tradesAbove1h->where('formula', $request->formula);
-        }
-        $tradesAbove1h = $tradesAbove1h->count();
-
-        $tradesAbove1hProfit = DB::table('coin_reports')
-            ->select('symbol', 'interval', 'market', 'profit')
-            ->whereRaw('profit > 0')
-            ->whereRaw('duration > 60');
-
-        if ($request->filled('position')) {
-            $tradesAbove1hProfit->where('position', $request->position);
-        }
-
-        if ($request->filled('formula')) {
-            $tradesAbove1hProfit->where('formula', $request->formula);
-        }
-        $tradesAbove1hProfit = $tradesAbove1hProfit->get();
-        $tradesAbove1hProfit = count($tradesAbove1hProfit);
-
-        $tradesAbove1hLoss = DB::table('coin_reports')
-            ->select('symbol', 'interval', 'market', 'profit')
-            ->whereRaw('profit < 0')
-            ->whereRaw('duration > 60');
-
-        if ($request->filled('position')) {
-            $tradesAbove1hLoss->where('position', $request->position);
-        }
-
-        if ($request->filled('formula')) {
-            $tradesAbove1hLoss->where('formula', $request->formula);
-        }
-        $tradesAbove1hLoss = $tradesAbove1hLoss->get();
-        $tradesAbove1hLoss = count($tradesAbove1hLoss);
-
-        $stopLossesQuery = DB::table('coin_reports')
-            ->select('symbol', 'interval', 'market', 'profit')
-            // ->distinct()
-            ->whereRaw('profit < 0');
-
-        if ($request->filled('position')) {
-            $stopLossesQuery->where('position', $request->position);
-        }
-
-        if ($request->filled('formula')) {
-            $stopLossesQuery->where('formula', $request->formula);
-        }
-        $stopLossesTrades = $stopLossesQuery->count();
-        $stopLossesTotal = abs($stopLossesQuery->sum('profit'));
-
-
-        // Total Profitable Trades
-        $profitsQuery = DB::table('coin_reports')
-            ->select('symbol', 'interval', 'market', 'profit')
-            // ->distinct()
-            ->whereRaw('profit > 0');
-
-
-        if ($request->filled('position')) {
-            $profitsQuery->where('position', $request->position);
-        }
-
-        if ($request->filled('formula')) {
-            $profitsQuery->where('formula', $request->formula);
-        }
-        $profitsQuery = $profitsQuery->get();
-
-        $profitableTrades = $profitsQuery->count();
-
-
-        $profitsTotal = abs($profitsQuery->sum('profit'));
-
-        // Extracting unique symbols, intervals, and markets
+            ->whereRaw('liquidationPrice >= lowestPrice')
+            ->get();
+    
+        // Extract unique data from liquidated coins
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
-        // dd($profitableTrades,$profitsTotal,$request->position,$request->formula);
-
-        // Timeline Data preperation
-        $tradeArr = DB::table('coin_reports');
-
-        if ($request->filled('position')) {
-            $tradeArr->where('position', $request->position);
-        }
-
-        if ($request->filled('formula')) {
-            $tradeArr->where('formula', $request->formula);
-        }
-
-
-        $tradeArr = json_decode(json_encode($tradeArr->get()), true);
-
-
-        // RSI Stats
-        $rsiAbove40Profitable = 0;
-        $rsiAbove40Loss = 0;
-        $rsiAbove40Total = 0;
-
-        $rsiBelow40Profitable = 0;
-        $rsiBelow40Loss = 0;
-        $rsiBelow40Total = 0;
+    
+        // Get all trades for analysis in a single query
+        $tradeArr = (clone $baseQuery)->get();
+        $tradeArr = json_decode(json_encode($tradeArr), true);
+    
+        // Initialize statistics counters
+        $rsiLimit = 80;
+        $wrLimit = -10;
+        $accuracyThreshold = 90;
+        
+        $rsiAbove40Profitable = $rsiAbove40Loss = $rsiAbove40Total = 0;
+        $rsiBelow40Profitable = $rsiBelow40Loss = $rsiBelow40Total = 0;
         $tradesBelowTP = 0;
-        $rsiLimit = 55;
-
-
-
-
-
-        $bb_lower_count = 0;
-        $bb_lower_profit = 0;
-        $bb_lower_loss = 0;
-
-        $bb_upper_count = 0;
-        $bb_upper_profit = 0;
-        $bb_upper_loss = 0;
-
-
-
-        $squeezDiff = 0.1;
-        $squeezProfitable = 0;
-        $squeezLoss = 0;
-        $squeezTotal = 0;
-
-
-        $bullishOpenings = 0;
-        $bullishOpeningsProfit = 0;
-        $bullishOpeningsLoss = 0;
-
-
-        $berishOpenings = 0;
-        $berishOpeningsProfit = 0;
-        $berishOpeningsLoss = 0;
-
+        
+        $bb_lower_count = $bb_lower_profit = $bb_lower_loss = 0;
+        $bb_upper_count = $bb_upper_profit = $bb_upper_loss = 0;
+        
+        $bullishOpenings = $bullishOpeningsProfit = $bullishOpeningsLoss = 0;
+        $berishOpenings = $berishOpeningsProfit = $berishOpeningsLoss = 0;
+        
+        $instantOpenings = $instantOpeningsProfit = $instantOpeningsLoss = 0;
+        $instantOpeningsSymbols = [];
+        $instantAverageTime = $instantAverageTimeProfit = $instantAverageTimeLoss = 0;
+        
+        $wrProfitable = $wrLoss = $wrBelowProfitable = $wrBelowLoss = 0;
+    
+        // Process trades for statistics in a single loop instead of multiple queries
         foreach ($tradeArr as $trade) {
             $buyingCandle = json_decode($trade['buyingCandle'], true);
             $confirmCandle = json_decode($trade['confirmCandle'], true);
-            // $highestCandle = json_decode($trade['highestCandle'], true);
-            // $sellingCandle = json_decode($trade['sellingCandle'], true);
-
+            $isProfit = $trade['profit'] > 0;
+    
+            // Williams %R analysis
+            if ($buyingCandle['wr'] > $wrLimit) {
+                $isProfit ? $wrProfitable++ : $wrLoss++;
+            } else {
+                $isProfit ? $wrBelowProfitable++ : $wrBelowLoss++;
+            }
+    
+            // RSI analysis
             if ($buyingCandle['rsi6'] >= $rsiLimit) {
-                if ($trade['profit'] > 0) {
-                    $rsiAbove40Profitable++;
-                } else {
-                    $rsiAbove40Loss++;
-                }
+                $isProfit ? $rsiAbove40Profitable++ : $rsiAbove40Loss++;
                 $rsiAbove40Total++;
             } else {
-
-                if ($trade['profit'] > 0) {
-                    $rsiBelow40Profitable++;
-                } else {
-                    // dd($trade['symbol']);
-
-                    $rsiBelow40Loss++;
-                }
+                $isProfit ? $rsiBelow40Profitable++ : $rsiBelow40Loss++;
                 $rsiBelow40Total++;
             }
-
-
-
-            if ($trade['profit'] > 0 && $trade['profit'] < 0.5) {
+    
+            // Take profit analysis
+            if ($isProfit && $trade['profit'] < 0.5) {
                 $tradesBelowTP++;
             }
-
-
+    
+            // Bollinger bands analysis
             if (min($buyingCandle['open'], $buyingCandle['close']) > $buyingCandle['bb_middle']) {
                 $bb_upper_count++;
-                if ($trade['profit'] > 0) {
-                    $bb_upper_profit++;
-                } else {
-                    $bb_upper_loss++;
-                }
+                $isProfit ? $bb_upper_profit++ : $bb_upper_loss++;
             }
-
-
+    
             if ($buyingCandle['open'] < $buyingCandle['bb_middle'] && $buyingCandle['close'] > $buyingCandle['bb_middle']) {
                 $bb_lower_count++;
-                if ($trade['profit'] > 0) {
-                    $bb_lower_profit++;
-                } else {
-                    $bb_lower_loss++;
-                }
+                $isProfit ? $bb_lower_profit++ : $bb_lower_loss++;
             }
-
-            // CommonHelpers::prettyEcho(CommonHelpers::getPercentDiff($highestCandle['close'], $confirmCandle['open'], true) );
-            // if (CommonHelpers::getPercentDiff($highestCandle['close'], $confirmCandle['open'], true) < -2) {
-            //     if ($trade['profit'] > 0) {
-            //         $squeezProfitable++;
-            //     } else {
-            //         $squeezLoss++;
-            //     }
-            //     $squeezTotal++;
-            // }
-
+    
+            // Candle pattern analysis
             if ($trade['position'] === 'LONG') {
-
                 if ($buyingCandle['per'] > 0) {
                     $bullishOpenings++;
-                    if ($trade['profit'] > 0) {
-                        $bullishOpeningsProfit++;
-                    } else {
-                        $bullishOpeningsLoss++;
-                    }
+                    $isProfit ? $bullishOpeningsProfit++ : $bullishOpeningsLoss++;
                 }
-
+    
                 if ($buyingCandle['per'] < 0) {
                     $berishOpenings++;
-                    if ($trade['profit'] > 0) {
-                        $berishOpeningsProfit++;
-                    } else {
-                        $berishOpeningsLoss++;
-                    }
+                    $isProfit ? $berishOpeningsProfit++ : $berishOpeningsLoss++;
                 }
             }
+
+            if($confirmCandle['binance_timestamp'] ==  $buyingCandle['binance_timestamp']){
+                $instantOpenings++;
+                $isProfit ? $instantOpeningsProfit++ : $instantOpeningsLoss++;
+                $isProfit ? null : $instantOpeningsSymbols[]= $trade['symbol'];
+            }
         }
-
-        // dd($squeezProfitable, $squeezLoss, $squeezTotal);
-        // dd("Lower Region",$bb_lower_count,$bb_lower_profit,$bb_lower_loss,"Upper Region",$bb_upper_count,$bb_upper_profit,$bb_upper_loss);
-
-        $accuracyThreshold = 90;
-
+    
+        // Prepare timeline data
         $timelineData = array_map(function ($trade) use ($stopLoss) {
-
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
-
+    
             $color = '';
             if ($trade['lowestPricePercentage'] > $stopLoss) {
                 $color = 'yellow';
             }
+            
             return [
                 'symbol' => $trade['symbol'] . '( ' . $trade['position'] . ' )',
                 'startTime' => $trade['buyingCandle']['timestampReadable'],
@@ -416,50 +272,61 @@ class BinanceController extends Controller
                 'id' => $trade['id'],
             ];
         }, $tradeArr);
-
+    
+        // Return the view with consolidated data
         return view('CoinReports.coin-report', [
             'tradeData'          => $tradeData,
-            'profitableTrades'   => $profitableTrades,
-            'profitsTotal'       => $profitsTotal,
+            'profitableTrades'   => $stats->profitable_trades,
+            'profitsTotal'       => $stats->profits_total,
             'timelineData'       => $timelineData,
-            'tradesAbove1h'      => $tradesAbove1h,
-            'tradesAbove1hLoss'      => $tradesAbove1hLoss,
-            'tradesAbove1hProfit'      => $tradesAbove1hProfit,
+            'tradesAbove1h'      => $stats->trades_above_1h,
+            'tradesAbove1hLoss'  => $stats->trades_above_1h_loss,
+            'tradesAbove1hProfit'=> $stats->trades_above_1h_profit,
             'maxNearbyTrades'    => $maxNearbyTrades,
             'averageDuration'    => $averageDuration,
-            'stopLossesTotal'    => $stopLossesTotal,
+            'stopLossesTotal'    => $stats->stop_losses_total,
             'stopLoss'           => $stopLoss,
-            'stopLossesTrades'   => $stopLossesTrades,
+            'stopLossesTrades'   => $stats->stop_losses_trades,
             'pageSlug'           => $pageSlug,
             'interval'           => $interval,
             'market'             => $market,
             'liquidatedSymbols'  => $liquidatedSymbols,
-            'liquidatedIntervals' => $liquidatedIntervals,
+            'liquidatedIntervals'=> $liquidatedIntervals,
             'liquidatedMarkets'  => $liquidatedMarkets,
-
+    
             // RSI Stats
             'rsiAbove40Profitable' => $rsiAbove40Profitable,
             'rsiAbove40Loss' => $rsiAbove40Loss,
             'rsiAbove40Total' => $rsiAbove40Total,
-
             'rsiBelow40Profitable' => $rsiBelow40Profitable,
             'rsiBelow40Loss' => $rsiBelow40Loss,
             'rsiBelow40Total' => $rsiBelow40Total,
             'rsiLimit' => $rsiLimit,
-
             'tradesBelowTP' => $tradesBelowTP,
-
-
+    
             'bullishOpenings' => $bullishOpenings,
             'bullishOpeningsProfit' => $bullishOpeningsProfit,
             'bullishOpeningsLoss' => $bullishOpeningsLoss,
-
-
             'berishOpenings' => $berishOpenings,
             'berishOpeningsProfit' => $berishOpeningsProfit,
             'berishOpeningsLoss' => $berishOpeningsLoss,
             'accuracyThreshold' => $accuracyThreshold,
-
+    
+            'instantOpenings' => $instantOpenings,
+            'instantOpeningsProfit' => $instantOpeningsProfit,
+            'instantOpeningsLoss' => $instantOpeningsLoss,
+            'instantOpeningsSymbols' => $instantOpeningsSymbols,
+            'instantAverageTime' => $instantOpenings ? round($instantAverageTime / $instantOpenings) : 0,
+            'instantAverageTimeProfit' => $instantOpeningsProfit ? round($instantAverageTimeProfit / $instantOpeningsProfit) : 0,
+            'instantAverageTimeLoss' => $instantAverageTimeLoss ? round($instantAverageTimeLoss / $instantOpeningsLoss) : 0,
+    
+            'wrProfitable' => $wrProfitable,
+            'wrLoss' => $wrLoss,
+            'wrBelowProfitable' => $wrBelowProfitable,
+            'wrBelowLoss' => $wrBelowLoss,
+            'wrBelowTotal' => $wrBelowLoss + $wrBelowProfitable,
+            'wrLimit' => $wrLimit,
+            'wrTotal' => $wrLoss + $wrProfitable,
         ]);
     }
     public function getCoinReportDetails($market, Request $request)
@@ -491,7 +358,7 @@ class BinanceController extends Controller
             });
 
         // Fetching Base Candle Data
-        $startTime = $trades->first()->buyingCandle->binance_timestamp;
+        $startTime = $trades->first()->buyingCandle->binance_timestamp - (CommonHelpers::$binanceIntervals[$interval] * 100 * 60 * 1000);
 
         $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startTime, $market);
 
@@ -594,7 +461,7 @@ class BinanceController extends Controller
 
 
 
-        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'volumeSignals' => $historicalTrends['volumeSignals'], 'totalProfit' => round($historicalTrends['totalProfit'], 2)]);
+        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'volumeSignals' =>[], 'totalProfit' =>0]);
     }
     public function getAvailableBalance(Request $request)
     {

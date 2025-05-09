@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @php
+    use App\CommonHelpers;
     $buyTriggers = [];
     $sellTriggers = [];
     $confirmTriggers = [];
@@ -15,6 +16,39 @@
 @endphp
 
 @section('content')
+    <style>
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .tablesorter th:hover {
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .bg-dark {
+            background-color: #1e1e2f !important;
+        }
+
+        .text-success {
+            color: #00f2c3 !important;
+        }
+
+        .text-danger {
+            color: #fd5d93 !important;
+        }
+
+        #candle-comparison td,
+        #candle-comparison th {
+            padding: 0.75rem;
+            vertical-align: middle;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #candle-comparison thead th {
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
     <h2 class="mb-4 text-white">
         @if (isset($position))
             @if (strtoupper($position) == 'LONG')
@@ -190,7 +224,14 @@
 
 
                                     <tr @if ($trade->profit < 0) class="bg-danger" @endif>
-                                        <td>{{ $indexTrades + 1 }}</td>
+                                        <td>
+
+                                            {{ $indexTrades + 1 }}
+
+                                            @if ($confirmCandle['binance_timestamp'] == $buyCandle['binance_timestamp'])
+                                                <i class="fa fa-exclamation-circle text-warning" aria-hidden="true"></i>
+                                            @endif
+                                        </td>
                                         <td>{{ number_format($trade->buyingPrice, 4) }}</td>
 
                                         <td>{{ number_format($trade->lowestPrice, 4) }}
@@ -234,14 +275,526 @@
                                                         @php
                                                             $buy = $buyCandle;
                                                             $sell = $sellCandle;
-                                                        @endphp
 
-                                                        <!-- Buy Candle Panel -->
+                                                            $searchCandle = CommonHelpers::getCandleFromData(
+                                                                $data,
+                                                                $buy['binance_timestamp'],
+                                                            );
+
+                                                            $index = $searchCandle['index'];
+
+                                                            $currentCandle = $data[$index];
+                                                            $prevCandle = $data[$index - 1];
+
+                                                            $bollAnalysis = CommonHelpers::analyzeBollingerBandSwing(
+                                                                $data,
+                                                                $index,
+                                                                10,
+                                                            );
+
+                                                        @endphp
+                                                        <div class="card">
+                                                            <div class="card-header ">
+                                                                <h5 class="card-title">Bollinger Band Analysis</h5>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <table class="w-100 tablesorter table-hover">
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <th scope="row">Signal</th>
+                                                                            <td>{{ $bollAnalysis['signal'] }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">Long Probability</th>
+                                                                            <td>{{ $bollAnalysis['long_probability'] }}%
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">Short Probability</th>
+                                                                            <td>{{ $bollAnalysis['short_probability'] }}%
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">BB Width</th>
+                                                                            <td>{{ $bollAnalysis['bb_width'] }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">BB Width Change</th>
+                                                                            <td>{{ $bollAnalysis['bb_width_change'] }}%
+                                                                                @if ($bollAnalysis['is_contracting'])
+                                                                                    <span
+                                                                                        class="badge badge-warning">Contracting</span>
+                                                                                @elseif ($bollAnalysis['is_expanding'])
+                                                                                    <span
+                                                                                        class="badge badge-success">Expanding</span>
+                                                                                @endif
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">%B</th>
+                                                                            <td>{{ $bollAnalysis['percent_b'] }}%</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">Upper % Change</th>
+                                                                            <td>{{ $bollAnalysis['bb_upper_percent_change'] }}%
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">Middle % Change</th>
+                                                                            <td>{{ $bollAnalysis['bb_middle_percent_change'] }}%
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">Lower % Change</th>
+                                                                            <td>{{ $bollAnalysis['bb_lower_percent_change'] }}%
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">Squeeze</th>
+                                                                            <td>
+                                                                                @if ($bollAnalysis['bb_squeeze'])
+                                                                                    <span
+                                                                                        class="badge badge-info">Yes</span>
+                                                                                @else
+                                                                                    <span
+                                                                                        class="badge badge-secondary">No</span>
+                                                                                @endif
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">Price Action</th>
+                                                                            <td>
+                                                                                Up:
+                                                                                {{ $bollAnalysis['price_action']['upward_momentum'] }},
+                                                                                Down:
+                                                                                {{ $bollAnalysis['price_action']['downward_momentum'] }}<br>
+                                                                                @if ($bollAnalysis['price_action']['is_near_upper_band'])
+                                                                                    <span class="badge badge-danger">Near
+                                                                                        Upper Band</span>
+                                                                                @endif
+                                                                                @if ($bollAnalysis['price_action']['is_near_lower_band'])
+                                                                                    <span class="badge badge-primary">Near
+                                                                                        Lower Band</span>
+                                                                                @endif
+                                                                                @if ($bollAnalysis['price_action']['crossed_upper_band'])
+                                                                                    <span class="badge badge-danger">Crossed
+                                                                                        Upper</span>
+                                                                                @endif
+                                                                                @if ($bollAnalysis['price_action']['crossed_lower_band'])
+                                                                                    <span
+                                                                                        class="badge badge-primary">Crossed
+                                                                                        Lower</span>
+                                                                                @endif
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row">Message</th>
+                                                                            <td>{{ $bollAnalysis['message'] }}</td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="card">
+                                                            <div class="card-header">
+                                                                <h4 class="card-title">Candle Data Comparison</h4>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div class="table-responsive">
+                                                                    <table class="w-100 tablesorter table-hover"
+                                                                        id="candle-comparison">
+                                                                        <thead class="text-primary">
+                                                                            <tr>
+                                                                                <th>Indicator</th>
+                                                                                <th>Previous Value</th>
+                                                                                <th>Current Value</th>
+                                                                                <th>% Change</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <!-- Basic price data -->
+                                                                            <tr>
+                                                                                <td>Open</td>
+                                                                                <td>{{ $prevCandle['open'] }}</td>
+                                                                                <td>{{ $currentCandle['open'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['open'], $currentCandle['open'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['open'], $currentCandle['open'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>High</td>
+                                                                                <td>{{ $prevCandle['high'] }}</td>
+                                                                                <td>{{ $currentCandle['high'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['high'], $currentCandle['high'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['high'], $currentCandle['high'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>Low</td>
+                                                                                <td>{{ $prevCandle['low'] }}</td>
+                                                                                <td>{{ $currentCandle['low'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['low'], $currentCandle['low'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['low'], $currentCandle['low'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>Close</td>
+                                                                                <td>{{ $prevCandle['close'] }}</td>
+                                                                                <td>{{ $currentCandle['close'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['close'], $currentCandle['close'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['close'], $currentCandle['close'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>Volume</td>
+                                                                                <td>{{ $prevCandle['volume'] }}</td>
+                                                                                <td>{{ $currentCandle['volume'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['volume'], $currentCandle['volume'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['volume'], $currentCandle['volume'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+
+                                                                            <!-- Moving Averages -->
+                                                                            <tr class="bg-dark">
+                                                                                <td colspan="4" class="font-weight-bold">
+                                                                                    Moving Averages</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>MA7</td>
+                                                                                <td>{{ $prevCandle['ma7'] }}</td>
+                                                                                <td>{{ $currentCandle['ma7'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['ma7'], $currentCandle['ma7'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['ma7'], $currentCandle['ma7'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>MA14</td>
+                                                                                <td>{{ $prevCandle['ma14'] }}</td>
+                                                                                <td>{{ $currentCandle['ma14'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['ma14'], $currentCandle['ma14'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['ma14'], $currentCandle['ma14'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>MA25</td>
+                                                                                <td>{{ $prevCandle['ma25'] }}</td>
+                                                                                <td>{{ $currentCandle['ma25'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['ma25'], $currentCandle['ma25'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['ma25'], $currentCandle['ma25'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>MA99</td>
+                                                                                <td>{{ $prevCandle['ma99'] }}</td>
+                                                                                <td>{{ $currentCandle['ma99'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['ma99'], $currentCandle['ma99'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['ma99'], $currentCandle['ma99'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>EMA12</td>
+                                                                                <td>{{ $prevCandle['ema12'] }}</td>
+                                                                                <td>{{ $currentCandle['ema12'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['ema12'], $currentCandle['ema12'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['ema12'], $currentCandle['ema12'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>EMA26</td>
+                                                                                <td>{{ $prevCandle['ema26'] }}</td>
+                                                                                <td>{{ $currentCandle['ema26'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['ema26'], $currentCandle['ema26'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['ema26'], $currentCandle['ema26'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+
+                                                                            <!-- Bollinger Bands -->
+                                                                            <tr class="bg-dark">
+                                                                                <td colspan="4" class="font-weight-bold">
+                                                                                    Bollinger Bands</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>BB Middle</td>
+                                                                                <td>{{ $prevCandle['bb_middle'] }}</td>
+                                                                                <td>{{ $currentCandle['bb_middle'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['bb_middle'], $currentCandle['bb_middle'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['bb_middle'], $currentCandle['bb_middle'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>BB Upper</td>
+                                                                                <td>{{ $prevCandle['bb_upper'] }}</td>
+                                                                                <td>{{ $currentCandle['bb_upper'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['bb_upper'], $currentCandle['bb_upper'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['bb_upper'], $currentCandle['bb_upper'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>BB Lower</td>
+                                                                                <td>{{ $prevCandle['bb_lower'] }}</td>
+                                                                                <td>{{ $currentCandle['bb_lower'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['bb_lower'], $currentCandle['bb_lower'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['bb_lower'], $currentCandle['bb_lower'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+
+                                                                            <!-- Oscillators -->
+                                                                            <tr class="bg-dark">
+                                                                                <td colspan="4"
+                                                                                    class="font-weight-bold">
+                                                                                    Oscillators</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>RSI6</td>
+                                                                                <td>{{ $prevCandle['rsi6'] }}</td>
+                                                                                <td>{{ $currentCandle['rsi6'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['rsi6'], $currentCandle['rsi6'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['rsi6'], $currentCandle['rsi6'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>Stoch RSI</td>
+                                                                                <td>{{ number_format($prevCandle['stoch_rsi'], 4) }}
+                                                                                </td>
+                                                                                <td>{{ number_format($currentCandle['stoch_rsi'], 4) }}
+                                                                                </td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['stoch_rsi'], $currentCandle['stoch_rsi'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['stoch_rsi'], $currentCandle['stoch_rsi'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>Stoch K</td>
+                                                                                <td>{{ $prevCandle['stoch_k'] }}</td>
+                                                                                <td>{{ $currentCandle['stoch_k'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['stoch_k'], $currentCandle['stoch_k'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['stoch_k'], $currentCandle['stoch_k'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>Stoch D</td>
+                                                                                <td>{{ $prevCandle['stoch_d'] }}</td>
+                                                                                <td>{{ $currentCandle['stoch_d'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['stoch_d'], $currentCandle['stoch_d'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['stoch_d'], $currentCandle['stoch_d'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>Williams %R</td>
+                                                                                <td>{{ $prevCandle['wr'] }}</td>
+                                                                                <td>{{ $currentCandle['wr'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['wr'], $currentCandle['wr'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['wr'], $currentCandle['wr'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+
+                                                                            <!-- MACD -->
+                                                                            <tr class="bg-dark">
+                                                                                <td colspan="4"
+                                                                                    class="font-weight-bold">
+                                                                                    MACD</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>DIF</td>
+                                                                                <td>{{ $prevCandle['dif'] }}</td>
+                                                                                <td>{{ $currentCandle['dif'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['dif'], $currentCandle['dif'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['dif'], $currentCandle['dif'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>DEA</td>
+                                                                                <td>{{ $prevCandle['dea'] }}</td>
+                                                                                <td>{{ $currentCandle['dea'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['dea'], $currentCandle['dea'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['dea'], $currentCandle['dea'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>MACD</td>
+                                                                                <td>{{ $prevCandle['histogram'] }}</td>
+                                                                                <td>{{ $currentCandle['histogram'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['histogram'], $currentCandle['histogram'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['histogram'], $currentCandle['histogram'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+
+                                                                            <!-- Volume Indicators -->
+                                                                            <tr class="bg-dark">
+                                                                                <td colspan="4"
+                                                                                    class="font-weight-bold">
+                                                                                    Volume Indicators</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>OBV</td>
+                                                                                <td>{{ $prevCandle['obv'] }}</td>
+                                                                                <td>{{ $currentCandle['obv'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['obv'], $currentCandle['obv'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['obv'], $currentCandle['obv'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>CVD</td>
+                                                                                <td>{{ $prevCandle['cvd'] }}</td>
+                                                                                <td>{{ $currentCandle['cvd'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['cvd'], $currentCandle['cvd'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['cvd'], $currentCandle['cvd'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>MFI</td>
+                                                                                <td>{{ $prevCandle['mfi'] }}</td>
+                                                                                <td>{{ $currentCandle['mfi'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['mfi'], $currentCandle['mfi'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['mfi'], $currentCandle['mfi'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+
+                                                                            <!-- Trend Indicators -->
+                                                                            <tr class="bg-dark">
+                                                                                <td colspan="4"
+                                                                                    class="font-weight-bold">
+                                                                                    Trend Indicators</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>ADX</td>
+                                                                                <td>{{ $prevCandle['adx'] }}</td>
+                                                                                <td>{{ $currentCandle['adx'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['adx'], $currentCandle['adx'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['adx'], $currentCandle['adx'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>DI+</td>
+                                                                                <td>{{ $prevCandle['di_plus'] }}</td>
+                                                                                <td>{{ $currentCandle['di_plus'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['di_plus'], $currentCandle['di_plus'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['di_plus'], $currentCandle['di_plus'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>DI-</td>
+                                                                                <td>{{ $prevCandle['di_minus'] }}</td>
+                                                                                <td>{{ $currentCandle['di_minus'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['di_minus'], $currentCandle['di_minus'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['di_minus'], $currentCandle['di_minus'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>SAR</td>
+                                                                                <td>{{ $prevCandle['sar'] }}</td>
+                                                                                <td>{{ $currentCandle['sar'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['sar'], $currentCandle['sar'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['sar'], $currentCandle['sar'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+
+                                                                            <!-- KDJ -->
+                                                                            <tr class="bg-dark">
+                                                                                <td colspan="4"
+                                                                                    class="font-weight-bold">KDJ</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>K</td>
+                                                                                <td>{{ $prevCandle['K'] }}</td>
+                                                                                <td>{{ $currentCandle['K'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['K'], $currentCandle['K'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['K'], $currentCandle['K'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>D</td>
+                                                                                <td>{{ $prevCandle['D'] }}</td>
+                                                                                <td>{{ $currentCandle['D'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['D'], $currentCandle['D'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['D'], $currentCandle['D'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>J</td>
+                                                                                <td>{{ $prevCandle['J'] }}</td>
+                                                                                <td>{{ $currentCandle['J'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['J'], $currentCandle['J'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['J'], $currentCandle['J'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+
+                                                                            <!-- Other -->
+                                                                            <tr class="bg-dark">
+                                                                                <td colspan="4"
+                                                                                    class="font-weight-bold">Other
+                                                                                    Indicators</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>VWAP</td>
+                                                                                <td>{{ $prevCandle['vwap'] }}</td>
+                                                                                <td>{{ $currentCandle['vwap'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['vwap'], $currentCandle['vwap'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['vwap'], $currentCandle['vwap'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>PER</td>
+                                                                                <td>{{ $prevCandle['per'] }}</td>
+                                                                                <td>{{ $currentCandle['per'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['per'], $currentCandle['per'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['per'], $currentCandle['per'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>AVL</td>
+                                                                                <td>{{ $prevCandle['avl'] }}</td>
+                                                                                <td>{{ $currentCandle['avl'] }}</td>
+                                                                                <td
+                                                                                    class="{{ CommonHelpers::getPercentDiff($prevCandle['avl'], $currentCandle['avl'], true) > 0 ? 'text-success' : 'text-danger' }}">
+                                                                                    {{ number_format(CommonHelpers::getPercentDiff($prevCandle['avl'], $currentCandle['avl'], true), 2) }}%
+                                                                                </td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        {{-- <!-- Buy Candle Panel -->
                                                         <div class="col-md-6 p-3 border-end border-dark">
                                                             <div
                                                                 class="d-flex justify-content-between align-items-center mb-3">
                                                                 <h5 class="text-success mb-0">
-                                                                    <i class="fas fa-arrow-up me-2 mx-2"></i>Buy Signal
+                                                                    <i class="fas fa-arrow-up me-2 mx-2"></i>Open Signal
                                                                     <span
                                                                         class="badge bg-dark text-success">{{ $buy['timestampReadable'] }}</span>
                                                                 </h5>
@@ -530,7 +1083,7 @@
                                                             <div
                                                                 class="d-flex justify-content-between align-items-center mb-3">
                                                                 <h5 class="text-danger mb-0">
-                                                                    <i class="fas fa-arrow-down me-2 mx-2"></i>Sell Signal
+                                                                    <i class="fas fa-arrow-down me-2 mx-2"></i>Close Signal
                                                                     <span
                                                                         class="badge bg-dark text-danger">{{ $sell['timestampReadable'] }}</span>
                                                                 </h5>
@@ -769,7 +1322,7 @@
                                                                     </div>
                                                                 @endif
                                                             </div>
-                                                        </div>
+                                                        </div> --}}
                                                     </div>
 
                                                     <!-- Nearby Trades Section -->
@@ -895,11 +1448,17 @@
             const highPrices = candlestickData.map(data => data.high);
             const lowPrices = candlestickData.map(data => data.low);
 
+            const bb_upper = candlestickData.map(data => data.bb_upper);
+            const bb_middle = candlestickData.map(data => data.bb_middle);
+            const bb_lower = candlestickData.map(data => data.bb_lower);
+
             // Volume Indicators
             const mfiValues = volumeSignals.map(signal => signal.indicators.mfi_current);
             const obvValues = volumeSignals.map(signal => signal.indicators.obv_current);
             const cvdValues = volumeSignals.map(signal => signal.indicators.cvd_current);
             const vwapValues = volumeSignals.map(signal => signal.indicators.vwap_current);
+
+
 
 
 
@@ -952,7 +1511,9 @@
                 type: 'line',
                 data: {
                     labels: timestamps,
-                    datasets: [{
+                    datasets: [
+
+                        {
                             label: 'Close Prices',
                             data: closePrices,
                             borderColor: 'rgba(0,123,255,1)',
@@ -964,6 +1525,49 @@
                             pointBorderColor: pointStyles.map(s => s.borderColor),
                             pointRadius: pointStyles.map(s => s.radius)
                         },
+
+                        // Bollinger Bands
+
+                        {
+                            label: 'BB UP',
+                            data: bb_upper,
+                            borderColor: 'rgba(128, 0, 128, 1)', // Purple
+                            backgroundColor: 'rgba(128, 0, 128, 0.2)',
+                            hidden: false,
+
+                            tension: 0.1,
+                            yAxisID: 'y',
+                            pointBackgroundColor: 'rgba(128, 0, 128, 1)',
+                            pointBorderColor: 'rgba(128, 0, 128, 1)',
+                        },
+                        {
+                            label: 'BB MD',
+                            data: bb_middle,
+                            borderColor: 'rgba(255, 105, 180, 1)', // Pink (hot pink)
+                            backgroundColor: 'rgba(255, 105, 180, 0.2)',
+                            hidden: false,
+
+                            tension: 0.1,
+                            yAxisID: 'y',
+                            pointBackgroundColor: 'rgba(255, 105, 180, 1)',
+                            pointBorderColor: 'rgba(255, 105, 180, 1)',
+                            
+                        },
+                        {
+                            label: 'BB DN',
+                            data: bb_lower,
+                            borderColor: 'rgba(128, 0, 128, 1)', // Purple
+                            backgroundColor: 'rgba(128, 0, 128, 0.2)',
+                            hidden: false,
+
+                            tension: 0.1,
+                            yAxisID: 'y',
+                            pointBackgroundColor: 'rgba(128, 0, 128, 1)',
+                            pointBorderColor: 'rgba(128, 0, 128, 1)',
+                        },
+
+
+
                         {
                             label: 'MFI',
                             data: mfiValues,

@@ -373,6 +373,23 @@ class CommonHelpers
         }
     }
 
+    public static function getCandleFromData($data, $binance_timestamp)
+    {
+        foreach ($data as $index => $entry) {
+            if (isset($entry['binance_timestamp']) && $entry['binance_timestamp'] == $binance_timestamp) {
+                return [
+                    'candle' => $entry,
+                    'index' => $index
+                ];
+            }
+        }
+        return null; // Return null if no matching entry is found
+    }
+
+    // public static function getPercentDiff($pivot, $value)
+    // {
+    //     return (abs($pivot - $value) / max(0.00000001, $pivot)) * 100;
+    // }
 
 
 
@@ -1422,12 +1439,11 @@ class CommonHelpers
 
     // Trade indicator analysis table helpers
 
-    public static function insertIndicatorLogs($symbol, $indicatorName, $indicatorValue, $currentTrade)
+    public static function insertIndicatorLogs($symbol, $currentTrade, $indicatorMeta = [])
     {
         return DB::table('indicator_analysis')->insert([
             'symbol' => $symbol,
-            'indicator_name' => $indicatorName,
-            'indicator_value' => $indicatorValue,
+            'indicator_meta' => json_encode($indicatorMeta),
             'trade_profit' =>  $currentTrade['profit'],
             'trade_duration' =>  $currentTrade['duration'],
             'created_at' => now(),
@@ -1435,8 +1451,504 @@ class CommonHelpers
         ]);
     }
 
-    public static function truncateIndicatorLogs($indicatorName = null)
+    public static function truncateIndicatorLogs()
     {
-        return $indicatorName ? DB::table('indicator_analysis')->where('indicator_name', $indicatorName)->delete() : DB::table('indicator_analysis')->truncate();
+        return DB::table('indicator_analysis')->truncate();
     }
+
+
+
+
+    // BOLLINGER BAND ANALYSIS FUNCTIONS
+
+    /**
+ * Analyzes Bollinger Bands to identify potential swing trading opportunities
+ * 
+ * @param array $data Array of candle data with OHLC and Bollinger Band values
+ * @param int $currentIndex The index of the current candle to analyze
+ * @param int $lookbackPeriod Number of previous candles to analyze for context
+ * @return array Analysis results with swing probabilities and signals
+ */
+public static function analyzeBollingerBandSwing(array $data, int $currentIndex, int $lookbackPeriod = 5): array
+{
+   
+    // Ensure we have enough data to perform the analysis
+    if ($currentIndex < $lookbackPeriod || !isset($data[$currentIndex])) {
+        return [
+            'signal' => 'neutral',
+            'long_probability' => 0,
+            'short_probability' => 0,
+            'message' => 'Insufficient data for analysis'
+        ];
+    }
+
+    // Extract current candle data
+    $currentCandle = $data[$currentIndex];
+    $prevCandle = $data[$currentIndex - 1];
+    
+    // Calculate Bollinger Band metrics
+    $bbWidth = $currentCandle['bb_upper'] - $currentCandle['bb_lower'];
+    $prevBbWidth = $prevCandle['bb_upper'] - $prevCandle['bb_lower'];
+    
+    $percentB = ($currentCandle['close'] - $currentCandle['bb_lower']) / $bbWidth * 100;
+    $prevPercentB = ($prevCandle['close'] - $prevCandle['bb_lower']) / $prevBbWidth * 100;
+    
+    // Calculate band expansion/contraction rate
+    $expansionRate = ($bbWidth - $prevBbWidth) / $prevBbWidth * 100;
+    
+    // Track Bollinger Band width trend over lookback period
+    $widthTrend = [];
+    $priceAction = [];
+    $lowestLow = $currentCandle['low'];
+    $highestHigh = $currentCandle['high'];
+    
+    for ($i = 1; $i <= $lookbackPeriod; $i++) {
+        if (!isset($data[$currentIndex - $i])) {
+            continue;
+        }
+        
+        $pastCandle = $data[$currentIndex - $i];
+        $pastWidth = $pastCandle['bb_upper'] - $pastCandle['bb_lower'];
+        $widthTrend[] = $pastWidth;
+        $priceAction[] = $pastCandle['close'];
+        
+        if ($pastCandle['low'] < $lowestLow) {
+            $lowestLow = $pastCandle['low'];
+        }
+        
+        if ($pastCandle['high'] > $highestHigh) {
+            $highestHigh = $pastCandle['high'];
+        }
+    }
+    
+    // Calculate metrics for decision making
+    $isExpanding = $expansionRate > 0;
+    $isContracting = $expansionRate < 0;
+    $isNearLowerBand = $percentB <= 20;
+    $isNearUpperBand = $percentB >= 80;
+    $wasPreviouslyNearLowerBand = $prevPercentB <= 20;
+    $wasPreviouslyNearUpperBand = $prevPercentB >= 80;
+    
+    // Check for price crossing bands
+    $crossedLowerBand = $prevCandle['close'] < $prevCandle['bb_lower'] && $currentCandle['close'] >= $currentCandle['bb_lower'];
+    $crossedUpperBand = $prevCandle['close'] > $prevCandle['bb_upper'] && $currentCandle['close'] <= $currentCandle['bb_upper'];
+    
+    // Check for BB squeeze (contraction followed by expansion)
+    $bbSqueeze = false;
+    $squeezeCount = 0;
+    $minWidth = INF;
+    
+    for ($i = 1; $i <= min(5, $lookbackPeriod); $i++) {
+        if (!isset($data[$currentIndex - $i]) || !isset($data[$currentIndex - $i - 1])) {
+            continue;
+        }
+        
+        $bbw = $data[$currentIndex - $i]['bb_upper'] - $data[$currentIndex - $i]['bb_lower'];
+        $prevBbw = $data[$currentIndex - $i - 1]['bb_upper'] - $data[$currentIndex - $i - 1]['bb_lower'];
+        
+        if ($bbw < $minWidth) {
+            $minWidth = $bbw;
+        }
+        
+        if ($bbw < $prevBbw) {
+            $squeezeCount++;
+        }
+    }
+    
+    $bbSqueeze = $squeezeCount >= 3 && $isExpanding && $minWidth > 0 && $bbWidth / $minWidth > 1.05;
+    
+    // Calculate trend momentum
+    $downwardMomentum = 0;
+    $upwardMomentum = 0;
+    
+    for ($i = 1; $i <= min(3, $lookbackPeriod); $i++) {
+        if (!isset($data[$currentIndex - $i + 1]) || !isset($data[$currentIndex - $i])) {
+            continue;
+        }
+        
+        $candle = $data[$currentIndex - $i + 1];
+        $prevCandle = $data[$currentIndex - $i];
+        
+        if ($candle['close'] < $prevCandle['close']) {
+            $downwardMomentum++;
+        } elseif ($candle['close'] > $prevCandle['close']) {
+            $upwardMomentum++;
+        }
+    }
+    
+    // Calculate swing probabilities
+    $longProbability = 0;
+    $shortProbability = 0;
+    $signal = 'neutral';
+    $explanation = '';
+    
+    // Long probability calculation (looking for bottoms)
+    if ($isNearLowerBand) {
+        $longProbability += 25; // Price near lower band is bullish
+        $explanation .= "Price near lower band (+25% long). ";
+    }
+    
+    if ($crossedLowerBand) {
+        $longProbability += 15; // Price crossing back inside from below the lower band
+        $explanation .= "Price crossed above lower band (+15% long). ";
+    }
+    
+    if ($isContracting && $downwardMomentum >= 2) {
+        $longProbability += 15; // BB contracting after downtrend suggests consolidation
+        $explanation .= "BB contracting after downtrend (+15% long). ";
+    }
+    
+    if ($bbSqueeze && $currentCandle['close'] > $currentCandle['open']) {
+        $longProbability += 20; // BB squeeze with bullish candle
+        $explanation .= "BB squeeze with bullish candle (+20% long). ";
+    }
+    
+    if ($percentB < $prevPercentB && $percentB < 20) {
+        $longProbability -= 15; // Still moving towards lower band
+        $explanation .= "Still moving downward (-15% long). ";
+    }
+    
+    if ($currentCandle['close'] < $currentCandle['bb_lower']) {
+        $longProbability -= 10; // Price below lower band suggests more downside possible
+        $explanation .= "Price below lower band (-10% long). ";
+    }
+    
+    if ($downwardMomentum == 3) {
+        $longProbability -= 5; // Strong downward momentum
+        $explanation .= "Strong downward momentum (-5% long). ";
+    }
+    
+    // Price is finding support at BB lower and showing signs of reversal
+    if ($isNearLowerBand && $currentCandle['close'] > $currentCandle['open'] && $prevCandle['close'] < $prevCandle['open']) {
+        $longProbability += 20; // Bullish reversal candle after bearish candle near lower band
+        $explanation .= "Bullish reversal pattern near lower band (+20% long). ";
+    }
+    
+    // Short probability calculation (looking for tops)
+    if ($isNearUpperBand) {
+        $shortProbability += 25; // Price near upper band is bearish for continuation
+        $explanation .= "Price near upper band (+25% short). ";
+    }
+    
+    if ($crossedUpperBand) {
+        $shortProbability += 15; // Price crossing back inside from above the upper band
+        $explanation .= "Price crossed below upper band (+15% short). ";
+    }
+    
+    if ($isContracting && $upwardMomentum >= 2) {
+        $shortProbability += 15; // BB contracting after uptrend suggests consolidation
+        $explanation .= "BB contracting after uptrend (+15% short). ";
+    }
+    
+    if ($bbSqueeze && $currentCandle['close'] < $currentCandle['open']) {
+        $shortProbability += 20; // BB squeeze with bearish candle
+        $explanation .= "BB squeeze with bearish candle (+20% short). ";
+    }
+    
+    if ($percentB > $prevPercentB && $percentB > 80) {
+        $shortProbability -= 15; // Still moving towards upper band
+        $explanation .= "Still moving upward (-15% short). ";
+    }
+    
+    if ($currentCandle['close'] > $currentCandle['bb_upper']) {
+        $shortProbability -= 10; // Price above upper band suggests more upside possible
+        $explanation .= "Price above upper band (-10% short). ";
+    }
+    
+    if ($upwardMomentum == 3) {
+        $shortProbability -= 5; // Strong upward momentum
+        $explanation .= "Strong upward momentum (-5% short). ";
+    }
+    
+    // Price is finding resistance at BB upper and showing signs of reversal
+    if ($isNearUpperBand && $currentCandle['close'] < $currentCandle['open'] && $prevCandle['close'] > $prevCandle['open']) {
+        $shortProbability += 20; // Bearish reversal candle after bullish candle near upper band
+        $explanation .= "Bearish reversal pattern near upper band (+20% short). ";
+    }
+    
+    // Analyze the width trend for pattern recognition
+    $widthExpandingCount = 0;
+    $widthContractingCount = 0;
+    
+    for ($i = 1; $i < count($widthTrend); $i++) {
+        if ($widthTrend[$i] > $widthTrend[$i - 1]) {
+            $widthExpandingCount++;
+        } elseif ($widthTrend[$i] < $widthTrend[$i - 1]) {
+            $widthContractingCount++;
+        }
+    }
+    
+    // If bands were expanding but now contracting - potential reversal
+    if ($widthExpandingCount >= 3 && $isContracting) {
+        if ($isNearLowerBand) {
+            $longProbability += 10;
+            $explanation .= "Bands were expanding but now contracting near lower band (+10% long). ";
+        } elseif ($isNearUpperBand) {
+            $shortProbability += 10;
+            $explanation .= "Bands were expanding but now contracting near upper band (+10% short). ";
+        }
+    }
+    
+    // Check for extreme readings that might suggest reversion
+    if ($percentB <= 5) {
+        $longProbability += 15; // Extremely oversold
+        $explanation .= "Extremely oversold based on %B value (+15% long). ";
+    } elseif ($percentB >= 95) {
+        $shortProbability += 15; // Extremely overbought
+        $explanation .= "Extremely overbought based on %B value (+15% short). ";
+    }
+    
+    // Determine final signal based on probabilities
+    if ($longProbability >= 50 && $longProbability > $shortProbability + 20) {
+        $signal = 'long';
+    } elseif ($shortProbability >= 50 && $shortProbability > $longProbability + 20) {
+        $signal = 'short';
+    } else {
+        $signal = 'neutral';
+    }
+    
+    // Cap probabilities at 100%
+    $longProbability = min(100, max(0, $longProbability));
+    $shortProbability = min(100, max(0, $shortProbability));
+    
+    return [
+        'signal' => $signal,
+        'long_probability' => $longProbability,
+        'short_probability' => $shortProbability,
+        'bb_width' => $bbWidth,
+        'bb_width_change' => $expansionRate,
+        'percent_b' => $percentB,
+        'is_expanding' => $isExpanding,
+        'is_contracting' => $isContracting,
+        'bb_squeeze' => $bbSqueeze,
+        'bb_upper_percent_change' => self::getPercentDiff($data[$currentIndex - 1]['bb_upper'],$data[$currentIndex]['bb_upper'],true),
+        'bb_middle_percent_change' => self::getPercentDiff($data[$currentIndex - 1]['bb_middle'],$data[$currentIndex]['bb_middle'],true),
+        'bb_lower_percent_change' => self::getPercentDiff($data[$currentIndex - 1]['bb_lower'],$data[$currentIndex]['bb_lower'],true),
+        'message' => $explanation,
+        'price_action' => [
+            'upward_momentum' => $upwardMomentum,
+            'downward_momentum' => $downwardMomentum,
+            'is_near_lower_band' => $isNearLowerBand,
+            'is_near_upper_band' => $isNearUpperBand,
+            'crossed_lower_band' => $crossedLowerBand,
+            'crossed_upper_band' => $crossedUpperBand
+        ]
+    ];
+}
+/**
+ * Detect market trend using multiple technical indicators
+ * 
+ * @param array $data The complete candle data array
+ * @param int $index Current candle index to analyze
+ * @param float $threshold Percentage strength required to confirm a trend (default: 60%)
+ * @param int $lookback Number of candles to consider for trend confirmation (default: 3)
+ * @return array Returns trend information with direction and strength
+ */
+
+public static function detectTrend(array $data, int $index, float $threshold = 60.0, int $lookback = 3): array
+{
+    // Make sure we have enough data
+    if ($index < $lookback) {
+        return [
+            'trend' => 'NEUTRAL',
+            'strength' => 0,
+            'message' => 'Not enough historical data to determine trend',
+            'signals' => []
+        ];
+    }
+    
+    $candle = $data[$index];
+    $signals = [];
+    $bullishSignals = 0;
+    $bearishSignals = 0;
+    $totalSignals = 0;
+    
+    // 1. Price above/below moving averages
+    if ($candle['close'] > $candle['ma7']) {
+        $signals['MA7'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['MA7'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    if ($candle['close'] > $candle['ma25']) {
+        $signals['MA25'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['MA25'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    // 2. EMA Cross
+    if ($candle['ema12'] > $candle['ema26']) {
+        $signals['EMA_CROSS'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['EMA_CROSS'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    // 3. RSI indicator
+    if ($candle['rsi6'] > 50) {
+        $signals['RSI'] = 'BULLISH';
+        $bullishSignals++;
+    } elseif ($candle['rsi6'] < 50) {
+        $signals['RSI'] = 'BEARISH';
+        $bearishSignals++;
+    } else {
+        $signals['RSI'] = 'NEUTRAL';
+    }
+    $totalSignals++;
+    
+    // 4. MACD signal
+    if ($candle['histogram'] > 0) {
+        $signals['MACD'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['MACD'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    // 5. Bollinger Bands position
+    if ($candle['close'] > $candle['bb_middle']) {
+        $signals['BB'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['BB'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    // 6. SAR indicator
+    if ($candle['close'] > $candle['sar']) {
+        $signals['SAR'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['SAR'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    // 7. ADX and Directional Movement
+    if ($candle['adx'] > 25) { // Strong trend
+        if ($candle['di_plus'] > $candle['di_minus']) {
+            $signals['ADX'] = 'BULLISH';
+            $bullishSignals++;
+        } else {
+            $signals['ADX'] = 'BEARISH';
+            $bearishSignals++;
+        }
+    } else {
+        $signals['ADX'] = 'NEUTRAL'; // Weak trend
+    }
+    $totalSignals++;
+    
+    // 8. Stochastic indicators
+    if ($candle['stoch_k'] > $candle['stoch_d']) {
+        $signals['STOCH'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['STOCH'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    // 9. Williams %R
+    if ($candle['wr'] > -50) {
+        $signals['WR'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['WR'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    // 10. Check price action for lookback period
+    $priceRising = true;
+    $priceFalling = true;
+    
+    for ($i = $index - $lookback + 1; $i <= $index; $i++) {
+        if ($i > 0) {
+            if ($data[$i]['close'] <= $data[$i-1]['close']) {
+                $priceRising = false;
+            }
+            if ($data[$i]['close'] >= $data[$i-1]['close']) {
+                $priceFalling = false;
+            }
+        }
+    }
+    
+    if ($priceRising) {
+        $signals['PRICE_ACTION'] = 'BULLISH';
+        $bullishSignals++;
+    } elseif ($priceFalling) {
+        $signals['PRICE_ACTION'] = 'BEARISH';
+        $bearishSignals++;
+    } else {
+        $signals['PRICE_ACTION'] = 'NEUTRAL';
+    }
+    $totalSignals++;
+    
+    // 11. Volume trend
+    if ($candle['volume'] > $candle['volumeMA5']) {
+        if ($candle['close'] > $data[$index-1]['close']) {
+            $signals['VOLUME'] = 'BULLISH'; // Rising volume with price increase
+            $bullishSignals++;
+        } else {
+            $signals['VOLUME'] = 'BEARISH'; // Rising volume with price decrease
+            $bearishSignals++;
+        }
+    } else {
+        $signals['VOLUME'] = 'NEUTRAL';
+    }
+    $totalSignals++;
+    
+    // 12. OBV and CVD trend
+    if ($candle['obv'] > 0) {
+        $signals['OBV'] = 'BULLISH';
+        $bullishSignals++;
+    } else {
+        $signals['OBV'] = 'BEARISH';
+        $bearishSignals++;
+    }
+    $totalSignals++;
+    
+    // Calculate trend strength as a percentage
+    $bullStrength = ($bullishSignals / $totalSignals) * 100;
+    $bearStrength = ($bearishSignals / $totalSignals) * 100;
+    
+    // Determine overall trend
+    $trend = 'NEUTRAL';
+    $strength = 0;
+    $message = '';
+    
+    if ($bullStrength >= $threshold) {
+        $trend = 'BULLISH';
+        $strength = $bullStrength;
+        $message = "Strong bullish trend detected with {$bullStrength}% confidence";
+    } elseif ($bearStrength >= $threshold) {
+        $trend = 'BEARISH';
+        $strength = $bearStrength;
+        $message = "Strong bearish trend detected with {$bearStrength}% confidence";
+    } else {
+        $trend = 'NEUTRAL';
+        $strength = max($bullStrength, $bearStrength);
+        $message = "No clear trend detected (Bull: {$bullStrength}%, Bear: {$bearStrength}%)";
+    }
+    
+    return [
+        'trend' => $trend,
+        'strength' => $strength,
+        'message' => $message,
+        'signals' => $signals,
+        'bullish_count' => $bullishSignals,
+        'bearish_count' => $bearishSignals,
+        'total_signals' => $totalSignals
+    ];
+}
 }

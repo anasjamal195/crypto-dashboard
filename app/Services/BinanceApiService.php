@@ -284,6 +284,8 @@ class BinanceApiService
             Log::error('Error Fetching Coin data: ' . $symbol . ' ' . $response->body());
         }
 
+
+
         // Update API weight usage in cache
 
         if ($processed)
@@ -804,6 +806,9 @@ class BinanceApiService
                 'adx' => $currentADX,
                 'di_plus' => $currentDiPlus, // PDI (Red)
                 'di_minus' => $currentDiMinus, // MDI (Blue)
+
+                'ema12' => end($ema12),
+                'ema26' => end($ema26),
             ];
         }
 

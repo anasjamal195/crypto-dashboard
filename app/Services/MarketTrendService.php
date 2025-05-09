@@ -746,20 +746,28 @@ class MarketTrendService
             $limit = 1000;
 
             $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE');
-            $volumeSignals = CommonHelpers::getVolumeSignals($symbol,$interval,true);
+            // $volumeSignals = CommonHelpers::getVolumeSignals($symbol,$interval,true);
             foreach ($data as $index => &$candle) {
                 $candle['marketTrend'] = 'blue';
-               $signal  = $volumeSignals[$index];
-              
+                if ($index <= 50)
+                    continue;
 
-                
 
-             
 
+
+                $trend = CommonHelpers::detectTrend($data, $index, 60, 50);
+                // dd($trend);
                 // dd($snapshot);
-                if($signal['potential'] )
-                $candle['marketTrend'] = $signal['signal'] === 'buy' ? 'green' : 'red';
 
+
+                if($trend['trend'] === 'BULLISH'){
+                    $candle['marketTrend'] = 'green';
+                }else  if($trend['trend'] === 'BEARISH'){
+                    $candle['marketTrend'] = 'red';
+                }else{
+                    $candle['marketTrend'] = 'yellow';
+                }
+               
             }
 
 
