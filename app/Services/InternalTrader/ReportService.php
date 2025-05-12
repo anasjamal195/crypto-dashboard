@@ -364,7 +364,7 @@ class ReportService
                     $candle['should_buy'] = true;
                     $candle['currentSupport'] = $supportResistance['support'];
                     $candle['currentResistance'] = $supportResistance['resistance'];
-                    $candle['orderBookSnapshot'] = $orderBookSnapshot->id;
+                    $candle['orderBookSnapshot'] = $orderBookSnapshot ? $orderBookSnapshot->id : null;
                     $candle['openingVolumes'] = json_encode($volumeSignal);
 
                     $open_price_long = $candle['close'];
@@ -578,28 +578,17 @@ class ReportService
     public static function handleOpeningConditionsLong($symbol, $data, $index, $supportResistance, $orderBookSnapshot, &$confirmIndexLong)
     {
 
-        if (!$orderBookSnapshot)
-            return null;
 
 
         $buyLongCondition = false;
 
+        $currentTrend = self::checkCurrentTrend($data, $index);
 
-        if ($data[$index]['per'] > 0.08 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+
+        if ($data[$index]['per'] > 0.08 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index) && $currentTrend === 'BULLISH') {
 
             $loopIndex = $index;
             while ($data[$loopIndex]['histogram'] < 0 || $loopIndex == $index) {
-
-
-
-                $orderBookSnapshotLoop = self::getOrderBookSnapshot($symbol, $data, $loopIndex);
-
-                if (!$orderBookSnapshotLoop) {
-                    break;
-                }
-                $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
-                $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
-
 
                 $macdLongConditionLoop =
                     $data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0
@@ -608,10 +597,11 @@ class ReportService
                     && $data[$loopIndex - 3]['histogram'] < $data[$loopIndex - 4]['histogram']
                     && $data[$loopIndex - 4]['histogram'] < $data[$loopIndex - 5]['histogram'];
 
-                $buyLongConditionInitial =  $imbalance > 5 && $spread_pct < 0.1
-                    && $data[$index]['obv'] > $data[$index - 1]['obv']
+                $buyLongConditionInitial =
+
+                    $data[$index]['obv'] > $data[$index - 1]['obv']
                     && $data[$index]['rsi6'] > 18 && $data[$index - 1]['rsi6'] <= 18
-                    && $macdLongConditionLoop && $data[$loopIndex]['mfi'] < 30 && $orderBookSnapshot->volume_imbalance > 1
+                    && $macdLongConditionLoop && $data[$loopIndex]['mfi'] < 30 
                     && $data[$loopIndex]['K'] < 30
                     && $data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
 
@@ -745,8 +735,9 @@ class ReportService
 
         $sellShortCondition = false;
 
+        $currentTrend = self::checkCurrentTrend($data, $index);
 
-        if ($data[$index]['per'] < -0.08 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
+        if ($data[$index]['per'] < -0.08 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index) && $currentTrend === 'BERISH') {
 
             $loopIndex = $index;
             while ($data[$loopIndex]['histogram'] > 0 || $loopIndex == $index) {
@@ -1113,8 +1104,40 @@ class ReportService
     }
 
 
+    public static function checkCurrentTrend($data, $index, $candlesToCheck = 350)
+    {
 
 
+        $maDecreasing = 0;
+        $maIncreasing = 0;
+        $maFlat = 0;
 
-    
+        if ($index <= $candlesToCheck) {
+            $candlesToCheck = $index - 1;
+        }
+        // dd($index,$candlesToCheck);
+
+        for ($i = $index; $i >= $index - $candlesToCheck; $i--) {
+            if ($data[$i]['ma99'] > $data[$i - 1]['ma99']) {
+                $maIncreasing++;
+            } else if ($data[$i]['ma99'] < $data[$i - 1]['ma99']) {
+                $maDecreasing++;
+            } else {
+                $maFlat++;
+            }
+        }
+
+        if (
+            $maIncreasing  < $maDecreasing
+        ) {
+            // dd($maIncreasing, $maDecreasing, $maFlat);
+            return 'BERISH';
+        } else if (
+            $maIncreasing  > $maDecreasing
+        ) {
+            return 'BULLISH';
+        } else {
+            return 'FLAT';
+        }
+    }
 }

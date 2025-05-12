@@ -97,6 +97,9 @@ class BinanceController extends Controller
         if ($formula) {
             $baseQuery->where('formula', $formula);
         }
+
+        // To filter only completed trades
+        $baseQuery->whereNotNull('sellingCandle');
     
         // Clone the base query for reuse
         $tradeDataQuery = clone $baseQuery;
@@ -119,6 +122,7 @@ class BinanceController extends Controller
                 DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),
                 DB::raw('MAX(created_at) as last_updated')
             )
+            
             ->groupBy('symbol', 'position', 'formula', 'interval')
             ->orderBy('total_entries', 'DESC')
             ->orderBy('last_updated', 'DESC')
@@ -134,9 +138,9 @@ class BinanceController extends Controller
         $maxNearbyTrades = (clone $baseQuery)
             ->selectRaw("
                 DATE_FORMAT(
-                    STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s'),
+                    STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestampReadable')), '%Y-%m-%d %H:%i:%s'),
                     '%Y-%m-%d %H:%i:00'
-                ) - INTERVAL (MINUTE(STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestamp')), '%Y-%m-%d %H:%i:%s')) % 5) MINUTE AS time_interval,
+                ) - INTERVAL (MINUTE(STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.timestampReadable')), '%Y-%m-%d %H:%i:%s')) % 5) MINUTE AS time_interval,
                 COUNT(*) as entry_count
             ")
             ->groupBy('time_interval')
@@ -272,7 +276,23 @@ class BinanceController extends Controller
                 'id' => $trade['id'],
             ];
         }, $tradeArr);
+
+        $openTradesQuery =  DB::table('coin_reports')->where('market', $market);
+        
+        if ($position) {
+            $openTradesQuery->where('position', $position);
+        }
+        
+        if ($formula) {
+            $openTradesQuery->where('formula', $formula);
+        }
+
+        // To filter only completed trades
+        $openTradesQuery->whereNull('sellingCandle');
+
+        $openSymbols = $openTradesQuery->pluck('symbol');
     
+
         // Return the view with consolidated data
         return view('CoinReports.coin-report', [
             'tradeData'          => $tradeData,
@@ -327,6 +347,10 @@ class BinanceController extends Controller
             'wrBelowTotal' => $wrBelowLoss + $wrBelowProfitable,
             'wrLimit' => $wrLimit,
             'wrTotal' => $wrLoss + $wrProfitable,
+
+
+            // Opened Symbols Stats
+            'openSymbols' => $openSymbols,
         ]);
     }
     public function getCoinReportDetails($market, Request $request)

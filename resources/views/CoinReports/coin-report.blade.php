@@ -253,6 +253,20 @@
                                                 </tr>
 
                                                 <tr>
+                                                    <td class="font-weight-bold">Currently Open Symbols</td>
+                                                    <td colspan="2">
+                                                        @foreach ($openSymbols as $openSymbol)
+                                                            <span class="badge bg-primary">{{ $openSymbol }}</span>
+                                                        @endforeach
+                                                    </td>
+
+                                                </tr>
+
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
+
+                                                <tr>
                                                     <td colspan="3" class="font-weight-bold text-center">RSI Above
                                                         {{ $rsiLimit }}</td>
                                                 </tr>

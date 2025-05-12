@@ -42,8 +42,18 @@ class TriggersThread implements ShouldQueue
     public $targetProfit = 0.3;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
-    public $formula = 'Support Resistance Breakout (Order Book)';
+    public $formula = 'MACD Swings';
 
+    // Confirmed Trades Entries
+
+    public static $candlesToCheck = 500;
+
+    public static $volumeMA5ValidFor = 30;
+    public static $difValidFor = 30;
+    public static $obvValidFor = 30;
+    public static $kdjValidFor = 30;
+    public static $bollValidFor = 30;
+    public static $bollSqueezValidFor = 30;
 
 
     /**
@@ -82,17 +92,7 @@ class TriggersThread implements ShouldQueue
 
                             // ==================Decision Block==================
 
-                            $buyLongCondition = false;
-                            $orderBookSnapshotLoop = $this->getOrderBookSnapshot($symbol, $data, $index);
 
-                            if (!$orderBookSnapshotLoop) {
-                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                break;
-                            }
-
-
-                            $imbalance = ($orderBookSnapshotLoop->bid_volume - $orderBookSnapshotLoop->ask_volume) / ($orderBookSnapshotLoop->bid_volume + $orderBookSnapshotLoop->ask_volume) * 100;
-                            $spread_pct = ($orderBookSnapshotLoop->lowest_ask - $orderBookSnapshotLoop->highest_bid) / (($orderBookSnapshotLoop->lowest_ask + $orderBookSnapshotLoop->highest_bid) / 2) * 100;
 
 
                             $supportResistanceFirst = $this->getSupportResistance($data, $index);
@@ -100,25 +100,28 @@ class TriggersThread implements ShouldQueue
                             $supportResistanceSecond = $this->getSupportResistance($data, $index - max($supportResistanceFirst['resistanceDistance'], $supportResistanceFirst['supportDistance']));
 
 
-                            $buyLongConditionInitial =
-                                $imbalance > 5 && $spread_pct < 0.1
-                                && $data[$index]['per'] > 0
-                                && $data[$index - 1]['close'] > $supportResistanceFirst['resistance']
-                                && $data[$index - 1]['open'] < $supportResistanceFirst['resistance']
-                                && $data[$index]['J'] > $data[$index]['K']
-                                && $data[$index]['J'] > $data[$index]['D'];
 
-                            $sellShortCondition = false;
+                            $buyLongCondition = self::handleOpeningConditionsLong($symbol, $data, $index);
+                            $sellShortCondition = self::handleOpeningConditionsShort($symbol, $data, $index);
 
 
+
+                            // This block checks which weather to open trades or not
                             if (
-                                $buyLongConditionInitial
+                                ($buyLongCondition && $sellShortCondition)
+                                ||
+                                (!$buyLongCondition && !$sellShortCondition)
                             ) {
-                                $tradeType = 'LONG';
-                            } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
+                            } else if ($buyLongCondition) {
+                                $tradeType = 'LONG';
+                            } else if ($sellShortCondition) {
+                                $tradeType = 'SHORT';
                             }
+
+
+
 
 
 
@@ -433,7 +436,229 @@ class TriggersThread implements ShouldQueue
 
         return true;
     }
-    public function getSupportResistance($data, $index)
+
+
+
+
+
+
+
+
+    // Function to check opening Conditions
+
+    public static function handleOpeningConditionsLong($symbol, $data, $index)
+    {
+
+
+
+        $buyLongCondition = false;
+
+        $currentTrend = self::checkCurrentTrend($data, $index);
+
+
+        if ($data[$index]['per'] > 0.08 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index) && $currentTrend === 'BULLISH') {
+
+            $loopIndex = $index;
+            while ($data[$loopIndex]['histogram'] < 0 || $loopIndex == $index) {
+
+                $macdLongConditionLoop =
+                    $data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0
+                    && $data[$loopIndex - 1]['histogram'] < $data[$loopIndex - 2]['histogram']
+                    && $data[$loopIndex - 2]['histogram'] < $data[$loopIndex - 3]['histogram']
+                    && $data[$loopIndex - 3]['histogram'] < $data[$loopIndex - 4]['histogram']
+                    && $data[$loopIndex - 4]['histogram'] < $data[$loopIndex - 5]['histogram'];
+
+                $buyLongConditionInitial =
+
+                    $data[$index]['obv'] > $data[$index - 1]['obv']
+                    && $data[$index]['rsi6'] > 18 && $data[$index - 1]['rsi6'] <= 18
+                    && $macdLongConditionLoop && $data[$loopIndex]['mfi'] < 30
+                    && $data[$loopIndex]['K'] < 30
+                    && $data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
+
+                $loopIndex--;
+                if ($buyLongConditionInitial) {
+
+                    $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+
+                    if (
+                        $bbAnalysis['long_probability'] == 0
+                        && CommonHelpers::getPercentDiff($data[$index - 1]['rsi6'], $data[$index - 1]['rsi6'], true) > 100
+
+
+                    ) {
+
+                        return true;
+                    }
+                    if (
+
+                        $bbAnalysis['long_probability'] >= 45 && $bbAnalysis['short_probability'] == 0
+
+                    ) {
+
+                        return true;
+                    }
+                    self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
+                    break;
+                }
+            }
+        }
+
+
+        if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+
+
+            $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+
+            if (
+
+
+                $data[$index]['per'] > 0
+
+                && $bbAnalysis['is_expanding']
+                && $bbAnalysis['percent_b'] >= 50
+
+            ) {
+                $buyLongCondition = self::confirmOpening($symbol, $data, $index);
+            }
+        }
+
+
+
+        // Long condition
+        if (
+            $buyLongCondition
+
+        ) {
+            return  true;
+        }
+
+
+        // No conditions met so return null
+        return null;
+    }
+
+    public static function handleOpeningConditionsShort($symbol, $data, $index)
+    {
+
+
+        $sellShortCondition = false;
+
+        $currentTrend = self::checkCurrentTrend($data, $index);
+
+        if ($data[$index]['per'] < -0.08 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index) && $currentTrend === 'BERISH') {
+
+            $loopIndex = $index;
+            while ($data[$loopIndex]['histogram'] > 0 || $loopIndex == $index) {
+
+                $macdShortConditionLoop =
+                    $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0
+                    && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram']
+                    && $data[$loopIndex - 2]['histogram'] > $data[$loopIndex - 3]['histogram']
+                    && $data[$loopIndex - 3]['histogram'] > $data[$loopIndex - 4]['histogram']
+                    && $data[$loopIndex - 4]['histogram'] > $data[$loopIndex - 5]['histogram'];
+
+
+                $sellShortConditionInitial =
+
+                    $data[$index]['obv'] < $data[$index - 1]['obv']
+                    && $macdShortConditionLoop
+                    && $data[$index]['mfi'] > 70;
+
+                $loopIndex--;
+                if ($sellShortConditionInitial) {
+
+                    $tightestPointIndex = self::getTightestSqueezIndex($data, $index);
+                    if (max($data[$tightestPointIndex]['close'], $data[$tightestPointIndex]['open']) >= max($data[$index]['close'], $data[$index]['open'])) {
+                        return null;
+                    } else {
+
+                        $candlesAboveMiddleLine = 0;
+                        $loopIndex = $index;
+                        while (min($data[$loopIndex]['open'], $data[$loopIndex]['close']) > $data[$loopIndex]['bb_middle']) {
+                            $candlesAboveMiddleLine++;
+                            $loopIndex--;
+                        }
+
+                        if ($data[$index]['wr'] < -30) {
+
+                            return null;
+                        }
+
+                        if ($data[$index]['stoch_d'] > 80 && $candlesAboveMiddleLine < 15) {
+                            return true;
+                        }
+                        self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+
+        if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
+
+
+
+            $bb_squeezed = ($data[$index]['bb_upper'] - $data[$index]['bb_lower']) - ($data[$index - 1]['bb_upper'] - $data[$index - 1]['bb_lower']);
+
+
+            $candlesAboveMiddleLine = 0;
+            $loopIndex = $index;
+            while (min($data[$loopIndex]['open'], $data[$loopIndex]['close']) > $data[$loopIndex]['bb_middle']) {
+                $candlesAboveMiddleLine++;
+                $loopIndex--;
+            }
+            // Validate point where every condition is true and valid in it timeperiod
+            if (
+                !($data[$index]['dif'] > $data[$index - 1]['dif'])
+
+                &&
+                !($data[$index]['wr'] > -30)
+
+                &&
+                $bb_squeezed <= 0
+
+                && $data[$index]['dif'] < max($data[$index - 1]['dif'], $data[$index - 2]['dif'])
+
+                && $candlesAboveMiddleLine < 15
+
+            ) {
+
+                if ($data[$index]['wr'] < -30) {
+                    self::confirmOpening($symbol, $data, $index);
+                    return null;
+                }
+
+                $sellShortCondition = self::confirmOpening($symbol, $data, $index);
+            }
+        }
+
+
+
+        // Long condition
+        if (
+            $sellShortCondition
+
+        ) {
+            return true;
+        }
+
+
+        // No conditions met so return null
+        return null;
+    }
+
+
+
+
+
+
+    // Other Functions 
+
+
+    public static function getSupportResistance($data, $index)
     {
         $end = $index + 1; // +1 to include the $index item
         $length = 300;
@@ -441,9 +666,9 @@ class TriggersThread implements ShouldQueue
         $start = max(0, $end - $length); // make sure we donâ€™t go negative
         $slicedData = array_slice($data, $start, $length);
 
-        return MarketTrendService::getCurrentSupportResistanceValueFromData($slicedData, [$this->supportResistanceCandleSpan])[$this->supportResistanceCandleSpan];
+        return MarketTrendService::getCurrentSupportResistanceValueFromData($slicedData, [self::$supportResistanceCandleSpan])[self::$supportResistanceCandleSpan];
     }
-    public function getOrderBookSnapshot($symbol, $data, $index)
+    public static function getOrderBookSnapshot($symbol, $data, $index)
     {
 
         // Fetch OrderBook snapshot
@@ -455,5 +680,205 @@ class TriggersThread implements ShouldQueue
             ->latest('snapshot_time')
             ->first();
         return $snapshot;
+    }
+
+
+    public static function getCoinReportsOnFormula($formula_id)
+    {
+        return  DB::table('coin_reports')
+            ->join('formula_details', 'coin_reports.formula', '=', 'formula_details.formula')
+            ->where('formula_details.id', $formula_id)
+            ->select('coin_reports.*')
+            ->get();
+    }
+
+
+
+
+    // #########################Functions for confirmed Trades table###############################
+
+    public static function getIndexDiffFromTimestamps($timestamp1, $timestamp2, $interval, $rounded = true)
+    {
+        if (!($timestamp1 && $timestamp2)) {
+            return false;
+        }
+        $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
+        $diff = abs($timestamp1 - $timestamp2) / (60 * 1000 * $intervalToMins);
+        return $rounded ? intval($diff) : $diff;
+    }
+
+
+    public static function insertConfirmBasicTradeEntry($symbol, $position, $data, $index)
+    {
+
+
+
+        // BB Calculations for highest point squeez
+        $highestPointIndex = self::getTightestSqueezIndex($data, $index);
+        $bbDiffHighest = CommonHelpers::getPercentDiff($data[$highestPointIndex]['bb_lower'], $data[$highestPointIndex]['bb_upper']);
+
+
+
+        $id =  DB::table('confirmed_trades')->insertGetId([
+            'position' => $position,
+            'coin_name' => $symbol,
+            'confirm_candle_timestamp' => $data[$index]['binance_timestamp'],
+            'candles_to_check' => self::$candlesToCheck,
+            'trade_confirmed' => 0,
+            'bolling_last_squeez_value' => $bbDiffHighest,
+            'bolling_last_squeezed_timestamp' => $data[$highestPointIndex]['binance_timestamp'],
+            'update_time' => Carbon::now()->toDateTimeString(),
+
+        ]);
+        return DB::table('confirmed_trades')->where('ict_id', $id)->first();
+    }
+
+    public static function getIctId($symbol)
+    {
+        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
+        return $lastEntry ? $lastEntry->ict_id : null;
+    }
+
+
+    public static function checkConfirmTradeValidity($symbol, $position, $data, $index)
+    {
+        $ictId = self::getIctId($symbol);
+        if (
+            !$ictId
+        ) {
+            return null;
+        }
+
+        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->where('position', $position)->first();
+
+        if (!$lastEntry) {
+            return null;
+        }
+        $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->confirm_candle_timestamp, self::$interval);
+        if ($indexDiff > $lastEntry->candles_to_check) {
+            DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+                'trade_confirmed' => 1,
+                'update_time' => Carbon::now()->toDateTimeString(),
+            ]);
+            return null;
+        }
+        return $lastEntry;
+    }
+
+
+    public static function confirmOpening($symbol, $data, $index)
+    {
+        $ictId = self::getIctId($symbol);
+        if (
+            !$ictId
+        ) {
+            return null;
+        }
+        DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+            'trade_confirmed' => 1,
+            'update_time' => Carbon::now()->toDateTimeString(),
+        ]);
+        return true;
+    }
+
+    public static function getTightestSqueezIndex($data, $startIndex)
+    {
+        $minSqueeze = CommonHelpers::getPercentDiff(
+            $data[$startIndex]['bb_lower'],
+            $data[$startIndex]['bb_upper']
+        );
+
+        $tightestIndex = $startIndex;
+        $currentIndex = $startIndex;
+
+        // Step 1: Loop backward until histogram crosses from red to green
+        while ($currentIndex > 0) {
+            $currentSqueeze = CommonHelpers::getPercentDiff(
+                $data[$currentIndex]['bb_lower'],
+                $data[$currentIndex]['bb_upper']
+            );
+
+            if ($currentSqueeze < $minSqueeze) {
+                $minSqueeze = $currentSqueeze;
+                $tightestIndex = $currentIndex;
+            }
+
+            // Histogram crossover from red to green
+            if (
+                $data[$currentIndex]['histogram'] > 0 &&
+                $data[$currentIndex - 1]['histogram'] < 0
+            ) {
+                break;
+            }
+
+            $currentIndex--;
+        }
+
+        // Step 2: After crossover, check previous 3-entry blocks for tighter squeeze
+        while ($currentIndex > 2) {
+            $foundSmaller = false;
+
+            for ($i = 1; $i <= 3; $i++) {
+                $checkIndex = $currentIndex - $i;
+                if ($checkIndex < 0) break;
+
+                $squeeze = CommonHelpers::getPercentDiff(
+                    $data[$checkIndex]['bb_lower'],
+                    $data[$checkIndex]['bb_upper']
+                );
+
+                if ($squeeze < $minSqueeze) {
+                    $minSqueeze = $squeeze;
+                    $tightestIndex = $checkIndex;
+                    $currentIndex = $checkIndex; // Move back to this point
+                    $foundSmaller = true;
+                }
+            }
+
+            // If no tighter squeeze found in last 3, break
+            if (!$foundSmaller) {
+                break;
+            }
+        }
+
+        return $tightestIndex;
+    }
+
+
+    public static function checkCurrentTrend($data, $index, $candlesToCheck = 350)
+    {
+
+
+        $maDecreasing = 0;
+        $maIncreasing = 0;
+        $maFlat = 0;
+
+        if ($index <= $candlesToCheck) {
+            $candlesToCheck = $index - 1;
+        }
+        // dd($index,$candlesToCheck);
+
+        for ($i = $index; $i >= $index - $candlesToCheck; $i--) {
+            if ($data[$i]['ma99'] > $data[$i - 1]['ma99']) {
+                $maIncreasing++;
+            } else if ($data[$i]['ma99'] < $data[$i - 1]['ma99']) {
+                $maDecreasing++;
+            } else {
+                $maFlat++;
+            }
+        }
+
+        if (
+            $maIncreasing  < $maDecreasing
+        ) {
+            // dd($maIncreasing, $maDecreasing, $maFlat);
+            return 'BERISH';
+        } else if (
+            $maIncreasing  > $maDecreasing
+        ) {
+            return 'BULLISH';
+        } else {
+            return 'FLAT';
+        }
     }
 }

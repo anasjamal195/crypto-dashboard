@@ -1442,7 +1442,7 @@
             const supportTriggers = @json($supportTriggers);
             const resistanceTriggers = @json($resistanceTriggers);
 
-            const timestamps = candlestickData.map(data => data.timestamp);
+            const timestamps = candlestickData.map(data => data.timestampReadable);
             const closePrices = candlestickData.map(data => data.close);
             const openPrices = candlestickData.map(data => data.open);
             const highPrices = candlestickData.map(data => data.high);
@@ -1744,7 +1744,7 @@
                 if (!isVisible) {
                     detailRow.classList.remove('d-none');
                     const trade = trades.find(t => t.id === tradeId);
-                    zoomChartToTrade(trade.buyingCandle.timestamp, trade.sellingCandle.timestamp);
+                    zoomChartToTrade(trade.buyingCandle.timestampReadable, trade.sellingCandle.timestampReadable);
                 }
             };
 
@@ -1775,7 +1775,7 @@
                 };
 
                 triggers.forEach(trigger => {
-                    const index = timestamps.findIndex(ts => ts == trigger.timestamp);
+                    const index = timestamps.findIndex(ts => ts == trigger.timestampReadable);
                     if (index !== -1) {
                         const start = Math.max(index - 3, 0);
                         const end = Math.min(index + 3, timestamps.length - 1);
