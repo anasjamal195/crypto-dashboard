@@ -17,6 +17,11 @@
 
 @section('content')
     <style>
+        .select2-dropdown--below {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
         .text-success {
             color: #00f2c3 !important;
         }
