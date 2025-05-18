@@ -1,12 +1,34 @@
 @extends('layouts.app')
 @php
+    use App\CommonHelpers;
     $totalProfit = 0;
     $totalTrades = 0;
     $percentageProgress = DB::table('formula_details')->where('formula', request('formula'))->first();
     $percentageProgress = $percentageProgress ? $percentageProgress->progress : 100;
     $bestPerformingSymbols = [];
+    $bestPerformingSymbolsTradesTotal = 0;
+    $tableKeys = CommonHelpers::$candleDataKeysCoinReports;
+
+    $indicatorSumProfit = [];
+    $indicatorSumLosses = [];
+
+    $indicatorRatioCandleProfitSum = [];
 @endphp
+
 @section('content')
+    <style>
+        .text-success {
+            color: #00f2c3 !important;
+        }
+
+        .text-danger {
+            color: #fd5d93 !important;
+        }
+
+        .text-primary {
+            color: #e14eca !important;
+        }
+    </style>
     <div class="container-fluid">
 
         <div class="row">
@@ -43,67 +65,135 @@
                             </div>
                         </div>
                     </div>
-                    <form method="GET" action="{{ url()->current() }}" class="p-3">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="position">Filter by Position</label>
-                                    <select name="position" id="position" class="form-control select2">
-                                        <option value="">All Positions</option>
-                                        <option value="LONG" {{ request('position') == 'LONG' ? 'selected' : '' }}>LONG
-                                        </option>
-                                        <option value="SHORT" {{ request('position') == 'SHORT' ? 'selected' : '' }}>SHORT
-                                        </option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="formula">Filter by Formula</label>
-                                    <select name="formula" id="formula" class="form-control select2">
-                                        <option value="">All Formulas</option>
-                                        @foreach (DB::table('formula_details')->distinct('formula')->orderBy('created_at', 'DESC')->limit(10)->get() as $formula)
-                                            <option value="{{ $formula->formula }}"
-                                                {{ request('formula') == $formula->formula ? 'selected' : '' }}>
-                                                {{ $formula->formula }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="showTimeline">Trade Timeline</label>
-                                    <select name="showTimeline" id="showTimeline" class="form-control select2">
-                                        <option value="">Hidden</option>
-                                        <option value="show" {{ request('showTimeline') == 'show' ? 'selected' : '' }}>
-                                            Shown
-                                        </option>
-
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-2 ">
-                                <button type="submit" class="btn btn-primary my-2">Apply</button>
-                            </div>
-
-                            <div class="col-md-2 ">
-                                <a href="{{ route('coinReport', ['market' => 'FUTURE', 'interval' => $interval]) }}"
-                                    class="btn btn-secondary my-2">Clear</a>
-                            </div>
-
-
-
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="title">Filters</h5>
                         </div>
-                    </form>
+                        <div class="card-body">
+                            <form method="GET" action="{{ url()->current() }}">
+                                <div class="row">
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="formula">Filter by Formula</label>
+                                        <select name="formula" id="formula" class="form-control select2">
+                                            <option value="">All Formulas</option>
+                                            @foreach (DB::table('formula_details')->distinct('formula')->orderBy('created_at', 'DESC')->get() as $formula)
+                                                <option value="{{ $formula->formula }}"
+                                                    {{ request('formula') == $formula->formula ? 'selected' : '' }}>
+                                                    {{ $formula->formula }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="showTimeline">Trade Timeline</label>
+                                        <select name="showTimeline" id="showTimeline" class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('showTimeline') == 'show' ? 'selected' : '' }}>Shown</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="showStopLossChart">Stop Loss Chart</label>
+                                        <select name="showStopLossChart" id="showStopLossChart"
+                                            class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('showStopLossChart') == 'show' ? 'selected' : '' }}>Shown
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="reportSummary">Show Report Summary</label>
+                                        <select name="reportSummary" id="reportSummary" class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('reportSummary') == 'show' ? 'selected' : '' }}>Shown</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="profitableTradesSummary">Profitable Trades Summary</label>
+                                        <select name="profitableTradesSummary" id="profitableTradesSummary"
+                                            class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('profitableTradesSummary') == 'show' ? 'selected' : '' }}>Shown
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="lossTradesSummary">Loss Trades Summary</label>
+                                        <select name="lossTradesSummary" id="lossTradesSummary"
+                                            class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('lossTradesSummary') == 'show' ? 'selected' : '' }}>Shown
+                                            </option>
+                                        </select>
+                                    </div>
+
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="profitableTradesCandleMovementSummary">Profitable Trades Candle Movement
+                                            Summary</label>
+                                        <select name="profitableTradesCandleMovementSummary"
+                                            id="profitableTradesCandleMovementSummary" class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('profitableTradesCandleMovementSummary') == 'show' ? 'selected' : '' }}>
+                                                Shown
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="lossTradesCandleMovementSummary">Loss Trades Candle Movement
+                                            Summary</label>
+                                        <select name="lossTradesCandleMovementSummary" id="lossTradesCandleMovementSummary"
+                                            class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('lossTradesCandleMovementSummary') == 'show' ? 'selected' : '' }}>
+                                                Shown
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="position">Filter by Position</label>
+                                        <select name="position" id="position" class="form-control select2">
+                                            <option value="">All Positions</option>
+                                            <option value="LONG" {{ request('position') == 'LONG' ? 'selected' : '' }}>
+                                                LONG</option>
+                                            <option value="SHORT" {{ request('position') == 'SHORT' ? 'selected' : '' }}>
+                                                SHORT</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-8 d-flex align-items-end justify-content-end">
+                                        <div class="form-group d-flex gap-2">
+                                            <button type="submit" class="btn btn-primary btn-round mr-2">Apply</button>
+                                            <a href="{{ route('coinReport', ['market' => 'FUTURE', 'interval' => $interval]) }}"
+                                                class="btn btn-secondary btn-round">Clear</a>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
 
 
                     <div class="card-body">
 
 
                         @if (request('formula'))
-                            <div class="table-responsive">
+                            <div class="">
                                 <table class="table">
                                     <thead class="text-primary">
                                         <tr>
@@ -136,7 +226,11 @@
                                                     100;
 
                                                 if ($symbolAccuracy >= $accuracyThreshold) {
-                                                    $bestPerformingSymbols[$trade->symbol] = $symbolAccuracy;
+                                                    $bestPerformingSymbols[$trade->symbol] = [
+                                                        'accuracy' => $symbolAccuracy,
+                                                        'number_of_trades' => $trade->total_entries,
+                                                    ];
+                                                    $bestPerformingSymbolsTradesTotal += $trade->total_entries;
                                                 }
                                             @endphp
                                             <tr @if ($trade->min_profit < 0) class="bg-danger" @endif>
@@ -171,7 +265,7 @@
                                 <!-- Stats Summary Table -->
                                 <div class="mt-4">
                                     <h5 class="text-primary">Trading Performance Summary</h5>
-                                    <div class="table-responsive">
+                                    <div class="">
                                         <table class="table table-bordered table-stats">
                                             <thead class="bg-dark text-white">
                                                 <tr>
@@ -370,14 +464,79 @@
                                                     <td colspan="3" class="font-weight-bold text-center">Symbols above
                                                         {{ $accuracyThreshold }} % accuracy</td>
                                                 </tr>
-                                                @foreach ($bestPerformingSymbols as $symbol => $accuracy)
+                                                @foreach ($bestPerformingSymbols as $symbol => $data)
                                                     <tr>
                                                         <td class="font-weight-bold">{{ $symbol }}</td>
-                                                        <td>{{ $accuracy }} %</td>
-                                                        <td>&nbsp;</td>
+                                                        <td>{{ $data['accuracy'] }} % ( {{ $data['number_of_trades'] }} )
+                                                        </td>
+                                                        <td>
+                                                            @php
+                                                                $coinDetails = DB::table('coins')
+                                                                    ->where('symbol', $symbol)
+                                                                    ->first();
+
+                                                            @endphp
+
+                                                            <div class="coin-tags">
+                                                                <span class="badge me-1">Primary Classification: </span>
+                                                                {{-- Primary Classification --}}
+                                                                @if (!empty($coinDetails->classification))
+                                                                    <span
+                                                                        class="badge bg-primary me-1">{{ $coinDetails->classification }}</span>
+                                                                @endif
+                                                                <span class="badge me-1">Other tags: </span>
+                                                                {{-- Other Classifications --}}
+                                                                @if ($coinDetails->is_web3)
+                                                                    <span class="badge bg-info me-1">Web 3</span>
+                                                                @endif
+
+                                                                @if ($coinDetails->is_metaverse)
+                                                                    <span class="badge bg-info me-1">Metaverse</span>
+                                                                @endif
+
+                                                                @if ($coinDetails->is_defi)
+                                                                    <span class="badge bg-info me-1">Defi</span>
+                                                                @endif
+
+                                                                @if ($coinDetails->is_nft)
+                                                                    <span class="badge bg-info me-1">NFT</span>
+                                                                @endif
+
+                                                                @if ($coinDetails->is_altcoin)
+                                                                    <span class="badge bg-info me-1">ALT</span>
+                                                                @endif
+
+                                                                @if ($coinDetails->is_meme_coin)
+                                                                    <span class="badge bg-info me-1">Meme</span>
+                                                                @endif
+                                                            </div>
+
+                                                        </td>
                                                     </tr>
                                                 @endforeach
+                                                <tr>
+                                                    <td>Total</td>
+                                                    <td>{{ $bestPerformingSymbolsTradesTotal }}</td>
+                                                    <td>
+                                                        @php
+                                                            $keysArray = array_keys($bestPerformingSymbols);
 
+                                                            $phpFormatted = ' [' . PHP_EOL;
+                                                            foreach ($keysArray as $key) {
+                                                                $phpFormatted .=
+                                                                    '    "' . addslashes($key) . '",' . PHP_EOL;
+                                                            }
+                                                            $phpFormatted .= ']';
+                                                        @endphp
+
+                                                        <button
+                                                            onclick="navigator.clipboard.writeText(`{{ addslashes($phpFormatted) }}`).then(() => displayToast('success','Array copied to clipboard'))"
+                                                            style="padding: 6px 14px; background-color: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                                            Copy PHP Array
+                                                        </button>
+
+                                                    </td>
+                                                </tr>
 
 
 
@@ -485,10 +644,586 @@
 
                                     <canvas id="timelineChart"></canvas>
                                 </div>
+
                             </div>
                         </div>
                     </div>
                 @endif
+                @if (request('showStopLossChart') === 'show')
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header card-header-primary">
+                                    <h4 class="card-title">Stop Losses Chart</h4>
+                                    <p class="card-category">Visual representation of Stop Losses timelines</p>
+
+                                </div>
+
+
+                                <div class="card-body chart-container">
+
+                                    <canvas id="stopLossChart"></canvas>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                @if (request('profitableTradesSummary') === 'show')
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title text-success">Profitable Trades Table</h4>
+                                    <p class="card-category ">{{ $reportAnalysis['profitable_trades'] }} profitable</p>
+                                    <!-- Export Button -->
+                                    <button id="exportProfitableCSV" class="btn btn-sm btn-primary float-right">
+                                        <i class="fa fa-download"></i> Export CSV
+                                    </button>
+                                </div>
+                                <div class="card-body" style="max-height: 500px;overflow-y: auto;">
+                                    <div class="">
+                                        <table id="profitableTradesTable" class="table tablesorter">
+                                            <thead class="text-primary">
+                                                <tr>
+                                                    <th>Sr.</th>
+                                                    <th>Symbol</th>
+                                                    <th>Duration</th>
+
+                                                    @foreach ($tableKeys as $heading)
+                                                        <th>{{ $heading }}</th>
+                                                    @endforeach
+                                                    <th>P%</th>
+                                                    <th>Position</th>
+
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @php
+                                                    $count = 0;
+                                                @endphp
+                                                @foreach ($tradeArr as $trade)
+                                                    @php
+                                                        $openingCandle = json_decode($trade['buyingCandle'], true);
+                                                        $previousCandle = json_decode($trade['previousCandle'], true);
+
+                                                        if ($trade['profit'] < 0) {
+                                                            continue;
+                                                        }
+                                                        $count++;
+                                                        if (isset($indicatorSumProfit['profit'])) {
+                                                            $indicatorSumProfit['profit'] += $trade['profit'];
+                                                        } else {
+                                                            $indicatorSumProfit['profit'] = $trade['profit'];
+                                                        }
+                                                    @endphp
+                                                    <tr class="indicator-row">
+                                                        <td>{{ $count }} {{ $previousCandle ? '*' : '' }}</td>
+                                                        <td>{{ $trade['symbol'] }}</td>
+                                                        <td>{{ $trade['duration'] }}</td>
+
+                                                        @foreach ($tableKeys as $key => $heading)
+                                                            @php
+                                                                if (is_numeric($openingCandle[$key])) {
+                                                                    if ($previousCandle) {
+                                                                        $perDiff = CommonHelpers::getPercentDiff(
+                                                                            $previousCandle[$key],
+                                                                            $openingCandle[$key],
+                                                                            true,
+                                                                        );
+                                                                        if (isset($indicatorSumProfit[$key])) {
+                                                                            $indicatorSumProfit[$key] += $perDiff;
+                                                                        } else {
+                                                                            $indicatorSumProfit[$key] = $perDiff;
+                                                                        }
+                                                                    } else {
+                                                                        if (isset($indicatorSumProfit[$key])) {
+                                                                            $indicatorSumProfit[$key] +=
+                                                                                $openingCandle[$key];
+                                                                        } else {
+                                                                            $indicatorSumProfit[$key] =
+                                                                                $openingCandle[$key];
+                                                                        }
+                                                                    }
+                                                                }
+                                                            @endphp
+                                                            <td>
+                                                                @if ($previousCandle)
+                                                                    {{ is_numeric($openingCandle[$key]) ? number_format($perDiff, 5) : $openingCandle[$key] }}
+                                                                @else
+                                                                    {{ is_numeric($openingCandle[$key]) ? number_format($openingCandle[$key], 5) : $openingCandle[$key] }}
+                                                                @endif
+
+                                                            </td>
+                                                        @endforeach
+                                                        <td>{{ $trade['profit'] }}</td>
+                                                        <td>{{ $trade['position'] }}</td>
+                                                    </tr>
+                                                @endforeach
+                                                <tr>
+                                                    <td>&nbsp;</td>
+                                                    <td>Averages</td>
+                                                    <td>&nbsp;</td>
+                                                    @foreach ($tableKeys as $key => $value)
+                                                        @if (is_numeric($openingCandle[$key]))
+                                                            <td>
+                                                                {{ $reportAnalysis['profitable_trades'] ? number_format($indicatorSumProfit[$key] / $reportAnalysis['profitable_trades'], 5) : 0 }}
+                                                            </td>
+                                                        @else
+                                                            <td>&nbsp;</td>
+                                                        @endif
+                                                    @endforeach
+                                                    <td>
+                                                        {{ $reportAnalysis['profitable_trades'] ? number_format($indicatorSumProfit['profit'] / $reportAnalysis['profitable_trades'], 5) : 0 }}
+                                                    </td>
+                                                    <td>&nbsp;</td>
+
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+
+                @if (request('lossTradesSummary') === 'show')
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title text-danger">Losses Trades Table</h4>
+                                    <p class="card-category ">{{ $reportAnalysis['loss_trades'] }} losses</p>
+                                    <!-- Export Button -->
+                                    <button id="exportLossesCSV" class="btn btn-sm btn-primary float-right">
+                                        <i class="fa fa-download"></i> Export CSV
+                                    </button>
+                                </div>
+                                <div class="card-body" style="max-height: 500px;overflow-y: auto;">
+                                    <div class="">
+                                        <table id="lossTradesTable" class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Sr.</th>
+                                                    <th>Symbol</th>
+                                                    <th>Duration</th>
+
+                                                    @foreach ($tableKeys as $heading)
+                                                        <th>{{ $heading }}</th>
+                                                    @endforeach
+
+                                                    <th>L%</th>
+                                                    <th>Position</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @php
+                                                    $count = 0;
+                                                @endphp
+                                                @foreach ($tradeArr as $trade)
+                                                    @php
+                                                        $openingCandle = json_decode($trade['buyingCandle'], true);
+                                                        $previousCandle = json_decode($trade['previousCandle'], true);
+
+                                                        if ($trade['profit'] > 0) {
+                                                            continue;
+                                                        }
+                                                        $count++;
+
+                                                        if (isset($indicatorSumLosses['profit'])) {
+                                                            $indicatorSumLosses['profit'] += $trade['profit'];
+                                                        } else {
+                                                            $indicatorSumLosses['profit'] = $trade['profit'];
+                                                        }
+
+                                                    @endphp
+                                                    <tr class="indicator-row">
+                                                        <td>{{ $count }} {{ $previousCandle ? '*' : '' }}</td>
+                                                        <td>{{ $trade['symbol'] }}</td>
+                                                        <td>{{ $trade['duration'] }}</td>
+
+
+                                                        @foreach ($tableKeys as $key => $heading)
+                                                            @php
+                                                                if (is_numeric($openingCandle[$key])) {
+                                                                    if ($previousCandle) {
+                                                                        $perDiff = CommonHelpers::getPercentDiff(
+                                                                            $previousCandle[$key],
+                                                                            $openingCandle[$key],
+                                                                            true,
+                                                                        );
+                                                                        if (isset($indicatorSumLosses[$key])) {
+                                                                            $indicatorSumLosses[$key] += $perDiff;
+                                                                        } else {
+                                                                            $indicatorSumLosses[$key] = $perDiff;
+                                                                        }
+                                                                    } else {
+                                                                        if (isset($indicatorSumLosses[$key])) {
+                                                                            $indicatorSumLosses[$key] +=
+                                                                                $openingCandle[$key];
+                                                                        } else {
+                                                                            $indicatorSumLosses[$key] =
+                                                                                $openingCandle[$key];
+                                                                        }
+                                                                    }
+                                                                }
+                                                            @endphp
+                                                            <td>
+                                                                @if ($previousCandle)
+                                                                    {{ is_numeric($openingCandle[$key]) ? number_format($perDiff, 5) : $openingCandle[$key] }}
+                                                                @else
+                                                                    {{ is_numeric($openingCandle[$key]) ? number_format($openingCandle[$key], 5) : $openingCandle[$key] }}
+                                                                @endif
+
+                                                            </td>
+                                                        @endforeach
+                                                        <td>{{ $trade['profit'] }}</td>
+                                                        <td>{{ $trade['position'] }}</td>
+
+                                                    </tr>
+                                                @endforeach
+
+                                                <tr>
+                                                    <td>&nbsp;</td>
+                                                    <td>Averages</td>
+                                                    <td>&nbsp;</td>
+                                                    @foreach ($tableKeys as $key => $value)
+                                                        @if (is_numeric($openingCandle[$key]))
+                                                            <td>
+                                                                {{ $reportAnalysis['loss_trades'] ? number_format($indicatorSumLosses[$key] / $reportAnalysis['loss_trades'], 5) : 0 }}
+                                                            </td>
+                                                        @else
+                                                            <td>&nbsp;</td>
+                                                        @endif
+                                                    @endforeach
+                                                    <td>
+                                                        {{ $reportAnalysis['loss_trades'] ? number_format($indicatorSumLosses['profit'] / $reportAnalysis['loss_trades'], 5) : 0 }}
+                                                    </td>
+                                                    <td>&nbsp;</td>
+
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+
+
+
+                {{-- Candle Movements table --}}
+
+                @if (request('profitableTradesCandleMovementSummary') === 'show')
+                    @php
+                        $tableType = 'p';
+                    @endphp
+                    @include(
+                        'CoinReports.parts.candle-movement-table',
+                        compact('tradeArr', 'reportAnalysis', 'tableType'))
+                @endif
+
+
+                @if (request('lossTradesCandleMovementSummary') === 'show')
+                    @php
+                        $tableType = 'l';
+                    @endphp
+                    @include(
+                        'CoinReports.parts.candle-movement-table',
+                        compact('tradeArr', 'reportAnalysis', 'tableType'))
+                @endif
+
+
+
+
+
+                @if (request('reportSummary') === 'show')
+                    <!-- Trading Report Analysis Table Section -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Trading Performance Analysis</h4>
+                                    <p class="card-category">{{ $reportAnalysis['profitable_trades'] }} profitable vs
+                                        {{ $reportAnalysis['loss_trades'] }} losing trades</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="">
+                                        <table class="table tablesorter">
+                                            <thead class="text-primary">
+                                                <tr>
+                                                    <th>Indicator</th>
+                                                    <th>Profitable Avg</th>
+                                                    <th>Loss Avg</th>
+                                                    <th>Difference</th>
+                                                    <th>Suggestion</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($reportAnalysis['indicator_comparisons'] as $comparison)
+                                                    <tr class="indicator-row">
+                                                        <td>{{ ucfirst($comparison['indicator']) }}</td>
+                                                        <td class="text-success">
+                                                            {{ number_format($comparison['profitable_avg'], 2) }}</td>
+                                                        <td class="text-danger">
+                                                            {{ number_format($comparison['loss_avg'], 2) }}</td>
+                                                        <td>{{ number_format($comparison['difference'], 2) }}</td>
+                                                        <td>
+                                                            <span
+                                                                class="badge suggestion-badge">{{ $comparison['suggestion'] }}</span>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+
+                    <!-- Technical Indicators Analysis -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Technical Indicators - Profitable Trades</h4>
+                                    <p class="card-category">Average values for
+                                        {{ $reportAnalysis['profitable_trades'] }}
+                                        winning trades</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="">
+                                        <table class="table tablesorter">
+                                            <thead class="text-primary">
+                                                <tr>
+                                                    <th>Indicator</th>
+                                                    <th>Average</th>
+                                                    <th>Std Dev</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($reportAnalysis['profitable_stats'] as $indicator => $stats)
+                                                    @if (
+                                                        !in_array($indicator, [
+                                                            'volume',
+                                                            'volumeMA5',
+                                                            'volumeMA10',
+                                                            'obv',
+                                                            'cvd',
+                                                            'vwap',
+                                                            'bb_upper',
+                                                            'bb_lower',
+                                                            'sar',
+                                                            'ema12',
+                                                            'ema26',
+                                                        ]))
+                                                        <tr>
+                                                            <td>{{ ucfirst(str_replace('_', ' ', $indicator)) }}</td>
+                                                            <td>{{ number_format($stats['avg'], 2) }}</td>
+                                                            <td>{{ number_format($stats['std_dev'], 2) }}</td>
+                                                        </tr>
+                                                    @endif
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Technical Indicators - Loss Trades</h4>
+                                    <p class="card-category">Average values for {{ $reportAnalysis['loss_trades'] }}
+                                        losing trades</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="">
+                                        <table class="table tablesorter">
+                                            <thead class="text-primary">
+                                                <tr>
+                                                    <th>Indicator</th>
+                                                    <th>Average</th>
+                                                    <th>Std Dev</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($reportAnalysis['loss_stats'] as $indicator => $stats)
+                                                    @if (
+                                                        !in_array($indicator, [
+                                                            'volume',
+                                                            'volumeMA5',
+                                                            'volumeMA10',
+                                                            'obv',
+                                                            'cvd',
+                                                            'vwap',
+                                                            'bb_upper',
+                                                            'bb_lower',
+                                                            'sar',
+                                                            'ema12',
+                                                            'ema26',
+                                                        ]))
+                                                        <tr>
+                                                            <td>{{ ucfirst(str_replace('_', ' ', $indicator)) }}</td>
+                                                            <td>{{ number_format($stats['avg'], 2) }}</td>
+                                                            <td>{{ number_format($stats['std_dev'], 2) }}</td>
+                                                        </tr>
+                                                    @endif
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Volume Metrics Analysis -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Volume Metrics Analysis</h4>
+                                    <p class="card-category">Comparison of volume indicators between profitable and losing
+                                        trades</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="">
+                                        <table class="table tablesorter">
+                                            <thead class="text-primary">
+                                                <tr>
+                                                    <th>Volume Indicator</th>
+                                                    <th>Profitable Average</th>
+                                                    <th>Loss Average</th>
+                                                    <th>Difference</th>
+                                                    <th>Ratio</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @php
+                                                    $volumeIndicators = [
+                                                        'volume',
+                                                        'volumeMA5',
+                                                        'volumeMA10',
+                                                        'obv',
+                                                        'cvd',
+                                                    ];
+                                                @endphp
+
+                                                @foreach ($volumeIndicators as $indicator)
+                                                    <tr>
+                                                        <td>{{ ucfirst(str_replace('MA', ' MA ', $indicator)) }}</td>
+                                                        <td class="text-success">
+                                                            {{ number_format($reportAnalysis['profitable_stats'][$indicator]['avg'], 0) }}
+                                                        </td>
+                                                        <td class="text-danger">
+                                                            {{ number_format($reportAnalysis['loss_stats'][$indicator]['avg'], 0) }}
+                                                        </td>
+                                                        <td>{{ number_format($reportAnalysis['profitable_stats'][$indicator]['avg'] - $reportAnalysis['loss_stats'][$indicator]['avg'], 0) }}
+                                                        </td>
+                                                        <td>{{ number_format($reportAnalysis['profitable_stats'][$indicator]['avg'] / max(1, $reportAnalysis['loss_stats'][$indicator]['avg']), 2) }}x
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Price Metrics Analysis -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Price-Based Indicators</h4>
+                                    <p class="card-category">Comparison of price indicators between profitable and losing
+                                        trades</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="">
+                                        <table class="table tablesorter">
+                                            <thead class="text-primary">
+                                                <tr>
+                                                    <th>Price Indicator</th>
+                                                    <th>Profitable Average</th>
+                                                    <th>Loss Average</th>
+                                                    <th>Difference</th>
+                                                    <th>Ratio</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @php
+                                                    $priceIndicators = [
+                                                        'vwap',
+                                                        'bb_upper',
+                                                        'bb_lower',
+                                                        'sar',
+                                                        'ema12',
+                                                        'ema26',
+                                                    ];
+                                                @endphp
+
+                                                @foreach ($priceIndicators as $indicator)
+                                                    <tr>
+                                                        <td>{{ ucfirst(str_replace('_', ' ', $indicator)) }}</td>
+                                                        <td class="text-success">
+                                                            {{ number_format($reportAnalysis['profitable_stats'][$indicator]['avg'], 2) }}
+                                                        </td>
+                                                        <td class="text-danger">
+                                                            {{ number_format($reportAnalysis['loss_stats'][$indicator]['avg'], 2) }}
+                                                        </td>
+                                                        <td>{{ number_format($reportAnalysis['profitable_stats'][$indicator]['avg'] - $reportAnalysis['loss_stats'][$indicator]['avg'], 2) }}
+                                                        </td>
+                                                        <td>{{ number_format($reportAnalysis['profitable_stats'][$indicator]['avg'] / max(0.01, $reportAnalysis['loss_stats'][$indicator]['avg']), 2) }}x
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Key Suggestions -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Trading Improvement Suggestions</h4>
+                                    <p class="card-category">Based on {{ $reportAnalysis['total_trades'] }} analyzed
+                                        trades</p>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-group bg-transparent">
+                                        @foreach ($reportAnalysis['indicator_comparisons'] as $index => $comparison)
+                                            <li class="list-group-item bg-transparent border-0 text-white-50">
+                                                <i class="tim-icons icon-alert-circle-exc text-warning mr-2"></i>
+                                                <strong>{{ $index + 1 }}.</strong> {{ $comparison['suggestion'] }}
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+
             </div>
         </div>
     </div>
@@ -501,16 +1236,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js">
     </script>
 
+    {{-- Scripts for table export --}}
+
+    <!-- Buttons extension -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
 
     @if (request('showTimeline') === 'show')
         <script>
             // Dummy data - using SQL-friendly datetime format (YYYY-MM-DD HH:MM:SS)
 
             const data = @json($timelineData);
-            // console.log(data)
             // Chart setup
             window.onload = function() {
                 createTimelineChart(data);
+
             };
 
             function createTimelineChart(data) {
@@ -731,22 +1478,330 @@
                     }
                 }
             }
+        </script>
+    @endif
 
-            // Function to load your own data
-            function loadData(newData) {
-                // Clear existing chart
-                const canvas = document.getElementById('timelineChart');
-                canvas.remove();
 
-                // Create new canvas
-                const container = document.querySelector('.chart-container') || canvas.parentElement;
-                const newCanvas = document.createElement('canvas');
-                newCanvas.id = 'timelineChart';
-                container.appendChild(newCanvas);
 
-                // Create new chart with new data
-                createTimelineChart(newData);
+
+    @if (request('showStopLossChart') === 'show')
+        <script>
+            const yellowChart_rawData = @json($timelineData);
+
+            // Filter only yellow entries
+            const yellowChart_filteredData = yellowChart_rawData.filter(item => item.color === 'yellow');
+
+            // Calculate durations
+            yellowChart_filteredData.forEach(item => {
+                const start = new Date(item.startTime.replace(' ', 'T'));
+                const end = new Date(item.endTime.replace(' ', 'T'));
+                item.duration = (end - start) / 1000;
+            });
+
+            window.addEventListener('load', () => {
+                yellowChart_createTimeline(yellowChart_filteredData);
+            });
+
+            function round(value) {
+                return value !== undefined && value !== null ? Number(value).toFixed(5) : '-';
+            }
+
+            function yellowChart_createTimeline(data) {
+                const ctx = document.getElementById('stopLossChart').getContext('2d');
+
+                const startTimes = data.map(item => new Date(item.startTime.replace(' ', 'T')).getTime());
+                const endTimes = data.map(item => new Date(item.endTime.replace(' ', 'T')).getTime());
+
+                const earliest = Math.min(...startTimes);
+                const latest = Math.max(...endTimes);
+
+                const datasets = data.map(item => {
+                    return {
+                        label: item.symbol,
+                        data: [{
+                            x: [new Date(item.startTime.replace(' ', 'T')), new Date(item.endTime.replace(' ',
+                                'T'))],
+                            y: item.symbol,
+                            buyingCandle: item.buyingCandle // 👈 Embed this
+                        }],
+                        backgroundColor: item.color,
+                        borderColor: item.color,
+                        borderWidth: 2,
+                        barThickness: 3,
+                        barPercentage: 0.8
+                    };
+                });
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        datasets
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        scales: {
+                            x: {
+                                type: 'time',
+                                position: 'bottom',
+                                time: {
+                                    unit: 'minute',
+                                    displayFormats: {
+                                        minute: 'HH:mm:ss'
+                                    }
+                                },
+                                min: new Date(earliest - 60000),
+                                max: new Date(latest + 60000)
+                            },
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const point = context.raw;
+                                        const start = new Date(point.x[0]);
+                                        const end = new Date(point.x[1]);
+                                        const durationSec = (end - start) / 1000;
+
+                                        const h = Math.floor(durationSec / 3600).toString().padStart(2, '0');
+                                        const m = Math.floor((durationSec % 3600) / 60).toString().padStart(2, '0');
+                                        const s = Math.floor(durationSec % 60).toString().padStart(2, '0');
+
+                                        const candle = point.buyingCandle;
+
+                                        return [
+                                            `Symbol: ${point.y}`,
+                                            `Start: ${moment(start).format('YYYY-MM-DD HH:mm:ss')}`,
+                                            `End: ${moment(end).format('YYYY-MM-DD HH:mm:ss')}`,
+                                            `Duration: ${h}:${m}:${s}`,
+                                            '',
+
+                                            `--- Price ---`,
+                                            `Open: ${round(candle.open)}`,
+                                            `High: ${round(candle.high)}`,
+                                            `Low: ${round(candle.low)}`,
+                                            `Close: ${round(candle.close)}`,
+                                            '',
+                                            `--- Volume ---`,
+                                            `Volume: ${round(candle.volume)}`,
+                                            `Volume MA5: ${round(candle.volumeMA5)}`,
+                                            `Volume MA10: ${round(candle.volumeMA10)}`,
+                                            `OBV: ${round(candle.obv)}`,
+                                            `CVD: ${round(candle.cvd)}`,
+                                            '',
+
+                                            `--- Trend Indicators ---`,
+                                            `EMA 12: ${round(candle.ema12)}`,
+                                            `EMA 26: ${round(candle.ema26)}`,
+                                            `MA7: ${round(candle.ma7)}`,
+                                            `MA14: ${round(candle.ma14)}`,
+                                            `MA25: ${round(candle.ma25)}`,
+                                            `VWAP: ${round(candle.vwap)}`,
+                                            `SAR: ${round(candle.sar)}`,
+                                            '',
+
+                                            `--- Momentum Indicators ---`,
+                                            `RSI (6): ${round(candle.rsi6)}`,
+                                            `MFI: ${round(candle.mfi)}`,
+                                            `ADX: ${round(candle.adx)}`,
+                                            `DI+: ${round(candle.di_plus)}`,
+                                            `DI-: ${round(candle.di_minus)}`,
+                                            `MACD DIF: ${round(candle.dif)}`,
+                                            `MACD DEA: ${round(candle.dea)}`,
+                                            `MACD Histogram: ${round(candle.histogram)}`,
+                                            `STOCH K: ${round(candle.K)}`,
+                                            `STOCH D: ${round(candle.D)}`,
+                                            `STOCH RSI: ${round(candle.stoch_rsi)}`,
+                                            `WR: ${round(candle.wr)}`,
+                                            '',
+
+                                            `--- Volatility Indicators ---`,
+                                            `BB Upper: ${round(candle.bb_upper)}`,
+                                            `BB Middle: ${round(candle.bb_middle)}`,
+                                            `BB Lower: ${round(candle.bb_lower)}`,
+                                            '',
+
+                                            `--- Support & Resistance ---`,
+                                            `Support: ${round(candle.currentSupport)}`,
+                                            `Resistance: ${round(candle.currentResistance)}`
+                                        ];
+
+                                    }
+                                }
+
+                            },
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
             }
         </script>
     @endif
+
+
+    <!-- JavaScript for DataTables and Export -->
+    <script>
+        $(document).ready(function() {
+            // Check if DataTables Buttons plugin is available
+            if ($.fn.dataTable.Buttons) {
+                // Initialize DataTable with export functionality
+                var profitableTradesTable = $('#profitableTradesTable').DataTable({
+                    "paging": true,
+                    "ordering": false,
+                    "info": true,
+                    "searching": false
+                });
+
+                // Create a new DataTable Buttons instance
+                new $.fn.dataTable.Buttons(profitableTradesTable, {
+                    buttons: [{
+                        extend: 'csv',
+                        text: 'CSV',
+                        filename: 'Profitable_Trades_Report',
+                        exportOptions: {
+                            // Exclude the averages row from the export
+                            rows: function(idx, data, node) {
+                                return $(node).hasClass('indicator-row');
+                            }
+                        }
+                    }]
+                });
+
+                // Add a hidden container for the export button
+                $('<div id="exportProfitableButtonContainer" style="display:none;"></div>').insertAfter(
+                    '#profitableTradesTable');
+                profitableTradesTable.buttons().container().appendTo('#exportProfitableButtonContainer');
+
+                // Custom button event handler
+                $('#exportProfitableCSV').on('click', function() {
+                    profitableTradesTable.button(0).trigger();
+                });
+            } else {
+                // Fallback: Direct CSV generation if DataTables Buttons is not available
+                $('#exportProfitableCSV').on('click', function() {
+                    // Prepare CSV content
+                    var csvContent = [];
+                    var headers = [];
+
+                    // Get headers
+                    $('#profitableTradesTable thead th').each(function() {
+                        headers.push('"' + $(this).text().trim() + '"');
+                    });
+                    csvContent.push(headers.join(','));
+
+                    // Get data rows (only indicator rows)
+                    $('#profitableTradesTable tbody tr.indicator-row').each(function() {
+                        var row = [];
+                        $(this).find('td').each(function() {
+                            row.push('"' + $(this).text().trim() + '"');
+                        });
+                        csvContent.push(row.join(','));
+                    });
+
+                    // Create and trigger download
+                    var csvString = csvContent.join('\n');
+                    var blob = new Blob([csvString], {
+                        type: 'text/csv;charset=utf-8;'
+                    });
+
+                    // Create download link and click it
+                    var link = document.createElement("a");
+                    var url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", "Profitable_Trades_Report.csv");
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            }
+        });
+    </script>
+    <script>
+        $(document).ready(function() {
+            // Check if DataTables Buttons plugin is available
+            if ($.fn.dataTable.Buttons) {
+                // Initialize DataTable with export functionality
+                var lossTradesTable = $('#lossTradesTable').DataTable({
+                    "paging": true,
+                    "ordering": false,
+                    "info": false,
+                    "searching": false
+                });
+
+                // Create a new DataTable Buttons instance
+                new $.fn.dataTable.Buttons(lossTradesTable, {
+                    buttons: [{
+                        extend: 'csv',
+                        text: 'CSV',
+                        filename: 'Loss_Trades_Report',
+                        exportOptions: {
+                            // Exclude the averages row from the export
+                            rows: function(idx, data, node) {
+                                return $(node).hasClass('indicator-row');
+                            }
+                        }
+                    }]
+                });
+
+                // Add a hidden container for the export button
+                $('<div id="exportButtonContainer" style="display:none;"></div>').insertAfter('#lossTradesTable');
+                lossTradesTable.buttons().container().appendTo('#exportButtonContainer');
+
+                // Custom button event handler
+                $('#exportLossesCSV').on('click', function() {
+                    lossTradesTable.button(0).trigger();
+                });
+            } else {
+                // Fallback: Direct CSV generation if DataTables Buttons is not available
+                $('#exportLossesCSV').on('click', function() {
+                    // Prepare CSV content
+                    var csvContent = [];
+                    var headers = [];
+
+                    // Get headers
+                    $('#lossTradesTable thead th').each(function() {
+                        headers.push('"' + $(this).text().trim() + '"');
+                    });
+                    csvContent.push(headers.join(','));
+
+                    // Get data rows (only indicator rows)
+                    $('#lossTradesTable tbody tr.indicator-row').each(function() {
+                        var row = [];
+                        $(this).find('td').each(function() {
+                            row.push('"' + $(this).text().trim() + '"');
+                        });
+                        csvContent.push(row.join(','));
+                    });
+
+                    // Create and trigger download
+                    var csvString = csvContent.join('\n');
+                    var blob = new Blob([csvString], {
+                        type: 'text/csv;charset=utf-8;'
+                    });
+
+                    // Create download link and click it
+                    var link = document.createElement("a");
+                    var url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", "Loss_Trades_Report.csv");
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            }
+        })
+    </script>
+
+
+
+
+
 @endsection

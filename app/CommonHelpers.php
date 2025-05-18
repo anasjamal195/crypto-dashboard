@@ -31,6 +31,53 @@ class CommonHelpers
         '1w'  => 10080,   // 1 week
         '1M'  => 43200,   // 1 month (approx 30 days)
     ];
+    public static $candleDataKeysCoinReports = [
+        // 'volume' => 'Volume',
+        // 'volumeMA5' => 'Volume MA 5',
+        // 'volumeMA10' => 'Volume MA 10',
+        // 'avl' => 'AVL',
+        // 'ma7' => 'MA 7',
+        // 'ma14' => 'MA 14',
+        // 'ma25' => 'MA 25',
+        // 'ma99' => 'MA 99',
+
+        'rsi6' => 'RSI 6',
+        'stoch_k' => 'Stoch K',
+        'stoch_d' => 'Stoch D',
+        'wr' => 'WR',
+
+        'dif' => 'DIF',
+        'dea' => 'DEA',
+        'histogram' => 'Histogram',
+
+        'bb_middle' => 'BB Middle',
+        'bb_upper' => 'BB Upper',
+        'bb_lower' => 'BB Lower',
+
+        // 'should_buy' => 'Should Buy',
+        // 'should_sell' => 'Should Sell',
+        // 'obv' => 'OBV',
+        // 'cvd' => 'CVD',
+
+        // 'vwap' => 'VWAP',
+        // 'stoch_rsi' => 'Stochastic RSI',
+
+        'K' => 'K',
+        'D' => 'D',
+        'J' => 'J',
+        // 'previousObvHigh' => 'Previous OBV High',
+        // 'previousObvLow' => 'Previous OBV Low',
+        'per' => 'PER',
+        'sar' => 'SAR',
+        'mfi' => 'MFI',
+        'adx' => 'ADX',
+        'di_plus' => 'DI+',
+        'di_minus' => 'DI−',
+        // 'ema12' => 'EMA 12',
+        // 'ema26' => 'EMA 26',
+        'timestampReadable' => 'Time',
+
+    ];
     /**
      * Create a new class instance.
      */
@@ -1489,8 +1536,23 @@ class CommonHelpers
 
         // Calculate Bollinger Band metrics
         $bbWidth = $currentCandle['bb_upper'] - $currentCandle['bb_lower'];
+        if (!$bbWidth) {
+            return [
+                'signal' => 'neutral',
+                'long_probability' => 0,
+                'short_probability' => 0,
+                'message' => 'Division by zero'
+            ];
+        }
         $prevBbWidth = $prevCandle['bb_upper'] - $prevCandle['bb_lower'];
-
+        if (!$prevBbWidth) {
+            return [
+                'signal' => 'neutral',
+                'long_probability' => 0,
+                'short_probability' => 0,
+                'message' => 'Division by zero'
+            ];
+        }
         $percentB = ($currentCandle['close'] - $currentCandle['bb_lower']) / $bbWidth * 100;
         $prevPercentB = ($prevCandle['close'] - $prevCandle['bb_lower']) / $prevBbWidth * 100;
 
@@ -1978,7 +2040,6 @@ class CommonHelpers
     public static function dumpCoinData($coins, $interval, $timestamp = null)
     {
 
-        DB::table('candles')->truncate();
         $market = 'FUTURE';
         foreach ($coins as $coin) {
 
@@ -2108,9 +2169,9 @@ class CommonHelpers
 
 
     // ################## ########################### ###########################
-    public static function getUniqueTimestampsFromDb($startTime = null, $endTime = null)
+    public static function getUniqueTimestampsFromDb($interval, $startTime = null, $endTime = null)
     {
-        $query = DB::table('candles');
+        $query = DB::table('candles')->where('interval', $interval);
 
         if ($startTime) {
             $query->where('timestamp', '>=', $startTime);
@@ -2150,5 +2211,148 @@ class CommonHelpers
             ->where('formula', $formula)
             ->whereNull('sellingCandle')
             ->first();
+    }
+
+
+    public static function analyzeTradeReport(array $trades): array
+    {
+        $profitable = [];
+        $losses = [];
+        $indicatorStats = [];
+
+        foreach ($trades as $trade) {
+            $buyingCandle = json_decode($trade['buyingCandle'], true);
+            $isProfitable = $trade['profit'] > 0;
+
+            if (!$buyingCandle || !isset($buyingCandle['timestamp'])) continue;
+
+            // Define key indicators to analyze
+            $indicators = [
+                'rsi6',
+                'mfi',
+                'stoch_rsi',
+                'stoch_k',
+                'stoch_d',
+                'wr',
+                'adx',
+                'di_plus',
+                'di_minus',
+                'histogram',
+                'volume',
+                'volumeMA5',
+                'volumeMA10',
+                'obv',
+                'cvd',
+                'vwap',
+                'bb_upper',
+                'bb_lower',
+                'sar',
+                'ema12',
+                'ema26'
+            ];
+
+            $entry = ['symbol' => $trade['symbol'], 'timestamp' => $buyingCandle['timestamp']];
+            foreach ($indicators as $key) {
+                $entry[$key] = $buyingCandle[$key] ?? null;
+            }
+
+            if ($isProfitable) {
+                $profitable[] = $entry;
+            } else {
+                $losses[] = $entry;
+            }
+        }
+
+        // Helper: get avg and std dev per indicator
+        $calculateStats = function ($trades, $indicators) {
+            $stats = [];
+            foreach ($indicators as $key) {
+                $values = array_column($trades, $key);
+                $values = array_filter($values, 'is_numeric');
+                if (count($values) > 1) {
+                    $avg = array_sum($values) / count($values);
+                    $std = sqrt(array_sum(array_map(fn($v) => pow($v - $avg, 2), $values)) / count($values));
+                    $stats[$key] = ['avg' => $avg, 'std_dev' => $std, 'count' => count($values)];
+                }
+            }
+            return $stats;
+        };
+
+        $profitableStats = $calculateStats($profitable, $indicators);
+        $lossStats = $calculateStats($losses, $indicators);
+
+        // Comparison & Suggestions
+        $suggestions = [];
+        foreach ($indicators as $key) {
+            if (!isset($profitableStats[$key], $lossStats[$key])) continue;
+
+            $pAvg = $profitableStats[$key]['avg'];
+            $lAvg = $lossStats[$key]['avg'];
+            $difference = $pAvg - $lAvg;
+
+            if (abs($difference) > 5) { // Adjust threshold based on indicator
+                $suggestions[] = [
+                    'indicator' => $key,
+                    'profitable_avg' => round($pAvg, 2),
+                    'loss_avg' => round($lAvg, 2),
+                    'difference' => round($difference, 2),
+                    'suggestion' => $difference > 0
+                        ? "Avoid trades with low $key (avg in losses: $lAvg)"
+                        : "Avoid trades with high $key (avg in losses: $lAvg)"
+                ];
+            }
+        }
+
+        return [
+            'total_trades' => count($trades),
+            'profitable_trades' => count($profitable),
+            'loss_trades' => count($losses),
+            'indicator_comparisons' => $suggestions,
+            'profitable_stats' => $profitableStats,
+            'loss_stats' => $lossStats,
+        ];
+    }
+
+    public static function insertMasterControlEntry($key, $value)
+    {
+        return DB::table('master_control')->insert(
+            [
+                'key' => $key,
+                'value' => $value,
+            ]
+        );
+    }
+    public static function getMasterControlEntry($key, $default = null)
+    {
+        $entry = DB::table('master_control')->where('key', $key)->first();
+        return $entry ? $entry->value : $default;
+    }
+    public static function deleteMasterControlEntry($key)
+    {
+        $entry = DB::table('master_control')->where('key', $key)->delete();
+        return true;
+    }
+
+    public static function updateMasterControlEntry($key, $newValue)
+    {
+        $entry = DB::table('master_control')->where('key', $key)->first();
+        if ($entry) {
+            DB::table('master_control')->where('key', $key)->update([
+                'value' => $newValue,
+            ]);
+        } else {
+            self::insertMasterControlEntry($key, $newValue);
+        }
+        return true;
+    }
+
+
+
+    public static function calculateIndicatorRatio($candleValue, $indicatorValue, $roundValue = 4)
+    {
+        return round(
+            $indicatorValue / max($candleValue, 0.0001),
+            $roundValue,
+        );
     }
 }

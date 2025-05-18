@@ -73,7 +73,7 @@ class FutureCoinDumper extends Command
         self::$interval = CommonHelpers::getMetaValue(self::$user_id,'live_trade_worker_interval_future','1m');
         self::$openPrice = CommonHelpers::getMetaValue(self::$user_id,'buy_price_future','5');
 
-        
+
         while (true) {
             try {
                 $binanceCoins = BinanceApiService::fetchTopUSDTPairsByVolume(1000);

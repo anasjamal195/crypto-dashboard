@@ -63,7 +63,7 @@ class BinanceController extends Controller
         $stopLoss = $request->input('stopLoss') ?? 1;
         $position = $request->input('position');
         $formula = $request->input('formula');
-    
+
         // Return early with default values if no formula provided
         if (!$request->has('formula')) {
             return view('CoinReports.coin-report', [
@@ -86,54 +86,54 @@ class BinanceController extends Controller
                 'liquidatedMarkets'  => [],
             ]);
         }
-    
+
         // Build base query with common filters
         $baseQuery = DB::table('coin_reports')->where('market', $market);
-        
+
         if ($position) {
             $baseQuery->where('position', $position);
         }
-        
+
         if ($formula) {
             $baseQuery->where('formula', $formula);
         }
 
         // To filter only completed trades
         $baseQuery->whereNotNull('sellingCandle');
-    
+
         // Clone the base query for reuse
         $tradeDataQuery = clone $baseQuery;
-        
+
         // Get aggregated trade data
         $tradeData = $tradeDataQuery->select(
-                'symbol',
-                'formula',
-                'position',
-                'interval',
-                DB::raw('COUNT(*) as total_entries'),
-                DB::raw('SUM(profit) as total_profit'),
-                DB::raw('SUM(CASE WHEN profit < 0 THEN 1 ELSE 0 END) as number_of_sl'),
-                DB::raw('AVG(profit) as average_profit'),
-                DB::raw('AVG(duration) as average_duration'),
-                DB::raw('SUM(duration) as total_duration'),
-                DB::raw('MAX(profit) as max_profit'),
-                DB::raw('MIN(profit) as min_profit'),
-                DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),
-                DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),
-                DB::raw('MAX(created_at) as last_updated')
-            )
-            
+            'symbol',
+            'formula',
+            'position',
+            'interval',
+            DB::raw('COUNT(*) as total_entries'),
+            DB::raw('SUM(profit) as total_profit'),
+            DB::raw('SUM(CASE WHEN profit < 0 THEN 1 ELSE 0 END) as number_of_sl'),
+            DB::raw('AVG(profit) as average_profit'),
+            DB::raw('AVG(duration) as average_duration'),
+            DB::raw('SUM(duration) as total_duration'),
+            DB::raw('MAX(profit) as max_profit'),
+            DB::raw('MIN(profit) as min_profit'),
+            DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),
+            DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),
+            DB::raw('MAX(created_at) as last_updated')
+        )
+
             ->groupBy('symbol', 'position', 'formula', 'interval')
             ->orderBy('total_entries', 'DESC')
             ->orderBy('last_updated', 'DESC')
             ->get();
-    
+
         // Get average duration for profitable trades under 60 minutes
         $averageDuration = (clone $baseQuery)
             ->where('profit', '>', 0)
             ->where('duration', '<=', 60)
             ->average('duration');
-    
+
         // Get max nearby trades
         $maxNearbyTrades = (clone $baseQuery)
             ->selectRaw("
@@ -146,11 +146,11 @@ class BinanceController extends Controller
             ->groupBy('time_interval')
             ->orderBy('entry_count', 'DESC')
             ->first();
-    
+
         // Extract interval from tradeData
         $interval = count($tradeData) ? $tradeData[0]->interval : '';
         $pageSlug = 'CoinReport' . $market;
-    
+
         // Consolidated statistics queries
         $statsQuery = clone $baseQuery;
         $stats = $statsQuery->selectRaw('
@@ -163,56 +163,118 @@ class BinanceController extends Controller
             COUNT(CASE WHEN profit < 0 THEN 1 END) as stop_losses_trades,
             SUM(CASE WHEN profit < 0 THEN ABS(profit) ELSE 0 END) as stop_losses_total
         ')->first();
-    
+
         // Liquidated coins query
         $liquidatedCoins = (clone $baseQuery)
             ->select('symbol', 'interval', 'market')
             ->whereRaw('liquidationPrice >= lowestPrice')
             ->get();
-    
+
         // Extract unique data from liquidated coins
         $liquidatedSymbols = json_decode(json_encode($liquidatedCoins->pluck('symbol')->unique()), true);
         $liquidatedIntervals = json_decode(json_encode($liquidatedCoins->pluck('interval')->unique()), true);
         $liquidatedMarkets = json_decode(json_encode($liquidatedCoins->pluck('market')->unique()), true);
-    
+
         // Get all trades for analysis in a single query
         $tradeArr = (clone $baseQuery)->get();
         $tradeArr = json_decode(json_encode($tradeArr), true);
-    
+
+        $reportAnalysis = !empty($tradeArr) ? CommonHelpers::analyzeTradeReport($tradeArr) : [];
+
         // Initialize statistics counters
-        $rsiLimit = 80;
+        $rsiLimit = 60;
         $wrLimit = -10;
         $accuracyThreshold = 90;
-        
+
         $rsiAbove40Profitable = $rsiAbove40Loss = $rsiAbove40Total = 0;
         $rsiBelow40Profitable = $rsiBelow40Loss = $rsiBelow40Total = 0;
         $tradesBelowTP = 0;
-        
+
         $bb_lower_count = $bb_lower_profit = $bb_lower_loss = 0;
         $bb_upper_count = $bb_upper_profit = $bb_upper_loss = 0;
-        
+
         $bullishOpenings = $bullishOpeningsProfit = $bullishOpeningsLoss = 0;
         $berishOpenings = $berishOpeningsProfit = $berishOpeningsLoss = 0;
-        
+
         $instantOpenings = $instantOpeningsProfit = $instantOpeningsLoss = 0;
         $instantOpeningsSymbols = [];
         $instantAverageTime = $instantAverageTimeProfit = $instantAverageTimeLoss = 0;
-        
+
         $wrProfitable = $wrLoss = $wrBelowProfitable = $wrBelowLoss = 0;
-    
+
+        $bbUpTrades = $bbUpProfit = $bbUpLoss = 0;
+
+
+        $profitableTotal = 0;
+        $lossTotal = 0;
+        $profitableChangeSum = 0;
+        $lossChangeSum = 0;
         // Process trades for statistics in a single loop instead of multiple queries
         foreach ($tradeArr as $trade) {
             $buyingCandle = json_decode($trade['buyingCandle'], true);
             $confirmCandle = json_decode($trade['confirmCandle'], true);
+            $previousCandle = json_decode($trade['previousCandle'], true);
             $isProfit = $trade['profit'] > 0;
-    
+
+
+
+
+
+
+
+
+            if ($buyingCandle['trendDetails']) {
+
+                $trend = json_decode($buyingCandle['trendDetails'], true);
+                // dd($trend);
+
+                if ($isProfit) {
+                    $profitableTotal++;
+                    $profitableChangeSum += $trend['strength'];
+                } else {
+                    $lossTotal++;
+                    $lossChangeSum += $trend['strength'];;
+                }
+            }
+
+
+
+
+
+
+
+
+
+
+
+            // // Williams %R analysis
+            if ($buyingCandle['trendDetails']) {
+                $trend = json_decode($buyingCandle['trendDetails'], true);
+
+
+                if (
+                    $trend['signals']['EMA_CROSS'] === 'BULLISH'
+                //    && $trend['signals']['STOCH'] === 'BULLISH'
+                   && $trend['signals']['OBV'] === 'BULLISH'
+                    // && $trend['strength'] > 65
+
+                ) {
+                    // dd($trend);
+                    $isProfit ? $bbUpProfit++ : $bbUpLoss++;
+                    $bbUpTrades++;
+                }
+            }
+
+
+
+
             // Williams %R analysis
             if ($buyingCandle['wr'] > $wrLimit) {
                 $isProfit ? $wrProfitable++ : $wrLoss++;
             } else {
                 $isProfit ? $wrBelowProfitable++ : $wrBelowLoss++;
             }
-    
+
             // RSI analysis
             if ($buyingCandle['rsi6'] >= $rsiLimit) {
                 $isProfit ? $rsiAbove40Profitable++ : $rsiAbove40Loss++;
@@ -221,68 +283,71 @@ class BinanceController extends Controller
                 $isProfit ? $rsiBelow40Profitable++ : $rsiBelow40Loss++;
                 $rsiBelow40Total++;
             }
-    
+
             // Take profit analysis
             if ($isProfit && $trade['profit'] < 0.5) {
                 $tradesBelowTP++;
             }
-    
+
             // Bollinger bands analysis
             if (min($buyingCandle['open'], $buyingCandle['close']) > $buyingCandle['bb_middle']) {
                 $bb_upper_count++;
                 $isProfit ? $bb_upper_profit++ : $bb_upper_loss++;
             }
-    
+
             if ($buyingCandle['open'] < $buyingCandle['bb_middle'] && $buyingCandle['close'] > $buyingCandle['bb_middle']) {
                 $bb_lower_count++;
                 $isProfit ? $bb_lower_profit++ : $bb_lower_loss++;
             }
-    
+
             // Candle pattern analysis
             if ($trade['position'] === 'LONG') {
                 if ($buyingCandle['per'] > 0) {
                     $bullishOpenings++;
                     $isProfit ? $bullishOpeningsProfit++ : $bullishOpeningsLoss++;
                 }
-    
+
                 if ($buyingCandle['per'] < 0) {
                     $berishOpenings++;
                     $isProfit ? $berishOpeningsProfit++ : $berishOpeningsLoss++;
                 }
             }
 
-            if($confirmCandle['binance_timestamp'] ==  $buyingCandle['binance_timestamp']){
-                $instantOpenings++;
-                $isProfit ? $instantOpeningsProfit++ : $instantOpeningsLoss++;
-                $isProfit ? null : $instantOpeningsSymbols[]= $trade['symbol'];
-            }
+            // if($confirmCandle['binance_timestamp'] ==  $buyingCandle['binance_timestamp']){
+            //     $instantOpenings++;
+            //     $isProfit ? $instantOpeningsProfit++ : $instantOpeningsLoss++;
+            //     $isProfit ? null : $instantOpeningsSymbols[]= $trade['symbol'];
+            // }
         }
-    
+        // dd($profitableChangeSum / $profitableTotal, $lossChangeSum / $lossTotal, $profitableTotal, $lossTotal);
+        // if (request('test-mode'))
+        // dd("Total:", $bbUpTrades, "Profits:", $bbUpProfit, "Losses:", $bbUpLoss, "Accuracy: ", ($bbUpProfit / $bbUpTrades) * 100);
         // Prepare timeline data
         $timelineData = array_map(function ($trade) use ($stopLoss) {
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
-    
+
             $color = '';
             if ($trade['lowestPricePercentage'] > $stopLoss) {
                 $color = 'yellow';
             }
-            
+
             return [
                 'symbol' => $trade['symbol'] . '( ' . $trade['position'] . ' )',
                 'startTime' => $trade['buyingCandle']['timestampReadable'],
                 'endTime' => $trade['sellingCandle']['timestampReadable'],
                 'color' => $color ? $color : ($trade['position'] === 'SHORT' ? 'red' : 'green'),
                 'id' => $trade['id'],
+                'buyingCandle' => $trade['buyingCandle'],
             ];
         }, $tradeArr);
 
         $openTradesQuery =  DB::table('coin_reports')->where('market', $market);
-        
+
         if ($position) {
             $openTradesQuery->where('position', $position);
         }
-        
+
         if ($formula) {
             $openTradesQuery->where('formula', $formula);
         }
@@ -291,7 +356,7 @@ class BinanceController extends Controller
         $openTradesQuery->whereNull('sellingCandle');
 
         $openSymbols = $openTradesQuery->pluck('symbol');
-    
+
 
         // Return the view with consolidated data
         return view('CoinReports.coin-report', [
@@ -299,9 +364,10 @@ class BinanceController extends Controller
             'profitableTrades'   => $stats->profitable_trades,
             'profitsTotal'       => $stats->profits_total,
             'timelineData'       => $timelineData,
+            'reportAnalysis'       => $reportAnalysis,
             'tradesAbove1h'      => $stats->trades_above_1h,
             'tradesAbove1hLoss'  => $stats->trades_above_1h_loss,
-            'tradesAbove1hProfit'=> $stats->trades_above_1h_profit,
+            'tradesAbove1hProfit' => $stats->trades_above_1h_profit,
             'maxNearbyTrades'    => $maxNearbyTrades,
             'averageDuration'    => $averageDuration,
             'stopLossesTotal'    => $stats->stop_losses_total,
@@ -311,9 +377,9 @@ class BinanceController extends Controller
             'interval'           => $interval,
             'market'             => $market,
             'liquidatedSymbols'  => $liquidatedSymbols,
-            'liquidatedIntervals'=> $liquidatedIntervals,
+            'liquidatedIntervals' => $liquidatedIntervals,
             'liquidatedMarkets'  => $liquidatedMarkets,
-    
+
             // RSI Stats
             'rsiAbove40Profitable' => $rsiAbove40Profitable,
             'rsiAbove40Loss' => $rsiAbove40Loss,
@@ -323,7 +389,7 @@ class BinanceController extends Controller
             'rsiBelow40Total' => $rsiBelow40Total,
             'rsiLimit' => $rsiLimit,
             'tradesBelowTP' => $tradesBelowTP,
-    
+
             'bullishOpenings' => $bullishOpenings,
             'bullishOpeningsProfit' => $bullishOpeningsProfit,
             'bullishOpeningsLoss' => $bullishOpeningsLoss,
@@ -331,7 +397,7 @@ class BinanceController extends Controller
             'berishOpeningsProfit' => $berishOpeningsProfit,
             'berishOpeningsLoss' => $berishOpeningsLoss,
             'accuracyThreshold' => $accuracyThreshold,
-    
+
             'instantOpenings' => $instantOpenings,
             'instantOpeningsProfit' => $instantOpeningsProfit,
             'instantOpeningsLoss' => $instantOpeningsLoss,
@@ -339,7 +405,7 @@ class BinanceController extends Controller
             'instantAverageTime' => $instantOpenings ? round($instantAverageTime / $instantOpenings) : 0,
             'instantAverageTimeProfit' => $instantOpeningsProfit ? round($instantAverageTimeProfit / $instantOpeningsProfit) : 0,
             'instantAverageTimeLoss' => $instantAverageTimeLoss ? round($instantAverageTimeLoss / $instantOpeningsLoss) : 0,
-    
+
             'wrProfitable' => $wrProfitable,
             'wrLoss' => $wrLoss,
             'wrBelowProfitable' => $wrBelowProfitable,
@@ -351,6 +417,7 @@ class BinanceController extends Controller
 
             // Opened Symbols Stats
             'openSymbols' => $openSymbols,
+            'tradeArr' => $tradeArr
         ]);
     }
     public function getCoinReportDetails($market, Request $request)
@@ -485,7 +552,7 @@ class BinanceController extends Controller
 
 
 
-        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'volumeSignals' =>[], 'totalProfit' =>0]);
+        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'volumeSignals' => [], 'totalProfit' => 0]);
     }
     public function getAvailableBalance(Request $request)
     {

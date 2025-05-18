@@ -468,23 +468,23 @@
                     time_24hr: true // Use 24-hour format
                 });
 
-                $(document).ready(function() {
-                    var table = $('.dataTable').DataTable({
-                        "paging": true,
-                        "ordering": false,
-                        "info": true,
-                        "rowCallback": function(row, data) {
-                            var formula = $(row).data('formula');
-                            $(row).insertAfter(`
-                                <tr class="formula-row">
-                                    <td colspan="13" class="text-center py-2">
-                                        <strong>Formula:</strong> ${formula?formula:'No formula found'}
-                                    </td>
-                                </tr>
-                            `);
-                        }
-                    });
-                });
+                // $(document).ready(function() {
+                //     var table = $('.dataTable').DataTable({
+                //         "paging": true,
+                //         "ordering": false,
+                //         "info": true,
+                //         "rowCallback": function(row, data) {
+                //             var formula = $(row).data('formula');
+                //             $(row).insertAfter(`
+                //                 <tr class="formula-row">
+                //                     <td colspan="13" class="text-center py-2">
+                //                         <strong>Formula:</strong> ${formula?formula:'No formula found'}
+                //                     </td>
+                //                 </tr>
+                //             `);
+                //         }
+                //     });
+                // });
 
             });
 

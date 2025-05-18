@@ -43,47 +43,49 @@ var seq2 = 0,
  */
 var ps = null;
 var isScrolling = false;
-(function () {
-  var isWindows = navigator.platform.indexOf('Win') > -1 ? true : false;
 
-  if (isWindows) {
-    // if we are on windows OS we activate the perfectScrollbar function
-    if ($('.main-panel').length != 0) {
-      ps = new PerfectScrollbar('.main-panel', {
-        wheelSpeed: 2,
-        wheelPropagation: true,
-        minScrollbarLength: 20,
-        suppressScrollX: true,
-      });
-    }
-    document.addEventListener('keydown', function (event) {
-      if (event.ctrlKey) { // Check if the Ctrl key is pressed
-        ps.settings.wheelSpeed = 0
+
+// (function () {
+//   var isWindows = navigator.platform.indexOf('Win') > -1 ? true : false;
+
+//   if (isWindows) {
+//     // if we are on windows OS we activate the perfectScrollbar function
+//     if ($('.main-panel').length != 0) {
+//       ps = new PerfectScrollbar('.main-panel', {
+//         wheelSpeed: 2,
+//         wheelPropagation: true,
+//         minScrollbarLength: 20,
+//         suppressScrollX: true,
+//       });
+//     }
+//     document.addEventListener('keydown', function (event) {
+//       if (event.ctrlKey) { // Check if the Ctrl key is pressed
+//         ps.settings.wheelSpeed = 0
        
-      }
-    });
+//       }
+//     });
 
-    document.addEventListener('keyup', function (event) {
-      if (event.key === 'Control') { // Check if the released key is Ctrl
-        ps.settings.wheelSpeed = 2
-      }
-    });
+//     document.addEventListener('keyup', function (event) {
+//       if (event.key === 'Control') { // Check if the released key is Ctrl
+//         ps.settings.wheelSpeed = 2
+//       }
+//     });
 
-    if ($('.sidebar .sidebar-wrapper').length != 0) {
+//     if ($('.sidebar .sidebar-wrapper').length != 0) {
 
-      // var ps1 = new PerfectScrollbar('.sidebar .sidebar-wrapper');
-      $('.table-responsive').each(function () {
-        var ps2 = new PerfectScrollbar($(this)[0]);
-      });
-    }
+//       // var ps1 = new PerfectScrollbar('.sidebar .sidebar-wrapper');
+//       $('.table-responsive').each(function () {
+//         var ps2 = new PerfectScrollbar($(this)[0]);
+//       });
+//     }
 
 
 
-    // $html.addClass('perfect-scrollbar-on');
-  } else {
+//     // $html.addClass('perfect-scrollbar-on');
+//   } else {
    
-  }
-})();
+//   }
+// })();
 
 $(document).ready(function () {
 
@@ -103,14 +105,14 @@ $(document).ready(function () {
   });
 
 
-  $(document).scroll(function () {
-    scroll_start = $(this).scrollTop();
-    if (scroll_start > offset.top) {
-      $(".navbar-minimize-fixed").css('opacity', '1');
-    } else {
-      $(".navbar-minimize-fixed").css('opacity', '0');
-    }
-  });
+  // $(document).scroll(function () {
+  //   scroll_start = $(this).scrollTop();
+  //   if (scroll_start > offset.top) {
+  //     $(".navbar-minimize-fixed").css('opacity', '1');
+  //   } else {
+  //     $(".navbar-minimize-fixed").css('opacity', '0');
+  //   }
+  // });
 
   if ($('.full-screen-map').length == 0 && $('.bd-docs').length == 0) {
     // On click navbar-collapse the menu will be white not transparent

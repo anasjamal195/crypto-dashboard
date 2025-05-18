@@ -7,7 +7,6 @@ Simple formula based on Resistance break with a threshold of 0.3 %
 For Long Trades in future market
 Will Target Long Trades with a profit limit of 0.4% and a stop loss of support value
 
-
 */
 
 namespace App\Services\OrderBookFormula;
@@ -88,21 +87,14 @@ class OrderBookFormulaLong
             return $value['symbol'];
         }, json_decode(json_encode(CommonHelpers::getPriorityQueue($interval, $market, $limit)), true));
 
-
         foreach ($coins as $coin) {
-            // $data = BinanceApiService::getCandleStickData($coin, $interval, 1000, null, $market);
-            // $idealBuying = IdealTradeService::getIdealBuyingCandles($data);
-            // $averages = IdealTradeService::getAverages($idealBuying);
-
             // Dumping Trade Handler data
 
             if (CommonHelpers::getMetaValue($user_id, 'is_auto_update_enable' . $meta_prefix, true) !== 'on') {
                 continue;
             }
 
-
             // Handle LONG Trades
-
             // Remove Coins that are not in priority queue
             $leftoverEntries = DB::table('trade_handler')->whereNotIn('symbol', $coins)->where('tradeAccount', $user_id)->where('position', 'LONG')->where('market', $market)->where('interval', $interval)->get();
             foreach ($leftoverEntries as $leftoverCoin) {
@@ -111,7 +103,6 @@ class OrderBookFormulaLong
                     DB::table('trade_handler')->where('id', $leftoverCoin->id)->delete();
                 }
             }
-
             // Insert new priority data
             $trade_handler = [
                 'market' => $market,
@@ -146,7 +137,6 @@ class OrderBookFormulaLong
                     DB::table('trade_handler')->where('id', $leftoverCoin->id)->delete();
                 }
             }
-
             // Insert new priority data
             $trade_handler = [
                 'market' => $market,
@@ -162,7 +152,6 @@ class OrderBookFormulaLong
                 'stochLimit' => 0,
                 'isActive' => 1
             ];
-
             $existing = DB::table('trade_handler')->where('tradeAccount', $user_id)->where('position', 'SHORT')->where('market', $market)->where('interval', $interval)->where('symbol', $coin)->first();
             if ($existing) {
                 DB::table('trade_handler')
@@ -174,8 +163,6 @@ class OrderBookFormulaLong
             }
             CommonHelpers::delayMS(600);
         }
-        // dd($coins);
-
         return $coins;
     }
 }

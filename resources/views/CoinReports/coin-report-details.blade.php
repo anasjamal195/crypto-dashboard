@@ -125,6 +125,7 @@
                             <tbody>
                                 @foreach ($trades as $indexTrades => $trade)
                                     @php
+
                                         $buyCandle = json_decode(json_encode($trade->buyingCandle), true);
                                         $sellCandle = json_decode(json_encode($trade->sellingCandle), true);
 
@@ -225,12 +226,11 @@
 
                                     <tr @if ($trade->profit < 0) class="bg-danger" @endif>
                                         <td>
-
                                             {{ $indexTrades + 1 }}
 
-                                            @if ($confirmCandle['binance_timestamp'] == $buyCandle['binance_timestamp'])
+                                            {{-- @if ($confirmCandle['binance_timestamp'] == $buyCandle['binance_timestamp'])
                                                 <i class="fa fa-exclamation-circle text-warning" aria-hidden="true"></i>
-                                            @endif
+                                            @endif --}}
                                         </td>
                                         <td>{{ number_format($trade->buyingPrice, 4) }}</td>
 
@@ -273,25 +273,29 @@
                                                     <!-- Buy & Sell Candle Indicators Section -->
                                                     <div class="row g-0">
                                                         @php
-                                                            $buy = $buyCandle;
-                                                            $sell = $sellCandle;
+                                                        
+                                                                $buy = $buyCandle;
+                                                                $sell = $sellCandle;
 
-                                                            $searchCandle = CommonHelpers::getCandleFromData(
-                                                                $data,
-                                                                $buy['binance_timestamp'],
-                                                            );
+                                                                // if(!$buy || !$sell){
+                                                                //     dd('Test');
+                                                                // }
+                                                                $searchCandle = CommonHelpers::getCandleFromData(
+                                                                    $data,
+                                                                    $buy['binance_timestamp'],
+                                                                );
 
-                                                            $index = $searchCandle['index'];
+                                                                $index = $searchCandle['index'];
 
-                                                            $currentCandle = $data[$index];
-                                                            $prevCandle = $data[$index - 1];
+                                                                $currentCandle = $data[$index];
+                                                                $prevCandle = $data[$index - 1];
 
-                                                            $bollAnalysis = CommonHelpers::analyzeBollingerBandSwing(
-                                                                $data,
-                                                                $index,
-                                                                10,
-                                                            );
-
+                                                                $bollAnalysis = CommonHelpers::analyzeBollingerBandSwing(
+                                                                    $data,
+                                                                    $index,
+                                                                    10,
+                                                                );
+                                                            
                                                         @endphp
                                                         <div class="card">
                                                             <div class="card-header ">
@@ -555,8 +559,7 @@
 
                                                                             <!-- Oscillators -->
                                                                             <tr class="bg-dark">
-                                                                                <td colspan="4"
-                                                                                    class="font-weight-bold">
+                                                                                <td colspan="4" class="font-weight-bold">
                                                                                     Oscillators</td>
                                                                             </tr>
                                                                             <tr>
@@ -1311,11 +1314,11 @@
 
 
                                                                 <!-- Order Book -->
-                                                                @if (!empty($sell['orderBookSnapshot']))
+                                                           @if (!empty($sell['orderBookSnapshot']))
                                                                     <div class="col-12 text-center">
                                                                         <a target="_blank"
                                                                             class="btn btn-outline-danger btn-sm mt-2"
-                                                                            href="{{ route('order-book.show', $sell['orderBookSnapshot']) }}">
+                                                                href="{{ route('order-book.show', $sell['orderBookSnapshot']) }}">
                                                                             <i class="fas fa-book me-1"></i> View Sell
                                                                             Order Book Snapshot
                                                                         </a>
@@ -1334,82 +1337,81 @@
                                                                     mins)
                                                                 </h5>
                                                             </div>
-                                                            <div class="card-body p-0 bg-dark">
-                                                                <div class="table-responsive">
-                                                                    <table class="table table-dark table-hover mb-0">
-                                                                        <thead>
+                                                            <div class="table-responsive">
+                                                                <table class="table table-dark table-hover mb-0">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th class="text-primary">ID</th>
+                                                                            <th class="text-primary">Symbol</th>
+                                                                            <th class="text-primary">Buy Price</th>
+                                                                            <th class="text-primary">Extreme Price</th>
+                                                                            <th class="text-primary">Sell Price</th>
+                                                                            <th class="text-primary">Times</th>
+                                                                            <th class="text-primary">Profit</th>
+                                                                            <th class="text-primary">Duration</th>
+                                                                            <th class="text-primary">Action</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @foreach ($nearbyTrades as $nearbyTradeIndex => $trade)
                                                                             <tr>
-                                                                                <th class="text-primary">ID</th>
-                                                                                <th class="text-primary">Symbol</th>
-                                                                                <th class="text-primary">Buy Price</th>
-                                                                                <th class="text-primary">Extreme Price</th>
-                                                                                <th class="text-primary">Sell Price</th>
-                                                                                <th class="text-primary">Times</th>
-                                                                                <th class="text-primary">Profit</th>
-                                                                                <th class="text-primary">Duration</th>
-                                                                                <th class="text-primary">Action</th>
+                                                                                <td>{{ $nearbyTradeIndex + 1 }}</td>
+                                                                                <td><span
+                                                                                        class="badge bg-primary">{{ $trade->symbol }}</span>
+                                                                                </td>
+                                                                                <td>{{ number_format($trade->buyingPrice, 4) }}
+                                                                                </td>
+                                                                                <td>
+                                                                                    <span class="text-danger">
+                                                                                        {{ number_format($trade->lowestPrice, 4) }}
+                                                                                        <small>({{ number_format($trade->lowestPricePercentage, 2) }}%)</small>
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td>{{ number_format($trade->sellingPrice, 4) }}
+                                                                                </td>
+                                                                                <td>
+                                                                                    <small>
+                                                                                        <i
+                                                                                            class="fas fa-arrow-right text-success"></i>
+                                                                                        {{ \Carbon\Carbon::parse(json_decode($trade->buyingCandle, true)['timestamp'])->format('h:i A') }}<br>
+                                                                                        <i
+                                                                                            class="fas fa-arrow-left text-danger"></i>
+                                                                                        {{ \Carbon\Carbon::parse(json_decode($trade->sellingCandle, true)['timestamp'])->format('h:i A') }}
+                                                                                    </small>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <span
+                                                                                        class="badge {{ $trade->profit > 0 ? 'bg-success' : 'bg-danger' }}">
+                                                                                        {{ number_format($trade->profit, 2) }}%
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td>{{ $trade->duration }} min</td>
+                                                                                <td>
+                                                                                    <a class="btn btn-sm btn-outline-info"
+                                                                                        href="{{ route('coinReportDetails', $market) . '?symbol=' . $trade->symbol . '&interval=' . $trade->interval }}">
+                                                                                        <i
+                                                                                            class="fas fa-external-link-alt"></i>
+                                                                                    </a>
+                                                                                </td>
                                                                             </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            @foreach ($nearbyTrades as $nearbyTradeIndex => $trade)
-                                                                                <tr>
-                                                                                    <td>{{ $nearbyTradeIndex + 1 }}</td>
-                                                                                    <td><span
-                                                                                            class="badge bg-primary">{{ $trade->symbol }}</span>
-                                                                                    </td>
-                                                                                    <td>{{ number_format($trade->buyingPrice, 4) }}
-                                                                                    </td>
-                                                                                    <td>
-                                                                                        <span class="text-danger">
-                                                                                            {{ number_format($trade->lowestPrice, 4) }}
-                                                                                            <small>({{ number_format($trade->lowestPricePercentage, 2) }}%)</small>
-                                                                                        </span>
-                                                                                    </td>
-                                                                                    <td>{{ number_format($trade->sellingPrice, 4) }}
-                                                                                    </td>
-                                                                                    <td>
-                                                                                        <small>
-                                                                                            <i
-                                                                                                class="fas fa-arrow-right text-success"></i>
-                                                                                            {{ \Carbon\Carbon::parse(json_decode($trade->buyingCandle, true)['timestamp'])->format('h:i A') }}<br>
-                                                                                            <i
-                                                                                                class="fas fa-arrow-left text-danger"></i>
-                                                                                            {{ \Carbon\Carbon::parse(json_decode($trade->sellingCandle, true)['timestamp'])->format('h:i A') }}
-                                                                                        </small>
-                                                                                    </td>
-                                                                                    <td>
-                                                                                        <span
-                                                                                            class="badge {{ $trade->profit > 0 ? 'bg-success' : 'bg-danger' }}">
-                                                                                            {{ number_format($trade->profit, 2) }}%
-                                                                                        </span>
-                                                                                    </td>
-                                                                                    <td>{{ $trade->duration }} min</td>
-                                                                                    <td>
-                                                                                        <a class="btn btn-sm btn-outline-info"
-                                                                                            href="{{ route('coinReportDetails', $market) . '?symbol=' . $trade->symbol . '&interval=' . $trade->interval }}">
-                                                                                            <i
-                                                                                                class="fas fa-external-link-alt"></i>
-                                                                                        </a>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            @endforeach
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
+                                                                        @endforeach
+                                                                    </tbody>
+                                                                </table>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
                     </div>
+                    </td>
+                    </tr>
+                    @endforeach
+                    </tbody>
+                    </table>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <script>
@@ -1551,7 +1553,7 @@
                             yAxisID: 'y',
                             pointBackgroundColor: 'rgba(255, 105, 180, 1)',
                             pointBorderColor: 'rgba(255, 105, 180, 1)',
-                            
+
                         },
                         {
                             label: 'BB DN',
@@ -1744,7 +1746,8 @@
                 if (!isVisible) {
                     detailRow.classList.remove('d-none');
                     const trade = trades.find(t => t.id === tradeId);
-                    zoomChartToTrade(trade.buyingCandle.timestampReadable, trade.sellingCandle.timestampReadable);
+                    zoomChartToTrade(trade.buyingCandle.timestampReadable, trade.sellingCandle
+                        .timestampReadable);
                 }
             };
 
