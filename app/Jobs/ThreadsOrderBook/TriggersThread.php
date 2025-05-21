@@ -27,7 +27,7 @@ class TriggersThread implements ShouldQueue
     public $timeout = 360000000;
     public $tradeInstance;
     public $supportResistanceCandleSpan = 3;
-    public static $interval;
+    public static $interval = '5m';
     public $supportResistance;
     public $triggerPrice = 0;
     public $triggerIndex = 0;
@@ -60,7 +60,7 @@ class TriggersThread implements ShouldQueue
     {
         $this->workerId = $workerId;
         $this->account = $account;
-        self::$interval = '5m';
+       
     }
 
     public function handle(): void
@@ -81,8 +81,9 @@ class TriggersThread implements ShouldQueue
                             $trade_acc = $this->account;
 
                             $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, null, 'FUTURE');
+                            
                             $index = count($data) - 1;
-                            // Decrement index to get last completed candle
+                        // Decrement index to get last completed candle
                             $index--;
                             $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [$this->supportResistanceCandleSpan]);
 

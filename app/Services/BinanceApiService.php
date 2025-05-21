@@ -243,7 +243,7 @@ class BinanceApiService
         ];
 
         // Check if the remaining weight is too low to make another request to next available server
-        if (intval($remainingWeight) < 100 || true) {
+        if (intval($remainingWeight) < 100) {
 
 
 
