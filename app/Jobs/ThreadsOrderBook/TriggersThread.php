@@ -27,12 +27,13 @@ class TriggersThread implements ShouldQueue
     public $timeout = 360000000;
     public $tradeInstance;
     public $supportResistanceCandleSpan = 3;
-    public $interval;
+    public static $interval;
     public $supportResistance;
     public $triggerPrice = 0;
     public $triggerIndex = 0;
     public $workerId;
     public $account;
+
 
 
     // Meta data
@@ -59,7 +60,7 @@ class TriggersThread implements ShouldQueue
     {
         $this->workerId = $workerId;
         $this->account = $account;
-        $this->interval = CommonHelpers::getMetaValue($this->account, 'live_trade_worker_interval_future', '1m');
+        self::$interval = CommonHelpers::getMetaValue($this->account, 'live_trade_worker_interval_future', '1m');
     }
 
     public function handle(): void
@@ -211,7 +212,7 @@ class TriggersThread implements ShouldQueue
                                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
-                                
+
 
                                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, $this->interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
                                 if ($tradeType === 'LONG')
@@ -511,7 +512,7 @@ class TriggersThread implements ShouldQueue
     // Other Functions 
 
 
-    public static function getSupportResistance($data, $index,$candleSpan)
+    public static function getSupportResistance($data, $index, $candleSpan)
     {
         $end = $index + 1; // +1 to include the $index item
         $length = 300;
