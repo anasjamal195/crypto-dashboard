@@ -60,7 +60,7 @@ class TriggersThread implements ShouldQueue
     {
         $this->workerId = $workerId;
         $this->account = $account;
-        self::$interval = CommonHelpers::getMetaValue($this->account, 'live_trade_worker_interval_future', '1m');
+        self::$interval = '5m';
     }
 
     public function handle(): void
@@ -80,7 +80,7 @@ class TriggersThread implements ShouldQueue
                             $tradeInstance = new stdClass;
                             $trade_acc = $this->account;
 
-                            $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 300, null, 'FUTURE');
+                            $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, null, 'FUTURE');
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
                             $index--;
