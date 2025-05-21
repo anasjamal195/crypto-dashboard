@@ -80,7 +80,7 @@ class TriggersThread implements ShouldQueue
                             $tradeInstance = new stdClass;
                             $trade_acc = $this->account;
 
-                            $data = BinanceApiService::getCandleStickData($symbol, $this->interval, 300, null, 'FUTURE');
+                            $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 300, null, 'FUTURE');
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
                             $index--;
@@ -115,7 +115,7 @@ class TriggersThread implements ShouldQueue
 
 
                             // ===========Initiate Open Trade Process==================================
-                            $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType, $this->interval);
+                            $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType, self::$interval);
 
                             if (!$tradeInstance) {
                                 break;
@@ -214,7 +214,7 @@ class TriggersThread implements ShouldQueue
                                     $tradeLoop = false;
 
 
-                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, $this->interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
+                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
                                 if ($tradeType === 'LONG')
                                     $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
