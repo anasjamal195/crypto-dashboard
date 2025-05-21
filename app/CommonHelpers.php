@@ -2018,7 +2018,21 @@ class CommonHelpers
 
 
 
+  public static function getCandleWick($candle,$type = 'upper'){
+        if($type === 'upper'){
+            return $candle['high'] - max($candle['open'],$candle['close']);
+        }
 
+        if($type === 'lower'){
+            return   min($candle['open'],$candle['close']) - $candle['low'];
+        }
+
+        return null;
+    }
+
+    public static function getCandleSolidRegion($candle){
+        return abs($candle['open'] - $candle['close']);
+    }
 
 
 

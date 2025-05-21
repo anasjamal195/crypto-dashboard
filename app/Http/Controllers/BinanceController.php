@@ -148,7 +148,7 @@ class BinanceController extends Controller
             ->first();
 
         // Extract interval from tradeData
-        $interval = count($tradeData) ? $tradeData[0]->interval : '';
+        $interval = count($tradeData) ? $tradeData[0]->interval : '5m';
         $pageSlug = 'CoinReport' . $market;
 
         // Consolidated statistics queries
@@ -182,13 +182,15 @@ class BinanceController extends Controller
         $reportAnalysis = !empty($tradeArr) ? CommonHelpers::analyzeTradeReport($tradeArr) : [];
 
         // Initialize statistics counters
-        $rsiLimit = 60;
+        $rsiLimit = 65;
         $wrLimit = -10;
         $accuracyThreshold = 90;
 
         $rsiAbove40Profitable = $rsiAbove40Loss = $rsiAbove40Total = 0;
         $rsiBelow40Profitable = $rsiBelow40Loss = $rsiBelow40Total = 0;
+
         $tradesBelowTP = 0;
+        $tpLimit = 0.4;
 
         $bb_lower_count = $bb_lower_profit = $bb_lower_loss = 0;
         $bb_upper_count = $bb_upper_profit = $bb_upper_loss = 0;
@@ -215,8 +217,6 @@ class BinanceController extends Controller
             $confirmCandle = json_decode($trade['confirmCandle'], true);
             $previousCandle = json_decode($trade['previousCandle'], true);
             $isProfit = $trade['profit'] > 0;
-
-
 
 
 
@@ -252,18 +252,24 @@ class BinanceController extends Controller
                 $trend = json_decode($buyingCandle['trendDetails'], true);
 
 
+                $upperWick = $buyingCandle['high'] - max($buyingCandle['open'], $buyingCandle['close']);
+                $lowerWick =  min($buyingCandle['open'], $buyingCandle['close']) - $buyingCandle['low'];
+                $solidRegion = CommonHelpers::getCandleSolidRegion($buyingCandle);
+                $lowerWick = CommonHelpers::getCandleWick($buyingCandle, 'lower');
+
+
+                $lowerWickPercentage = ($lowerWick / max(0.00001, $solidRegion)) * 100;
                 if (
-                    $trend['signals']['EMA_CROSS'] === 'BULLISH'
-                //    && $trend['signals']['STOCH'] === 'BULLISH'
-                   && $trend['signals']['OBV'] === 'BULLISH'
-                    // && $trend['strength'] > 65
+                    $lowerWickPercentage > 0.5
 
                 ) {
+
                     // dd($trend);
                     $isProfit ? $bbUpProfit++ : $bbUpLoss++;
                     $bbUpTrades++;
                 }
             }
+
 
 
 
@@ -275,6 +281,8 @@ class BinanceController extends Controller
                 $isProfit ? $wrBelowProfitable++ : $wrBelowLoss++;
             }
 
+
+
             // RSI analysis
             if ($buyingCandle['rsi6'] >= $rsiLimit) {
                 $isProfit ? $rsiAbove40Profitable++ : $rsiAbove40Loss++;
@@ -285,7 +293,7 @@ class BinanceController extends Controller
             }
 
             // Take profit analysis
-            if ($isProfit && $trade['profit'] < 0.5) {
+            if ($isProfit && $trade['profit'] < $tpLimit) {
                 $tradesBelowTP++;
             }
 
@@ -313,6 +321,8 @@ class BinanceController extends Controller
                 }
             }
 
+
+
             // if($confirmCandle['binance_timestamp'] ==  $buyingCandle['binance_timestamp']){
             //     $instantOpenings++;
             //     $isProfit ? $instantOpeningsProfit++ : $instantOpeningsLoss++;
@@ -320,8 +330,9 @@ class BinanceController extends Controller
             // }
         }
         // dd($profitableChangeSum / $profitableTotal, $lossChangeSum / $lossTotal, $profitableTotal, $lossTotal);
-        // if (request('test-mode'))
         // dd("Total:", $bbUpTrades, "Profits:", $bbUpProfit, "Losses:", $bbUpLoss, "Accuracy: ", ($bbUpProfit / $bbUpTrades) * 100);
+        
+        
         // Prepare timeline data
         $timelineData = array_map(function ($trade) use ($stopLoss) {
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
@@ -358,6 +369,27 @@ class BinanceController extends Controller
         $openSymbols = $openTradesQuery->pluck('symbol');
 
 
+        // Trend Analysis Data, Only for back testing
+        $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
+        $formulaConfig = json_decode($formulaDetails->report_config, true);
+
+
+
+        $trendReferenceSymbol = ($formulaConfig && $formulaConfig['trendReferenceSymbol']) ? $formulaConfig['trendReferenceSymbol'] : 'BTCUSDT';
+
+        $trendReferenceInterval = ($formulaConfig && $formulaConfig['trendReferenceInterval']) ? $formulaConfig['trendReferenceInterval'] : '1h';
+
+        $startUnix = ($formulaConfig && $formulaConfig['startUnix']) ? $formulaConfig['startUnix'] : (time() * 1000 - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * 1000));
+        $endUnix = ($formulaConfig && $formulaConfig['endUnix']) ? $formulaConfig['endUnix'] : ((time() * 1000));
+        $intervalMs = CommonHelpers::$binanceIntervals[$trendReferenceInterval] * 60 * 1000; // Interval in ms
+
+
+        $candleCount = intval(($endUnix - $startUnix) / $intervalMs);
+
+
+        $dataTrendReference = BinanceApiService::getCandleStickData($trendReferenceSymbol, $trendReferenceInterval, $candleCount, $startUnix, 'FUTURE');
+        // dd($dataTrendReference);
+
         // Return the view with consolidated data
         return view('CoinReports.coin-report', [
             'tradeData'          => $tradeData,
@@ -379,6 +411,7 @@ class BinanceController extends Controller
             'liquidatedSymbols'  => $liquidatedSymbols,
             'liquidatedIntervals' => $liquidatedIntervals,
             'liquidatedMarkets'  => $liquidatedMarkets,
+            'tpLimit'  => $tpLimit,
 
             // RSI Stats
             'rsiAbove40Profitable' => $rsiAbove40Profitable,
@@ -417,7 +450,14 @@ class BinanceController extends Controller
 
             // Opened Symbols Stats
             'openSymbols' => $openSymbols,
-            'tradeArr' => $tradeArr
+            'tradeArr' => $tradeArr,
+
+            // Trend Analysis Data
+            'dataTrendReference' => $dataTrendReference,
+            'trendReferenceSymbol' => $trendReferenceSymbol,
+            'trendReferenceInterval' => $trendReferenceInterval,
+
+
         ]);
     }
     public function getCoinReportDetails($market, Request $request)

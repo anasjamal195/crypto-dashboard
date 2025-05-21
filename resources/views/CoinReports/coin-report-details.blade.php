@@ -1567,9 +1567,6 @@
                             pointBackgroundColor: 'rgba(128, 0, 128, 1)',
                             pointBorderColor: 'rgba(128, 0, 128, 1)',
                         },
-
-
-
                         {
                             label: 'MFI',
                             data: mfiValues,

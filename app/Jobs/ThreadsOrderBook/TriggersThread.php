@@ -39,21 +39,17 @@ class TriggersThread implements ShouldQueue
     public $stopLoss = 1;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.3;
+    public $targetProfit = 0.4;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
-    public $formula = 'MACD Swings';
+    public $formula = 'RSI Swings with Bollinger Bands';
 
     // Confirmed Trades Entries
 
-    public static $candlesToCheck = 500;
-
-    public static $volumeMA5ValidFor = 30;
-    public static $difValidFor = 30;
-    public static $obvValidFor = 30;
-    public static $kdjValidFor = 30;
-    public static $bollValidFor = 30;
-    public static $bollSqueezValidFor = 30;
+    public static $candlesToCheck = 1000;
+    public static $volumeMA5ValidFor = 1000;
+    public static $upperWickValidFor = 1000;
+    public static $bollSqueezValidFor = 1000;
 
 
     /**
@@ -93,14 +89,6 @@ class TriggersThread implements ShouldQueue
                             // ==================Decision Block==================
 
 
-
-
-                            $supportResistanceFirst = $this->getSupportResistance($data, $index);
-
-                            $supportResistanceSecond = $this->getSupportResistance($data, $index - max($supportResistanceFirst['resistanceDistance'], $supportResistanceFirst['supportDistance']));
-
-
-
                             $buyLongCondition = self::handleOpeningConditionsLong($symbol, $data, $index);
                             $sellShortCondition = self::handleOpeningConditionsShort($symbol, $data, $index);
 
@@ -119,11 +107,6 @@ class TriggersThread implements ShouldQueue
                             } else if ($sellShortCondition) {
                                 $tradeType = 'SHORT';
                             }
-
-
-
-
-
 
                             // ========================================================================
 
@@ -449,88 +432,34 @@ class TriggersThread implements ShouldQueue
     public static function handleOpeningConditionsLong($symbol, $data, $index)
     {
 
-
-
-        $buyLongCondition = false;
-
-        $currentTrend = self::checkCurrentTrend($data, $index);
-
-
-        if ($data[$index]['per'] > 0.08 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index) && $currentTrend === 'BULLISH') {
-
-            $loopIndex = $index;
-            while ($data[$loopIndex]['histogram'] < 0 || $loopIndex == $index) {
-
-                $macdLongConditionLoop =
-                    $data[$loopIndex]['histogram'] > $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] < 0
-                    && $data[$loopIndex - 1]['histogram'] < $data[$loopIndex - 2]['histogram']
-                    && $data[$loopIndex - 2]['histogram'] < $data[$loopIndex - 3]['histogram']
-                    && $data[$loopIndex - 3]['histogram'] < $data[$loopIndex - 4]['histogram']
-                    && $data[$loopIndex - 4]['histogram'] < $data[$loopIndex - 5]['histogram'];
-
-                $buyLongConditionInitial =
-
-                    $data[$index]['obv'] > $data[$index - 1]['obv']
-                    && $data[$index]['rsi6'] > 18 && $data[$index - 1]['rsi6'] <= 18
-                    && $macdLongConditionLoop && $data[$loopIndex]['mfi'] < 30
-                    && $data[$loopIndex]['K'] < 30
-                    && $data[$loopIndex]['J'] > $data[$loopIndex]['K'] && $data[$loopIndex]['J'] > $data[$loopIndex]['D'];
-
-                $loopIndex--;
-                if ($buyLongConditionInitial) {
-
-                    $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-
-                    if (
-                        $bbAnalysis['long_probability'] == 0
-                        && CommonHelpers::getPercentDiff($data[$index - 1]['rsi6'], $data[$index - 1]['rsi6'], true) > 100
-
-
-                    ) {
-
-                        return true;
-                    }
-                    if (
-
-                        $bbAnalysis['long_probability'] >= 45 && $bbAnalysis['short_probability'] == 0
-
-                    ) {
-
-                        return true;
-                    }
-                    self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
-                    break;
-                }
-            }
+        // Long Conditions
+        if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+            self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
         }
-
 
         if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
 
-
             $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+            $buyCondition = $data[$index]['close'] > $data[$index]['bb_lower']
+                && $data[$index]['open'] < $data[$index]['bb_lower']
+                && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
+                && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
+                && $bbAnalysis['price_action']['is_near_lower_band']
+                && !$bbAnalysis['bb_squeeze']
+                && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
 
-            if (
 
 
-                $data[$index]['per'] > 0
+            if ($buyCondition) {
+                self::confirmOpening($symbol, 'LONG', $data, $index);
 
-                && $bbAnalysis['is_expanding']
-                && $bbAnalysis['percent_b'] >= 50
 
-            ) {
-                $buyLongCondition = self::confirmOpening($symbol, $data, $index);
+                $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+
+                if ($allowOnHigherTrend) {
+                    return 'LONG';
+                }
             }
-        }
-
-
-
-        // Long condition
-        if (
-            $buyLongCondition
-
-        ) {
-            return  true;
         }
 
 
@@ -540,109 +469,33 @@ class TriggersThread implements ShouldQueue
 
     public static function handleOpeningConditionsShort($symbol, $data, $index)
     {
-
-
-        $sellShortCondition = false;
-
-        $currentTrend = self::checkCurrentTrend($data, $index);
-
-        if ($data[$index]['per'] < -0.08 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index) && $currentTrend === 'BERISH') {
-
-            $loopIndex = $index;
-            while ($data[$loopIndex]['histogram'] > 0 || $loopIndex == $index) {
-
-                $macdShortConditionLoop =
-                    $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] && $data[$loopIndex]['histogram'] > 0
-                    && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram']
-                    && $data[$loopIndex - 2]['histogram'] > $data[$loopIndex - 3]['histogram']
-                    && $data[$loopIndex - 3]['histogram'] > $data[$loopIndex - 4]['histogram']
-                    && $data[$loopIndex - 4]['histogram'] > $data[$loopIndex - 5]['histogram'];
-
-
-                $sellShortConditionInitial =
-
-                    $data[$index]['obv'] < $data[$index - 1]['obv']
-                    && $macdShortConditionLoop
-                    && $data[$index]['mfi'] > 70;
-
-                $loopIndex--;
-                if ($sellShortConditionInitial) {
-
-                    $tightestPointIndex = self::getTightestSqueezIndex($data, $index);
-                    if (max($data[$tightestPointIndex]['close'], $data[$tightestPointIndex]['open']) >= max($data[$index]['close'], $data[$index]['open'])) {
-                        return null;
-                    } else {
-
-                        $candlesAboveMiddleLine = 0;
-                        $loopIndex = $index;
-                        while (min($data[$loopIndex]['open'], $data[$loopIndex]['close']) > $data[$loopIndex]['bb_middle']) {
-                            $candlesAboveMiddleLine++;
-                            $loopIndex--;
-                        }
-
-                        if ($data[$index]['wr'] < -30) {
-
-                            return null;
-                        }
-
-                        if ($data[$index]['stoch_d'] > 80 && $candlesAboveMiddleLine < 15) {
-                            return true;
-                        }
-                        self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
-                        break;
-                    }
-                }
-                break;
-            }
+        if ($data[$index]['rsi6'] > 70 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
+            self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
         }
-
 
         if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
 
+            $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+            $sellCondition =
+
+                $data[$index]['close'] < $data[$index]['bb_upper']
+                && $data[$index]['open'] > $data[$index]['bb_upper']
+                && $data[$index]['stoch_d'] < $data[$index - 1]['stoch_d']
+                && $data[$index]['stoch_k'] < $data[$index - 1]['stoch_k']
+                && $bbAnalysis['price_action']['is_near_upper_band']
+                && !$bbAnalysis['bb_squeeze']
+                && $data[$index]['histogram'] < $data[$index - 1]['histogram']
+                && $data[$index - 1]['stoch_d'] < 100
+                && $data[$index - 1]['stoch_k'] < 100;
 
 
-            $bb_squeezed = ($data[$index]['bb_upper'] - $data[$index]['bb_lower']) - ($data[$index - 1]['bb_upper'] - $data[$index - 1]['bb_lower']);
-
-
-            $candlesAboveMiddleLine = 0;
-            $loopIndex = $index;
-            while (min($data[$loopIndex]['open'], $data[$loopIndex]['close']) > $data[$loopIndex]['bb_middle']) {
-                $candlesAboveMiddleLine++;
-                $loopIndex--;
-            }
-            // Validate point where every condition is true and valid in it timeperiod
-            if (
-                !($data[$index]['dif'] > $data[$index - 1]['dif'])
-
-                &&
-                !($data[$index]['wr'] > -30)
-
-                &&
-                $bb_squeezed <= 0
-
-                && $data[$index]['dif'] < max($data[$index - 1]['dif'], $data[$index - 2]['dif'])
-
-                && $candlesAboveMiddleLine < 15
-
-            ) {
-
-                if ($data[$index]['wr'] < -30) {
-                    self::confirmOpening($symbol, $data, $index);
-                    return null;
+            if ($sellCondition) {
+                self::confirmOpening($symbol, 'SHORT', $data, $index);
+                $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'SHORT', $data, $index, '30m');
+                if ($allowOnHigherTrend) {
+                    return 'SHORT';
                 }
-
-                $sellShortCondition = self::confirmOpening($symbol, $data, $index);
             }
-        }
-
-
-
-        // Long condition
-        if (
-            $sellShortCondition
-
-        ) {
-            return true;
         }
 
 
@@ -774,10 +627,7 @@ class TriggersThread implements ShouldQueue
         ) {
             return null;
         }
-        DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
-            'trade_confirmed' => 1,
-            'update_time' => Carbon::now()->toDateTimeString(),
-        ]);
+        DB::table('confirmed_trades')->where('ict_id', $ictId)->delete();
         return true;
     }
 
@@ -879,6 +729,84 @@ class TriggersThread implements ShouldQueue
             return 'BULLISH';
         } else {
             return 'FLAT';
+        }
+    }
+
+
+    public static function checkTrendOnHigherCandles($symbol, $position, $data, $index, $higherInterval = '1h')
+    {
+
+
+
+        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
+        $indexHigher = count($dataHigher) - 2;
+
+        if ($position === 'LONG') {
+            $loopIndex = $indexHigher;
+            $crossOverCondition = false;
+            $bbMiddleCondition = $dataHigher[$indexHigher]['bb_middle'] <= $dataHigher[$indexHigher - 1]['bb_middle'];
+
+            // Check Last Crossover for dif dea
+            while ($loopIndex > 0) {
+
+                $difCurrent = $dataHigher[$loopIndex]['dif'];
+                $deaCurrent = $dataHigher[$loopIndex]['dea'];
+
+                $difPrev = $dataHigher[$loopIndex - 1]['dif'];
+                $deaPrev = $dataHigher[$loopIndex - 1]['dea'];
+
+
+                // Dif Crossing DEA from above
+                if ($difCurrent < $deaCurrent && $difPrev >= $deaPrev) {
+                    // if ($difCurrent > 0 && $deaCurrent > 0)
+                    $crossOverCondition = true;
+                    // else
+                    // $crossOverCondition = false;
+                    break;
+                }
+                // Dif Crossing DEA from below
+                else if ($difCurrent > $deaCurrent && $difPrev <= $deaPrev) {
+                    $crossOverCondition = false;
+                    break;
+                }
+
+                $loopIndex--;
+            }
+
+            return !($crossOverCondition && $bbMiddleCondition);
+        } else {
+            $loopIndex = $indexHigher;
+            $crossOverCondition = false;
+            $bbMiddleCondition = $dataHigher[$indexHigher]['bb_middle'] >= $dataHigher[$indexHigher - 1]['bb_middle'];
+
+            // Check Last Crossover for dif dea
+            while ($loopIndex > 0) {
+
+                $difCurrent = $dataHigher[$loopIndex]['dif'];
+                $deaCurrent = $dataHigher[$loopIndex]['dea'];
+
+                $difPrev = $dataHigher[$loopIndex - 1]['dif'];
+                $deaPrev = $dataHigher[$loopIndex - 1]['dea'];
+
+
+                // Dif Crossing DEA from above
+                if ($difCurrent < $deaCurrent && $difPrev >= $deaPrev) {
+                    // if ($difCurrent > 0 && $deaCurrent > 0)
+                    $crossOverCondition = false;
+                    // else
+                    // $crossOverCondition = false;
+                    break;
+                }
+                // Dif Crossing DEA from below
+                else if ($difCurrent > $deaCurrent && $difPrev <= $deaPrev) {
+                    $crossOverCondition = true;
+                    break;
+                }
+
+                $loopIndex--;
+            }
+
+            return !(($crossOverCondition && $bbMiddleCondition));
         }
     }
 }

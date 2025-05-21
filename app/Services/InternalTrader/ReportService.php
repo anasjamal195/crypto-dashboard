@@ -22,23 +22,26 @@ class ReportService
     // Essential Properties
     public static $delayMs = 10;
     public static $supportResistanceCandleSpan = 10;
-    public static $backTestTimeUnix = 1746126000000;
-    // public static $backTestTimeUnix = 1745175600000;
+    public static $backTestTimeUnix = 1732561200000;
 
     public static $interval = '5m';
     public static $targetProfit = 0.4;
     public static $stopLoss = 1;
     public static $stopLossWaitingDuration = 0;
-    public static $longEnabled = true;
-    public static $shortEnabled = false;
-    public static $formula = 'Long Internal Report';
+    public static $longEnabled = false;
+    public static $shortEnabled = true;
+    public static $formula = 'All Coins Short (Flat)';
     public static $earlyClosingEnabled = true;
+
+    // Trend Analysis
+    public static $trendReferenceSymbol = 'HBARUSDT';
+    public static $trendReferenceInterval = '1h';
 
     // Coin Selection Filters
     public static $coinLimit = 0; // Use 0 for all coins
     public static $shuffleCoins = false;
 
-    public static $filterOnCoinType = true;
+    public static $filterOnCoinType = false;
     public static $coinTypeMetaverse = true;
     public static $coinTypeAlt = true;
     public static $coinTypeMeme = false;
@@ -68,6 +71,7 @@ class ReportService
             // ->whereIn(
             //     'symbol',
             //     [
+            //         'PORTALUSDT'
 
             //     ]
             // )
@@ -150,6 +154,10 @@ class ReportService
         $date = date('Y-m-d H:i:s');
 
         $dateRange = null;
+        $startUnix = null;
+        $endUnix = null;
+        $startDateStr = null;
+        $endDateStr = null;
         if (self::$backTestTimeUnix) {
             $diffInMins = CommonHelpers::$binanceIntervals[self::$interval];
 
@@ -294,9 +302,45 @@ class ReportService
         </div>
         ';
 
+
+
+        $reportConfig = [
+            'delayMs' => self::$delayMs,
+            'supportResistanceCandleSpan' => self::$supportResistanceCandleSpan,
+            'backTestTimeUnix' => self::$backTestTimeUnix,
+            'interval' => self::$interval,
+            'targetProfit' => self::$targetProfit,
+            'stopLoss' => self::$stopLoss,
+            'stopLossWaitingDuration' => self::$stopLossWaitingDuration,
+            'longEnabled' => self::$longEnabled,
+            'shortEnabled' => self::$shortEnabled,
+            'formula' => self::$formula,
+            'earlyClosingEnabled' => self::$earlyClosingEnabled,
+            'startUnix' => $startUnix,
+            'endUnix' => $endUnix,
+            'startDateStr' => $startDateStr,
+            'endDateStr' => $endDateStr,
+            'dateRange' => $dateRange,
+            'trendReferenceSymbol' => self::$trendReferenceSymbol,
+            'trendReferenceInterval' => self::$trendReferenceInterval,
+
+            // Coin Selection Filters
+            'coinLimit' => self::$coinLimit,
+            'shuffleCoins' => self::$shuffleCoins,
+
+            'filterOnCoinType' => self::$filterOnCoinType,
+            'coinTypeMetaverse' => self::$coinTypeMetaverse,
+            'coinTypeAlt' => self::$coinTypeAlt,
+            'coinTypeMeme' => self::$coinTypeMeme,
+            'coinTypeDefi' => self::$coinTypeDefi,
+            'coinTypeNft' => self::$coinTypeNft,
+            'coinTypeWeb3' => self::$coinTypeWeb3,
+        ];
+
         DB::table('formula_details')->insert([
             'formula' => self::$formula,
             'details' => $html,
+            'report_config' => json_encode($reportConfig),
             'created_at' => Carbon::now()->toDateTimeString(),
             'updated_at' => Carbon::now()->toDateTimeString(),
         ]);
@@ -394,6 +438,12 @@ class ReportService
                     $open_price = $candle['close'];
 
 
+
+                    // Get Trend Details
+
+
+
+
                     $candle['trendDetails'] = json_encode(CommonHelpers::detectTrend($data, $index, 50, 50));
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $currentTrade['previousCandle'] = json_encode($data[$index - 1]);
@@ -442,30 +492,6 @@ class ReportService
 
 
 
-                    // ############## Indicator Logs ###################
-
-
-                    // $max = $data[$openingIndex]['histogram'];
-                    // $min =  $data[$openingIndex]['histogram'];
-                    // $sensitivity = 5;
-                    // for ($i = $openingIndex; $i >= $openingIndex - $sensitivity; $i--) {
-
-                    //     if ($max <   $data[$i]['histogram']) {
-                    //         $max =  $data[$i]['histogram'];
-                    //     }
-
-                    //     if ($min >  $data[$i]['histogram']) {
-                    //         $min =  $data[$i]['histogram'];
-                    //     }
-                    // }
-
-                    // $macdVolatility = CommonHelpers::getPercentDiff($min, $max);
-
-
-
-                    // CommonHelpers::insertIndicatorLogs($symbol, 'macd_volatility_10_candles', $macdVolatility, $currentTrade['profit'], $currentTrade['duration']);
-                    // #################################################
-
 
 
                     // Resetting params
@@ -480,7 +506,8 @@ class ReportService
             }
         }
 
-        self::confirmOpening($symbol, $data, $index);
+        self::confirmOpening($symbol, 'LONG', $data, $index);
+        self::confirmOpening($symbol, 'SHORT', $data, $index);
         // For shifting indexes
         $data_new = [];
         foreach ($data as $d) {
@@ -499,24 +526,14 @@ class ReportService
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades)
     {
 
+        // Long Conditions
+        if (self::$longEnabled) {
 
-
-        $buyLongCondition = false;
-
-        $obvLookBack = 5;
-
-        //################################################# STAGE 1 #################################################
-
-
-        if (self::masterAllowTrades($data, $index, $symbol, $trades) || true) {
-
-            // $volumeAbnormality = $data[$index]['volume'] > $data[$index]['volumeMA5'] * 3;
-
-            if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, $data, $index)) {
-                self::insertConfirmBasicTradeEntry($symbol, $data, $index);
+            if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+                self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
             }
 
-            if (self::checkConfirmTradeValidity($symbol, $data, $index)) {
+            if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
 
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
                 $buyCondition = $data[$index]['close'] > $data[$index]['bb_lower']
@@ -527,22 +544,55 @@ class ReportService
                     && !$bbAnalysis['bb_squeeze']
                     && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
 
-                if ($buyCondition) {
-                    self::confirmOpening($symbol, $data, $index);
-                    // $data30m = BinanceApiService::getCandleStickDataPast($symbol, '1h', 500, $data[$index]['binance_timestamp'], 'FUTURE');
-                    // $index30m = count($data30m) - 2;
-                    // if (
-                    //     !(
-                    //         max($data30m[$index30m]['open'], $data30m[$index30m]['close']) > $data30m[$index30m]['bb_middle']
 
-                    //     )
-                    // ) {
-                    //     return null;
-                    // }
-                    return 'LONG';
+
+                if ($buyCondition) {
+                    self::confirmOpening($symbol, 'LONG', $data, $index);
+
+
+                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+
+                    if ($allowOnHigherTrend) {
+                        return 'LONG';
+                    }
                 }
             }
         }
+
+
+        // Short Conditions
+        if (self::$shortEnabled) {
+
+            if ($data[$index]['rsi6'] > 70 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
+                self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
+            }
+
+            if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
+
+                $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+                $sellCondition =
+
+                    $data[$index]['close'] < $data[$index]['bb_upper']
+                    && $data[$index]['open'] > $data[$index]['bb_upper']
+                    && $data[$index]['stoch_d'] < $data[$index - 1]['stoch_d']
+                    && $data[$index]['stoch_k'] < $data[$index - 1]['stoch_k']
+                    && $bbAnalysis['price_action']['is_near_upper_band']
+                    && !$bbAnalysis['bb_squeeze']
+                    && $data[$index]['histogram'] < $data[$index - 1]['histogram']
+                    && $data[$index - 1]['stoch_d'] < 100
+                    && $data[$index - 1]['stoch_k'] < 100;
+
+
+                if ($sellCondition) {
+                    self::confirmOpening($symbol, 'SHORT', $data, $index);
+                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'SHORT', $data, $index, '30m');
+                    if ($allowOnHigherTrend) {
+                        return 'SHORT';
+                    }
+                }
+            }
+        }
+
 
         return null;
     }
@@ -602,287 +652,8 @@ class ReportService
     }
 
 
-    public static function getFormulaId($formulaName)
-    {
-        $formula = DB::table('formula_details')->where('formula', $formulaName)->first();
-        return $formula ? $formula->id : null;
-    }
-    public static function getCoinReportsOnFormula($formula_id)
-    {
-        return  DB::table('coin_reports')
-            ->join('formula_details', 'coin_reports.formula', '=', 'formula_details.formula')
-            ->where('formula_details.id', $formula_id)
-            ->select('coin_reports.*')
-            ->get();
-    }
-
-    public static function checkBollingerBandCrossing($data, $index, $candleSpan = 10)
-    {
-
-        // Detecting LONG
-        if ($data[$index]['close'] > $data[$index]['bb_middle']  && $data[$index]['open'] < $data[$index]['bb_middle'] && $index > $candleSpan) {
-
-            $currentDiff = CommonHelpers::getPercentDiff($data[$index]['bb_lower'], $data[$index]['bb_upper']);
-
-            $minDiff = $currentDiff;
-            $minIndex = $index;
-            for ($i = $index; $i >= $index - $candleSpan; $i--) {
-                if ($minDiff > CommonHelpers::getPercentDiff($data[$i]['bb_lower'], $data[$i]['bb_upper'])) {
-                    $minDiff = CommonHelpers::getPercentDiff($data[$i]['bb_lower'], $data[$i]['bb_upper']);
-                    $minIndex = $i;
-                }
-            }
-
-            return [
-                'current_difference' => $currentDiff,
-                'current_index' => $index,
-                'current_close_price' => $data[$index]['close'],
-                'min_difference' => $minDiff,
-                'min_index' => $minIndex,
-                'current_close_price' => $data[$index]['close'],
-                'position' => 'LONG',
-
-
-            ];
-        }
-        // Detecting SHORT
-
-        else if ($data[$index]['close'] < $data[$index]['bb_lower']  && $data[$index]['open'] > $data[$index]['bb_lower'] && $index > $candleSpan) {
-
-            $currentDiff = CommonHelpers::getPercentDiff($data[$index]['bb_lower'], $data[$index]['bb_upper']);
-
-            $minDiff = $currentDiff;
-            $minIndex = $index;
-            for ($i = $index; $i >= $index - $candleSpan; $i--) {
-                if ($minDiff > CommonHelpers::getPercentDiff($data[$i]['bb_lower'], $data[$i]['bb_upper'])) {
-                    $minDiff = CommonHelpers::getPercentDiff($data[$i]['bb_lower'], $data[$i]['bb_upper']);
-                    $minIndex = $i;
-                }
-            }
-
-            return [
-                'current_difference' => $currentDiff,
-                'current_index' => $index,
-                'current_close_price' => $data[$index]['close'],
-                'min_difference' => $minDiff,
-                'min_index' => $minIndex,
-                'current_close_price' => $data[$index]['close'],
-                'min_close_price' => $data[$minIndex]['close'],
-                'position' => 'SHORT',
-            ];
-        } else {
-            return null;
-        }
-    }
-
-
-
     // #########################Functions for confirmed Trades table###############################
 
-    public static function masterAllowTrades($data, $index, $symbol, $trades)
-    {
-
-        $allowTrades = false;
-        if (empty($trades)) {
-            $allowTrades = true;
-        } else {
-
-            $lastTrade = $trades[count($trades) - 1];
-
-            $closingTimestamp = json_decode($lastTrade['sellingCandle'], true)['binance_timestamp'];
-
-            $closingIndex = self::getIndexDiffFromTimestamps($closingTimestamp, $data[$index]['binance_timestamp'], self::$interval, true);
-
-            $closingIndex = $index - $closingIndex;
-
-
-            $bollingerDecreaseCount = 0;
-            $bollingerIncreaseCount = 0;
-            $bullishCount = 0;
-            $berishCount = 0;
-
-            for ($i = $closingIndex; $i <= $index; $i++) {
-
-                if ($data[$index]['bb_middle'] < $data[$index]['bb_middle']) {
-                    $bollingerDecreaseCount++;
-                } else {
-                    $bollingerIncreaseCount++;
-                }
-
-
-                if ($data[$index]['per'] > 0) {
-                    $bullishCount++;
-                } else {
-                    $berishCount++;
-                }
-            }
-
-
-            if (
-                $bollingerDecreaseCount > $bollingerIncreaseCount
-                && ($bollingerDecreaseCount + $bollingerIncreaseCount) > 5
-                && $bullishCount > $berishCount
-                && ($bullishCount + $berishCount) > 5
-            ) {
-                $allowTrades = true;
-            }
-        }
-
-
-        return $allowTrades;
-    }
-    public static function updateBollSqueezCondition($symbol, $data, $index)
-    {
-        $ictId = self::getIctId($symbol);
-        if (
-            !$ictId
-        ) {
-            return null;
-        }
-        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
-
-        $highestPointIndex = self::getTightestSqueezIndex($data, $index);
-        $bbDiffHighest = CommonHelpers::getPercentDiff($data[$highestPointIndex]['bb_lower'], $data[$highestPointIndex]['bb_upper']);
-        $bbDiffConfirmed = CommonHelpers::getPercentDiff($data[$index]['bb_lower'], $data[$index]['bb_upper']);
-        $bbDiff = ($bbDiffConfirmed - $bbDiffHighest) / max(0.0001, $bbDiffHighest) * 100;
-
-        $currentSqueez = CommonHelpers::getPercentDiff($data[$index]['bb_lower'], $data[$index]['bb_middle']);
-        $prevSqueez = CommonHelpers::getPercentDiff($data[$index - 1]['bb_lower'], $data[$index - 1]['bb_middle']);
-
-        $squeezDiff = CommonHelpers::getPercentDiff($prevSqueez, $currentSqueez, true);
-
-
-
-
-        $maxExpandSqueezDiff = CommonHelpers::getPercentDiff($lastEntry->bolling_max_expanded_value, $currentSqueez, true);
-
-        $bbLowerLineCandles = self::checkBBLowerLineCount($data, $index, 3);
-        $additionalConditions = $data[$index]['per'] > 0 && $bbLowerLineCandles == 0 && $maxExpandSqueezDiff < 0 && $data[$index]['dif'] >= $data[$index - 1]['dif'];
-
-        // $middleBandCrossover = $data[$index]['close'] > $data[$index]['bb_middle'] && $data[$index]['open'] < $data[$index]['open'];
-        // Update only if Expansion is happened befor squeez check and is also valid
-
-        if ($squeezDiff < 0 && !$lastEntry->bolling_squeezed_confirmed && $additionalConditions) {
-
-
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->update(
-                [
-                    'bolling_squeezed_confirmed' => 1,
-                    'bolling_squeezed_timestamp' => $data[$index]['binance_timestamp'],
-                    'bolling_squeezed_valid_for' => self::$bollSqueezValidFor,
-                    'update_time' => Carbon::now()->toDateTimeString(),
-                ]
-            );
-            return true;
-        } else {
-            return false;
-        }
-    }
-    public static function checkBBLowerLineCount($data, $index, $count = 3)
-    {
-        $lowerLineCandlesCount = 0;
-
-        for ($i = $index; $i > $index - $count; $i--) {
-            if (max($data[$i]['open'], $data[$i]['close']) >= $data[$i]['bb_lower'] &&  min($data[$i]['open'], $data[$i]['close']) <= $data[$i]['bb_lower']) {
-                $lowerLineCandlesCount++;
-            }
-        }
-
-        return $lowerLineCandlesCount;
-    }
-    public static function checkBollSqueezValidity($symbol, $data, $index)
-    {
-        $ictId = self::getIctId($symbol);
-        if (
-            !$ictId
-        ) {
-            return null;
-        }
-        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
-        $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->bolling_squeezed_timestamp, self::$interval);
-        if (!$indexDiff) {
-            return false;
-        }
-        if ($indexDiff > $lastEntry->bolling_squeezed_valid_for) {
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->update(
-                [
-                    'bolling_squeezed_confirmed' => 0,
-                    'bolling_squeezed_timestamp' => null,
-                    'bolling_squeezed_valid_for' => null,
-                    'update_time' => Carbon::now()->toDateTimeString(),
-                ]
-            );
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    public static function checkShortOpening($symbol, $data, $index)
-    {
-
-        $currentExpand = CommonHelpers::getPercentDiff($data[$index]['bb_lower'], $data[$index]['bb_upper']);
-        $prevExpand = CommonHelpers::getPercentDiff($data[$index - 1]['bb_lower'], $data[$index - 1]['bb_upper']);
-        $expandDiff = $currentExpand - $prevExpand;
-
-        /* 
-            1. If while expanding after squeez BB up is decreasing
-            2. RSI is below 20 then skip short
-        */
-        $skipConditionShort = $data[$index]['bb_upper'] < $data[$index - 1]['bb_upper'] && $data[$index]['rsi6'] < 20;
-
-
-
-        // Lower Line crossing after bb_expand
-        if (
-            self::checkBollSqueezValidity($symbol, $data, $index)
-            && $data[$index]['close'] <= $data[$index]['bb_lower']
-            && $expandDiff > 0
-            && !$skipConditionShort
-            && self::checkDifDeaCrossoverFromAbove($data, $index, 6)
-            && $data[$index]['wr'] > -92
-
-
-        ) {
-            self::confirmOpening($symbol, $data, $index);
-            return true;
-        }
-
-
-
-
-        return false;
-    }
-    public static function checkVolatility($data, $index, $sensitivity)
-    {
-        $max = max($data[$index]['close'], $data[$index]['open']);
-        $min = min($data[$index]['close'], $data[$index]['open']);
-
-        for ($i = $index; $i >= $index - $sensitivity; $i--) {
-
-            if ($max <  max($data[$i]['close'], $data[$i]['open'])) {
-                $max = max($data[$i]['close'], $data[$i]['open']);
-            }
-
-            if ($min >  min($data[$i]['close'], $data[$i]['open'])) {
-                $min = min($data[$i]['close'], $data[$i]['open']);
-            }
-        }
-
-        return CommonHelpers::getPercentDiff($min, $max);
-    }
-
-    public static function checkDifDeaCrossoverFromAbove($data, $index, $distance)
-    {
-
-
-        for ($i = $index; $i >= $index - $distance; $i--) {
-            if ($data[$index]['dif'] < $data[$index]['dea'] && $data[$index - 1]['dif'] > $data[$index - 1]['dea']) {
-                return true;
-            }
-        }
-        return false;
-    }
     public static function getTightestSqueezIndex($data, $startIndex)
     {
         $minSqueeze = CommonHelpers::getPercentDiff(
@@ -957,10 +728,10 @@ class ReportService
     }
 
 
-    public static function insertConfirmBasicTradeEntry($symbol, $data, $index)
+    public static function insertConfirmBasicTradeEntry($symbol, $position, $data, $index)
     {
 
-        $reportId = self::getFormulaId(self::$formula);
+
 
         // BB Calculations for highest point squeez
         $highestPointIndex = self::getTightestSqueezIndex($data, $index);
@@ -969,8 +740,8 @@ class ReportService
 
 
         $id =  DB::table('confirmed_trades')->insertGetId([
-            'report_id' => $reportId,
             'coin_name' => $symbol,
+            'position' => $position,
             'confirm_candle_timestamp' => $data[$index]['binance_timestamp'],
             'candles_to_check' => self::$candlesToCheck,
             'trade_confirmed' => 0,
@@ -982,14 +753,14 @@ class ReportService
         return DB::table('confirmed_trades')->where('ict_id', $id)->first();
     }
 
-    public static function getIctId($symbol)
+    public static function getIctId($symbol, $position)
     {
-        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
+        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('position', $position)->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
         return $lastEntry ? $lastEntry->ict_id : null;
     }
-    public static function checkConfirmTradeValidity($symbol, $data, $index)
+    public static function checkConfirmTradeValidity($symbol, $position, $data, $index)
     {
-        $ictId = self::getIctId($symbol);
+        $ictId = self::getIctId($symbol, $position);
         if (
             !$ictId
         ) {
@@ -1009,134 +780,91 @@ class ReportService
     }
 
 
-    public static function checkMA5Validity($symbol, $data, $index)
+
+
+    public static function confirmOpening($symbol, $position, $data, $index)
     {
 
-        $ictId = self::getIctId($symbol);
-        if (
-            !$ictId
-        ) {
-            return null;
-        }
-
-        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
-        $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->volume_ma5_confirm_timestamp, self::$interval);
-        if (!$indexDiff) {
-            return false;
-        }
-        if ($indexDiff > $lastEntry->volume_ma5_valid_for) {
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->update(
-                [
-                    'volume_ma5_confirmed' => 0,
-                    'volume_ma5_confirm_timestamp' => null,
-                    'volume_ma5_valid_for' => null,
-                    'update_time' => Carbon::now()->toDateTimeString(),
-                ]
-            );
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    public static function checkUpperWickValidity($symbol, $data, $index)
-    {
-
-        $ictId = self::getIctId($symbol);
-        if (
-            !$ictId
-        ) {
-            return null;
-        }
-
-        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
-        $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->bolling_up_wick_timestamp, self::$interval);
-        if (!$indexDiff) {
-            return false;
-        }
-        if ($indexDiff > $lastEntry->bolling_up_wick_valid_for) {
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->update(
-                [
-                    'bolling_up_wick' => 0,
-                    'bolling_up_wick_timestamp' => null,
-                    'bolling_up_wick_valid_for' => null,
-                    'update_time' => Carbon::now()->toDateTimeString(),
-                ]
-            );
-            return false;
-        } else {
-            return true;
-        }
-    }
-    public static function updateUpperWickCondition($symbol, $data, $index)
-    {
-        $ictId = self::getIctId($symbol);
-        if (
-            !$ictId
-        ) {
-            return null;
-        }
-        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
-
-
-        $isUpperWick = false;
-        $upperWickHight = $data[$index]['high'] - max($data[$index]['open'], $data[$index]['close']);
-        $solidRegion = max($data[$index]['open'], $data[$index]['close']) - min($data[$index]['open'], $data[$index]['close']);
-
-
-        if ($data[$index]['close'] > $data[$index]['bb_upper'] && $data[$index]['open'] < $data[$index]['bb_upper'] && $upperWickHight > $solidRegion) {
-            $isUpperWick = true;
-        }
-        if ($data[$index - 1]['high'] > $data[$index - 1]['bb_upper'] && $data[$index - 1]['close'] < $data[$index - 1]['bb_upper']) {
-            $isUpperWick = true;
-        }
-
-        if ($isUpperWick && !$lastEntry->bolling_up_wick) {
-
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->update(
-                [
-                    'bolling_up_wick' => 1,
-                    'bolling_up_wick_timestamp' => $data[$index]['binance_timestamp'],
-                    'bolling_up_wick_valid_for' => self::$upperWickValidFor,
-                    'update_time' => Carbon::now()->toDateTimeString(),
-                ]
-            );
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-
-    public static function updateVolumeMA5Condition($symbol, $data, $index)
-    {
-        $ictId = self::getIctId($symbol);
-        if (
-            !$ictId
-        ) {
-            return null;
-        }
-        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
-        if ($data[$index]['volumeMA5'] > $data[$index - 1]['volumeMA5'] && !$lastEntry->volume_ma5_confirmed) {
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->update(
-                [
-                    'volume_ma5_confirmed' => 1,
-                    'volume_ma5_confirm_timestamp' => $data[$index]['binance_timestamp'],
-                    'volume_ma5_valid_for' => self::$volumeMA5ValidFor,
-                    'update_time' => Carbon::now()->toDateTimeString(),
-                ]
-            );
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    public static function confirmOpening($symbol, $data, $index)
-    {
-        $reportId = self::getFormulaId(self::$formula);
-
-        DB::table('confirmed_trades')->where('report_id', $reportId)->where('coin_name', $symbol)->orderBy('update_time', 'DESC')->delete();
+        DB::table('confirmed_trades')->where('coin_name', $symbol)->where('position', $position)->orderBy('update_time', 'DESC')->delete();
         return true;
+    }
+
+
+
+    public static function checkTrendOnHigherCandles($symbol, $position, $data, $index, $higherInterval = '1h')
+    {
+
+
+
+        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
+        $indexHigher = count($dataHigher) - 2;
+
+        if ($position === 'LONG') {
+            $loopIndex = $indexHigher;
+            $crossOverCondition = false;
+            $bbMiddleCondition = $dataHigher[$indexHigher]['bb_middle'] <= $dataHigher[$indexHigher - 1]['bb_middle'];
+
+            // Check Last Crossover for dif dea
+            while ($loopIndex > 0) {
+
+                $difCurrent = $dataHigher[$loopIndex]['dif'];
+                $deaCurrent = $dataHigher[$loopIndex]['dea'];
+
+                $difPrev = $dataHigher[$loopIndex - 1]['dif'];
+                $deaPrev = $dataHigher[$loopIndex - 1]['dea'];
+
+
+                // Dif Crossing DEA from above
+                if ($difCurrent < $deaCurrent && $difPrev >= $deaPrev) {
+                    // if ($difCurrent > 0 && $deaCurrent > 0)
+                    $crossOverCondition = true;
+                    // else
+                    // $crossOverCondition = false;
+                    break;
+                }
+                // Dif Crossing DEA from below
+                else if ($difCurrent > $deaCurrent && $difPrev <= $deaPrev) {
+                    $crossOverCondition = false;
+                    break;
+                }
+
+                $loopIndex--;
+            }
+
+            return !($crossOverCondition && $bbMiddleCondition);
+        } else {
+            $loopIndex = $indexHigher;
+            $crossOverCondition = false;
+            $bbMiddleCondition = $dataHigher[$indexHigher]['bb_middle'] >= $dataHigher[$indexHigher - 1]['bb_middle'];
+
+            // Check Last Crossover for dif dea
+            while ($loopIndex > 0) {
+
+                $difCurrent = $dataHigher[$loopIndex]['dif'];
+                $deaCurrent = $dataHigher[$loopIndex]['dea'];
+
+                $difPrev = $dataHigher[$loopIndex - 1]['dif'];
+                $deaPrev = $dataHigher[$loopIndex - 1]['dea'];
+
+
+                // Dif Crossing DEA from above
+                if ($difCurrent < $deaCurrent && $difPrev >= $deaPrev) {
+                    // if ($difCurrent > 0 && $deaCurrent > 0)
+                    $crossOverCondition = false;
+                    // else
+                    // $crossOverCondition = false;
+                    break;
+                }
+                // Dif Crossing DEA from below
+                else if ($difCurrent > $deaCurrent && $difPrev <= $deaPrev) {
+                    $crossOverCondition = true;
+                    break;
+                }
+
+                $loopIndex--;
+            }
+
+            return !(($crossOverCondition && $bbMiddleCondition));
+        }
     }
 }

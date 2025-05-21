@@ -17,11 +17,6 @@
 
 @section('content')
     <style>
-        .select2-dropdown--below {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
         .text-success {
             color: #00f2c3 !important;
         }
@@ -168,6 +163,18 @@
                                             </option>
                                         </select>
                                     </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="trendAnalysisChart">Trend Analysis Chart</label>
+                                        <select name="trendAnalysisChart" id="trendAnalysisChart"
+                                            class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('trendAnalysisChart') == 'show' ? 'selected' : '' }}>
+                                                Shown
+                                            </option>
+                                        </select>
+                                    </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="position">Filter by Position</label>
                                         <select name="position" id="position" class="form-control select2">
@@ -283,7 +290,7 @@
                                                 <tr>
                                                     <td class="font-weight-bold">Below TP</td>
                                                     <td>{{ round($tradesBelowTP ?? 0) }}</td>
-                                                    <td>Trades that closed early below 0.5%</td>
+                                                    <td>Trades that closed early below {{$tpLimit}}%</td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">1h+ Duration</td>
@@ -668,6 +675,29 @@
                                 <div class="card-body chart-container">
 
                                     <canvas id="stopLossChart"></canvas>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                @if (request('trendAnalysisChart') === 'show')
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header card-header-primary">
+                                    <h4 class="card-title">Trend Analysis</h4>
+                                    <p class="card-category">Visual representation of Trend</p>
+                                    <p class="card-category">Reference Symbol: {{ $trendReferenceSymbol }}</p>
+                                    <p class="card-category">Reference Interval: {{ $trendReferenceInterval }}</p>
+
+                                </div>
+
+
+                                <div class="card-body chart-container">
+
+                                    <canvas id="trendChart"></canvas>
                                 </div>
 
                             </div>
@@ -1650,6 +1680,99 @@
     @endif
 
 
+    @if (request('trendAnalysisChart') === 'show')
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const dataTrendReference = @json($dataTrendReference);
+
+                // Extract timestamps and close prices
+                const timestamps = dataTrendReference.map(data => data.timestampReadable);
+                const closePrices = dataTrendReference.map(data => data.close);
+
+
+
+                // Initialize Chart.js
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                window.candlestickChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: timestamps,
+                        datasets: [
+
+                            {
+                                label: 'Close Prices',
+                                data: closePrices,
+                                borderColor: 'rgba(0,123,255,1)',
+                                backgroundColor: 'rgba(0,123,255,0.2)',
+                                fill: true,
+                                tension: 0.1,
+                                yAxisID: 'y',
+                                pointBackgroundColor: 'rgba(255,255,255,0.6)',
+                                pointBorderColor: 'cyan',
+                                pointRadius: 3,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Timestamp',
+                                },
+                                ticks: {
+                                    color: '#ccc', // Light grey color for ticks
+                                    display: false,
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: false,
+                                    text: 'Close Value',
+                                },
+                                ticks: {
+                                    color: '#ccc', // Light grey color for ticks
+                                }
+                            }
+                        },
+                        plugins: {
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy'
+                                },
+                                zoom: {
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    wheel: {
+                                        enabled: true,
+                                        speed: 0.1,
+                                        threshold: 10,
+                                        modifierKey: 'ctrl'
+                                    },
+                                    mode: 'x'
+                                }
+                            }
+                        }
+                    }
+                });
+
+            });
+        </script>
+    @endif
+
+
+
+
+
+
+
+
+
+
+
     <!-- JavaScript for DataTables and Export -->
     <script>
         $(document).ready(function() {
@@ -1804,6 +1927,7 @@
             }
         })
     </script>
+
 
 
 
