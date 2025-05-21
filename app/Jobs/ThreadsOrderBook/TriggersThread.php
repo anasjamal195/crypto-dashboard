@@ -211,7 +211,7 @@ class TriggersThread implements ShouldQueue
                                 $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
                                 if (!(isset($open_order['is_open']) && $open_order['is_open']))
                                     $tradeLoop = false;
-                                $supportResistanceFirst = $this->getSupportResistance($data, $index);
+                                
 
                                 $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, $this->interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
                                 if ($tradeType === 'LONG')
@@ -511,7 +511,7 @@ class TriggersThread implements ShouldQueue
     // Other Functions 
 
 
-    public static function getSupportResistance($data, $index)
+    public static function getSupportResistance($data, $index,$candleSpan)
     {
         $end = $index + 1; // +1 to include the $index item
         $length = 300;
@@ -519,7 +519,7 @@ class TriggersThread implements ShouldQueue
         $start = max(0, $end - $length); // make sure we donâ€™t go negative
         $slicedData = array_slice($data, $start, $length);
 
-        return MarketTrendService::getCurrentSupportResistanceValueFromData($slicedData, [self::$supportResistanceCandleSpan])[self::$supportResistanceCandleSpan];
+        return MarketTrendService::getCurrentSupportResistanceValueFromData($slicedData, [$candleSpan])[$candleSpan];
     }
     public static function getOrderBookSnapshot($symbol, $data, $index)
     {
