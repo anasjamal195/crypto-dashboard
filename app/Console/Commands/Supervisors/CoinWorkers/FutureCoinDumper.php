@@ -105,7 +105,7 @@ class FutureCoinDumper extends Command
 
                     if (self::removeTradeHandlerEntry($delistedCoin->symbol, self::$user_id)) {
                         CommonHelpers::changeCoinStatus($delistedCoin->symbol, 'D');
-                        Log::info("Trade Handlers Removed for: " . $binanceCoin);
+                        Log::info("Trade Handlers Removed for: " . $delistedCoin->symbol);
                     } else {
                         Log::error("Skipped Delisting Coin due to open order: " . $binanceCoin);
                     }

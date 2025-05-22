@@ -108,11 +108,9 @@ class TriggersThread implements ShouldQueue
                                 continue;
                             } else if ($buyLongCondition) {
                                 $tradeType = 'LONG';
+                            } else if ($sellShortCondition) {
+                                $tradeType = 'SHORT';
                             }
-                            // Disabling Short to avoid disturbance
-                            // else if ($sellShortCondition) {
-                            //     $tradeType = 'SHORT';
-                            // }
 
                             Log::info("Conditions Met " . $symbol);
 
@@ -494,7 +492,7 @@ class TriggersThread implements ShouldQueue
 
     public static function handleOpeningConditionsLong($symbol, $data, $index)
     {
-        return 'LONG';
+
 
         // Long Conditions
         if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
@@ -518,11 +516,11 @@ class TriggersThread implements ShouldQueue
                 self::confirmOpening($symbol, 'LONG', $data, $index);
                 Log::info("Going to open long on " . $symbol);
 
-                // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+                $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
 
-                // if ($allowOnHigherTrend) {
-                return 'LONG';
-                // }
+                if ($allowOnHigherTrend) {
+                    return 'LONG';
+                }
             }
         }
 
@@ -533,6 +531,8 @@ class TriggersThread implements ShouldQueue
 
     public static function handleOpeningConditionsShort($symbol, $data, $index)
     {
+
+
         if ($data[$index]['rsi6'] > 70 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
             self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
         }

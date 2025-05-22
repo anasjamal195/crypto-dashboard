@@ -2391,7 +2391,7 @@ class CommonHelpers
 
     public static function getLiveTradeSessionId($account)
     {
-        $entry = DB::table('account_trade_details')->where($account)->orderBy('created_at', 'DESC')->first();
+        $entry = DB::table('account_trade_details')->where('account',$account)->orderBy('created_at', 'DESC')->first();
         return $entry ? $entry->id : null;
     }
 
@@ -2437,11 +2437,11 @@ class CommonHelpers
         $totalTradesSpot = DB::table('live_trades_spot_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('type', 'open')->count();
         $totalTradesFuture = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('type', 'open')->count();
 
-        $openTradesSpot = DB::table('live_trades_spot_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('trade_status', 'close')->count();
-        $openTradesFuture = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('trade_status', 'close')->count();
+        $openTradesSpot = DB::table('live_trades_spot_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('trade_status', 'open')->count();
+        $openTradesFuture = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('trade_status', 'open')->count();
 
         DB::table('account_trade_details')->where('id', $id)->update([
-            'spotWalletDetailsCurrent' => json_encode($spotWalletDetailsCurrent),
+            'spotWalletCurrent' => json_encode($spotWalletDetailsCurrent),
             'futureWalletCurrent' => json_encode($futureWalletCurrent),
             'totalTrades' => $totalTradesFuture + $totalTradesSpot,
             'openTrades' => $openTradesSpot + $openTradesFuture,

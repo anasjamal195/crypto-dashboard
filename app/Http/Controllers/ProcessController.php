@@ -58,7 +58,7 @@ class ProcessController extends Controller
             $processes = [
                 'laravel_saftey_worker',
                 'laravel_future_coin_dumper',
-                'laravel_order_book_signals_worker',
+                // 'laravel_order_book_signals_worker',
             ];
 
             foreach ($threads as $index => $thread) {

@@ -6,6 +6,7 @@ use App\CommonHelpers;
 
 use App\Services\OrderBookFormula\OrderBookFormulaLong;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class LongWorker extends Command
@@ -30,6 +31,7 @@ class LongWorker extends Command
     public function handle()
     {
         $account = 2;
+        DB::table('confirmed_trades')->truncate();
         CommonHelpers::initiateLiveTradeSession($account);
         while (true) {
             try {
