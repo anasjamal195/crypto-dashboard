@@ -81,7 +81,7 @@ class TriggersThread implements ShouldQueue
                             $trade_acc = $this->account;
                             // Log::info("Test Request Params" . self::$interval);
 
-                            $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 500, null, 'FUTURE');
+                            $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
 
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
@@ -93,6 +93,7 @@ class TriggersThread implements ShouldQueue
 
 
                             $buyLongCondition = self::handleOpeningConditionsLong($symbol, $data, $index);
+
                             $sellShortCondition = self::handleOpeningConditionsShort($symbol, $data, $index);
 
 
@@ -107,9 +108,13 @@ class TriggersThread implements ShouldQueue
                                 continue;
                             } else if ($buyLongCondition) {
                                 $tradeType = 'LONG';
-                            } else if ($sellShortCondition) {
-                                $tradeType = 'SHORT';
                             }
+                            // Disabling Short to avoid disturbance
+                            // else if ($sellShortCondition) {
+                            //     $tradeType = 'SHORT';
+                            // }
+
+                            Log::info("Conditions Met " . $symbol);
 
                             // ========================================================================
 
@@ -122,8 +127,12 @@ class TriggersThread implements ShouldQueue
                             if (!$tradeInstance) {
                                 break;
                             }
+                            Log::info("Trade instance found " . $symbol);
+
                             CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
                             $tradeToOpen =  $tradeInstance;
+                            Log::info("Opening Confirmed in main loop, breaking to open... " . $symbol);
+
                             break;
                         } catch (\Exception $e) {
                             Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
@@ -157,12 +166,19 @@ class TriggersThread implements ShouldQueue
                 //         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipped due to last order close time: ' . $symbol);
                 //     }
                 // }
+                $currentOpenOrders = 0;
 
-                $currentOpenOrders = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
+                if (self::$isSpot && $tradeType === 'LONG')
+                    $currentOpenOrders = DB::table('live_trades_spot_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
+                else
+                    $currentOpenOrders = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
+
                 // Condition to limit open orders for a symbol in long or short
                 if ($currentOpenOrders >= 1) {
                     $openTrade = false;
                 }
+
+                Log::info("No open orders found, progressing to open... " . $symbol);
 
                 // Check candle closing 
                 // $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
@@ -189,9 +205,12 @@ class TriggersThread implements ShouldQueue
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SHORT Disabled: ' . $symbol);
                     }
                 } else {
+
                     if ($tradeType === 'SHORT') {
                         $openTrade = false;
                     }
+
+                    Log::info("Opening on spot... " . $symbol);
                 }
 
                 if ($openTrade) {
@@ -229,12 +248,27 @@ class TriggersThread implements ShouldQueue
                         // Proceed trade until the position is closed
                         while ($tradeLoop) {
                             try {
-                                $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
-                                if (!(isset($open_order['is_open']) && $open_order['is_open']))
+                                $open_order = null;
+
+                                if (self::$isSpot && $tradeType === 'LONG')
+                                    $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'SPOT', $trade_acc);
+                                else
+                                    $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
+
+
+                                if (!(isset($open_order['is_open']) && $open_order['is_open'])) {
                                     $tradeLoop = false;
+                                    break;
+                                }
+                                $supportResistance = null;
 
 
-                                $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
+                                if (self::$isSpot && $tradeType === 'LONG')
+                                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'SPOT', [$this->supportResistanceCandleSpan]);
+                                else
+                                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
+
+
                                 if ($tradeType === 'LONG')
                                     $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
@@ -460,6 +494,7 @@ class TriggersThread implements ShouldQueue
 
     public static function handleOpeningConditionsLong($symbol, $data, $index)
     {
+        return 'LONG';
 
         // Long Conditions
         if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
@@ -481,13 +516,13 @@ class TriggersThread implements ShouldQueue
 
             if ($buyCondition) {
                 self::confirmOpening($symbol, 'LONG', $data, $index);
+                Log::info("Going to open long on " . $symbol);
 
+                // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
 
-                $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
-
-                if ($allowOnHigherTrend) {
-                    return 'LONG';
-                }
+                // if ($allowOnHigherTrend) {
+                return 'LONG';
+                // }
             }
         }
 
@@ -615,16 +650,16 @@ class TriggersThread implements ShouldQueue
         return DB::table('confirmed_trades')->where('ict_id', $id)->first();
     }
 
-    public static function getIctId($symbol)
+    public static function getIctId($symbol, $position)
     {
-        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
+        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('position', $position)->orderBy('update_time', 'DESC')->first();
         return $lastEntry ? $lastEntry->ict_id : null;
     }
 
 
     public static function checkConfirmTradeValidity($symbol, $position, $data, $index)
     {
-        $ictId = self::getIctId($symbol);
+        $ictId = self::getIctId($symbol, $position);
         if (
             !$ictId
         ) {
@@ -638,19 +673,16 @@ class TriggersThread implements ShouldQueue
         }
         $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->confirm_candle_timestamp, self::$interval);
         if ($indexDiff > $lastEntry->candles_to_check) {
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
-                'trade_confirmed' => 1,
-                'update_time' => Carbon::now()->toDateTimeString(),
-            ]);
+            DB::table('confirmed_trades')->where('ict_id', $ictId)->delete();
             return null;
         }
         return $lastEntry;
     }
 
 
-    public static function confirmOpening($symbol, $data, $index)
+    public static function confirmOpening($symbol, $position, $data, $index)
     {
-        $ictId = self::getIctId($symbol);
+        $ictId = self::getIctId($symbol, $position);
         if (
             !$ictId
         ) {

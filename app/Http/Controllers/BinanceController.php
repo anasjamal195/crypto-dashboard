@@ -331,8 +331,8 @@ class BinanceController extends Controller
         }
         // dd($profitableChangeSum / $profitableTotal, $lossChangeSum / $lossTotal, $profitableTotal, $lossTotal);
         // dd("Total:", $bbUpTrades, "Profits:", $bbUpProfit, "Losses:", $bbUpLoss, "Accuracy: ", ($bbUpProfit / $bbUpTrades) * 100);
-        
-        
+
+
         // Prepare timeline data
         $timelineData = array_map(function ($trade) use ($stopLoss) {
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
@@ -639,7 +639,7 @@ class BinanceController extends Controller
     {
 
         if ($market === 'SPOT') {
-           $pageSlug = 'liveTradeResults' . $market;
+            $pageSlug = 'liveTradeResults' . $market;
             $symbols = DB::table('live_trades_spot_results')
                 ->select('symbol')
                 ->distinct()
@@ -836,6 +836,11 @@ class BinanceController extends Controller
     public function closeFutureTrade($orderId)
     {
         BinanceApiService::closeMarketPositionLiveTrader($orderId);
+        return redirect()->back()->withSuccess('Trade Closed Successfully');
+    }
+    public function closeSpotTrade($orderId)
+    {
+        BinanceApiService::placeSellOrderSpot($orderId);
         return redirect()->back()->withSuccess('Trade Closed Successfully');
     }
 }
