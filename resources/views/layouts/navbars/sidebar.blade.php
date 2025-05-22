@@ -9,7 +9,7 @@
         /* Adjust this value to get the desired indentation */
     }
 </style>
-<div class="sidebar" data="blue">
+<div class="sidebar" data="primary">
     <div class="sidebar-wrapper">
         <div class="logo">
             <a href="{{ route('home') }}" class="simple-text logo-mini">{{ __('C') }}</a>
