@@ -29,9 +29,11 @@ class LongWorker extends Command
      */
     public function handle()
     {
+        $account = 2;
+        CommonHelpers::initiateLiveTradeSession($account);
         while (true) {
             try {
-                OrderBookFormulaLong::performLiveTrades('FUTURE', 2);
+                OrderBookFormulaLong::performLiveTrades('FUTURE', $account);
             } catch (\Exception $th) {
                 Log::error('An error occured: ' . $th);
             }

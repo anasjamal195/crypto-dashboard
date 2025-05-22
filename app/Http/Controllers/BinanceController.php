@@ -1469,56 +1469,56 @@ class BinanceApiService
         }
     }
     public static function fetchFutureWalletDetails($trader)
-{
-    $user = User::find($trader);
-    $apiKey = $user->api_key;
-    $apiSecret = $user->api_secret;
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
 
-    // Base Futures API URL
-    $baseUrl = 'https://fapi.binance.com';
+        // Base Futures API URL
+        $baseUrl = 'https://fapi.binance.com';
 
-    $timestamp = round(microtime(true) * 1000);
-    $recvWindow = 5000;
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
 
-    // Build query string for authenticated requests
-    $queryString = http_build_query([
-        'timestamp' => $timestamp,
-        'recvWindow' => $recvWindow
-    ]);
+        // Build query string for authenticated requests
+        $queryString = http_build_query([
+            'timestamp' => $timestamp,
+            'recvWindow' => $recvWindow
+        ]);
 
-    // Generate HMAC SHA256 signature
-    $signature = hash_hmac('sha256', $queryString, $apiSecret);
-    $queryString .= "&signature={$signature}";
+        // Generate HMAC SHA256 signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+        $queryString .= "&signature={$signature}";
 
-    // Actual Binance Futures API URLs
-    $accountUrl = "{$baseUrl}/fapi/v2/account?{$queryString}";
-    $positionsUrl = "{$baseUrl}/fapi/v2/positionRisk?{$queryString}";
+        // Actual Binance Futures API URLs
+        $accountUrl = "{$baseUrl}/fapi/v2/account?{$queryString}";
+        $positionsUrl = "{$baseUrl}/fapi/v2/positionRisk?{$queryString}";
 
-    $client = self::getHttpClient()->withHeaders([
-        'X-MBX-APIKEY' => $apiKey
-    ]);
+        $client = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey
+        ]);
 
-    // Send both requests
-    $accountResponse = $client->get($accountUrl)->json();
-    $positionsResponse = $client->get($positionsUrl)->json();
+        // Send both requests
+        $accountResponse = $client->get($accountUrl)->json();
+        $positionsResponse = $client->get($positionsUrl)->json();
 
-    // Check for successful response and return structured data
-    if (isset($accountResponse['totalWalletBalance'])) {
-        return [
-            'wallet_balance' => floatval($accountResponse['totalWalletBalance']),
-            'unrealized_profit' => floatval($accountResponse['totalUnrealizedProfit']),
-            'margin_balance' => floatval($accountResponse['totalMarginBalance']),
-            'available_balance' => floatval($accountResponse['availableBalance']),
-            'positions' => collect($positionsResponse)->filter(function ($pos) {
-                return abs(floatval($pos['positionAmt'])) > 0;
-            })->values()
-        ];
+        // Check for successful response and return structured data
+        if (isset($accountResponse['totalWalletBalance'])) {
+            return [
+                'wallet_balance' => floatval($accountResponse['totalWalletBalance']),
+                'unrealized_profit' => floatval($accountResponse['totalUnrealizedProfit']),
+                'margin_balance' => floatval($accountResponse['totalMarginBalance']),
+                'available_balance' => floatval($accountResponse['availableBalance']),
+                'positions' => collect($positionsResponse)->filter(function ($pos) {
+                    return abs(floatval($pos['positionAmt'])) > 0;
+                })->values()
+            ];
+        }
+
+        // Log and handle failed fetch
+        Log::error("FUTURE Wallet Error for trader {$trader}: " . json_encode($accountResponse));
+        return null;
     }
-
-    // Log and handle failed fetch
-    Log::error("FUTURE Wallet Error for trader {$trader}: " . json_encode($accountResponse));
-    return null;
-}
 
     public static function fetchSpotWalletDetails($trader)
     {
@@ -2282,6 +2282,7 @@ class BinanceApiService
         }
         $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
+        CommonHelpers::updateLiveTradeSession($trader);
 
         return $data;
     }
@@ -2467,6 +2468,8 @@ class BinanceApiService
         $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
+        CommonHelpers::updateLiveTradeSession($trader);
+
         return $data;
     }
 
@@ -3397,7 +3400,7 @@ class BinanceApiService
         }
         $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
-
+        CommonHelpers::updateLiveTradeSession($trader);
         return $data;
     }
 
@@ -3562,6 +3565,8 @@ class BinanceApiService
         $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position']  . ' ' . $buyOrderId->formula  . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
+        CommonHelpers::updateLiveTradeSession($trader);
+
         return $data;
     }
 }

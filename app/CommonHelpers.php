@@ -2357,4 +2357,94 @@ class CommonHelpers
             $roundValue,
         );
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Live trader helpers
+
+    public static function initiateLiveTradeSession($account)
+    {
+        DB::table('account_trade_details')->insert([
+            'account' => $account,
+            'spotWalletInitial' => json_encode(BinanceApiService::fetchSpotWalletDetails($account)),
+            'futureWalletInitial' => json_encode(BinanceApiService::fetchFutureWalletDetails($account)),
+            'totalTrades' => 0,
+            'openTrades' => 0,
+            'realizedPnl' => 0,
+            'created_at' => Carbon::now()->toDateTimeString(),
+            'updated_at' => Carbon::now()->toDateTimeString(),
+        ]);
+    }
+
+
+    public static function getLiveTradeSessionId($account)
+    {
+        $entry = DB::table('account_trade_details')->where($account)->orderBy('created_at', 'DESC')->first();
+        return $entry ? $entry->id : null;
+    }
+
+    public static function updateLiveTradeSession($account)
+    {
+
+        $id = self::getLiveTradeSessionId($account);
+
+
+        $lastEntry =  DB::table('account_trade_details')->where('id', $id)->first();
+
+        $spotWalletDetailsInitial = json_decode($lastEntry->spotWalletInitial, true);
+        $futureWalletDetailsInitial =  json_decode($lastEntry->futureWalletInitial, true);
+
+        $spotWalletDetailsCurrent = BinanceApiService::fetchSpotWalletDetails($account);
+        $futureWalletCurrent = BinanceApiService::fetchFutureWalletDetails($account);
+
+
+
+        $initialUsdt = 0;
+        $finalUsdt = 0;
+
+        // ===================Final Balance Calculation===================
+        foreach ($spotWalletDetailsCurrent['total_assets'] as $assets) {
+            if ($assets['asset'] === 'USDT') {
+                $finalUsdt = $assets['free'];
+            }
+        }
+        $finalUsdt += $futureWalletCurrent['wallet_balance'];
+        // ================================================================
+
+
+        // ===================Initial Balance Calculation===================
+        foreach ($spotWalletDetailsInitial['total_assets'] as $assets) {
+            if ($assets['asset'] === 'USDT') {
+                $initialUsdt = $assets['free'];
+            }
+        }
+        $initialUsdt += $futureWalletDetailsInitial['wallet_balance'];
+        // ================================================================
+
+
+        $totalTradesSpot = DB::table('live_trades_spot_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('type', 'open')->count();
+        $totalTradesFuture = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('type', 'open')->count();
+
+        $openTradesSpot = DB::table('live_trades_spot_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('trade_status', 'close')->count();
+        $openTradesFuture = DB::table('live_trades_future_results')->where('trade_acc', $account)->where('created_at', '>=', $lastEntry->created_at)->where('trade_status', 'close')->count();
+
+        DB::table('account_trade_details')->where('id', $id)->update([
+            'spotWalletDetailsCurrent' => json_encode($spotWalletDetailsCurrent),
+            'futureWalletCurrent' => json_encode($futureWalletCurrent),
+            'totalTrades' => $totalTradesFuture + $totalTradesSpot,
+            'openTrades' => $openTradesSpot + $openTradesFuture,
+            'realizedPnl' => $finalUsdt - $initialUsdt,
+            'updated_at' => Carbon::now()->toDateTimeString(),
+        ]);
+    }
 }

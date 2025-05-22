@@ -44,7 +44,7 @@ class TriggersThread implements ShouldQueue
     public $targetProfit = 0.4;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
-    public $formula = 'RSI Swings with Bollinger Bands';
+    public $formula = 'RSI Swings';
 
     // Confirmed Trades Entries
 
@@ -177,13 +177,13 @@ class TriggersThread implements ShouldQueue
                 self::$isSpot = CommonHelpers::getMetaValue($this->account, 'enable_spot', 0);
                 if (!self::$isSpot) {
 
-                    if ($tradeType === 'LONG' && !CommonHelpers::getSettingsValue('enable_long_multithread', 0)) {
+                    if ($tradeType === 'LONG' && !CommonHelpers::getMetaValue($this->account, 'enable_long_multithread', 0)) {
                         CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                         $openTrade = false;
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to LONG Disabled: ' . $symbol);
                     }
 
-                    if ($tradeType === 'SHORT' && !CommonHelpers::getSettingsValue('enable_short_multithread', 0)) {
+                    if ($tradeType === 'SHORT' && !CommonHelpers::getMetaValue($this->account, 'enable_short_multithread', 0)) {
                         CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                         $openTrade = false;
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SHORT Disabled: ' . $symbol);
@@ -199,7 +199,6 @@ class TriggersThread implements ShouldQueue
                     // Handle if current market is SPOT
 
                     $open_order = null;
-
 
                     if (self::$isSpot && $tradeType === 'LONG')
                         $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'SPOT', $trade_acc);

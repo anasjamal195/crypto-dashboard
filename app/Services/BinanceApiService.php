@@ -1469,47 +1469,56 @@ class BinanceApiService
         }
     }
     public static function fetchFutureWalletDetails($trader)
-    {
-        $user = User::find($trader);
-        $apiKey = $user->api_key;
-        $apiSecret = $user->api_secret;
-        $baseUrl = config('binance.api.future_base_url');
+{
+    $user = User::find($trader);
+    $apiKey = $user->api_key;
+    $apiSecret = $user->api_secret;
 
-        $timestamp = round(microtime(true) * 1000);
-        $recvWindow = 5000;
+    // Base Futures API URL
+    $baseUrl = 'https://fapi.binance.com';
 
-        $queryString = http_build_query([
-            'timestamp' => $timestamp,
-            'recvWindow' => $recvWindow
-        ]);
-        $signature = hash_hmac('sha256', $queryString, $apiSecret);
-        $queryString .= "&signature={$signature}";
+    $timestamp = round(microtime(true) * 1000);
+    $recvWindow = 5000;
 
-        $accountUrl = "{$baseUrl}" . config('binance.endpoints.future_account_info') . "?{$queryString}";
-        $positionsUrl = "{$baseUrl}" . config('binance.endpoints.future_position_risk') . "?{$queryString}";
+    // Build query string for authenticated requests
+    $queryString = http_build_query([
+        'timestamp' => $timestamp,
+        'recvWindow' => $recvWindow
+    ]);
 
-        $client = self::getHttpClient()->withHeaders([
-            'X-MBX-APIKEY' => $apiKey
-        ]);
+    // Generate HMAC SHA256 signature
+    $signature = hash_hmac('sha256', $queryString, $apiSecret);
+    $queryString .= "&signature={$signature}";
 
-        $accountResponse = $client->get($accountUrl)->json();
-        $positionsResponse = $client->get($positionsUrl)->json();
+    // Actual Binance Futures API URLs
+    $accountUrl = "{$baseUrl}/fapi/v2/account?{$queryString}";
+    $positionsUrl = "{$baseUrl}/fapi/v2/positionRisk?{$queryString}";
 
-        if (isset($accountResponse['totalWalletBalance'])) {
-            return [
-                'wallet_balance' => floatval($accountResponse['totalWalletBalance']),
-                'unrealized_profit' => floatval($accountResponse['totalUnrealizedProfit']),
-                'margin_balance' => floatval($accountResponse['totalMarginBalance']),
-                'available_balance' => floatval($accountResponse['availableBalance']),
-                'positions' => collect($positionsResponse)->filter(function ($pos) {
-                    return abs(floatval($pos['positionAmt'])) > 0;
-                })->values()
-            ];
-        }
+    $client = self::getHttpClient()->withHeaders([
+        'X-MBX-APIKEY' => $apiKey
+    ]);
 
-        Log::error("FUTURE Wallet Error for trader {$trader}: " . json_encode($accountResponse));
-        return null;
+    // Send both requests
+    $accountResponse = $client->get($accountUrl)->json();
+    $positionsResponse = $client->get($positionsUrl)->json();
+
+    // Check for successful response and return structured data
+    if (isset($accountResponse['totalWalletBalance'])) {
+        return [
+            'wallet_balance' => floatval($accountResponse['totalWalletBalance']),
+            'unrealized_profit' => floatval($accountResponse['totalUnrealizedProfit']),
+            'margin_balance' => floatval($accountResponse['totalMarginBalance']),
+            'available_balance' => floatval($accountResponse['availableBalance']),
+            'positions' => collect($positionsResponse)->filter(function ($pos) {
+                return abs(floatval($pos['positionAmt'])) > 0;
+            })->values()
+        ];
     }
+
+    // Log and handle failed fetch
+    Log::error("FUTURE Wallet Error for trader {$trader}: " . json_encode($accountResponse));
+    return null;
+}
 
     public static function fetchSpotWalletDetails($trader)
     {

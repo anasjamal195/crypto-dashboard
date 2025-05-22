@@ -36,7 +36,7 @@ class OrderBookFormulaLong
         // ==================New Strategy========================
         try {
             $workerLimit = 10;
-            $interval = CommonHelpers::getMetaValue($account,'live_trade_worker_interval_future','1m');
+            $interval = CommonHelpers::getMetaValue($account, 'live_trade_worker_interval_future', '1m');
             $openSymbols = DB::table('live_trades_future_results')
                 ->where('trade_acc', $account)
                 ->where('trade_status', 'open')

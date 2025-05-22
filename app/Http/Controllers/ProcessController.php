@@ -116,7 +116,6 @@ class ProcessController extends Controller
     }
     public function performActionOnPleskGit($apiKey, $action)
     {
-
         if ($action == 'RESTART' && $apiKey == config('binance.bot.api_key')) {
             $currentlyRunning = SupervisorService::getStatus();
             foreach ($currentlyRunning['data'] as $process) {
@@ -147,6 +146,20 @@ class ProcessController extends Controller
 
 
         return redirect()->back()->withSuccess('Toggled  ' . $position . ' status');
+    }
+
+    public function toggleMarket()
+    {
+
+        $currentStatus = CommonHelpers::getMetaValue(auth()->user()->id, 'enable_spot', 0);
+
+
+        DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'enable_spot')->update([
+            'meta_value' => !$currentStatus
+        ]);
+
+
+        return redirect()->back()->withSuccess('Toggled Position status');
     }
 
 
