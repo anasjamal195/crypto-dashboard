@@ -209,20 +209,9 @@
                             <i class="fas fa-wallet mr-2"></i>
                             Binance Wallet Dashboard
                         </h6>
-                        <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
-                            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
-                                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}"><i
-                                            class="fas fa-home"></i></a></li>
-                                <li class="breadcrumb-item active" aria-current="page">Wallet</li>
-                            </ol>
-                        </nav>
+
                     </div>
-                    <div class="col-lg-6 col-5 text-right">
-                        <button class="btn refresh-btn" onclick="refreshWalletData()" id="refreshBtn">
-                            <i class="fas fa-sync-alt mr-2"></i>
-                            Refresh Data
-                        </button>
-                    </div>
+
                 </div>
             </div>
         </div>
