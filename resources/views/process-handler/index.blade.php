@@ -17,6 +17,7 @@
         <a href="{{ route('user.toggle-position', 'SHORT') }}"
             class="btn  btn-sm m-2 {{ \App\CommonHelpers::getSettingsValue('enable_short_multithread', 0) == 1 ? 'btn-success' : 'btn-danger' }}">{{ \App\CommonHelpers::getSettingsValue('enable_short_multithread', 0) == 1 ? 'SHORT is Enabled' : 'Short is Disabled' }}</a>
 
+            
         <table class="table">
             <thead>
                 <tr>

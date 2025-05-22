@@ -164,7 +164,6 @@ class TriggersThread implements ShouldQueue
                     $openTrade = false;
                 }
 
-
                 // Check candle closing 
                 // $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
 
@@ -175,21 +174,27 @@ class TriggersThread implements ShouldQueue
                 //     $openTrade = false;
                 // }
 
-                if ($tradeType === 'LONG' && !CommonHelpers::getSettingsValue('enable_long_multithread', 0)) {
-                    CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                    $openTrade = false;
-                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to LONG Disabled: ' . $symbol);
-                }
+                self::$isSpot = CommonHelpers::getMetaValue($this->account, 'enable_spot', 0);
+                if (!self::$isSpot) {
 
-                if ($tradeType === 'SHORT' && !CommonHelpers::getSettingsValue('enable_short_multithread', 0)) {
-                    CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                    $openTrade = false;
-                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SHORT Disabled: ' . $symbol);
-                }
+                    if ($tradeType === 'LONG' && !CommonHelpers::getSettingsValue('enable_long_multithread', 0)) {
+                        CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                        $openTrade = false;
+                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to LONG Disabled: ' . $symbol);
+                    }
 
+                    if ($tradeType === 'SHORT' && !CommonHelpers::getSettingsValue('enable_short_multithread', 0)) {
+                        CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                        $openTrade = false;
+                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SHORT Disabled: ' . $symbol);
+                    }
+                } else {
+                    if ($tradeType === 'SHORT') {
+                        $openTrade = false;
+                    }
+                }
 
                 if ($openTrade) {
-
 
                     // Handle if current market is SPOT
 
