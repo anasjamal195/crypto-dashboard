@@ -133,14 +133,15 @@ class ProcessController extends Controller
 
         if ($position === 'LONG') {
 
-            $currentStatus = CommonHelpers::getSettingsValue('enable_long_multithread', 0);
-            DB::table('trade_settings')->where('settings_key', 'enable_long_multithread')->update([
-                'settings_value' => !$currentStatus
+            $currentStatus = CommonHelpers::getMetaValue(auth()->user()->id, 'enable_long_multithread', 0);
+
+            DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'enable_long_multithread')->update([
+                'meta_value' => !$currentStatus
             ]);
         } else if ($position === 'SHORT') {
-            $currentStatus = CommonHelpers::getSettingsValue('enable_short_multithread', 0);
-            DB::table('trade_settings')->where('settings_key', 'enable_short_multithread')->update([
-                'settings_value' => !$currentStatus
+            $currentStatus = CommonHelpers::getMetaValue(auth()->user()->id, 'enable_short_multithread', 0);
+            DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'enable_short_multithread')->update([
+                'meta_value' => !$currentStatus
             ]);
         }
 
