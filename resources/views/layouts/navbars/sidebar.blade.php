@@ -9,11 +9,12 @@
         /* Adjust this value to get the desired indentation */
     }
 </style>
-<div class="sidebar" data="primary">
+<div class="sidebar" data="{{ \App\CommonHelpers::getMetaValue(auth()->user()->id, 'enable_long_multithread', 0) == 1 ? 'primary' : 'blue' }}">
     <div class="sidebar-wrapper">
         <div class="logo">
             <a href="{{ route('home') }}" class="simple-text logo-mini">{{ __('C') }}</a>
-            <a href="{{ route('home') }}" class="simple-text logo-normal">{{ __('Crypto Api Store') }}</a>
+            <a href="{{ route('home') }}" class="simple-text logo-normal">{{ __('Crypto Api Store') }}</a><br>
+            <a href="{{ route('home') }}" class="simple-text logo-mini">{{ \App\CommonHelpers::getMetaValue(auth()->user()->id, 'enable_long_multithread', 0) == 1 ? 'Futures' : 'Spot' }}</a>
         </div>
         {{-- 5m-CandleSticks Parent Tab --}}
         <ul class="nav">
