@@ -216,25 +216,19 @@ class BinanceApiService
      */
     public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
-
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
-            'https://xnfts.shop/load_balancer/index.php',                         // Chain Server II     
-            'https://digitalfitnesshub.shop/wp-includes/restful-api/',            // Removed due to SSL error
-
-            // 'https://pompsplace.cc/load_balancer/',                            // Unavailable due to binance.com restrictions on its location
-            // 'https://egeniuscare.com/load_balancer/',                          // Unavailable due to binance.com restrictions on its location
-            // 'https://rx4less.shop/load_balancer/' ,                            // Unavailable due to binance.com restrictions on its location                                 
+            'https://xnfts.shop/load_balancer/index.php', // Chain Server II
+            'https://digitalfitnesshub.shop/wp-includes/restful-api/',
         ];
         static $serverUrlKey = 0;
 
-        $response = null; // Initialize a null response
+        $response = null;
 
         // Retrieve stored weight usage from cache
         $usedWeight = Cache::get($cacheKey, 0);
         $remainingWeight = 1200 - $usedWeight;
 
-        // Prepare parameters
         $params = [
             'symbol' => $symbol,
             'interval' => $interval,
@@ -242,57 +236,112 @@ class BinanceApiService
             'startTime' => $timestamp,
         ];
 
-        // Check if the remaining weight is too low to make another request to next available server
-        if (intval($remainingWeight) < 100) {
+        $serverId = 'parent';
 
-
-
-            // Increment balancer index and loop if out of bounds
-            $params['balancerServerSequence'] = $balancerServerSequence;
-            $params['nextServer'] = $serverUrlKey;
-            $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($balancerServerSequence[$serverUrlKey], $params);
-            $response->getHeaders();
-        } else {
-
-
-
+        // If weight is sufficient, try parent server first
+        if (intval($remainingWeight) >= 100) {
             $base_url = $market === 'FUTURE' ?
                 config('binance.api.future_base_url') . config('binance.endpoints.klines') :
                 config('binance.api.base_url') . config('binance.endpoints.klines');
 
-            // Make the HTTP request
             $response = Http::withOptions(['verify' => !app()->environment('local')])->get($base_url, $params);
 
             $headers = $response->getHeaders();
-
             if (isset($headers["x-mbx-used-weight-1m"][0])) {
                 $usedWeight = (int) $headers["x-mbx-used-weight-1m"][0];
-                Cache::put($cacheKey, $usedWeight, now()->addMinute());
+                $secondsRemaining = 60 - now()->second;
+                Cache::put($cacheKey, $usedWeight, now()->addSeconds($secondsRemaining));
+            }
+
+            // If successful and valid JSON, return it
+            if ($response->successful() && $response->json()) {
+                return $processed ? self::processData($response->json(), $market) : $response->json();
+            } else {
+                Log::error('Error Fetching Coin data: ' . $symbol . ' Server Parent ' . json_encode($response?->body()));
             }
         }
 
-        // Handle the API response
-        if (!$response->successful()) {
+        // If parent server failed or weight is low, try balancer servers
+        $serverId = 'child';
+        $totalServers = count($balancerServerSequence);
+        $attempts = 0;
 
-            Log::error('Error Fetching Coin data: ' . $symbol . ' ' . json_encode($response->json()));
+        while ($attempts < $totalServers) {
+            $currentServerUrl = $balancerServerSequence[$serverUrlKey];
+            $params['balancerServerSequence'] = $balancerServerSequence;
+            $params['nextServer'] = $serverUrlKey;
 
-            $log = CommonHelpers::addSafetyLog('API_ERROR', 'Error Occured on fetching coin data: ' . $symbol);
+            try {
+                $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($currentServerUrl, $params);
+
+                if ($response->successful() && $response->json()) {
+                    return $processed ? self::processData($response->json(), $market) : $response->json();
+                }
+            } catch (\Exception $e) {
+                Log::error("Balancer Server [$serverUrlKey] failed: " . $e->getMessage());
+            }
+
+            $serverUrlKey++;
+            $attempts++;
+
+            if ($serverUrlKey >= $totalServers) {
+                $serverUrlKey = 0; // reset index if needed for future calls
+            }
         }
 
+        // All attempts failed
+        Log::error('Error Fetching Coin data: ' . $symbol . ' Server ' . $serverId . ' ' . json_encode($response?->body()));
+        return  [
+            'timestamp' => null,
+            'timestampReadable' => null,
+            'market' => null,
+            'binance_timestamp' => null,
+            'open' => null,
+            'high' => null,
+            'low' => null,
+            'close' => null,
+            'volume' => null,
+            'volumeMA5' => null,
+            'volumeMA10' => null,
+            'avl' => null,
+            'ma7' => null,
+            'ma14' => null,
+            'ma25' => null,
+            'ma99' => null,
+            'bb_middle' => null,
+            'bb_upper' => null,
+            'bb_lower' => null,
+            'rsi6' => null,
+            'per' => null,
+            'dif' => null,
+            'dea' => null,
+            'histogram' => null,
+            'sar' => null,
+            'should_buy' => null,
+            'should_sell' => null,
+            'obv' => null,
+            'cvd' => null,
+            'mfi' => null,
+            'vwap' => null,
+            'stoch_rsi' => null,
+            'stoch_k' => null,
+            'stoch_d' => null,
+            'wr' => null,
+            'K' => null,
+            'D' => null,
+            'J' => null,
+            'previousObvHigh' => null,
+            'previousObvLow' => null,
+            'adx' => null,
+            'di_plus' => null,
+            'di_minus' => null,
+            'ema12' => null,
+            'ema26' => null,
+        ];
 
-        if (!$response->json()) {
-            Log::error('Error Fetching Coin data: ' . $symbol . ' ' . $response->body());
-        }
-
-
-
-        // Update API weight usage in cache
-
-        if ($processed)
-            return self::processData($response->json(), $market);
-        else
-            return $response->json();
+        // dd($response ? $response->body() : 'No response received from any server');
     }
+
 
     protected static function processData($data, $market = 'SPOT')
     {
@@ -2037,6 +2086,7 @@ class BinanceApiService
                 'symbol' => $symbol,
                 'side' => $position,
                 'amount' => $tradeAmount,
+                'market' => $market,
                 'type' => 'open',
                 'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
                 'qty' => $quantity,
@@ -2107,6 +2157,8 @@ class BinanceApiService
             'symbol' => $response['symbol'],
             'side' => $response['side'],
             'amount' => $tradeAmount,
+            'market' => $market,
+
             'type' => 'open',
             'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
             'qty' => $quantity,
@@ -2200,6 +2252,8 @@ class BinanceApiService
                 'orderId' => $orderId,
                 'pairId' => $openOrder->pairId,
                 'symbol' => $symbol,
+                'market' => $market,
+
                 'side' => $position,
                 'amount' => $openOrder->amount,
                 'qty' => $quantity,
@@ -2262,6 +2316,8 @@ class BinanceApiService
             'symbol' => $response['symbol'],
             'side' => $response['side'],
             'amount' => $openOrder->amount,
+            'market' => $market,
+
             'qty' => $quantity,
             'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
             'type' => 'close',
@@ -2321,16 +2377,19 @@ class BinanceApiService
         return $data;
     }
 
-    public static function getFeeDetails($orderId)
+    public static function getFeeDetails($orderId, $market = 'FUTURE')
     {
 
-        $openOrder = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
+        if ($market === 'SPOT')
+            $openOrder = DB::table('live_trades_spot_results')->where('orderId', $orderId)->first();
+        else
+            $openOrder = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
 
         if (!$openOrder) {
             return false;
         }
 
-        $market = 'FUTURE';
+        $url = $market === 'FUTURE' ? 'https://fapi.binance.com/fapi/v1/userTrades' : 'https://api.binance.com/api/v3/myTrades';
         $trader = $openOrder->trade_acc;
         $user = User::find($trader);
         $apiKey = $user->api_key;
@@ -2346,7 +2405,7 @@ class BinanceApiService
         // Make the API request
         $response = self::getHttpClient()->withHeaders([
             'X-MBX-APIKEY' => $apiKey,
-        ])->get("https://fapi.binance.com/fapi/v1/userTrades", [
+        ])->get($url, [
             'symbol' => $symbol,
             'orderId' => $orderId,
             'timestamp' => $timestamp,
@@ -2356,6 +2415,7 @@ class BinanceApiService
         $trades = $response->json();
         return $trades;
     }
+
 
 
     public static function getPositionDetails($symbol, $trader)
@@ -2648,7 +2708,7 @@ class BinanceApiService
 
         // Get position details
         $positionDetails = self::getPositionDetails($symbol, $trader);
-        dd($positionDetails);
+
         if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
             // No open position found, return last close order details
 
@@ -3121,5 +3181,294 @@ class BinanceApiService
                 'code' => $e->getCode()
             ];
         }
+    }
+
+
+
+
+
+    // SPOT Buy and Sell
+
+
+    public static function placeBuyOrderSpot($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false, $stopLossPercentage = 0.5, $targetProfit = 0.5)
+    {
+
+        $current_price = self::getCurrentPrice($symbol);
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url = config('binance.api.base_url');
+
+        // Get server time from Binance API
+        $serverTime = json_decode(file_get_contents($base_url . config('binance.endpoints.server_time')), true);
+        $serverTimestamp = $serverTime['serverTime'];
+
+        // Calculate timestamp and recvWindow
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
+
+        // Adjust timestamp if necessary
+        if ($timestamp - $serverTimestamp > $recvWindow) {
+            $timestamp = $serverTimestamp + $recvWindow;
+        }
+
+        // Fetch exchange information to get LOT_SIZE filter
+        $exchangeInfo = json_decode(file_get_contents($base_url . config('binance.endpoints.exchange_info') . "?symbol=$symbol"), true);
+        $filters = $exchangeInfo['symbols'][0]['filters'];
+
+        // Extract LOT_SIZE filter values
+        $lotSize = null;
+        foreach ($filters as $filter) {
+            if ($filter['filterType'] == 'LOT_SIZE') {
+                $lotSize = $filter;
+                break;
+            }
+        }
+
+        if ($lotSize === null) {
+            throw new Exception("LOT_SIZE filter not found for symbol $symbol");
+        }
+
+        // Calculate and adjust the quantity
+        $quantity = $tradeAmount / $current_price;
+        $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
+
+        // Ensure quantity is within the allowed limits
+        if ($quantity < $lotSize['minQty'] || $quantity > $lotSize['maxQty']) {
+            throw new Exception("Quantity $quantity is outside the allowed LOT_SIZE limits for symbol $symbol");
+        }
+
+        $url = $base_url . config('binance.endpoints.order');
+
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'symbol' => $symbol,
+            'side' => 'BUY',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->asForm()->post($url, [
+            'symbol' => $symbol,
+            'side' => 'BUY',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+        $response = $response->json();
+
+        $stopLoss = $current_price * (1 - $stopLossPercentage / 100);
+        $data =  [
+            'orderId' => $response['orderId'],
+            'symbol' => $response['symbol'],
+            'side' => $response['side'],
+            'amount' => $tradeAmount,
+            'type' => 'open',
+            'position' =>  'LONG',
+            'market' =>  'SPOT',
+            'qty' => $quantity,
+            'leverage' => 1,
+            'stopLoss' => $stopLoss,
+            'stopLossReductionPrecentage' => 0.1,
+            'price' => $current_price,
+            'trade_status' => 'open',
+            'trade_acc' => $trader,
+            'targetProfit' => $targetProfit,
+            'formula' => $formula,
+            'turnoverPoint' => $turnoverPoint,
+            'liqPrice' => 0,
+            'currentSupport' => $supportResistance['support'],
+            'currentResistance' => $supportResistance['resistance'],
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+        DB::table('live_trades_spot_results')->insert(
+            $data
+        );
+        $data['support'] = $supportResistance['support'];
+        $data['resistance'] = $supportResistance['resistance'];
+        if ($position === 'BUY') {
+            $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
+        } else if ($position === 'SELL') {
+            $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
+        }
+        $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+        MailerService::sendFutureTradeDynamicEmail($data);
+
+        return $data;
+    }
+
+    public static function placeSellOrderSpot($buyOrderId)
+    {
+
+        $buy_order = DB::table('live_trades_spot_results')->where('orderId', $buyOrderId)->first();
+        $trader = $buy_order->trade_acc;
+        $quantity = $buy_order->qty;
+        $symbol = $buy_order->symbol;
+        $market = $buy_order->market;
+        $amount = $buy_order->amount;
+
+
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $base_url =  config('binance.api.base_url');
+
+
+
+        // Get server time from Binance API
+        $serverTime = json_decode(file_get_contents($base_url . config('binance.endpoints.server_time')), true);
+        $serverTimestamp = $serverTime['serverTime'];
+
+        // Calculate timestamp and recvWindow
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
+
+        // Adjust timestamp if necessary
+        if ($timestamp - $serverTimestamp > $recvWindow) {
+            $timestamp = $serverTimestamp + $recvWindow;
+        }
+
+        // Fetch exchange information to get LOT_SIZE filter
+        $exchangeInfo = json_decode(file_get_contents($base_url . config('binance.endpoints.exchange_info') . "?symbol=$symbol"), true);
+        $filters = $exchangeInfo['symbols'][0]['filters'];
+
+        // Extract LOT_SIZE filter values
+        $lotSize = null;
+        foreach ($filters as $filter) {
+            if ($filter['filterType'] == 'LOT_SIZE') {
+                $lotSize = $filter;
+                break;
+            }
+        }
+
+        if ($lotSize === null) {
+            throw new Exception("LOT_SIZE filter not found for symbol $symbol");
+        }
+
+        // Calculate and adjust the quantity
+        $quantity = $amount / $current_price;
+        $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
+
+        // Ensure quantity is within the allowed limits
+        if ($quantity < $lotSize['minQty'] || $quantity > $lotSize['maxQty']) {
+            throw new Exception("Quantity $quantity is outside the allowed LOT_SIZE limits for symbol $symbol");
+        }
+
+        $url = $base_url . config('binance.endpoints.order');
+
+        // Prepare query string for signature
+        $queryString = http_build_query([
+            'symbol' => $symbol,
+            'side' => 'SELL',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+        ]);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+
+        // Append signature to the query string
+        $queryString .= '&signature=' . $signature;
+
+        $response = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey,
+        ])->asForm()->post($url, [
+            'symbol' => $symbol,
+            'side' => 'SELL',
+            'type' => 'MARKET',
+            'quantity' => strval($quantity),
+            'timestamp' => $timestamp,
+            'signature' => $signature
+        ]);
+        $response = $response->json();
+        Log::info('Trader ' . $trader . ': Sell response' . json_encode($response));
+
+
+        $currentProfit = 0;
+
+        $currentProfit = (($buy_order->price - $current_price) / $buy_order->price) * 100;
+
+        // Fee Details
+
+
+        $data =  [
+            'orderId' => $response['orderId'],
+            'pairId' => $buy_order->pairId,
+            'symbol' => $response['symbol'],
+            'side' => $response['side'],
+            'amount' => $buy_order->amount,
+            'qty' => $quantity,
+            'market' => 'SPOT',
+            'position' => 'SHORT',
+            'type' => 'close',
+            'trade_status' => 'close',
+            'leverage' => 0,
+            'price' => $current_price,
+            'currentProfit' => $currentProfit,
+            'trade_acc' => $trader,
+            'liqPrice' => 0,
+            'created_at' => Carbon::now('Asia/Karachi'),
+        ];
+
+        DB::table('live_trades_spot_results')->insert(
+            $data
+        );
+
+
+
+        $feeUsdt = 0;
+        $realizedPnl = 0;
+
+        // For close order
+        $feeDetails = self::getFeeDetails($response['orderId']);
+
+        foreach ($feeDetails as $fee) {
+            $feeUsdt += floatval($fee['commission']);
+        }
+
+        // For close order
+        $feeDetails = self::getFeeDetails($buyOrderId);
+
+        foreach ($feeDetails as $fee) {
+            $feeUsdt += floatval($fee['commission']);
+        }
+
+
+        // Calculate real time pnl
+
+        $realizedPnl =  ($current_price - $buy_order->price) - $feeUsdt;
+        DB::table('live_trades_spot_results')->where('orderId', $response['orderId'])->update([
+            'trade_status' => 'close',
+            'feeUsdt' => $feeUsdt,
+            'realizedPnl' => $realizedPnl,
+
+        ]);
+
+
+        DB::table('live_trades_spot_results')->where('orderId', $buyOrderId)->update([
+            'trade_status' => 'close',
+            'pairId' => $response['orderId'],
+            'feeUsdt' => $feeUsdt,
+            'realizedPnl' => $realizedPnl,
+
+        ]);
+        $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position']  . ' ' . $buyOrderId->formula  . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+
+        MailerService::sendFutureTradeDynamicEmail($data);
+        return $data;
     }
 }

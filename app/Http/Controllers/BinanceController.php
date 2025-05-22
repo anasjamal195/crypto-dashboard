@@ -639,21 +639,75 @@ class BinanceController extends Controller
     {
 
         if ($market === 'SPOT') {
-            $pageSlug = 'liveTradeResults' . $market;
-            $orders = DB::table('orders')->where('market', $market)->where('trade_acc', Auth::user()->id)
-                ->where('side', 'BUY');
+           $pageSlug = 'liveTradeResults' . $market;
+            $symbols = DB::table('live_trades_spot_results')
+                ->select('symbol')
+                ->distinct()
+                ->where('trade_acc', Auth::user()->id)
+                ->get();
 
+            $formulas = DB::table('live_trades_spot_results')
+                ->select('formula')
+                ->distinct()
+                ->where('trade_acc', Auth::user()->id)
+                ->get();
+
+
+            $orders = DB::table('live_trades_spot_results')
+                ->where('trade_acc', Auth::user()->id)
+                ->where('type', 'open');
             if ($request->filled('start_date'))
-                $orders = $orders->where('created_at', '>=', Carbon::parse($request('start_date'))->format('Y-m-d H:i:s'));
+                $orders = $orders->where(
+                    'created_at',
+                    '>=',
+                    Carbon::parse($request->start_date)->format('Y-m-d H:i:s')
+                );
             if ($request->filled('end_date'))
-                $orders = $orders->where('created_at', '<=', Carbon::parse($request->input('end_date'))->format('Y-m-d H:i:s'));
-            if ($request->filled('symbol'))
-                $orders = $orders->where('symbol', $request->input('symbol'));
+                $orders = $orders->where(
+                    'created_at',
+                    '<=',
+                    Carbon::parse($request->end_date)->format('Y-m-d H:i:s')
+                );
+            if ($request->filled('symbol')) {
+                $orders = $orders->where('symbol', $request->symbol);
+            }
             if ($request->filled('formula'))
                 $orders = $orders->where('formula', 'LIKE', $request->input('formula'));
-            $orders = $orders->orderBy('created_at', 'desc')->get();
+
+            $orders = $orders->orderByRaw("trade_status = 'open' DESC")
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+
+            $tradeStatistics = [
+                'total_orders' => 0,
+                'total_short' => 0,
+                'total_long' => 0,
+                'total_profit' => 0,
+                'total_loss' => 0,
+                'net_total' => 0,
+                'realizedPnl' => 0,
+
+            ];
+
+            foreach ($orders as $order) {
+                $tradeStatistics['total_orders'] += 1;
+                $tradeStatistics['net_total'] += $order->currentProfit;
+                $tradeStatistics['realizedPnl'] += $order->realizedPnl;
+
+                if ($order->position === 'LONG')
+                    $tradeStatistics['total_long'] += 1;
+                if ($order->position === 'SHORT')
+                    $tradeStatistics['total_short'] += 1;
+
+                if ($order->currentProfit >= 0)
+                    $tradeStatistics['total_profit'] += $order->currentProfit;
+
+                if ($order->currentProfit < 0)
+                    $tradeStatistics['total_loss'] += abs($order->currentProfit);
+            }
             // dd($orders);
-            return view('live-trades.results', compact('orders', 'pageSlug'));
+            return view('live-trades.results-spot', compact('orders', 'tradeStatistics', 'pageSlug', 'symbols', 'formulas'));
         } else if ($market === 'FUTURE') {
 
 
