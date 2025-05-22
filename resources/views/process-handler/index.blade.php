@@ -4,7 +4,6 @@
     <div class="container">
         <h2>Trade Handler Settings</h2>
 
-
         <a href="{{ route('process-handler.start-multithread') }}" class="btn btn-primary btn-sm m-2">Start Multithread</a>
         {{-- <a href="{{ route('process-handler.action', 'START') }}" class="btn btn-primary btn-sm m-2">Restart All</a> --}}
         <a href="{{ route('process-handler.action', 'RESTART') }}" class="btn btn-primary btn-sm m-2">Restart Current</a>

@@ -2378,6 +2378,8 @@ class CommonHelpers
             'account' => $account,
             'spotWalletInitial' => json_encode(BinanceApiService::fetchSpotWalletDetails($account)),
             'futureWalletInitial' => json_encode(BinanceApiService::fetchFutureWalletDetails($account)),
+            'spotWalletCurrent' => json_encode(BinanceApiService::fetchSpotWalletDetails($account)),
+            'futureWalletCurrent' => json_encode(BinanceApiService::fetchFutureWalletDetails($account)),
             'totalTrades' => 0,
             'openTrades' => 0,
             'realizedPnl' => 0,
