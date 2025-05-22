@@ -36,6 +36,9 @@ class HomeController extends Controller
     {
         // dd(MarketTrendService::getSymbolHistoricalTrends('BTCUSDT','1m','SPOT'));
         $pageSlug = 'Dashboard';
-        return view('welcome', compact('pageSlug'));
+
+        $futureWallet = BinanceApiService::fetchFutureWalletDetails(2);
+        $spotWallet = BinanceApiService::fetchSpotWalletDetails(2);
+        return view('welcome', compact('pageSlug', 'spotWallet', 'futureWallet'));
     }
 }
