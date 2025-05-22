@@ -9,7 +9,7 @@
         /* Adjust this value to get the desired indentation */
     }
 </style>
-<div class="sidebar" data="{{ \App\CommonHelpers::getMetaValue(auth()->user()->id, 'enable_spot', 0) == 1 ? 'primary' : 'blue' }}">
+<div class="sidebar" data="{{ \App\CommonHelpers::getMetaValue(auth()->user()->id, 'enable_spot', 0) == 1 ? 'blue' : 'primary' }}">
     <div class="sidebar-wrapper">
         <div class="logo">
             <a href="{{ route('home') }}" class="simple-text logo-mini">{{ __('C') }}</a>
