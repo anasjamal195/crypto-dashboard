@@ -1468,6 +1468,90 @@ class BinanceApiService
             return null;
         }
     }
+    public static function fetchFutureWalletDetails($trader)
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $baseUrl = config('binance.api.future_base_url');
+
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
+
+        $queryString = http_build_query([
+            'timestamp' => $timestamp,
+            'recvWindow' => $recvWindow
+        ]);
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+        $queryString .= "&signature={$signature}";
+
+        $accountUrl = "{$baseUrl}" . config('binance.endpoints.future_account_info') . "?{$queryString}";
+        $positionsUrl = "{$baseUrl}" . config('binance.endpoints.future_position_risk') . "?{$queryString}";
+
+        $client = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey
+        ]);
+
+        $accountResponse = $client->get($accountUrl)->json();
+        $positionsResponse = $client->get($positionsUrl)->json();
+
+        if (isset($accountResponse['totalWalletBalance'])) {
+            return [
+                'wallet_balance' => floatval($accountResponse['totalWalletBalance']),
+                'unrealized_profit' => floatval($accountResponse['totalUnrealizedProfit']),
+                'margin_balance' => floatval($accountResponse['totalMarginBalance']),
+                'available_balance' => floatval($accountResponse['availableBalance']),
+                'positions' => collect($positionsResponse)->filter(function ($pos) {
+                    return abs(floatval($pos['positionAmt'])) > 0;
+                })->values()
+            ];
+        }
+
+        Log::error("FUTURE Wallet Error for trader {$trader}: " . json_encode($accountResponse));
+        return null;
+    }
+
+    public static function fetchSpotWalletDetails($trader)
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $apiSecret = $user->api_secret;
+        $baseUrl = config('binance.api.base_url');
+
+        $timestamp = round(microtime(true) * 1000);
+        $recvWindow = 5000;
+
+        $queryString = http_build_query([
+            'timestamp' => $timestamp,
+            'recvWindow' => $recvWindow
+        ]);
+        $signature = hash_hmac('sha256', $queryString, $apiSecret);
+        $queryString .= "&signature={$signature}";
+
+        $accountUrl = "{$baseUrl}" . config('binance.endpoints.account_info') . "?{$queryString}";
+        $ordersUrl = "{$baseUrl}" . config('binance.endpoints.open_orders') . "?{$queryString}";
+
+        $client = self::getHttpClient()->withHeaders([
+            'X-MBX-APIKEY' => $apiKey
+        ]);
+
+        $accountResponse = $client->get($accountUrl)->json();
+        $ordersResponse = $client->get($ordersUrl)->json();
+
+        if (isset($accountResponse['balances'])) {
+            $balances = collect($accountResponse['balances'])->filter(function ($item) {
+                return floatval($item['free']) > 0 || floatval($item['locked']) > 0;
+            });
+
+            return [
+                'total_assets' => $balances,
+                'open_orders' => $ordersResponse
+            ];
+        }
+
+        Log::error("SPOT Wallet Error for trader {$trader}: " . json_encode($accountResponse));
+        return null;
+    }
 
     public static function placeBuyOrder($symbol, $interval, $amount,  $trader, $market = 'SPOT')
     {
