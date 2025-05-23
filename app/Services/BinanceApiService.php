@@ -2294,7 +2294,10 @@ class BinanceApiService
 
 
         // Temporarily Disabled
-        CommonHelpers::updateLiveTradeSession($trader);
+        // CommonHelpers::updateLiveTradeSession($trader);
+
+
+
         $tpSlOrders = self::placeTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $response['orderId']);
         self::insertTradeDetails($response['orderId'], $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
 

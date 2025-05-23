@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MasterProcessController extends Controller
 {
@@ -44,22 +45,71 @@ class MasterProcessController extends Controller
     }
 
 
-
-
-
-
-
-
-
-
-
     // Handle Incoming Validated Requests
 
 
-
-    public function handle($apiKey)
+    public function handleRequest()
     {
-        return $this->jsonResponse($apiKey, 'API key and IP validated successfully');
+        // Validate inputs
+        $action = request('action');
+        $account_id = request('account');
+
+        $validActions = ['FETCH_LIVE_TRADES_FUTURE'];
+
+        // Prepare errors array
+        $errors = [];
+
+        if (!$action) {
+            $errors['action'] = 'Action is required.';
+        } elseif (!in_array($action, $validActions)) {
+            $errors['action'] = 'Invalid action specified.';
+        }
+
+        if (!$account_id) {
+            $errors['account'] = 'Account ID is required.';
+        } elseif (intval($account_id) <= 0) {
+            $errors['account'] = 'Account ID must be a positive integer.';
+        }
+
+        // If validation fails, return error JSON response
+        if (!empty($errors)) {
+            return $this->jsonResponse($errors, 'Validation failed', 422, false);
+        }
+
+        // Validation passed - process request
+        switch ($action) {
+            case 'FETCH_LIVE_TRADES_FUTURE':
+                $data = $this->fetchLivetrades($account_id);
+                return $this->jsonResponse($data, 'Live trades fetched successfully', 200, true);
+
+            default:
+                return $this->jsonResponse(null, 'Action not found', 404, false);
+        }
     }
-  
+
+
+
+
+
+    // Custom functions for different action structure
+    protected function fetchLivetrades($account)
+    {
+        $liveTrades = DB::table('live_trades_future_results')
+            ->join('trade_orders', 'live_trades_future_results.orderId', '=', 'trade_orders.openOrderId')
+            ->join('worker_symbols', 'live_trades_future_results.symbol', 'LIKE', 'worker_symbols.symbol')
+            ->join('workers', 'worker_symbols.worker_id', 'LIKE', 'workers.worker_id')
+            ->where('live_trades_future_results.trade_acc', $account)
+            ->where('trade_orders.status', 'PENDING')
+            ->where('live_trades_future_results.trade_status', 'open')
+            ->select(
+                'live_trades_future_results.*',
+                'worker_symbols.worker_id',
+                DB::raw('TIMESTAMPDIFF(SECOND, workers.updated_at, NOW()) as last_worker_update_seconds'),
+                DB::raw('TIMESTAMPDIFF(SECOND, live_trades_future_results.updated_at, NOW()) as last_trade_update_seconds')
+            )
+            ->get()
+            ->toArray();
+
+        return $liveTrades;
+    }
 }

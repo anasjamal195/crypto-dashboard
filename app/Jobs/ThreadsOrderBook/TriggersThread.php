@@ -378,6 +378,8 @@ class TriggersThread implements ShouldQueue
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
+                'updated_at' => Carbon::now()->toDateTimeString(),
+
             ]);
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                 'isWorkerDispatched' => false,
@@ -411,6 +413,8 @@ class TriggersThread implements ShouldQueue
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
+                'updated_at' => Carbon::now()->toDateTimeString(),
+
             ]);
         } else {
 
@@ -420,6 +424,8 @@ class TriggersThread implements ShouldQueue
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
                 'stopLoss' => $stopLoss,
+                'updated_at' => Carbon::now()->toDateTimeString(),
+
             ]);
         }
 
@@ -484,6 +490,8 @@ class TriggersThread implements ShouldQueue
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
+                'updated_at' => Carbon::now()->toDateTimeString(),
+
             ]);
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                 'isWorkerDispatched' => false,
@@ -514,6 +522,8 @@ class TriggersThread implements ShouldQueue
                 'currentPrice' => $currentCandle['close'],
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit + $profitIncrementPercentage,
+                'updated_at' => Carbon::now()->toDateTimeString(),
+
             ]);
         } else {
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
@@ -522,6 +532,8 @@ class TriggersThread implements ShouldQueue
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
                 'stopLoss' =>  $stopLoss,
+                'updated_at' => Carbon::now()->toDateTimeString(),
+
             ]);
         }
 
