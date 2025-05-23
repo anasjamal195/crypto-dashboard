@@ -506,5 +506,254 @@
                 </div>
             </div>
         </div>
+
+
+
+
+
+        {{-- Section for account wallet details --}}
+        <!-- Trading Bot Wallet Cards Component -->
+        <style>
+            .wallet-card {
+                background: #27293d;
+                border: none;
+                border-radius: 15px;
+                box-shadow: 0 4px 20px 0px rgba(0, 0, 0, 0.14), 0 7px 10px -5px rgba(0, 0, 0, 0.4);
+                transition: all 0.3s ease;
+                margin-bottom: 30px;
+            }
+
+            .wallet-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 30px 0px rgba(0, 0, 0, 0.2), 0 10px 15px -5px rgba(0, 0, 0, 0.5);
+            }
+
+            .wallet-card .card-header {
+                background: transparent;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 20px 25px 10px;
+            }
+
+            .wallet-card .card-body {
+                padding: 20px 25px;
+                color: #ffffff;
+            }
+
+            .wallet-card .card-title {
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: 600;
+                margin-bottom: 0;
+            }
+
+            .wallet-card .card-subtitle {
+                color: #9A9A9A;
+                font-size: 14px;
+                margin-bottom: 0;
+            }
+
+            .stat-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .stat-item:last-child {
+                border-bottom: none;
+            }
+
+            .stat-label {
+                color: #9A9A9A;
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            .stat-value {
+                color: #ffffff;
+                font-weight: 600;
+                font-size: 16px;
+            }
+
+            .stat-value.positive {
+                color: #00f2c3;
+            }
+
+            .stat-value.negative {
+                color: #fd5d93;
+            }
+
+            .stat-value.neutral {
+                color: #1d8cf8;
+            }
+
+            .wallet-section {
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 10px;
+                padding: 15px;
+                margin: 15px 0;
+            }
+
+            .wallet-section h6 {
+                color: #e14eca;
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .asset-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 5px 0;
+                font-size: 13px;
+            }
+
+            .asset-symbol {
+                color: #ffffff;
+                font-weight: 600;
+            }
+
+            .asset-amount {
+                color: #9A9A9A;
+            }
+
+            .status-badge {
+                padding: 4px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .status-active {
+                background: rgba(0, 242, 195, 0.2);
+                color: #00f2c3;
+            }
+
+            .status-inactive {
+                background: rgba(154, 154, 154, 0.2);
+                color: #9A9A9A;
+            }
+        </style>
+
+        <div class="row">
+            @foreach ($accountTradeDetails as $account)
+                <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                    <div class="card wallet-card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    @php
+                                        $user = \App\Models\User::find($account->account);
+                                    @endphp
+                                    <h5 class="card-title my-1">{{ $user->name ?? 'Unknown User' }}</h5>
+                                    <p class="card-subtitle">Account ID: {{ $account->account }}</p>
+                                </div>
+                                <span class="badge bg-info badge-lg">
+                                    {{ \Carbon\Carbon::parse($account->created_at)->format('l, F j, Y h:i A') }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Trading Statistics -->
+                            <div class="stat-item">
+                                <span class="stat-label">
+                                    <i class="fas fa-chart-line me-2"></i>Total Trades
+                                </span>
+                                <span class="stat-value neutral">{{ $account->totalTrades }}</span>
+                            </div>
+
+                            <div class="stat-item">
+                                <span class="stat-label">
+                                    <i class="fas fa-sync-alt me-2"></i>Open Trades
+                                </span>
+                                <span class="stat-value {{ $account->openTrades > 0 ? 'positive' : 'neutral' }}">
+                                    {{ $account->openTrades }}
+                                </span>
+                            </div>
+
+                            <div class="stat-item">
+                                <span class="stat-label">
+                                    <i class="fas fa-dollar-sign me-2"></i>Realized P&L
+                                </span>
+                                <span
+                                    class="stat-value {{ floatval($account->realizedPnl) > 0 ? 'positive' : (floatval($account->realizedPnl) < 0 ? 'negative' : 'neutral') }}">
+                                    ${{ number_format(floatval($account->realizedPnl), 2) }}
+                                </span>
+                            </div>
+
+                            <!-- Spot Wallet Section -->
+                            @php
+                                $spotWallet = json_decode($account->spotWalletCurrent, true);
+                                $spotTotal = 0;
+                            @endphp
+
+                            @if ($spotWallet && isset($spotWallet['total_assets']))
+                                <div class="wallet-section">
+                                    <h6><i class="fas fa-wallet me-2"></i>Spot Wallet</h6>
+                                    @foreach ($spotWallet['total_assets'] as $asset)
+                                        @php $spotTotal += floatval($asset['free']); @endphp
+                                        <div class="asset-item">
+                                            <span class="asset-symbol">{{ $asset['asset'] }}</span>
+                                            <span
+                                                class="asset-amount">{{ number_format(floatval($asset['free']), 8) }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            <!-- Futures Wallet Section -->
+                            @php
+                                $futuresWallet = json_decode($account->futureWalletCurrent, true);
+                            @endphp
+
+                            @if ($futuresWallet)
+                                <div class="wallet-section">
+                                    <h6><i class="fas fa-chart-area me-2"></i>Futures Wallet</h6>
+                                    <div class="asset-item">
+                                        <span class="asset-symbol">Balance</span>
+                                        <span
+                                            class="asset-amount">${{ number_format($futuresWallet['wallet_balance'], 2) }}</span>
+                                    </div>
+                                    <div class="asset-item">
+                                        <span class="asset-symbol">Available</span>
+                                        <span
+                                            class="asset-amount">${{ number_format($futuresWallet['available_balance'], 2) }}</span>
+                                    </div>
+                                    <div class="asset-item">
+                                        <span class="asset-symbol">Unrealized P&L</span>
+                                        <span
+                                            class="asset-amount {{ $futuresWallet['unrealized_profit'] > 0 ? 'text-success' : ($futuresWallet['unrealized_profit'] < 0 ? 'text-danger' : '') }}">
+                                            ${{ number_format($futuresWallet['unrealized_profit'], 2) }}
+                                        </span>
+                                    </div>
+                                    @if (isset($futuresWallet['positions']) && count($futuresWallet['positions']) > 0)
+                                        <div class="asset-item">
+                                            <span class="asset-symbol">Open Positions</span>
+                                            <span class="asset-amount">{{ count($futuresWallet['positions']) }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+
+                            <!-- Last Update -->
+                            <div class="stat-item mt-3">
+                                <span class="stat-label">
+                                    <i class="fas fa-clock me-2"></i>Last Updated
+                                </span>
+                                <span class="stat-value" style="font-size: 12px;">
+                                    {{ \Carbon\Carbon::parse($account->updated_at)->diffForHumans() }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     </div>
 @endsection

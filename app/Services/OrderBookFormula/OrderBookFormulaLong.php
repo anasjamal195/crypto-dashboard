@@ -50,7 +50,9 @@ class OrderBookFormulaLong
                 ->whereNotIn('symbol', $openSymbols)
                 ->where('isActive', 1)
                 ->distinct()
+                ->inRandomOrder()
                 ->pluck('symbol');
+
 
 
             foreach ($uniqueSymbols as $symbol) {

@@ -38,10 +38,10 @@ class TriggersThread implements ShouldQueue
 
 
     // Meta data
-    public $stopLoss = 1;
+    public $stopLoss = 0.15;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.4;
+    public $targetProfit = 0.15;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
     public $formula = 'RSI Swings';
@@ -335,16 +335,15 @@ class TriggersThread implements ShouldQueue
         // Reduce Stop loss by half every 30 min
         $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
-        $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
+        // $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
 
-        if ($stopLoss < $open_order['price'] && $currentCandle['per'] < 0)
-            $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
+        // if ($stopLoss < $open_order['price'] && $currentCandle['per'] < 0)
+        //     $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
 
         // Gradually Narrow Stop Loss if profit is between volatility zone
         // if ($currentProfit > $open_order['currentProfit'] && $currentProfit > 0.2 && $currentProfit < 0.5) {
         //     $stopLoss = $currentCandle['close'] * (1 - 0.2 / 100);
         // }
-
 
         // Check if SPOT enabled
         $tableName = $open_order['market'] === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
@@ -372,6 +371,24 @@ class TriggersThread implements ShouldQueue
             // $this->nextSLTriggerTime = 30;
             return false;
         } else if ($currentProfit > $targetProfit) {
+
+
+
+
+            // Update TP SL orders on binance also
+
+            if (!self::$isSpot) {
+
+                $takeProfitPercentage = $targetProfit + $profitIncrementPercentage;
+                $takeProfitPrice = $currentCandle['close'] * (1 + $takeProfitPercentage / 100);
+                $stopLossPrice = $currentCandle['close'];
+
+                $tpSlOrders = BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
+                if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
+                    return false;
+                }
+                BinanceApiService::updateTradeDetails($open_order['order_id'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+            }
 
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
                 'stopLoss' =>  $currentCandle['close'],
@@ -431,12 +448,12 @@ class TriggersThread implements ShouldQueue
 
 
         // Reduce Stop loss by half every 30 min
-        $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
+        // $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
 
-        $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
-        if ($stopLoss > $open_order['price'] && $currentCandle['per'] > 0)
-            $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
+        // $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
+        // if ($stopLoss > $open_order['price'] && $currentCandle['per'] > 0)
+        //     $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
 
 
         // Gradually Narrow Stop Loss if profit is between volatility zone
@@ -460,6 +477,21 @@ class TriggersThread implements ShouldQueue
             // $this->nextSLTriggerTime = 30;
             return false;
         } else if ($currentProfit > $targetProfit) {
+
+
+            if (!self::$isSpot) {
+
+                $takeProfitPercentage = $targetProfit + $profitIncrementPercentage;
+                $takeProfitPrice = $currentCandle['close'] * (1 - $takeProfitPercentage / 100);
+                $stopLossPrice = $currentCandle['close'];
+
+                $tpSlOrders = BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
+
+                if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
+                    return false;
+                }
+                BinanceApiService::updateTradeDetails($open_order['order_id'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+            }
 
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'stopLoss' =>  $currentCandle['close'],
@@ -493,7 +525,7 @@ class TriggersThread implements ShouldQueue
     public static function handleOpeningConditionsLong($symbol, $data, $index)
     {
 
-
+        return 'LONG';
         // Long Conditions
         if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
             self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);

@@ -639,6 +639,13 @@ class BinanceController extends Controller
     {
 
         if ($market === 'SPOT') {
+
+
+            
+
+
+
+
             $pageSlug = 'liveTradeResults' . $market;
             $symbols = DB::table('live_trades_spot_results')
                 ->select('symbol')

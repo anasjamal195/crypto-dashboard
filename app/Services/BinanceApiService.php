@@ -2209,6 +2209,8 @@ class BinanceApiService
             $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
             MailerService::sendFutureTradeDynamicEmail($data);
 
+
+
             return $data;
         }
 
@@ -2225,7 +2227,6 @@ class BinanceApiService
         $response = $response->json();
 
 
-
         if (isset($response['code']) && $response['code'] < 0) {
             throw new Exception("Order failed: " . $response['msg']);
         }
@@ -2235,6 +2236,7 @@ class BinanceApiService
         $accountMargin = $tradeAmount; // User's margin
         $liquidationPrice = 0;
         $stopLoss = 0;
+        $takeProfitPrice = 0;
 
         if ($position === 'BUY') {
             $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
@@ -2242,6 +2244,13 @@ class BinanceApiService
         } else if ($position === 'SELL') {
             $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
             $stopLoss = $current_price * (1 + $stopLossPercentage / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + $stopLossPercentage / 100);
+        }
+
+
+        if ($position === 'BUY') {
+            $takeProfitPrice =  $current_price * (1 + $targetProfit / 100);
+        } else if ($position === 'SELL') {
+            $takeProfitPrice =  $current_price * (1 - $targetProfit / 100);
         }
 
 
@@ -2282,7 +2291,13 @@ class BinanceApiService
         }
         $data['subject'] = 'FUTURE:' . $data['type'] . ' ' . $data['position'] . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
+
+
+        // Temporarily Disabled
         CommonHelpers::updateLiveTradeSession($trader);
+        $tpSlOrders = self::placeTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $response['orderId']);
+        self::insertTradeDetails($response['orderId'], $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+
 
         return $data;
     }
@@ -2297,13 +2312,11 @@ class BinanceApiService
         $symbol = $openOrder->symbol;
         $trader = $openOrder->trade_acc;
         $quantity = $openOrder->qty;
-
-        $positionDetails = self::getPositionDetails($symbol, $trader);
-        if ($openOrder->trade_status === 'close' || !$positionDetails) {
-            return false;
-        }
-
         $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+
+        $response = null;
+        $positionDetails = self::getPositionDetails($symbol, $trader);
 
         $user = User::find($trader);
         $apiKey = $user->api_key;
@@ -2347,7 +2360,6 @@ class BinanceApiService
                 'pairId' => $openOrder->pairId,
                 'symbol' => $symbol,
                 'market' => $market,
-
                 'side' => $position,
                 'amount' => $openOrder->amount,
                 'qty' => $quantity,
@@ -2376,22 +2388,55 @@ class BinanceApiService
             MailerService::sendFutureTradeDynamicEmail($data);
             return $data;
         }
-        $response = self::getHttpClient()->withHeaders([
-            'X-MBX-APIKEY' => $apiKey,
-        ])->asForm()->post($url, [
-            'symbol' => $symbol,
-            "side" => $position,
-            "type" => "MARKET",
-            'quantity' => strval($quantity),
-            'timestamp' => $timestamp,
-            'signature' => $signature
-        ]);
-        $response = $response->json();
 
 
-        if (isset($response['code']) && $response['code'] < 0) {
-            throw new Exception("Order failed: " . $response['msg']);
+
+
+
+        $closedInternally = true;
+
+
+
+        if ($openOrder->trade_status === 'close' || !$positionDetails) {
+
+
+            self::cancelExistingStopOrders($openOrderId);
+            $response =  self::getLastCloseOrder($symbol, $trader);
+
+            $isMarketOrder = $response['origType'] === 'MARKET';
+
+            if ($isMarketOrder) {
+                $current_price = $response['avgPrice'];
+            } else {
+                $current_price = $response['avgPrice'];
+            }
+
+
+            if (isset($response['code']) && $response['code'] < 0) {
+                throw new Exception("Order failed: " . $response['msg']);
+            }
+
+            $closedInternally = false;
+        } else {
+
+            $response = self::getHttpClient()->withHeaders([
+                'X-MBX-APIKEY' => $apiKey,
+            ])->asForm()->post($url, [
+                'symbol' => $symbol,
+                "side" => $position,
+                "type" => "MARKET",
+                'quantity' => strval($quantity),
+                'timestamp' => $timestamp,
+                'signature' => $signature
+            ]);
+            $response = $response->json();
+
+
+            if (isset($response['code']) && $response['code'] < 0) {
+                throw new Exception("Order failed: " . $response['msg']);
+            }
         }
+
 
         $currentProfit = 0;
         if ($position === 'BUY') {
@@ -2411,7 +2456,6 @@ class BinanceApiService
             'side' => $response['side'],
             'amount' => $openOrder->amount,
             'market' => $market,
-
             'qty' => $quantity,
             'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
             'type' => 'close',
@@ -2468,7 +2512,14 @@ class BinanceApiService
         $data['subject'] = 'FUTURE:' . $data['type'] . ' ' . $data['position']  . ' '  . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
-        CommonHelpers::updateLiveTradeSession($trader);
+
+        // Temporarily Disabled
+        // CommonHelpers::updateLiveTradeSession($trader);
+
+
+        self::cancelExistingStopOrders($openOrderId);
+        $status = $closedInternally ? 'CLOSED_INTERNALLY' : 'CLOSED_EXTERNALLY';
+
 
         return $data;
     }
@@ -2989,18 +3040,35 @@ class BinanceApiService
         $timestamp = round(microtime(true) * 1000);
         $queryString = "symbol=$symbol&orderId=$orderId&timestamp=$timestamp";
         $signature = hash_hmac('sha256', $queryString, $secretKey);
+        $queryString .= "&signature=$signature";
 
-        $response = self::getHttpClient()->withHeaders([
-            'X-MBX-APIKEY' => $apiKey,
-        ])->delete("https://fapi.binance.com/fapi/v1/order", [
-            'symbol' => $symbol,
-            'orderId' => $orderId,
-            'timestamp' => $timestamp,
-            'signature' => $signature,
+        $url = "https://fapi.binance.com/fapi/v1/order?$queryString";
+
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "X-MBX-APIKEY: $apiKey"
         ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL verification
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Disable host verification
 
-        return $response->json();
+        $response = curl_exec($ch);
+
+        if (curl_errno($ch)) {
+            return [
+                'error' => true,
+                'message' => curl_error($ch)
+            ];
+        }
+
+        curl_close($ch);
+
+        return json_decode($response, true);
     }
+
     private static function getLastCloseOrder($symbol, $trader)
     {
         $user = User::find($trader);
@@ -3010,26 +3078,32 @@ class BinanceApiService
         $timestamp = round(microtime(true) * 1000);
         $queryString = "symbol=$symbol&timestamp=$timestamp";
         $signature = hash_hmac('sha256', $queryString, $secretKey);
+        $queryString .= "&signature=$signature";
+
+        $url = "https://fapi.binance.com/fapi/v1/allOrders?$queryString";
 
         $response = self::getHttpClient()->withHeaders([
             'X-MBX-APIKEY' => $apiKey,
-        ])->get("https://fapi.binance.com/fapi/v1/allOrders", [
-            'symbol' => $symbol,
-            'timestamp' => $timestamp,
-            'signature' => $signature,
-        ]);
+        ])->get($url);
 
         $orders = $response->json();
 
-        // Find last closed order
+        if (!is_array($orders)) {
+            Log::error("Unexpected response from Binance allOrders: " . json_encode($orders));
+            return false;
+        }
+        // dd(array_reverse($orders));
+        // Find last closed (FILLED) order
         foreach (array_reverse($orders) as $order) {
-            if ($order['status'] == 'FILLED' || $order['status'] == 'CANCELED') {
+            if ($order['status'] === 'FILLED') {
                 return $order;
             }
         }
 
         return false;
     }
+
+
 
 
 
@@ -3053,7 +3127,8 @@ class BinanceApiService
      * @param string $secretKey Your Binance API secret key
      * @return array An array containing both order responses
      */
-    public static function placeTpSlOrders($symbol, $trader, float $takeProfitPrice, float $stopLossPrice, $openOrderId)
+
+    public static function placeTpSlOrders($symbol, $trader, float $takeProfitPrice, float $stopLossPrice, $openOrderId, $priceMargin = 0.2)
     {
 
 
@@ -3061,103 +3136,21 @@ class BinanceApiService
         $apiKey = $user->api_key;
         $secretKey = $user->api_secret;
 
+
+
+
+        // Cancel existing orders before placing new ones
+        self::cancelExistingStopOrders($openOrderId);
+
+
         // Get position details
         $positionDetails = self::getPositionDetails($symbol, $trader);
-
         if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
-            // No open position found, return last close order details
-
-
-            $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
-            $market = 'FUTURE';
-            $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
-            $symbol = $openOrder->symbol;
-            $trader = $openOrder->trade_acc;
-            $quantity = $openOrder->qty;
-
-
-            $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
-
-
-            $response =  self::getLastCloseOrder($symbol, $trader);
-
-
-
-
-            if (isset($response['code']) && $response['code'] < 0) {
-                throw new Exception("Order failed: " . $response['msg']);
-            }
-
-            $currentProfit = 0;
-            if ($position === 'BUY') {
-                $currentProfit = (($openOrder->price - $current_price) / $openOrder->price) * 100;
-            } else {
-                $currentProfit = (($current_price - $openOrder->price) / $openOrder->price) * 100;
-            }
-
-            $data =  [
-                'orderId' => $response['orderId'],
-                'pairId' => $openOrder->pairId,
-                'symbol' => $response['symbol'],
-                'side' => $response['side'],
-                'amount' => $openOrder->amount,
-                'qty' => $quantity,
-                'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
-                'type' => 'close',
-                'trade_status' => 'close',
-                'leverage' => 0,
-                'price' => $current_price,
-                'currentProfit' => $currentProfit,
-                'trade_acc' => $trader,
-                'liqPrice' => 0,
-
-                'created_at' => Carbon::now('Asia/Karachi'),
+            self::closeMarketPositionLiveTrader($openOrderId);
+            return [
+                'takeProfit' => null,
+                'stopLoss' => null
             ];
-
-            DB::table('live_trades_future_results')->insert(
-                $data
-            );
-
-
-
-            $feeUsdt = 0;
-            $realizedPnl = 0;
-
-            // For close order
-            $feeDetails = self::getFeeDetails($response['orderId']);
-
-            foreach ($feeDetails as $fee) {
-                $feeUsdt += floatval($fee['commission']);
-                $realizedPnl += floatval($fee['realizedPnl']);
-            }
-
-            // For close order
-            $feeDetails = self::getFeeDetails($openOrderId);
-
-            foreach ($feeDetails as $fee) {
-                $feeUsdt += floatval($fee['commission']);
-                $realizedPnl += floatval($fee['realizedPnl']);
-            }
-
-            DB::table('live_trades_future_results')->where('orderId', $response['orderId'])->update([
-                'trade_status' => 'close',
-                'feeUsdt' => $feeUsdt,
-                'realizedPnl' => $realizedPnl,
-
-            ]);
-
-
-            DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
-                'trade_status' => 'close',
-                'pairId' => $response['orderId'],
-                'feeUsdt' => $feeUsdt,
-                'realizedPnl' => $realizedPnl,
-
-            ]);
-            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position']  . ' ' . $openOrder->formula  . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
-
-            MailerService::sendFutureTradeDynamicEmail($data);
-            return $data;
         }
 
 
@@ -3172,6 +3165,14 @@ class BinanceApiService
         // Absolute quantity (remove negative sign for short positions)
         $quantity = abs($positionAmt);
 
+        $current_price = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
+        if ($positionSide === 'LONG') {
+            $takeProfitPrice = CommonHelpers::roundToMatchPrecision($current_price, $takeProfitPrice * (1 + $priceMargin / 100));
+            $stopLossPrice = CommonHelpers::roundToMatchPrecision($current_price, $stopLossPrice * (1 - $priceMargin / 100));
+        } else {
+            $takeProfitPrice = CommonHelpers::roundToMatchPrecision($current_price, $takeProfitPrice * (1 - $priceMargin / 100));
+            $stopLossPrice = CommonHelpers::roundToMatchPrecision($current_price, $stopLossPrice * (1 + $priceMargin / 100));
+        }
         // Place Take Profit order
         $tpOrder = self::placeOrder(
             $symbol,
@@ -3194,11 +3195,72 @@ class BinanceApiService
             $secretKey
         );
 
+
         return [
             'takeProfit' => $tpOrder,
             'stopLoss' => $slOrder
         ];
     }
+
+
+    public static function getTradeOrdersDetails($openOrderId)
+    {
+
+        return DB::table('trade_orders')->where('openOrderId', $openOrderId)->where('status', 'PENDING')->first();
+    }
+
+
+    public static function cancelExistingStopOrders($openOrderId)
+    {
+
+        $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
+        $market = 'FUTURE';
+        $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
+        $symbol = $openOrder->symbol;
+        $trader = $openOrder->trade_acc;
+        $quantity = $openOrder->qty;
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+
+        $existingStopOrder = self::getTradeOrdersDetails($openOrderId);
+
+        if ($existingStopOrder && $existingStopOrder->tp_order_id && $existingStopOrder->sl_order_id && $existingStopOrder->status === 'PENDING') {
+
+            self::cancelOrder($symbol, $trader, $existingStopOrder->tp_order_id);
+            self::cancelOrder($symbol, $trader, $existingStopOrder->sl_order_id);
+
+
+            DB::table('trade_orders')->where('id', $existingStopOrder->id)->where('status', 'PENDING')->update([
+                'tp_order_id' => null,
+                'sl_order_id' => null,
+            ]);
+        }
+    }
+
+
+    public static function updateTradeDetails($openOrderId, $tp, $sl, $tp_order_id, $sl_order_id, $status)
+    {
+        DB::table('trade_orders')->where('openOrderId', $openOrderId)->where('status', 'PENDING')->update([
+            'tp' => $tp,
+            'sl' => $sl,
+            'tp_order_id' => $tp_order_id,
+            'sl_order_id' => $sl_order_id,
+            'status' => $status,
+        ]);
+    }
+
+    public static function insertTradeDetails($openOrderId, $tp, $sl, $tp_order_id, $sl_order_id, $status)
+    {
+        DB::table('trade_orders')->where('openOrderId', $openOrderId)->where('status', 'PENDING')->insert([
+            'openOrderId' => $openOrderId,
+            'tp' => $tp,
+            'sl' => $sl,
+            'tp_order_id' => $tp_order_id,
+            'sl_order_id' => $sl_order_id,
+            'status' => $status,
+        ]);
+    }
+
+
 
     /**
      * Place a single order on Binance Futures
@@ -3500,8 +3562,6 @@ class BinanceApiService
         $currentProfit = (($buy_order->price - $current_price) / $buy_order->price) * 100;
 
         // Fee Details
-
-
         $data =  [
             'orderId' => $response['orderId'],
             'pairId' => $buy_order->pairId,

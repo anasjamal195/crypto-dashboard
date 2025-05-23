@@ -2449,4 +2449,18 @@ class CommonHelpers
             'updated_at' => Carbon::now()->toDateTimeString(),
         ]);
     }
+
+
+
+  public static function roundToMatchPrecision($reference, $numberToRound) {
+    // Get the decimal part of the reference number
+    $decimalPlaces = 0;
+    if (strpos((string)$reference, '.') !== false) {
+        $decimalPlaces = strlen(substr(strrchr((string)$reference, "."), 1));
+    }
+
+    return round($numberToRound, $decimalPlaces);
+}
+
+
 }

@@ -37,70 +37,26 @@ class TestCron extends Command
     public function handle()
     {
 
-        $url = "https://api.binance.com/api/v3/exchangeInfo";
+        $symbol = 'HBARUSDT';
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $response = curl_exec($ch);
-        if (curl_errno($ch)) {
-            echo 'Error: ' . curl_error($ch);
-            return [];
-        }
-
-        curl_close($ch);
-
-        $data = json_decode($response, true);
-
-        $usdtPairs = [];
-
-        foreach ($data['symbols'] as $symbol) {
-            if (
-                $symbol['quoteAsset'] === 'USDT' &&
-                $symbol['status'] === 'TRADING' &&
-                $symbol['isSpotTradingAllowed'] === true
-            ) {
-                $usdtPairs[] = $symbol['symbol'];
-
-                DB::table('coins')->insert([
-                    'symbol' => $symbol['symbol'],
-                    'status' => 'T',
-                    'market' => 'SPOT',
-                    'created_at' => Carbon::now()->toDateTimeString(),
-                    'updated_at' => Carbon::now()->toDateTimeString(),
-                ]);
-            }
-        }
-
-        dd($usdtPairs);
-        // dd(BinanceApiService::getCandleStickData('BTCUSDT','5m',400,null,'FUTURE')[398]);
-
-        // foreach (DB::table('coins')->where('status', 'T')->whereNull('classification')->get() as $coin) {
-        //     try {
-        //         $details = BinanceApiService::getCoinCategoryDetails(str_replace('USDT', '', $coin->symbol));
-        //         DB::table('coins')->where('id', $coin->id)->update([
-        //             'classification' => $details['primary_classification'],
-        //             'is_meme_coin' => $details['classifications']['is_meme_coin'],
-        //             'is_altcoin' => $details['classifications']['is_altcoin'],
-        //             'is_nft' => $details['classifications']['is_nft'],
-        //             'is_defi' => $details['classifications']['is_defi'],
-        //             'is_metaverse' => $details['classifications']['is_metaverse'],
-        //             'is_web3' => $details['classifications']['is_web3'],
-        //         ]);
-        //         $this->info('Updated ' . $coin->symbol . ' Category: ' . $details['primary_classification']);
-        //     } catch (\Exception $e) {
-        //         $this->error($e->getMessage());
-        //         $current = Carbon::now();
-        //         $secondsToWait = 60 - $current->second;
-        //         $this->info('Waiting for ' . $secondsToWait . ' seconds...');
-        //         sleep($secondsToWait);
-        //     }
-
-        //     sleep(1);
-        // }
+        $supportResistance = [
+            'support' => 1,
+            'resistance' => 1
+        ];
 
 
 
-        dd('Done');
+        // $responseOpen = BinanceApiService::openMarketPositionLiveTrader($symbol, 10, 'BUY', 1, 1, 'Test', $supportResistance, 1, false, 0.05, 0.05);
+        // dd($responseOpen);
+
+
+        // $responseUpdate = BinanceApiService::placeTpSlOrders($symbol, 1, 0.2500, 0.19300, 10923632233);
+        // BinanceApiService::updateTradeDetails(10923632233, $responseUpdate['takeProfit']['orderId'], $responseUpdate['stopLoss']['orderId'], 'PENDING');
+        // dd($responseUpdate);
+
+
+        // $responseClose = BinanceApiService::closeMarketPositionLiveTrader(10923632233);
+
+        // dd($responseClose);
     }
 }
