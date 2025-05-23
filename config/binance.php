@@ -37,5 +37,11 @@ return [
         'latest_coins' => '/cryptocurrency/listings/latest',
         'info' => '/cryptocurrency/info'
 
-    ]
+    ],
+
+
+
+    // Master Process manager
+    'process_manager_client_key' => env('PROCESS_MANAGER_CLIENT_KEY', '1b88399e-2ec0-4a34-bd49-ff50f9adc013'),
+    'process_manager_server_ip' => env('PROCESS_MANAGER_SERVER_IP', '170.64.211.163'),
 ];

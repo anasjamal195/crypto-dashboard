@@ -10,6 +10,15 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 
+// CSRF Free Routes for api's
+Route::name('master-process.')->prefix('master-process/')->group(function () {
+	
+	Route::post('handle/{apiKey}', 'App\Http\Controllers\MasterProcessController@handleRequest')->name('master-process.handle');
+
+
+});
+
+
 Auth::routes();
 
 
@@ -23,7 +32,12 @@ Route::get('/', function () {
 
 Auth::routes();
 
+
+
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+
+
 
 
 Route::get('/home', 'App\Http\Controllers\HomeController@index')->name('home')->middleware('auth');
@@ -75,8 +89,8 @@ Route::get('/process-handler', 'App\Http\Controllers\ProcessController@index')->
 Route::get('/process-handler/restart/{process_name}', 'App\Http\Controllers\ProcessController@restart')->name('process-handler.restart')->middleware('auth');
 Route::get('/process-handler/stop/{process_name}', 'App\Http\Controllers\ProcessController@stop')->name('process-handler.stop')->middleware('auth');
 Route::get('/process-handler/action/{action}', 'App\Http\Controllers\ProcessController@performAction')->name('process-handler.action')->middleware('auth');
-Route::get('/process-handler/toggle-position/{position}','App\Http\Controllers\ProcessController@togglePosition')->name('user.toggle-position')->middleware('auth');
-Route::get('/process-handler/toggle-market','App\Http\Controllers\ProcessController@toggleMarket')->name('user.toggle-market')->middleware('auth');
+Route::get('/process-handler/toggle-position/{position}', 'App\Http\Controllers\ProcessController@togglePosition')->name('user.toggle-position')->middleware('auth');
+Route::get('/process-handler/toggle-market', 'App\Http\Controllers\ProcessController@toggleMarket')->name('user.toggle-market')->middleware('auth');
 
 // Combined workers start for multithread
 Route::get('/process-handler/start-multithread', 'App\Http\Controllers\ProcessController@startMultithread')->name('process-handler.start-multithread')->middleware('auth');
@@ -87,8 +101,6 @@ Route::get('/worker-handler/flush/{worker_id}', 'App\Http\Controllers\ProcessCon
 
 
 
-// Critical process Urls
-Route::get('/process-handler/action/plesk-git/{apiKey}/{action}', 'App\Http\Controllers\ProcessController@performActionOnPleskGit')->name('process-handler.action.plesk-git');
 
 
 Route::group(['middleware' => 'auth'], function () {
@@ -107,6 +119,11 @@ Route::group(['middleware' => 'auth'], function () {
 	Route::put('profile', ['as' => 'profile.update', 'uses' => 'App\Http\Controllers\ProfileController@update']);
 	Route::put('profile/password', ['as' => 'profile.password', 'uses' => 'App\Http\Controllers\ProfileController@password']);
 });
+
+
+
+
+
 
 
 

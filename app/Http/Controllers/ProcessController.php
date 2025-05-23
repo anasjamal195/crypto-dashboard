@@ -76,7 +76,7 @@ class ProcessController extends Controller
             // Dispatch All threads
             Artisan::call('queue:flush');
             foreach ($threads as $workerId) {
-                TriggersThread::dispatch($workerId, 2);
+                TriggersThread::dispatch($workerId, auth()->user()->id);
             }
             return redirect()->back()->withSuccess('Action ' . 'Multithread Started');
         } catch (\Throwable $th) {
@@ -135,14 +135,26 @@ class ProcessController extends Controller
 
             $currentStatus = CommonHelpers::getMetaValue(auth()->user()->id, 'enable_long_multithread', 0);
 
-            DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'enable_long_multithread')->update([
-                'meta_value' => !$currentStatus
-            ]);
+            DB::table('user_meta')->updateOrInsert(
+                [
+                    'user_id' => auth()->user()->id,
+                    'meta_key' => 'enable_long_multithread'
+                ],
+                [
+                    'meta_value' => !$currentStatus
+                ]
+            );
         } else if ($position === 'SHORT') {
             $currentStatus = CommonHelpers::getMetaValue(auth()->user()->id, 'enable_short_multithread', 0);
-            DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'enable_short_multithread')->update([
-                'meta_value' => !$currentStatus
-            ]);
+            DB::table('user_meta')->updateOrInsert(
+                [
+                    'user_id' => auth()->user()->id,
+                    'meta_key' => 'enable_short_multithread'
+                ],
+                [
+                    'meta_value' => !$currentStatus
+                ]
+            );
         }
 
 
@@ -155,9 +167,15 @@ class ProcessController extends Controller
         $currentStatus = CommonHelpers::getMetaValue(auth()->user()->id, 'enable_spot', 0);
 
 
-        DB::table('user_meta')->where('user_id', auth()->user()->id)->where('meta_key', 'enable_spot')->update([
-            'meta_value' => !$currentStatus
-        ]);
+        DB::table('user_meta')->updateOrInsert(
+            [
+                'user_id' => auth()->user()->id,
+                'meta_key' => 'enable_spot'
+            ],
+            [
+                'meta_value' => !$currentStatus
+            ]
+        );
 
 
         return redirect()->back()->withSuccess('Toggled Position status');

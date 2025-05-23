@@ -2391,7 +2391,7 @@ class CommonHelpers
 
     public static function getLiveTradeSessionId($account)
     {
-        $entry = DB::table('account_trade_details')->where('account',$account)->orderBy('created_at', 'DESC')->first();
+        $entry = DB::table('account_trade_details')->where('account', $account)->orderBy('created_at', 'DESC')->first();
         return $entry ? $entry->id : null;
     }
 
@@ -2452,15 +2452,24 @@ class CommonHelpers
 
 
 
-  public static function roundToMatchPrecision($reference, $numberToRound) {
-    // Get the decimal part of the reference number
-    $decimalPlaces = 0;
-    if (strpos((string)$reference, '.') !== false) {
-        $decimalPlaces = strlen(substr(strrchr((string)$reference, "."), 1));
+    public static function roundToMatchPrecision($reference, $numberToRound)
+    {
+        // Get the decimal part of the reference number
+        $decimalPlaces = 0;
+        if (strpos((string)$reference, '.') !== false) {
+            $decimalPlaces = strlen(substr(strrchr((string)$reference, "."), 1));
+        }
+
+        return round($numberToRound, $decimalPlaces);
     }
 
-    return round($numberToRound, $decimalPlaces);
-}
 
+    // #################### Workers Management Functions ###################
 
+    public static function updateWorkerTicker($workerId)
+    {
+        DB::table('workers')->where('worker_id', $workerId)->update([
+            'updated_at' => Carbon::now()->toDateTimeString(),
+        ]);
+    }
 }

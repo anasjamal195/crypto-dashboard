@@ -66,14 +66,20 @@ class TriggersThread implements ShouldQueue
     public function handle(): void
     {
         while (true) {
+            CommonHelpers::updateWorkerTicker(self::$workerId);
+
             try {
                 $tradeToOpen = null;
                 $tradeType = null;
                 // Main Loop to process coins list
                 while (true) {
+                    CommonHelpers::updateWorkerTicker(self::$workerId);
+
                     $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->get();
 
                     foreach ($worker_symbols as $worker_symbol) {
+                        CommonHelpers::updateWorkerTicker(self::$workerId);
+
 
                         try {
                             $symbol = $worker_symbol->symbol;
@@ -136,8 +142,13 @@ class TriggersThread implements ShouldQueue
                             Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                             Log::error($e->getTraceAsString());
                         }
+
+                        // Worker Tickers
+
+
                         sleep(2);
                     }
+
 
                     // If an opening trade found than break the parent loop
                     if ($tradeToOpen)
@@ -245,6 +256,8 @@ class TriggersThread implements ShouldQueue
                         $tradeLoop = true;
                         // Proceed trade until the position is closed
                         while ($tradeLoop) {
+                            CommonHelpers::updateWorkerTicker(self::$workerId);
+
                             try {
                                 $open_order = null;
 
@@ -291,6 +304,8 @@ class TriggersThread implements ShouldQueue
 
 
                 // Recall this loop after every successful trade
+
+
                 sleep(5);
             } catch (\Exception $e) {
                 Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
