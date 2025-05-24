@@ -548,7 +548,7 @@ class TriggersThread implements ShouldQueue
     public static function handleOpeningConditionsLong($symbol, $data, $index)
     {
 
-        return 'LONG';
+        // return 'LONG';
         // Long Conditions
         if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
             self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
