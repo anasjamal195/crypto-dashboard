@@ -2517,12 +2517,16 @@ class BinanceApiService
         MailerService::sendFutureTradeDynamicEmail($data);
 
         // Temporarily Disabled
-        // CommonHelpers::updateLiveTradeSession($trader);
+        CommonHelpers::updateLiveTradeSession($trader);
 
 
         self::cancelExistingStopOrders($openOrderId);
-        $status = $closedInternally ? 'CLOSED_INTERNALLY' : 'CLOSED_EXTERNALLY';
 
+
+        $status = $closedInternally ? 'CLOSED_INTERNALLY' : 'CLOSED_EXTERNALLY';
+        DB::table('trade_orders')->where('openOrderId', $openOrderId)->where('status', 'PENDING')->update([
+            'status' => $status,
+        ]);
 
         return $data;
     }
