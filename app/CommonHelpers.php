@@ -2,6 +2,7 @@
 // Support Resistance formula (80 Trades with 87% accuracy) 1.5 SL
 namespace App;
 
+use App\Models\User;
 use App\Services\BinanceApiService;
 use App\Services\BinanceVolumeIndicatorsService;
 use App\Services\MailerService;
@@ -9,6 +10,7 @@ use App\Services\SupervisorService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class CommonHelpers
@@ -2471,5 +2473,164 @@ class CommonHelpers
         DB::table('workers')->where('worker_id', $workerId)->update([
             'updated_at' => Carbon::now()->toDateTimeString(),
         ]);
+    }
+
+
+    public static function updateLiveTradesMasterTable($account)
+    {
+
+
+        $url = "https://" . $account->domain_name . "/master-process/handle/" . config('binance.process_manager_client_key');
+
+        $data = [
+            'action' => 'FETCH_LIVE_TRADES_FUTURE',
+            'account' => $account->account_id
+        ];
+        $response = Http::post($url, $data);
+
+        if ($response->successful()) {
+            $response = $response->json();
+
+
+            $trades = $response['data'];
+
+            $orderIds = array_map(function ($trade) {
+                return $trade['orderId'];
+            }, $trades);
+            $domain_names = array_map(function ($trade) use ($response) {
+                return $response['domain'];
+            }, $trades);
+
+            $trade_accs = array_map(function ($trade) {
+                return $trade['trade_acc'];
+            }, $trades);
+
+            // Delete Unwanted or closed trades
+            DB::table('live_trades_master')
+                ->whereNotIn('orderId', $orderIds)
+                ->whereNotIn('domain_name', $domain_names)
+                ->whereNotIn('trade_acc', $trade_accs)
+                ->delete();
+
+            // Dump New Trades
+            foreach ($trades as $trade) {
+
+                DB::table('live_trades_master')->updateOrInsert(
+                    [
+                        "orderId" => $trade['orderId'],
+                        "trade_acc" => $trade['trade_acc'],
+                        "domain_name" => $response['domain'],
+                    ],
+                    [
+                        "id" => $trade['id'],
+                        "market" => $trade['market'],
+                        "symbol" => $trade['symbol'],
+                        "side" => $trade['side'],
+                        "position" => $trade['position'],
+                        "type" => $trade['type'],
+                        "amount" => $trade['amount'],
+                        "previousPrice" => $trade['previousPrice'],
+                        "trade_status" => $trade['trade_status'],
+                        "stopLoss" => $trade['stopLoss'],
+                        "stopLossReductionPrecentage" => $trade['stopLossReductionPrecentage'],
+                        "qty" => $trade['qty'],
+                        "leverage" => $trade['leverage'],
+                        "liqPrice" => $trade['liqPrice'],
+                        "price" => $trade['price'],
+                        "created_at" => $trade['created_at'],
+                        "updated_at" => $trade['updated_at'],
+                        "pairId" => $trade['pairId'],
+                        "currentPrice" => $trade['currentPrice'],
+                        "currentSupport" => $trade['currentSupport'],
+                        "currentResistance" => $trade['currentResistance'],
+                        "currentProfit" => $trade['currentProfit'],
+                        "targetProfit" => $trade['targetProfit'],
+                        "formula" => $trade['formula'],
+                        "isDummy" => $trade['isDummy'],
+                        "realizedPnl" => $trade['realizedPnl'],
+                        "feeUsdt" => $trade['feeUsdt'],
+                        "turnoverPoint" => $trade['turnoverPoint'],
+                        "worker_id" => $trade['worker_id'],
+                        "last_trade_update_seconds" => $trade['last_trade_update_seconds'],
+                        "last_worker_update_seconds" => $trade['last_worker_update_seconds'],
+                        "user_email" => $trade['user_email'],
+                        "tp_order_id" => $trade['tp_order_id'],
+                        "sl_order_id" => $trade['sl_order_id'],
+                        "status" => $trade['status'],
+                    ]
+                );
+            }
+            // Log::info('Master Worker: New Trades Updated...');
+
+        }
+    }
+
+
+
+    public static function detectAndRestartStaledWorkers($account)
+    {
+
+        $url = "https://" . $account->domain_name . "/master-process/handle/" . config('binance.process_manager_client_key');
+
+        $tradeAccount = $account->account_id;
+        $staleTrades = DB::table('live_trades_master')->where('trade_acc', $tradeAccount)->where('domain_name', $account->domain_name)->where('last_worker_update_seconds', '>', 10)->get();
+
+
+        // Send Restart Command to all workers that are stopped
+        foreach ($staleTrades as $trade) {
+
+            Log::info('Sending Restart Command...');
+
+            $data = [
+                'action' => 'FETCH_LIVE_TRADES_FUTURE',
+                'account' => $account->account_id
+            ];
+
+            $response = Http::post($url, $data);
+
+            if ($response->successful()) {
+                $response = $response->json();
+            }
+        }
+    }
+
+
+
+    public static function handleStaleTrades($account)
+    {
+
+        $url = "https://" . $account->domain_name . "/master-process/handle/" . config('binance.process_manager_client_key');
+
+        $tradeAccount = $account->account_id;
+        $staleTrades = DB::table('live_trades_master')->where('trade_acc', $tradeAccount)->where('domain_name', $account->domain_name)->where('last_worker_update_seconds', '>', 10)->get();
+
+
+
+        // Send Restart Command to all workers that are stopped
+        foreach ($staleTrades as $trade) {
+
+            $user = User::where('email', $trade->user_email)->where('domain_name', $trade->domain_name)->first();
+            $trader = $user->id;
+
+            $positionDetails = BinanceApiService::getPositionDetails($trade->symbol, $trader);
+
+            if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
+                BinanceApiService::cancelOrder($trade->symbol, $trader, $trade->tp_order_id);
+                BinanceApiService::cancelOrder($trade->symbol, $trader, $trade->sl_order_id);
+
+                // Send a closing signal to accounts server
+                $data = [
+                    'action' => 'CLOSE_LIVE_TRADE',
+                    'account' => $account->account_id,
+                    'openOrderId' => $trade->orderId,
+                ];
+
+                $response = Http::post($url, $data);
+
+                if ($response->successful()) {
+                    return true;
+                }
+            }
+        }
     }
 }

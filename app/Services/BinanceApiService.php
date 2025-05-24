@@ -3034,7 +3034,7 @@ class BinanceApiService
 
         return null;
     }
-    private static function cancelOrder($symbol, $trader, $orderId)
+    public static function cancelOrder($symbol, $trader, $orderId)
     {
         $user = User::find($trader);
         $apiKey = $user->api_key;

@@ -30,7 +30,7 @@ class LongWorker extends Command
      */
     public function handle()
     {
-        $account = 2;
+        $account = 1;
         DB::table('confirmed_trades')->truncate();
         CommonHelpers::initiateLiveTradeSession($account);
         while (true) {

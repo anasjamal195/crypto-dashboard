@@ -38,10 +38,10 @@ class TriggersThread implements ShouldQueue
 
 
     // Meta data
-    public $stopLoss = 0.15;
+    public $stopLoss = 0.5;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.15;
+    public $targetProfit = 0.3;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
     public $formula = 'RSI Swings';
@@ -66,19 +66,19 @@ class TriggersThread implements ShouldQueue
     public function handle(): void
     {
         while (true) {
-            CommonHelpers::updateWorkerTicker(self::$workerId);
+            CommonHelpers::updateWorkerTicker($this->workerId);
 
             try {
                 $tradeToOpen = null;
                 $tradeType = null;
                 // Main Loop to process coins list
                 while (true) {
-                    CommonHelpers::updateWorkerTicker(self::$workerId);
+                    CommonHelpers::updateWorkerTicker($this->workerId);
 
                     $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->get();
 
                     foreach ($worker_symbols as $worker_symbol) {
-                        CommonHelpers::updateWorkerTicker(self::$workerId);
+                        CommonHelpers::updateWorkerTicker($this->workerId);
 
 
                         try {
@@ -256,7 +256,7 @@ class TriggersThread implements ShouldQueue
                         $tradeLoop = true;
                         // Proceed trade until the position is closed
                         while ($tradeLoop) {
-                            CommonHelpers::updateWorkerTicker(self::$workerId);
+                            CommonHelpers::updateWorkerTicker($this->workerId);
 
                             try {
                                 $open_order = null;
@@ -348,7 +348,7 @@ class TriggersThread implements ShouldQueue
         $closeEarly = false;
 
         // Reduce Stop loss by half every 30 min
-        $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
+        // $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
 
         // $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
 

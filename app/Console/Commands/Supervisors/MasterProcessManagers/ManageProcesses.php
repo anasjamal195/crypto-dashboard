@@ -4,6 +4,7 @@ namespace App\Console\Commands\Supervisors\MasterProcessManagers;
 
 use App\CommonHelpers;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class ManageProcesses extends Command
 {
@@ -26,15 +27,31 @@ class ManageProcesses extends Command
      */
     public function handle()
     {
+
+
+
         while (true) {
 
-            try {
-                $this->info("This is a master worker");
-            } catch (\Throwable $th) {
-                $this->error($th->getMessage());
+            $accounts = DB::table('accounts')->where('is_active', true)->where('account_id', 1)->get();
+
+            foreach ($accounts as $account) {
+                try {
+                    // 1) Dump Fresh Live Trades data in DB
+                    CommonHelpers::updateLiveTradesMasterTable($account);
+                   
+
+                    // // 2) Check for Staled Workers and send restart command to them
+                    CommonHelpers::handleStaleTrades($account);
+
+                    // 3) Check for staled Trades and send closing command to them
+                } catch (\Throwable $th) {
+                    $this->error($th->getMessage());
+                    // dd($th);
+                }
             }
 
-            CommonHelpers::delayMS(10);
+
+            CommonHelpers::delayMS(100);
         }
     }
 }

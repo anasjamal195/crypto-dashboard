@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\BinanceApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -54,7 +55,10 @@ class MasterProcessController extends Controller
         $action = request('action');
         $account_id = request('account');
 
-        $validActions = ['FETCH_LIVE_TRADES_FUTURE'];
+        $validActions = [
+            'FETCH_LIVE_TRADES_FUTURE',
+            'CLOSE_LIVE_TRADE',
+        ];
 
         // Prepare errors array
         $errors = [];
@@ -81,6 +85,9 @@ class MasterProcessController extends Controller
             case 'FETCH_LIVE_TRADES_FUTURE':
                 $data = $this->fetchLivetrades($account_id);
                 return $this->jsonResponse($data, 'Live trades fetched successfully', 200, true);
+            case 'CLOSE_LIVE_TRADE':
+                $data = $this->closeLivetrades($account_id);
+                return $this->jsonResponse($data, 'Live trades closed successfully', 200, true);
 
             default:
                 return $this->jsonResponse(null, 'Action not found', 404, false);
@@ -98,18 +105,42 @@ class MasterProcessController extends Controller
             ->join('trade_orders', 'live_trades_future_results.orderId', '=', 'trade_orders.openOrderId')
             ->join('worker_symbols', 'live_trades_future_results.symbol', 'LIKE', 'worker_symbols.symbol')
             ->join('workers', 'worker_symbols.worker_id', 'LIKE', 'workers.worker_id')
+            ->join('users', 'live_trades_future_results.trade_acc', '=', 'users.id')
             ->where('live_trades_future_results.trade_acc', $account)
             ->where('trade_orders.status', 'PENDING')
             ->where('live_trades_future_results.trade_status', 'open')
             ->select(
                 'live_trades_future_results.*',
                 'worker_symbols.worker_id',
-                DB::raw('TIMESTAMPDIFF(SECOND, workers.updated_at, NOW()) as last_worker_update_seconds'),
-                DB::raw('TIMESTAMPDIFF(SECOND, live_trades_future_results.updated_at, NOW()) as last_trade_update_seconds')
+                'users.email as user_email',
+                'trade_orders.tp_order_id',
+                'trade_orders.sl_order_id',
+                'trade_orders.status',
+                DB::raw("TIMESTAMPDIFF(
+                    SECOND,
+                    live_trades_future_results.updated_at,
+                    
+                    CONVERT_TZ(NOW(), '+00:00', '+05:00')
+                    ) as last_trade_update_seconds"),
+
+                DB::raw("TIMESTAMPDIFF(
+                    SECOND,
+                    workers.updated_at,
+                    CONVERT_TZ(NOW(), '+00:00', '+05:00')
+                    ) as last_worker_update_seconds")
             )
             ->get()
             ->toArray();
 
         return $liveTrades;
+    }
+
+    protected function closeLiveTrades($account)
+    {
+        // Safely Closing Live trades that are active
+        
+        $openOrderId = request('openOrderId');
+        BinanceApiService::closeMarketPositionLiveTrader($openOrderId);
+        return true;
     }
 }
