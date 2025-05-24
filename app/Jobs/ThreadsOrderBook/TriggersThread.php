@@ -388,10 +388,6 @@ class TriggersThread implements ShouldQueue
             // $this->nextSLTriggerTime = 30;
             return false;
         } else if ($currentProfit > $targetProfit) {
-
-
-
-
             // Update TP SL orders on binance also
 
             if (!self::$isSpot) {
@@ -404,7 +400,7 @@ class TriggersThread implements ShouldQueue
                 if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
                     return false;
                 }
-                BinanceApiService::updateTradeDetails($open_order['order_id'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+                BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
             }
 
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
@@ -513,7 +509,7 @@ class TriggersThread implements ShouldQueue
                 if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
                     return false;
                 }
-                BinanceApiService::updateTradeDetails($open_order['order_id'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+                BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
             }
 
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
