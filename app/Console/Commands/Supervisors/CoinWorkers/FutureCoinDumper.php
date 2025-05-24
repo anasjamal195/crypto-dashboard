@@ -40,7 +40,7 @@ class FutureCoinDumper extends Command
     public static $interval;
     public static $leverage = 1;
     public static $openPrice;
-    public static $user_id = 2;
+    public static $user_id = 1;
     public static $tp = 0.5;
     // This list contains coins that are purposely ignored because they are equal to 1 USDT (Not Fit for trading)
     public static $ignoreList =  [
@@ -72,7 +72,6 @@ class FutureCoinDumper extends Command
         // Fetch Meta Values
         self::$interval = CommonHelpers::getMetaValue(self::$user_id,'live_trade_worker_interval_future','1m');
         self::$openPrice = CommonHelpers::getMetaValue(self::$user_id,'buy_price_future','5');
-
 
         while (true) {
             try {
