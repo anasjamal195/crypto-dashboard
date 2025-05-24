@@ -3230,16 +3230,16 @@ class BinanceApiService
 
         $existingStopOrder = self::getTradeOrdersDetails($openOrderId);
 
-        if ($existingStopOrder && $existingStopOrder->tp_order_id && $existingStopOrder->sl_order_id && $existingStopOrder->status === 'PENDING') {
+        if ($existingStopOrder) {
 
             self::cancelOrder($symbol, $trader, $existingStopOrder->tp_order_id);
             self::cancelOrder($symbol, $trader, $existingStopOrder->sl_order_id);
 
 
-            DB::table('trade_orders')->where('id', $existingStopOrder->id)->where('status', 'PENDING')->update([
-                'tp_order_id' => null,
-                'sl_order_id' => null,
-            ]);
+            // DB::table('trade_orders')->where('id', $existingStopOrder->id)->where('status', 'PENDING')->update([
+            //     'tp_order_id' => null,
+            //     'sl_order_id' => null,
+            // ]);
         }
     }
 
