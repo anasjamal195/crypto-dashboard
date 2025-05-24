@@ -11,7 +11,9 @@ return [
     ],
     'api' => [
         'base_url' => 'https://api.binance.com/api/v3',
-        'future_base_url' => 'https://fapi.binance.com/fapi/v1'
+        'future_base_url' => 'https://fapi.binance.com/fapi/v1',
+        //  'base_url_test' => 'https://api.binance.com/api/v3',
+        // 'future_base_url_test' => 'https://fapi.binance.com/fapi/v1'
     ],
     'endpoints' => [
         'ticker_24hr' => '/ticker/24hr',

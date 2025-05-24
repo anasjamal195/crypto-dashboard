@@ -38,8 +38,8 @@ class HomeController extends Controller
         $pageSlug = 'Dashboard';
 
         $accountTradeDetails = DB::table('account_trade_details')->latest()->get();
-        $futureWallet = BinanceApiService::fetchFutureWalletDetails(2);
-        $spotWallet = BinanceApiService::fetchSpotWalletDetails(2);
-        return view('welcome', compact('pageSlug', 'spotWallet', 'futureWallet','accountTradeDetails'));
+        $futureWallet = BinanceApiService::fetchFutureWalletDetails(auth()->user()->id);
+        $spotWallet = BinanceApiService::fetchSpotWalletDetails(auth()->user()->id);
+        return view('welcome', compact('pageSlug', 'spotWallet', 'futureWallet', 'accountTradeDetails'));
     }
 }
