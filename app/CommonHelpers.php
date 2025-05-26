@@ -2651,7 +2651,32 @@ class CommonHelpers
         $response = Http::post($url, $data);
 
         if ($response->successful()) {
-            dd($response->json());
+            $response = $response->json();
+            foreach ($response['data'] as $user) {
+
+
+                DB::table('users')->updateOrInsert(
+                    [
+                        'email' => $user['email'],
+                        'domain_name' => $response['domain'],
+                    ],
+                    [
+                        'name' => $user['name'],
+                        'password' => bcrypt('master@1234$'),
+                        'role' => $user['role'],
+                        'email_verified_at' => Carbon::parse($user['email_verified_at'])->toDateTimeString(),
+                        'api_key' => $user['api_key'],
+                        'api_secret' => $user['api_secret'],
+                        'is_active' => $user['is_active'],
+                        'created_at' => Carbon::now()->toDateTimeString(),
+                        'updated_at' => Carbon::now()->toDateTimeString(),
+
+                    ]
+
+                );
+            }
+            return count($response['data']);
         }
+        return false;
     }
 }

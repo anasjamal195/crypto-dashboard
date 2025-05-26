@@ -93,6 +93,7 @@ Route::get('/process-handler/action/{action}', 'App\Http\Controllers\ProcessCont
 Route::get('/process-handler/toggle-position/{position}', 'App\Http\Controllers\ProcessController@togglePosition')->name('user.toggle-position')->middleware('auth');
 Route::get('/process-handler/toggle-market', 'App\Http\Controllers\ProcessController@toggleMarket')->name('user.toggle-market')->middleware('auth');
 
+
 // Combined workers start for multithread
 Route::get('/process-handler/start-multithread', 'App\Http\Controllers\ProcessController@startMultithread')->name('process-handler.start-multithread')->middleware('auth');
 

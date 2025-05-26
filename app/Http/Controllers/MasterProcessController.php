@@ -153,7 +153,9 @@ class MasterProcessController extends Controller
      protected function syncUsers()
     {
         $users = User::where('is_active',true)->where('role','trader')->get();
-        return $this->jsonResponse($users,'Trading Users fetched!',200,true);
+
+        return $users;
+
     }
 
 
