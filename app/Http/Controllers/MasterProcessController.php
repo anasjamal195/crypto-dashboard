@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\CommonHelpers;
 use App\Models\User;
 use App\Services\BinanceApiService;
 use Illuminate\Http\Request;
@@ -106,7 +107,7 @@ class MasterProcessController extends Controller
     // Custom functions for different action structure
     protected function fetchLivetrades($email)
     {
-        $trade_acc = User::where('email',$email)->first()->id;
+        $trade_acc = User::where('email', $email)->first()->id;
         $liveTrades = DB::table('live_trades_future_results')
             ->join('trade_orders', 'live_trades_future_results.orderId', '=', 'trade_orders.openOrderId')
             ->join('worker_symbols', 'live_trades_future_results.symbol', 'LIKE', 'worker_symbols.symbol')
@@ -150,12 +151,11 @@ class MasterProcessController extends Controller
     }
 
 
-     protected function syncUsers()
+    protected function syncUsers()
     {
-        $users = User::where('is_active',true)->where('role','trader')->get();
+        $users = User::where('is_active', true)->where('role', 'trader')->get();
 
         return $users;
-
     }
 
 
@@ -184,5 +184,19 @@ class MasterProcessController extends Controller
             $processed,
 
         ));
+    }
+
+
+
+    public function syncDomain()
+    {
+        $domain = request('domain_name');
+
+        try {
+            $count = CommonHelpers::syncExternalUsers($domain);
+            return redirect()->back()->withSuccess('Domain synced successfully. Added ' . $count . ' users...');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors('Failed to sync domain: ' . $e->getMessage());
+        }
     }
 }

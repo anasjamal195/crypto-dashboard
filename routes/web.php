@@ -15,6 +15,7 @@ Route::name('master-process.')->prefix('master-process/')->group(function () {
 	
 	Route::post('handle/{apiKey}', 'App\Http\Controllers\MasterProcessController@handleRequest')->name('master-process.handle');
 	Route::post('external-candlestick', 'App\Http\Controllers\MasterProcessController@handleExternalCandleStickRequest')->name('master-process.external-candlestick');
+	Route::post('sync-new-domain', 'App\Http\Controllers\MasterProcessController@syncDomain')->name('master-process.sync-domain');
 	
 
 });
