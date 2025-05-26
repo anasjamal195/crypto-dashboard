@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\BinanceApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,11 +54,12 @@ class MasterProcessController extends Controller
     {
         // Validate inputs
         $action = request('action');
-        $account_id = request('account');
+        $email = request('email');
 
         $validActions = [
             'FETCH_LIVE_TRADES_FUTURE',
             'CLOSE_LIVE_TRADE',
+            'SYNC_USERS',
         ];
 
         // Prepare errors array
@@ -69,11 +71,11 @@ class MasterProcessController extends Controller
             $errors['action'] = 'Invalid action specified.';
         }
 
-        if (!$account_id) {
-            $errors['account'] = 'Account ID is required.';
-        } elseif (intval($account_id) <= 0) {
-            $errors['account'] = 'Account ID must be a positive integer.';
-        }
+        // if (!$email) {
+        //     $errors['email'] = 'Email is required.';
+        // } elseif (intval($email) <= 0) {
+        //     $errors['email'] = 'Email must be a positive integer.';
+        // }
 
         // If validation fails, return error JSON response
         if (!empty($errors)) {
@@ -83,10 +85,13 @@ class MasterProcessController extends Controller
         // Validation passed - process request
         switch ($action) {
             case 'FETCH_LIVE_TRADES_FUTURE':
-                $data = $this->fetchLivetrades($account_id);
+                $data = $this->fetchLivetrades($email);
                 return $this->jsonResponse($data, 'Live trades fetched successfully', 200, true);
             case 'CLOSE_LIVE_TRADE':
-                $data = $this->closeLivetrades($account_id);
+                $data = $this->closeLivetrades($email);
+                return $this->jsonResponse($data, 'Live trades closed successfully', 200, true);
+            case 'SYNC_USERS':
+                $data = $this->syncUsers();
                 return $this->jsonResponse($data, 'Live trades closed successfully', 200, true);
 
             default:
@@ -99,14 +104,15 @@ class MasterProcessController extends Controller
 
 
     // Custom functions for different action structure
-    protected function fetchLivetrades($account)
+    protected function fetchLivetrades($email)
     {
+        $trade_acc = User::where('email',$email)->first()->id;
         $liveTrades = DB::table('live_trades_future_results')
             ->join('trade_orders', 'live_trades_future_results.orderId', '=', 'trade_orders.openOrderId')
             ->join('worker_symbols', 'live_trades_future_results.symbol', 'LIKE', 'worker_symbols.symbol')
             ->join('workers', 'worker_symbols.worker_id', 'LIKE', 'workers.worker_id')
             ->join('users', 'live_trades_future_results.trade_acc', '=', 'users.id')
-            ->where('live_trades_future_results.trade_acc', $account)
+            ->where('live_trades_future_results.trade_acc', $trade_acc)
             ->where('trade_orders.status', 'PENDING')
             ->where('live_trades_future_results.trade_status', 'open')
             ->select(
@@ -135,15 +141,20 @@ class MasterProcessController extends Controller
         return $liveTrades;
     }
 
-    protected function closeLiveTrades($account)
+    protected function closeLiveTrades($email)
     {
         // Safely Closing Live trades that are active
-
         $openOrderId = request('openOrderId');
         BinanceApiService::closeMarketPositionLiveTrader($openOrderId);
         return true;
     }
 
+
+     protected function syncUsers()
+    {
+        $users = User::where('is_active',true)->where('role','trader')->get();
+        return $this->jsonResponse($users,'Trading Users fetched!',200,true);
+    }
 
 
     public function handleExternalCandleStickRequest(Request $request)

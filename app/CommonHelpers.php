@@ -2484,7 +2484,7 @@ class CommonHelpers
 
         $data = [
             'action' => 'FETCH_LIVE_TRADES_FUTURE',
-            'account' => $account->account_id
+            'email' => $account->email
         ];
         $response = Http::post($url, $data);
 
@@ -2601,16 +2601,14 @@ class CommonHelpers
 
         $url = "https://" . $account->domain_name . "/master-process/handle/" . config('binance.process_manager_client_key');
 
-        $tradeAccount = $account->account_id;
-        $staleTrades = DB::table('live_trades_master')->where('trade_acc', $tradeAccount)->where('domain_name', $account->domain_name)->where('last_worker_update_seconds', '>', 10)->get();
+        $staleTrades = DB::table('live_trades_master')->where('user_email', $account->email)->where('domain_name', $account->domain_name)->where('last_worker_update_seconds', '>', 10)->get();
 
 
 
         // Send Restart Command to all workers that are stopped
         foreach ($staleTrades as $trade) {
 
-            $user = User::where('email', $trade->user_email)->where('domain_name', $trade->domain_name)->first();
-            $trader = $user->id;
+            $trader = self::getTraderIdFromDomainName($trade->domain_name, 'trader');
 
             $positionDetails = BinanceApiService::getPositionDetails($trade->symbol, $trader);
 
@@ -2621,7 +2619,7 @@ class CommonHelpers
                 // Send a closing signal to accounts server
                 $data = [
                     'action' => 'CLOSE_LIVE_TRADE',
-                    'account' => $account->account_id,
+                    'email' => $account->email,
                     'openOrderId' => $trade->orderId,
                 ];
 
@@ -2631,6 +2629,29 @@ class CommonHelpers
                     return true;
                 }
             }
+        }
+    }
+
+    public static function getTraderIdFromDomainName($domainName, $role)
+    {
+        $user = User::where('domain_name', $domainName)->where('role', $role)->first();
+
+        return $user ? $user->id : null;
+    }
+
+
+    public static function syncExternalUsers($domainName)
+    {
+
+        $url = "https://" . $domainName . "/master-process/handle/" . config('binance.process_manager_client_key');
+
+        $data = [
+            'action' => 'SYNC_USERS',
+        ];
+        $response = Http::post($url, $data);
+
+        if ($response->successful()) {
+            dd($response->json());
         }
     }
 }

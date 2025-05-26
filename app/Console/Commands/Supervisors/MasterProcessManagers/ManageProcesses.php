@@ -28,17 +28,18 @@ class ManageProcesses extends Command
     public function handle()
     {
 
+        
 
 
         while (true) {
 
-            $accounts = DB::table('accounts')->where('is_active', true)->where('account_id', 1)->get();
+            $accounts = DB::table('users')->where('is_active', true)->where('role', 'trader')->where('domain_name', '!=', 'egeniuscare.shop')->get();
 
             foreach ($accounts as $account) {
                 try {
                     // 1) Dump Fresh Live Trades data in DB
                     CommonHelpers::updateLiveTradesMasterTable($account);
-                   
+
 
                     // // 2) Check for Staled Workers and send restart command to them
                     CommonHelpers::handleStaleTrades($account);
