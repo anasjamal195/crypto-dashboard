@@ -14,7 +14,7 @@ class UserManagementController extends Controller
     public function index(Request $request)
     {
         $query = User::query();
-
+        $pageSlug = 'Users';
         // Search functionality
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
@@ -36,7 +36,7 @@ class UserManagementController extends Controller
         // Get unique roles for filter dropdown
         $roles = User::distinct()->pluck('role')->filter();
 
-        return view('admin.users.index', compact('users', 'roles'));
+        return view('admin.users.index', compact('users', 'roles','pageSlug'));
     }
 
     /**
