@@ -194,7 +194,7 @@ class MasterProcessController extends Controller
 
         try {
             $count = CommonHelpers::syncExternalUsers($domain);
-            return redirect()->back()->withSuccess('Domain synced successfully. Added ' . $count . ' users...');
+            return redirect()->back()->withSuccess('Domain synced successfully. Updated ' . $count . ' users...');
         } catch (\Exception $e) {
             return redirect()->back()->withErrors('Failed to sync domain: ' . $e->getMessage());
         }
