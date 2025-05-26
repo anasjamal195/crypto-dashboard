@@ -257,7 +257,7 @@
                                                 </span>
                                                 <span
                                                     class="position-pnl {{ floatval($position['unRealizedProfit']) >= 0 ? 'profit-positive' : 'profit-negative' }}">
-                                                    ${{ number_format(floatval($position['unRealizedProfit']), 0) }}
+                                                    ${{ number_format(floatval($position['unRealizedProfit']), 4) }}
                                                 </span>
                                             </div>
                                         @endforeach
