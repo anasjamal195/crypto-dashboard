@@ -4,71 +4,296 @@
 @section('content')
     <style>
         .user-management-card {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background: #1e1e2f;
+            border: 1px solid #2b3553;
+            border-radius: 15px;
+            box-shadow: 0 4px 25px 0 rgba(0, 0, 0, 0.14);
         }
 
         .user-avatar {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #4f46e5, #3b82f6);
+            background: linear-gradient(135deg, #e14eca, #ba54f5);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 14px;
             font-weight: bold;
             color: white;
+            box-shadow: 0 2px 12px 0 rgba(225, 78, 202, 0.15);
         }
 
         .role-badge {
             font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-weight: 500;
+            padding: 0.35rem 0.7rem;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .role-admin {
-            background-color: #dc3545;
+            background: linear-gradient(135deg, #fd5d93, #ec250d);
             color: white;
+            box-shadow: 0 2px 12px 0 rgba(253, 93, 147, 0.15);
         }
 
         .role-trader {
-            background-color: #28a745;
+            background: linear-gradient(135deg, #00d4aa, #00d4aa);
             color: white;
+            box-shadow: 0 2px 12px 0 rgba(0, 212, 170, 0.15);
         }
 
         .role-user {
-            background-color: #17a2b8;
+            background: linear-gradient(135deg, #1d8cf8, #3358f4);
             color: white;
+            box-shadow: 0 2px 12px 0 rgba(29, 140, 248, 0.15);
         }
 
         .search-filters {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
+            background: #27293d;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 20px 0px rgba(0, 0, 0, 0.1);
         }
 
         .btn-delete {
-            background-color: #dc3545;
-            border-color: #dc3545;
+            background: linear-gradient(135deg, #fd5d93, #ec250d);
+            border: none;
             color: white;
-            padding: 0.25rem 0.5rem;
+            padding: 0.375rem 0.75rem;
             font-size: 0.875rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 12px 0 rgba(253, 93, 147, 0.15);
         }
 
         .btn-delete:hover {
-            background-color: #c82333;
-            border-color: #bd2130;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 25px 0 rgba(253, 93, 147, 0.4);
             color: white;
         }
 
-        .table-responsive {
+        .btn-primary {
+            background: linear-gradient(135deg, #e14eca, #ba54f5);
+            border: none;
             border-radius: 8px;
+            font-weight: 600;
+            box-shadow: 0 2px 12px 0 rgba(225, 78, 202, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 25px 0 rgba(225, 78, 202, 0.4);
+        }
+
+        .btn-outline-secondary {
+            border-color: #2b3553;
+            color: #8898aa;
+            background: transparent;
+            border-radius: 8px;
+        }
+
+        .btn-outline-secondary:hover {
+            background: #2b3553;
+            color: white;
+            border-color: #2b3553;
+        }
+
+        .table-responsive {
+            border-radius: 15px;
             overflow: hidden;
+        }
+
+        .table {
+            background: #1e1e2f;
+            color: #ffffff;
+        }
+
+        .table th {
+            background: #27293d;
+            color: #ffffff;
+            font-weight: 600;
+            border-top: none;
+            border-bottom: 1px solid #2b3553;
+            padding: 1rem 0.75rem;
+        }
+
+        .table td {
+            background: #1e1e2f;
+            color: #ffffff;
+            border-top: 1px solid #2b3553;
+            padding: 1rem 0.75rem;
+        }
+
+        .card {
+            background: #1e1e2f;
+            border: 1px solid #2b3553;
+        }
+
+        .card-header {
+            background: #27293d;
+            border-bottom: 1px solid #2b3553;
+            border-radius: 15px 15px 0 0 !important;
+        }
+
+        .card-footer {
+            background: #27293d;
+            border-top: 1px solid #2b3553;
+            border-radius: 0 0 15px 15px !important;
+        }
+
+        .form-control {
+            background: #1e1e2f;
+            border: 1px solid #2b3553;
+            color: #ffffff;
+            border-radius: 8px;
+        }
+
+        .form-control:focus {
+            background: #1e1e2f;
+            border-color: #e14eca;
+            color: #ffffff;
+            box-shadow: 0 0 0 0.2rem rgba(225, 78, 202, 0.25);
+        }
+
+        .form-control::placeholder {
+            color: #6c757d;
+        }
+
+        .form-label {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .text-muted {
+            color: #8898aa !important;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #00d4aa, #00d4aa);
+            border: none;
+            color: white;
+            border-radius: 8px;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #fd5d93, #ec250d);
+            border: none;
+            color: white;
+            border-radius: 8px;
+        }
+
+        .modal-content {
+            background: #1e1e2f;
+            border: 1px solid #2b3553;
+            border-radius: 15px;
+        }
+
+        .modal-header {
+            background: #27293d;
+            border-bottom: 1px solid #2b3553;
+            border-radius: 15px 15px 0 0;
+            color: #ffffff;
+        }
+
+        .modal-body {
+            color: #ffffff;
+        }
+
+        .modal-footer {
+            background: #27293d;
+            border-top: 1px solid #2b3553;
+            border-radius: 0 0 15px 15px;
+        }
+
+        .btn-secondary {
+            background: #2b3553;
+            border-color: #2b3553;
+            color: #ffffff;
+            border-radius: 8px;
+        }
+
+        .btn-secondary:hover {
+            background: #344675;
+            border-color: #344675;
+            color: #ffffff;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #fd5d93, #ec250d);
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            box-shadow: 0 2px 12px 0 rgba(253, 93, 147, 0.15);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 25px 0 rgba(253, 93, 147, 0.4);
+        }
+
+        .close {
+            color: #ffffff;
+            opacity: 0.8;
+        }
+
+        .close:hover {
+            color: #ffffff;
+            opacity: 1;
+        }
+
+        .pagination .page-link {
+            background: #1e1e2f;
+            border-color: #2b3553;
+            color: #ffffff;
+        }
+
+        .pagination .page-link:hover {
+            background: #27293d;
+            border-color: #2b3553;
+            color: #ffffff;
+        }
+
+        .pagination .page-item.active .page-link {
+            background: linear-gradient(135deg, #e14eca, #ba54f5);
+            border-color: #e14eca;
+        }
+
+        /* Verification icons styling */
+        .text-success {
+            color: #00d4aa !important;
+        }
+
+        .text-warning {
+            color: #ff8d72 !important;
+        }
+
+        /* Header gradient background */
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #1e1e2f, #27293d) !important;
+        }
+
+        /* Custom scrollbar for dark theme */
+        .table-responsive::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-responsive::-webkit-scrollbar-track {
+            background: #1e1e2f;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #2b3553;
+            border-radius: 4px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #344675;
         }
     </style>
 
@@ -125,7 +350,7 @@
                     <div class="card-header border-0">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h3 class="mb-0">Users List</h3>
+                                <h3 class="mb-0 text-white">Users List</h3>
                             </div>
                         </div>
                     </div>
@@ -201,14 +426,14 @@
                                                     </div>
                                                     <div class="media-body">
                                                         <span
-                                                            class="mb-0 text-sm font-weight-bold">{{ $user->name }}</span>
+                                                            class="mb-0 text-sm font-weight-bold text-white">{{ $user->name }}</span>
                                                         <br>
                                                         <small class="text-muted">ID: {{ $user->id }}</small>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="text-sm">{{ $user->email }}</span>
+                                                <span class="text-sm text-white">{{ $user->email }}</span>
                                                 @if ($user->email_verified_at)
                                                     <i class="fas fa-check-circle text-success ml-1" title="Verified"></i>
                                                 @else
@@ -223,17 +448,17 @@
                                             </td>
 
                                             <td>
-                                                <span class="">
-                                                    {{ ucfirst($user->domain_name ?? 'Self Hosted') }}
+                                                <span class="text-white">
+                                                    {{ $user->domain_name ?? 'Self Hosted' }}
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="text-sm">{{ $user->created_at->format('M d, Y') }}</span>
+                                                <span class="text-sm text-white">{{ $user->created_at->format('M d, Y') }}</span>
                                                 <br>
                                                 <small class="text-muted">{{ $user->created_at->diffForHumans() }}</small>
                                             </td>
                                             <td>
-                                                <span class="text-sm">{{ $user->updated_at->format('M d, Y') }}</span>
+                                                <span class="text-sm text-white">{{ $user->updated_at->format('M d, Y') }}</span>
                                                 <br>
                                                 <small class="text-muted">{{ $user->updated_at->diffForHumans() }}</small>
                                             </td>
@@ -250,7 +475,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="text-center py-4">
+                                            <td colspan="7" class="text-center py-4">
                                                 <i class="fas fa-users fa-2x text-muted mb-3"></i>
                                                 <p class="text-muted mb-0">No users found</p>
                                                 @if (request('search') || request('role'))
