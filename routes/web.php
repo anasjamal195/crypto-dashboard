@@ -12,18 +12,19 @@ use Illuminate\Support\Facades\Route;
 
 // CSRF Free Routes for api's
 Route::name('master-process.')->prefix('master-process/')->group(function () {
-	
+
 	Route::post('handle/{apiKey}', 'App\Http\Controllers\MasterProcessController@handleRequest')->name('master-process.handle');
 	Route::post('external-candlestick', 'App\Http\Controllers\MasterProcessController@handleExternalCandleStickRequest')->name('master-process.external-candlestick');
 	Route::post('sync-new-domain', 'App\Http\Controllers\MasterProcessController@syncDomain')->name('master-process.sync-domain');
-	
-
 });
 
 
 Auth::routes();
 
-
+Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
+	Route::get('/users', [App\Http\Controllers\UserManagementController::class, 'index'])->name('admin.users.index');
+	Route::delete('/users/{user}', [App\Http\Controllers\UserManagementController::class, 'destroy'])->name('admin.users.destroy');
+});
 
 Route::get('/', function () {
 	if (auth()->user())
