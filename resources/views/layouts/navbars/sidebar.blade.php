@@ -11,7 +11,8 @@
 </style>
 
 
-<div class="sidebar" data="{{ \App\CommonHelpers::getMetaValue(auth()->user()->id, 'enable_spot', 0) == 1 ? 'blue' : 'primary' }}">
+<div class="sidebar"
+    data="{{ \App\CommonHelpers::getMetaValue(auth()->user()->id, 'enable_spot', 0) == 1 ? 'blue' : 'primary' }}">
     <div class="sidebar-wrapper">
         <div class="logo">
             <a href="{{ route('home') }}" class="simple-text logo-mini">{{ __('C') }}</a>
@@ -170,7 +171,7 @@
                                 <p>{{ __('Analyze Symbol') }}</p>
                             </a>
                         </li>
-                      
+
                     </ul>
                 </div>
             </li>
@@ -271,6 +272,28 @@
                     </ul>
                 </div>
             </li>
+            @if (auth()->user()->role === 'superadmin')
+                <li class="{{ request()->is('admin/users*') ? 'active' : '' }}">
+                    <a data-toggle="collapse" href="#userManagementCollapse" aria-expanded="false">
+                        <i class="tim-icons icon-single-02"></i>
+                        <p>{{ __('User Management') }}
+                            <b class="caret"></b>
+                        </p>
+                    </a>
+                    <div class="collapse {{ request()->is('admin/users*') ? 'show' : '' }}"
+                        id="userManagementCollapse">
+                        <ul class="nav">
+                            <li class="{{ request()->routeIs('admin.users.index') ? 'active' : '' }}">
+                                <a href="{{ route('admin.users.index') }}">
+                                    <i class="tim-icons icon-bullet-list-67"></i>
+                                    <p>{{ __('View All Users') }}</p>
+                                </a>
+                            </li>
+
+                        </ul>
+                    </div>
+                </li>
+            @endif
             <li class="{{ request()->routeIs('internal.trader.settings', 'live.trader.settings') ? 'active' : '' }}">
                 <a data-toggle="collapse" href="#settingsMenu"
                     aria-expanded="{{ request()->routeIs('internal.trader.settings', 'live.trader.settings') ? 'true' : 'false' }}">
