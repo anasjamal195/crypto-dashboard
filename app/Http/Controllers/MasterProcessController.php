@@ -138,9 +138,38 @@ class MasterProcessController extends Controller
     protected function closeLiveTrades($account)
     {
         // Safely Closing Live trades that are active
-        
+
         $openOrderId = request('openOrderId');
         BinanceApiService::closeMarketPositionLiveTrader($openOrderId);
         return true;
+    }
+
+
+
+    public function handleExternalCandleStickRequest(Request $request)
+    {
+        $validated = $request->validate([
+            'symbol' => 'required|string',
+            'interval' => 'required|string',
+            'limit' => 'required|integer',
+            'startTime' => 'nullable|string',
+            'market' => 'required|string|in:SPOT,FUTURE',
+            'processed' => 'nullable|string',
+        ]);
+
+        // Optionally, parse 'processed' as a boolean
+        $processed = filter_var($validated['processed'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+
+
+        return response()->json(BinanceApiService::getCandleStickDataCached(
+            $validated['symbol'],
+            $validated['interval'],
+            $validated['limit'],
+            $validated['startTime'],
+            $validated['market'],
+            $processed,
+
+        ));
     }
 }

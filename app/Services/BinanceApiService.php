@@ -203,6 +203,204 @@ class BinanceApiService
     }
 
 
+
+    public static function getCandleStickDataExternal($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
+    {
+        $url = config('binance.master_server_url') . 'external-candlestick'; // Replace with actual endpoint URL
+
+        $params = [
+            'symbol' => $symbol,
+            'interval' => $interval,
+            'limit' => $limit,
+            'startTime' => $timestamp,
+            'market' => $market,
+            'processed' => $processed ? 'true' : 'false',
+        ];
+
+        try {
+            $response = Http::withOptions(['verify' => false])
+                ->asForm()
+                ->post($url, $params);
+
+            if ($response->successful()) {
+                return $response->json(); // You may process this if $processed is true
+            } else {
+                Log::error("External POST request failed: " . $response->body());
+            }
+        } catch (\Exception $e) {
+            Log::error("Error in External POST request: " . $e->getMessage());
+        }
+
+        return null;
+    }
+
+
+
+    public static function getCandleStickDataCached($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
+    {
+        $responseCacheKey = "binance_candle_{$symbol}_{$interval}_{$market}_{$timestamp}";
+
+        // 1. Check and return cached response if available
+        if (Cache::has($responseCacheKey)) {
+            return Cache::get($responseCacheKey);
+        }
+
+        $cacheKey = "binance_api_weight_klines";
+        $balancerServerSequence = [
+            'https://xnfts.shop/load_balancer/index.php',
+            'https://digitalfitnesshub.shop/wp-includes/restful-api/',
+        ];
+        static $serverUrlKey = 0;
+
+        $response = null;
+
+        // Retrieve stored weight usage from cache
+        $usedWeight = Cache::get($cacheKey, 0);
+        $remainingWeight = 1200 - $usedWeight;
+
+        $params = [
+            'symbol' => $symbol,
+            'interval' => $interval,
+            'limit' => $limit,
+            'startTime' => $timestamp,
+        ];
+
+        $serverId = 'parent';
+
+        // If weight is sufficient, try parent server first
+        if (intval($remainingWeight) >= 100) {
+            $base_url = $market === 'FUTURE' ?
+                config('binance.api.future_base_url') . config('binance.endpoints.klines') :
+                config('binance.api.base_url') . config('binance.endpoints.klines');
+
+            $response = Http::withOptions(['verify' => !app()->environment('local')])->get($base_url, $params);
+
+            $headers = $response->getHeaders();
+            if (isset($headers["x-mbx-used-weight-1m"][0])) {
+                $usedWeight = (int) $headers["x-mbx-used-weight-1m"][0];
+                $secondsRemaining = 60 - now()->second;
+                Cache::put($cacheKey, $usedWeight, now()->addSeconds($secondsRemaining));
+            }
+
+            if ($response->successful() && $response->json()) {
+
+
+                $now = now();
+                $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
+                $minutesToNextRounded = $intervalToMins - ($now->minute % $intervalToMins);
+                $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
+
+
+                $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime) : $response->json();
+
+
+                // Save cache to next rounded time
+
+
+                Cache::put($responseCacheKey, $result, $nextRoundedTime);
+
+
+
+                return $result;
+            } else {
+                Log::error('Error Fetching Coin data: ' . $symbol . ' Server Parent ' . json_encode($response?->body()));
+            }
+        }
+
+        // Try balancer servers
+        $serverId = 'child';
+        $totalServers = count($balancerServerSequence);
+        $attempts = 0;
+
+        while ($attempts < $totalServers) {
+            $currentServerUrl = $balancerServerSequence[$serverUrlKey];
+            $params['balancerServerSequence'] = $balancerServerSequence;
+            $params['nextServer'] = $serverUrlKey;
+
+            try {
+                $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($currentServerUrl, $params);
+
+                if ($response->successful() && $response->json()) {
+
+                    // Save cache to next rounded time
+                    $now = now();
+                    $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
+                    $minutesToNextRounded = $intervalToMins - ($now->minute % $intervalToMins);
+                    $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
+
+                    $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime) : $response->json();
+
+
+
+                    Cache::put($responseCacheKey, $result, $nextRoundedTime);
+
+                    return $result;
+                }
+            } catch (\Exception $e) {
+                Log::error("Balancer Server [$serverUrlKey] failed: " . $e->getMessage());
+            }
+
+            $serverUrlKey++;
+            $attempts++;
+
+            if ($serverUrlKey >= $totalServers) {
+                $serverUrlKey = 0;
+            }
+        }
+
+        // All attempts failed
+        Log::error('Error Fetching Coin data: ' . $symbol . ' Server ' . $serverId . ' ' . json_encode($response?->body()));
+        $emptyResult = [
+            'timestamp' => null,
+            'timestampReadable' => null,
+            'market' => null,
+            'binance_timestamp' => null,
+            'open' => null,
+            'high' => null,
+            'low' => null,
+            'close' => null,
+            'volume' => null,
+            'volumeMA5' => null,
+            'volumeMA10' => null,
+            'avl' => null,
+            'ma7' => null,
+            'ma14' => null,
+            'ma25' => null,
+            'ma99' => null,
+            'bb_middle' => null,
+            'bb_upper' => null,
+            'bb_lower' => null,
+            'rsi6' => null,
+            'per' => null,
+            'dif' => null,
+            'dea' => null,
+            'histogram' => null,
+            'sar' => null,
+            'should_buy' => null,
+            'should_sell' => null,
+            'obv' => null,
+            'cvd' => null,
+            'mfi' => null,
+            'vwap' => null,
+            'stoch_rsi' => null,
+            'stoch_k' => null,
+            'stoch_d' => null,
+            'wr' => null,
+            'K' => null,
+            'D' => null,
+            'J' => null,
+            'previousObvHigh' => null,
+            'previousObvLow' => null,
+            'adx' => null,
+            'di_plus' => null,
+            'di_minus' => null,
+            'ema12' => null,
+            'ema26' => null,
+        ];
+
+        return $emptyResult;
+    }
+
     /**
      * Get candlestick data for a given symbol and interval from Binance API using static method.
      *
@@ -343,7 +541,7 @@ class BinanceApiService
     }
 
 
-    protected static function processData($data, $market = 'SPOT')
+    protected static function processData($data, $market = 'SPOT', $cacheUpto = null)
     {
         // Calculate KDJ (predefined function)
         $KDJ = self::calculateKDJ($data);
@@ -858,6 +1056,8 @@ class BinanceApiService
 
                 'ema12' => end($ema12),
                 'ema26' => end($ema26),
+
+                'cacheResetTime' =>  $cacheUpto,
             ];
         }
 

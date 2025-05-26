@@ -46,4 +46,5 @@ return [
     // Master Process manager
     'process_manager_client_key' => env('PROCESS_MANAGER_CLIENT_KEY', '1b88399e-2ec0-4a34-bd49-ff50f9adc013'),
     'process_manager_server_ip' => env('PROCESS_MANAGER_SERVER_IP', '170.64.211.163'),
+    'master_server_url' => 'https://egeniuscare.shop/'
 ];
