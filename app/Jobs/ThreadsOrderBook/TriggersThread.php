@@ -87,12 +87,11 @@ class TriggersThread implements ShouldQueue
                             $trade_acc = $this->account;
                             // Log::info("Test Request Params" . self::$interval);
 
-                            $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
+                            $data = BinanceApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
 
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
                             $index--;
-                            $supportResistance = MarketTrendService::getCurrentSupportResistanceValueFromData($data, [$this->supportResistanceCandleSpan]);
 
 
                             // ==================Decision Block==================
@@ -275,9 +274,9 @@ class TriggersThread implements ShouldQueue
 
 
                                 if (self::$isSpot && $tradeType === 'LONG')
-                                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'SPOT', [$this->supportResistanceCandleSpan]);
+                                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'SPOT', [$this->supportResistanceCandleSpan], null, false);
                                 else
-                                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'FUTURE', [$this->supportResistanceCandleSpan]);
+                                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'FUTURE', [$this->supportResistanceCandleSpan], null, false);
 
 
                                 if ($tradeType === 'LONG')
@@ -854,7 +853,7 @@ class TriggersThread implements ShouldQueue
 
 
 
-        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
+        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE', true);
         $indexHigher = count($dataHigher) - 2;
 
         if ($position === 'LONG') {

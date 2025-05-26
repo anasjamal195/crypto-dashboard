@@ -206,7 +206,7 @@ class BinanceApiService
 
     public static function getCandleStickDataExternal($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
-        $url = config('binance.master_server_url') . 'external-candlestick'; // Replace with actual endpoint URL
+        $url = config('binance.master_server_url') . 'master-process/external-candlestick'; // Replace with actual endpoint URL
 
         $params = [
             'symbol' => $symbol,
@@ -217,11 +217,10 @@ class BinanceApiService
             'processed' => $processed ? 'true' : 'false',
         ];
 
+        // dd($url);
         try {
             $response = Http::withOptions(['verify' => false])
-                ->asForm()
                 ->post($url, $params);
-
             if ($response->successful()) {
                 return $response->json(); // You may process this if $processed is true
             } else {
@@ -1554,7 +1553,7 @@ class BinanceApiService
 
     // Misc Candle data functions for internal trader
 
-    public static function getCandleStickDataPast($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT')
+    public static function getCandleStickDataPast($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $external = false)
     {
 
 
@@ -1562,8 +1561,8 @@ class BinanceApiService
 
         $revisedTimestamp = $timestamp - ($intervalInMins * ($limit) * 60000) +  1000;
 
-        $data = self::getCandleStickData($symbol, $interval, $limit, $revisedTimestamp, $market);
-        // dd($data);
+        $data = $external ? self::getCandleStickDataExternal($symbol, $interval, $limit, $revisedTimestamp, $market) : self::getCandleStickData($symbol, $interval, $limit, $revisedTimestamp, $market);
+      
         return $data;
     }
 

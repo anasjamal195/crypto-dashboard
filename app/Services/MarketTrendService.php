@@ -447,10 +447,17 @@ class MarketTrendService
         $market = 'SPOT',
         $candleSpan = [10],
         $timestamp = null,
+        $candleDataCached = false,
     ) {
         try {
             $limit = 300;
-            $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
+            $data = [];
+
+            if ($candleDataCached) {
+                $data = BinanceApiService::getCandleStickDataExternal($symbol, $interval, $limit, $timestamp, $market);
+            } else {
+                $data = BinanceApiService::getCandleStickData($symbol, $interval, $limit, $timestamp, $market);
+            }
             $supportResistances = [];
             foreach ($candleSpan as $span) {
                 $lastSupport = null;
@@ -760,14 +767,13 @@ class MarketTrendService
                 // dd($snapshot);
 
 
-                if($trend['trend'] === 'BULLISH'){
+                if ($trend['trend'] === 'BULLISH') {
                     $candle['marketTrend'] = 'green';
-                }else  if($trend['trend'] === 'BEARISH'){
+                } else  if ($trend['trend'] === 'BEARISH') {
                     $candle['marketTrend'] = 'red';
-                }else{
+                } else {
                     $candle['marketTrend'] = 'yellow';
                 }
-               
             }
 
 
