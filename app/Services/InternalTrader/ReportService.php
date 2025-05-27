@@ -10,7 +10,7 @@ use DateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\OrderBookSnapshot;
-
+use App\Services\PatternDetector;
 use Illuminate\Support\Facades\Log;
 use stdClass;
 use Illuminate\Support\Facades\File;
@@ -22,15 +22,15 @@ class ReportService
     // Essential Properties
     public static $delayMs = 10;
     public static $supportResistanceCandleSpan = 10;
-    public static $backTestTimeUnix = 1732561200000;
+    public static $backTestTimeUnix = null;
 
     public static $interval = '5m';
     public static $targetProfit = 0.4;
     public static $stopLoss = 1;
     public static $stopLossWaitingDuration = 0;
-    public static $longEnabled = false;
-    public static $shortEnabled = true;
-    public static $formula = 'All Coins Short (Flat)';
+    public static $longEnabled = true;
+    public static $shortEnabled = false;
+    public static $formula = 'All Coins Long (Latest)';
     public static $earlyClosingEnabled = true;
 
     // Trend Analysis
@@ -118,6 +118,7 @@ class ReportService
 
                 $symbol = $coin->symbol;
 
+                Log::info("Test Request Params" . self::$interval);
                 $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, self::$backTestTimeUnix, 'FUTURE');
 
                 $trades = self::processCandles($symbol, $data);
@@ -525,75 +526,69 @@ class ReportService
 
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades)
     {
-
         // Long Conditions
         if (self::$longEnabled) {
+            // Pattern analysis for entry lock condition
+            $patternAnalysis = PatternDetector::analyzeLongEntry($data, $index, $supportResistance);
 
-            if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+            // First condition: Check if we have any significant patterns
+            $entryLockCondition = $patternAnalysis && $patternAnalysis['signal_strength'] > 30;
+
+            if ($entryLockCondition && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
                 self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
             }
 
             if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
-
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-                $buyCondition = $data[$index]['close'] > $data[$index]['bb_lower']
-                    && $data[$index]['open'] < $data[$index]['bb_lower']
-                    && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
-                    && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
-                    && $bbAnalysis['price_action']['is_near_lower_band']
-                    && !$bbAnalysis['bb_squeeze']
-                    && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
 
+                // Enhanced final conditions using pattern analysis
+                $finalConditions = false;
 
+                if ($patternAnalysis) {
+                    // Strong pattern signals
+                    $strongPatternSignal = $patternAnalysis['signal_strength'] > 60;
 
-                if ($buyCondition) {
+                    // Medium pattern with good momentum
+                    $mediumPatternWithMomentum = $patternAnalysis['signal_strength'] > 40 &&
+                        $patternAnalysis['confidence'] > 50;
+
+                    // Bollinger Band confirmation
+                    $bbConfirmation = $bbAnalysis['long_probability'] > 60 ||
+                        ($bbAnalysis['price_action']['is_near_lower_band'] &&
+                            $bbAnalysis['price_action']['crossed_lower_band']);
+
+                    // Volume confirmation
+                    $volumeConfirmation = $data[$index]['volume'] > $data[$index]['volumeMA5'];
+
+                    // RSI not overbought
+                    $rsiOk = $data[$index]['rsi6'] < 75;
+
+                    $finalConditions = ($strongPatternSignal || $mediumPatternWithMomentum) &&
+                        $bbConfirmation &&
+                        $volumeConfirmation &&
+                        $rsiOk;
+                }
+
+                if ($finalConditions) {
+                    // Log the entry reason for analysis
+                    error_log("LONG Entry for {$symbol}: " . implode(', ', $patternAnalysis['entry_reason']));
+
+                    // Free this candle
                     self::confirmOpening($symbol, 'LONG', $data, $index);
 
-
-                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
-
-                    if ($allowOnHigherTrend) {
-                        return 'LONG';
-                    }
+                    // Return LONG with additional data for position sizing
+                    return [
+                        'direction' => 'LONG',
+                        'confidence' => $patternAnalysis['confidence'],
+                        'stop_loss' => $patternAnalysis['stop_loss_suggestion'],
+                        'take_profit' => $patternAnalysis['take_profit_suggestion'],
+                        'patterns' => $patternAnalysis['patterns_detected']
+                    ];
                 }
             }
         }
 
-
-        // Short Conditions
-        if (self::$shortEnabled) {
-
-            if ($data[$index]['rsi6'] > 70 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
-                self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
-            }
-
-            if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
-
-                $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-                $sellCondition =
-
-                    $data[$index]['close'] < $data[$index]['bb_upper']
-                    && $data[$index]['open'] > $data[$index]['bb_upper']
-                    && $data[$index]['stoch_d'] < $data[$index - 1]['stoch_d']
-                    && $data[$index]['stoch_k'] < $data[$index - 1]['stoch_k']
-                    && $bbAnalysis['price_action']['is_near_upper_band']
-                    && !$bbAnalysis['bb_squeeze']
-                    && $data[$index]['histogram'] < $data[$index - 1]['histogram']
-                    && $data[$index - 1]['stoch_d'] < 100
-                    && $data[$index - 1]['stoch_k'] < 100;
-
-
-                if ($sellCondition) {
-                    self::confirmOpening($symbol, 'SHORT', $data, $index);
-                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'SHORT', $data, $index, '30m');
-                    if ($allowOnHigherTrend) {
-                        return 'SHORT';
-                    }
-                }
-            }
-        }
-
-
+        // Skip this candle
         return null;
     }
 
@@ -626,7 +621,18 @@ class ReportService
         return $closingPrice;
     }
 
+    public static function countLowerLineCandles($data, $index)
+    {
 
+        $count = 0;
+        $index--;
+        while ($data[$index]['close'] <= $data[$index]['bb_lower'] && $index > 0) {
+            $count++;
+            $index--;
+        }
+
+        return $count;
+    }
     public static function getSupportResistance($data, $index)
     {
         $end = $index + 1; // +1 to include the $index item
@@ -727,6 +733,34 @@ class ReportService
         return $rounded ? intval($diff) : $diff;
     }
 
+
+    public static function updatePausedStatus($symbol, $position, $status = true)
+    {
+        $ictId = self::getIctId($symbol, $position);
+        if (
+            !$ictId
+        ) {
+            return null;
+        }
+
+        DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+            'is_paused' => $status,
+        ]);
+    }
+
+    public static function getPausedStatus($symbol, $position)
+    {
+        $ictId = self::getIctId($symbol, $position);
+        if (
+            !$ictId
+        ) {
+            return null;
+        }
+
+        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
+
+        return $lastEntry->is_paused;
+    }
 
     public static function insertConfirmBasicTradeEntry($symbol, $position, $data, $index)
     {
