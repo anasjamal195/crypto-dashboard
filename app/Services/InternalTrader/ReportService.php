@@ -22,7 +22,8 @@ class ReportService
     // Essential Properties
     public static $delayMs = 10;
     public static $supportResistanceCandleSpan = 10;
-    public static $backTestTimeUnix = null;
+    public static $backTestTimeUnix = 1746644400000;
+    // public static $backTestTimeUnix = 1746644400000;
 
     public static $interval = '5m';
     public static $targetProfit = 0.4;
@@ -30,7 +31,7 @@ class ReportService
     public static $stopLossWaitingDuration = 0;
     public static $longEnabled = true;
     public static $shortEnabled = false;
-    public static $formula = 'All Coins Long (Latest)';
+    public static $formula = 'Pattern Detection (Bullish)';
     public static $earlyClosingEnabled = true;
 
     // Trend Analysis
@@ -41,7 +42,7 @@ class ReportService
     public static $coinLimit = 0; // Use 0 for all coins
     public static $shuffleCoins = false;
 
-    public static $filterOnCoinType = false;
+    public static $filterOnCoinType = true;
     public static $coinTypeMetaverse = true;
     public static $coinTypeAlt = true;
     public static $coinTypeMeme = false;
@@ -138,7 +139,7 @@ class ReportService
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                // dd($e);
+                dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
@@ -361,18 +362,6 @@ class ReportService
         $extremePrice = 0;
 
 
-        $intervalToMins = CommonHelpers::$binanceIntervals[self::$interval];
-        $timestamp = $data[0]['binance_timestamp'] - (60 * $intervalToMins * 1000 * 1000);
-        $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, $timestamp, 'FUTURE');
-
-        $data = array_map(function ($candle) {
-            $candle['timestamp'] = $candle['timestamp'] / 1000;
-            $date = new \DateTime("@{$candle['timestamp']}");
-            $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
-            $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
-            return $candle;
-        }, array_merge($averageAdjustmetCandles, $data));
-
         $waitingCandles = 0;
         $openingIndex = 0;
 
@@ -403,7 +392,7 @@ class ReportService
             ];
 
             // Skip Adjustment Candles and Volume Adjustment
-            if ($index < 1200) {
+            if ($index < 200) {
                 continue;
             }
 
@@ -487,12 +476,13 @@ class ReportService
                     $currentTrade['position'] = $tradeType;
                     $currentTrade['formula'] = self::$formula;
 
-                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
-                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
+                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestampReadable']);
+                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestampReadable']);
+                    // dd(json_decode($currentTrade['buyingCandle'], true), json_decode($currentTrade['sellingCandle'],true));
                     $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
 
 
-
+                    error_log("LONG Entry for {$symbol}: " . $profit);
 
 
                     // Resetting params
@@ -534,10 +524,13 @@ class ReportService
             // First condition: Check if we have any significant patterns
             $entryLockCondition = $patternAnalysis && $patternAnalysis['signal_strength'] > 30;
 
-            if ($entryLockCondition && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+            // if ($entryLockCondition && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+            //     self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
+            // }
+
+            if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
                 self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
             }
-
             if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
 
@@ -557,36 +550,65 @@ class ReportService
                         ($bbAnalysis['price_action']['is_near_lower_band'] &&
                             $bbAnalysis['price_action']['crossed_lower_band']);
 
+                    // dd($patternAnalysis,$data[$index],$symbol);
                     // Volume confirmation
                     $volumeConfirmation = $data[$index]['volume'] > $data[$index]['volumeMA5'];
 
                     // RSI not overbought
                     $rsiOk = $data[$index]['rsi6'] < 75;
 
-                    $finalConditions = ($strongPatternSignal || $mediumPatternWithMomentum) &&
-                        $bbConfirmation &&
-                        $volumeConfirmation &&
-                        $rsiOk;
+                    $finalConditions = ($strongPatternSignal || $mediumPatternWithMomentum);
                 }
 
-                if ($finalConditions) {
-                    // Log the entry reason for analysis
-                    error_log("LONG Entry for {$symbol}: " . implode(', ', $patternAnalysis['entry_reason']));
 
-                    // Free this candle
+
+
+
+
+
+
+
+                $buyCondition = $data[$index]['close'] > $data[$index]['bb_lower']
+                    && $data[$index]['open'] < $data[$index]['bb_lower']
+                    && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
+                    && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
+                    && $bbAnalysis['price_action']['is_near_lower_band']
+                    && !$bbAnalysis['bb_squeeze']
+                    && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
+                // && $finalConditions;
+
+
+
+                if ($buyCondition) {
                     self::confirmOpening($symbol, 'LONG', $data, $index);
 
-                    // Return LONG with additional data for position sizing
-                    return [
-                        'direction' => 'LONG',
-                        'confidence' => $patternAnalysis['confidence'],
-                        'stop_loss' => $patternAnalysis['stop_loss_suggestion'],
-                        'take_profit' => $patternAnalysis['take_profit_suggestion'],
-                        'patterns' => $patternAnalysis['patterns_detected']
-                    ];
+
+                    // Skip Condition
+                    $lowerLineCandlesCount = self::countLowerLineCandles($data, $index, 20);
+                    if ($lowerLineCandlesCount >= 3) {
+
+                        if ($bbAnalysis['bb_lower_percent_change'] < 0 && $bbAnalysis['bb_middle_percent_change'] < 0) {
+                            return null;
+                        }
+                    }
+
+
+                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+
+                    if ($allowOnHigherTrend) {
+                        return 'LONG';
+                    }
                 }
+                // if ($finalConditions) {
+
+                //     // Free this candle
+                //     self::confirmOpening($symbol, 'LONG', $data, $index);
+                //     return 'LONG';
+                // }
             }
         }
+
+
 
         // Skip this candle
         return null;
@@ -621,14 +643,16 @@ class ReportService
         return $closingPrice;
     }
 
-    public static function countLowerLineCandles($data, $index)
+    public static function countLowerLineCandles($data, $index, $lookback = 20)
     {
 
         $count = 0;
         $index--;
-        while ($data[$index]['close'] <= $data[$index]['bb_lower'] && $index > 0) {
-            $count++;
-            $index--;
+
+        for ($i = $index; $i >= $index - $lookback; $i--) {
+            if (min($data[$index]['close'], $data[$index]['low'], $data[$index]['open']) <= $data[$index]['bb_lower']) {
+                $count++;
+            }
         }
 
         return $count;

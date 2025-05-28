@@ -181,6 +181,29 @@ class BinanceController extends Controller
 
         $reportAnalysis = !empty($tradeArr) ? CommonHelpers::analyzeTradeReport($tradeArr) : [];
 
+        // Trend Analysis Data, Only for back testing
+        $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
+        $formulaConfig = json_decode($formulaDetails->report_config, true);
+
+
+
+        $trendReferenceSymbol = ($formulaConfig && $formulaConfig['trendReferenceSymbol']) ? $formulaConfig['trendReferenceSymbol'] : 'BTCUSDT';
+
+        $trendReferenceInterval = ($formulaConfig && $formulaConfig['trendReferenceInterval']) ? $formulaConfig['trendReferenceInterval'] : '1h';
+
+        $startUnix = ($formulaConfig && $formulaConfig['startUnix']) ? $formulaConfig['startUnix'] : (time() * 1000 - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * 1000));
+        $endUnix = ($formulaConfig && $formulaConfig['endUnix']) ? $formulaConfig['endUnix'] : ((time() * 1000));
+        $intervalMs = CommonHelpers::$binanceIntervals[$trendReferenceInterval] * 60 * 1000; // Interval in ms
+
+
+        $candleCount = intval(($endUnix - $startUnix) / $intervalMs);
+
+
+        $dataTrendReference = BinanceApiService::getCandleStickData($trendReferenceSymbol, $trendReferenceInterval, $candleCount, $startUnix, 'FUTURE');
+
+
+
+
         // Initialize statistics counters
         $rsiLimit = 65;
         $wrLimit = -10;
@@ -211,6 +234,14 @@ class BinanceController extends Controller
         $lossTotal = 0;
         $profitableChangeSum = 0;
         $lossChangeSum = 0;
+
+
+
+        // Average first trade time
+
+        $firstTradeAverageTime = 0;
+
+        $startingTimestamp = $formulaConfig->startUnix;
         // Process trades for statistics in a single loop instead of multiple queries
         foreach ($tradeArr as $trade) {
             $buyingCandle = json_decode($trade['buyingCandle'], true);
@@ -220,7 +251,7 @@ class BinanceController extends Controller
 
 
 
-
+            $firstTradeAverageTime += ($buyingCandle['binance_timestamp'] - $startingTimestamp) / (1000 * 60);
 
 
             if ($buyingCandle['trendDetails']) {
@@ -369,25 +400,7 @@ class BinanceController extends Controller
         $openSymbols = $openTradesQuery->pluck('symbol');
 
 
-        // Trend Analysis Data, Only for back testing
-        $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
-        $formulaConfig = json_decode($formulaDetails->report_config, true);
 
-
-
-        $trendReferenceSymbol = ($formulaConfig && $formulaConfig['trendReferenceSymbol']) ? $formulaConfig['trendReferenceSymbol'] : 'BTCUSDT';
-
-        $trendReferenceInterval = ($formulaConfig && $formulaConfig['trendReferenceInterval']) ? $formulaConfig['trendReferenceInterval'] : '1h';
-
-        $startUnix = ($formulaConfig && $formulaConfig['startUnix']) ? $formulaConfig['startUnix'] : (time() * 1000 - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * 1000));
-        $endUnix = ($formulaConfig && $formulaConfig['endUnix']) ? $formulaConfig['endUnix'] : ((time() * 1000));
-        $intervalMs = CommonHelpers::$binanceIntervals[$trendReferenceInterval] * 60 * 1000; // Interval in ms
-
-
-        $candleCount = intval(($endUnix - $startUnix) / $intervalMs);
-
-
-        $dataTrendReference = BinanceApiService::getCandleStickData($trendReferenceSymbol, $trendReferenceInterval, $candleCount, $startUnix, 'FUTURE');
         // dd($dataTrendReference);
 
         // Return the view with consolidated data
@@ -412,6 +425,7 @@ class BinanceController extends Controller
             'liquidatedIntervals' => $liquidatedIntervals,
             'liquidatedMarkets'  => $liquidatedMarkets,
             'tpLimit'  => $tpLimit,
+            'firstTradeAverageTime'  => count($tradeArr) ? $firstTradeAverageTime / count($tradeArr) : 0,
 
             // RSI Stats
             'rsiAbove40Profitable' => $rsiAbove40Profitable,
@@ -641,7 +655,7 @@ class BinanceController extends Controller
         if ($market === 'SPOT') {
 
 
-            
+
 
 
 

@@ -172,7 +172,7 @@ class PatternDetector
         $body = abs($candle['close'] - $candle['open']);
         $range = $candle['high'] - $candle['low'];
 
-        return ($body / $range) <= self::DOJI_BODY_RATIO;
+        return ($body / max($range, 0.001)) <= self::DOJI_BODY_RATIO;
     }
 
     private static function isSpinningTop($data, $index)
@@ -191,7 +191,7 @@ class PatternDetector
         $body = abs($candle['close'] - $candle['open']);
         $range = $candle['high'] - $candle['low'];
 
-        return ($body / $range) >= 0.95 && $candle['close'] > $candle['open'];
+        return ($body / max($range, 0.001)) >= 0.95 && $candle['close'] > $candle['open'];
     }
 
     private static function isBullishEngulfing($data, $index)
@@ -344,19 +344,26 @@ class PatternDetector
             $lows[] = $data[$index - $i]['low'];
         }
 
-        // Find two significant lows
-        $firstLowIndex = array_search(min(array_slice($lows, 0, $lookback / 2)), $lows);
-        $secondLowIndex = array_search(min(array_slice($lows, $lookback / 2)), $lows) + $lookback / 2;
+        $mid = intdiv($lookback, 2);
 
-        if ($firstLowIndex !== false && $secondLowIndex !== false) {
-            $lowDiff = abs($lows[$firstLowIndex] - $lows[$secondLowIndex]);
-            $avgLow = ($lows[$firstLowIndex] + $lows[$secondLowIndex]) / 2;
+        $firstHalf = array_slice($lows, 0, $mid + 1);
+        $secondHalf = array_slice($lows, $mid + 1);
 
-            return ($lowDiff / $avgLow) < 0.02; // Lows are within 2% of each other
-        }
+        $firstLow = min($firstHalf);
+        $secondLow = min($secondHalf);
 
-        return false;
+        $firstLowIndex = array_search($firstLow, $lows);
+        $secondLowIndex = array_search($secondLow, $lows);
+
+        // Sanity check
+        if ($firstLowIndex === false || $secondLowIndex === false) return false;
+
+        $lowDiff = abs($lows[$firstLowIndex] - $lows[$secondLowIndex]);
+        $avgLow = ($lows[$firstLowIndex] + $lows[$secondLowIndex]) / 2;
+
+        return ($lowDiff / $avgLow) < 0.02; // Lows are within 2% of each other
     }
+
 
     private static function isFallingWedge($data, $index)
     {

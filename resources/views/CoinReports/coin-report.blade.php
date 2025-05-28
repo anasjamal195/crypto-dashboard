@@ -290,7 +290,7 @@
                                                 <tr>
                                                     <td class="font-weight-bold">Below TP</td>
                                                     <td>{{ round($tradesBelowTP ?? 0) }}</td>
-                                                    <td>Trades that closed early below {{$tpLimit}}%</td>
+                                                    <td>Trades that closed early below {{ $tpLimit }}%</td>
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">1h+ Duration</td>
@@ -351,7 +351,12 @@
                                                         %</td>
                                                     <td>Success rate of profitable trades </td>
                                                 </tr>
-
+  <tr>
+                                                    <td class="font-weight-bold">Average First Opening Delay</td>
+                                                    <td>{{ $totalTrades ? round($firstTradeAverageTime, 2) : 0 }}
+                                                        </td>
+                                                    <td>Average time of first trade after very first candle in mins </td>
+                                                </tr>
 
 
                                                 <tr>
