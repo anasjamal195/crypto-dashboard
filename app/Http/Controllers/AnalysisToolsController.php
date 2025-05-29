@@ -29,7 +29,7 @@ class AnalysisToolsController extends Controller
         $pageSlug = 'volumeTool';
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '5m');
-        $limit = request('limit', 200);
+        $limit = request('limit', 1000);
 
         $coinData = [];
         $volumeSignals = [];
