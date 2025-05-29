@@ -38,7 +38,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
 
 
-
+    @yield('styles')
+    @stack('styles')
 
 </head>
 <style>
@@ -329,6 +330,7 @@
 
     {{-- Select 2 --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
     @stack('js')
     <script>
         @if (session('success'))
@@ -476,12 +478,12 @@
                 //         "rowCallback": function(row, data) {
                 //             var formula = $(row).data('formula');
                 //             $(row).insertAfter(`
-                //                 <tr class="formula-row">
-                //                     <td colspan="13" class="text-center py-2">
-                //                         <strong>Formula:</strong> ${formula?formula:'No formula found'}
-                //                     </td>
-                //                 </tr>
-                //             `);
+            //                 <tr class="formula-row">
+            //                     <td colspan="13" class="text-center py-2">
+            //                         <strong>Formula:</strong> ${formula?formula:'No formula found'}
+            //                     </td>
+            //                 </tr>
+            //             `);
                 //         }
                 //     });
                 // });
@@ -494,6 +496,10 @@
     </script>
 
     @stack('js')
+
+    {{-- Scripts section - charts library will be loaded here --}}
+    @stack('scripts')
+    @yield('scripts')
 </body>
 
 </html>

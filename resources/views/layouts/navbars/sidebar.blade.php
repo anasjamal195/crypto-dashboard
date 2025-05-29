@@ -246,6 +246,89 @@
                 </div>
             </li>
 
+            <li
+                class="{{ request()->routeIs(
+                    'analysis-tools.order-book-tool',
+                    'analysis-tools.volume-tool',
+                    'analysis-tools.bollinger-band-tool',
+                    'analysis-tools.technical-trend-tool',
+                    'analysis-tools.chart-pattern-tool',
+                    'analysis-tools.indicator-comparison-tool',
+                )
+                    ? 'active'
+                    : '' }}">
+                <a data-toggle="collapse" href="#analysisToolsMenu"
+                    aria-expanded="{{ request()->routeIs(
+                        'analysis-tools.order-book-tool',
+                        'analysis-tools.volume-tool',
+                        'analysis-tools.bollinger-band-tool',
+                        'analysis-tools.technical-trend-tool',
+                        'analysis-tools.chart-pattern-tool',
+                        'analysis-tools.indicator-comparison-tool',
+                    )
+                        ? 'true'
+                        : 'false' }}">
+                    <i class="tim-icons icon-chart-bar-32"></i>
+                    <p>{{ __('Chart Analysis Tools') }}
+                        <b class="caret"></b>
+                    </p>
+                </a>
+                <div class="collapse {{ request()->routeIs(
+                    'analysis-tools.order-book-tool',
+                    'analysis-tools.volume-tool',
+                    'analysis-tools.bollinger-band-tool',
+                    'analysis-tools.technical-trend-tool',
+                    'analysis-tools.chart-pattern-tool',
+                    'analysis-tools.indicator-comparison-tool',
+                )
+                    ? 'show'
+                    : '' }}"
+                    id="analysisToolsMenu">
+                    <ul class="nav">
+                        <li class="{{ request()->routeIs('analysis-tools.order-book-tool') ? 'active' : '' }}">
+                            <a href="{{ route('analysis-tools.order-book-tool') }}">
+                                <i class="tim-icons icon-notes"></i>
+                                <p>{{ __('Order Book Tool') }}</p>
+                            </a>
+                        </li>
+                        <li class="{{ request()->routeIs('analysis-tools.volume-tool') ? 'active' : '' }}">
+                            <a href="{{ route('analysis-tools.volume-tool') }}">
+                                <i class="tim-icons icon-sound-wave"></i>
+                                <p>{{ __('Volume Tool') }}</p>
+                            </a>
+                        </li>
+                        <li class="{{ request()->routeIs('analysis-tools.bollinger-band-tool') ? 'active' : '' }}">
+                            <a href="{{ route('analysis-tools.bollinger-band-tool') }}">
+                                <i class="tim-icons icon-minimal-left"></i>
+                                <p>{{ __('Bollinger Band Tool') }}</p>
+                            </a>
+                        </li>
+                        <li
+                            class="{{ request()->routeIs('analysis-tools.technical-trend-tool') ? 'active' : '' }}">
+                            <a href="{{ route('analysis-tools.technical-trend-tool') }}">
+                                <i class="tim-icons icon-time-alarm"></i>
+                                <p>{{ __('Technical Trend Tool') }}</p>
+                            </a>
+                        </li>
+                        <li
+                            class="{{ request()->routeIs('analysis-tools.chart-pattern-tool') ? 'active' : '' }}">
+                            <a href="{{ route('analysis-tools.chart-pattern-tool') }}">
+                                <i class="tim-icons icon-puzzle-10"></i>
+                                <p>{{ __('Chart Pattern Tool') }}</p>
+                            </a>
+                        </li>
+                        <li
+                            class="{{ request()->routeIs('analysis-tools.indicator-comparison-tool') ? 'active' : '' }}">
+                            <a href="{{ route('analysis-tools.indicator-comparison-tool') }}">
+                                <i class="tim-icons icon-bullet-list-67"></i>
+                                <p>{{ __('Indicator Comparison') }}</p>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+
             <li class="{{ request()->is('process-handlers*') ? 'active' : '' }}">
                 <a data-toggle="collapse" href="#processHandlersCollapse" aria-expanded="false">
                     <i class="tim-icons icon-settings"></i>

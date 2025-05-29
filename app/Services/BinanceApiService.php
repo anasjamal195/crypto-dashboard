@@ -1005,8 +1005,15 @@ class BinanceApiService
             $currentDiMinus = count($diMinus) ? end($diMinus) : null;
             $currentADX = count($adxValues) ? end($adxValues) : null;
 
+
+
+
+            // Timestamp Conversion
+
+            // dd($timestamp,$timestamp + (5 * 60 * 60 * 1000));
             // Store candlestick data with all indicators
             $candlesticks[] = [
+                'timestamp_pst' => $timestamp + (5 * 60 * 60 * 1000),
                 'timestamp' => $timestamp,
                 'timestampReadable' => $timestampReadable,
                 'market' => $market,
@@ -1562,7 +1569,7 @@ class BinanceApiService
         $revisedTimestamp = $timestamp - ($intervalInMins * ($limit) * 60000) +  1000;
 
         $data = $external ? self::getCandleStickDataExternal($symbol, $interval, $limit, $revisedTimestamp, $market) : self::getCandleStickData($symbol, $interval, $limit, $revisedTimestamp, $market);
-      
+
         return $data;
     }
 

@@ -12,7 +12,7 @@
                                 <p class="card-category">Volume-based trading signals</p>
                             </div>
                             <div class="col-sm-6">
-                                <form action="{{ route('volume-signals.index') }}" method="GET"
+                                <form action="" method="GET"
                                     class="d-flex justify-content-end">
                                     <div class="form-group mr-3">
                                         <label for="symbol">Symbol</label>
@@ -39,7 +39,7 @@
                     </div>
                     <div class="card-body">
                         <div class="chart-container" style="position: relative; height:50vh; width:100%">
-                            <canvas id="volumeSignalsChart"></canvas>
+                            <canvas id="candlestick-chart"></canvas>
                         </div>
                         <div class="chart-controls mt-3">
                             <button class="btn btn-sm btn-primary" id="resetZoom">Reset Zoom</button>
@@ -250,7 +250,7 @@
             const sellSignals = sortedData.map(signal => signal.signal === 'sell' ? signal.price : null);
 
             // Create chart
-            const ctx = document.getElementById('volumeSignalsChart').getContext('2d');
+            const ctx = document.getElementById('candlestick-chart').getContext('2d');
             const volumeChart = new Chart(ctx, {
                 type: 'line',
                 data: {

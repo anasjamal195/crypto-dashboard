@@ -109,6 +109,16 @@ Route::get('/worker-handler', 'App\Http\Controllers\ProcessController@workerInde
 Route::get('/worker-handler/flush/{worker_id}', 'App\Http\Controllers\ProcessController@flushWorker')->name('worker-handler.flush')->middleware('auth');
 
 
+// Technical Analysis Tools
+Route::name('analysis-tools.')->prefix('analysis-tools/')->group(function () {
+
+	Route::get('order-book-tool', 'App\Http\Controllers\AnalysisToolsController@orderBookTool')->name('order-book-tool');
+	Route::get('volume-tool', 'App\Http\Controllers\AnalysisToolsController@volumeTool')->name('volume-tool');
+	Route::get('bollinger-band-tool', 'App\Http\Controllers\AnalysisToolsController@bollingerBandTool')->name('bollinger-band-tool');
+	Route::get('technical-trend-tool', 'App\Http\Controllers\AnalysisToolsController@technicalTrendTool')->name('technical-trend-tool');
+	Route::get('chart-pattern-tool', 'App\Http\Controllers\AnalysisToolsController@chartPatternTool')->name('chart-pattern-tool');
+	Route::get('indicator-comparison-tool', 'App\Http\Controllers\AnalysisToolsController@indicatorComparisonTool')->name('indicator-comparison-tool');
+});
 
 
 
@@ -128,6 +138,12 @@ Route::group(['middleware' => 'auth'], function () {
 	Route::put('profile', ['as' => 'profile.update', 'uses' => 'App\Http\Controllers\ProfileController@update']);
 	Route::put('profile/password', ['as' => 'profile.password', 'uses' => 'App\Http\Controllers\ProfileController@password']);
 });
+
+
+
+
+
+
 
 
 
