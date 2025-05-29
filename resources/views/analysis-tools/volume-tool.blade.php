@@ -20,7 +20,7 @@
                                         <select name="interval" id="interval" class="form-control my-4 select2">
                                             @foreach (\App\CommonHelpers::$binanceIntervals as $key => $value)
                                                 <option value="{{ $key }}"
-                                                    {{ request('interval') == $key ? 'selected' : '' }}>
+                                                    {{ $interval === $key ? 'selected' : '' }}>
                                                     {{ $key }}
                                                 </option>
                                             @endforeach

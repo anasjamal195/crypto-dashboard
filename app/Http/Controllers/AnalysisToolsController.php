@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\MessageBag;
 
 class AnalysisToolsController extends Controller
 {
@@ -28,9 +30,19 @@ class AnalysisToolsController extends Controller
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '5m');
         $limit = request('limit', 200);
-        $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true, null, $limit);
 
-        $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
+        $coinData = [];
+        $volumeSignals = [];
+
+
+        try {
+            $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
+            $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true, null, $limit);
+        } catch (\Throwable $th) {
+            Session::flash('error', 'Error fetching coin data...');
+            // dd($th);
+        }
+
 
         return view('analysis-tools.volume-tool', compact('volumeSignals', 'symbol', 'interval', 'pageSlug', 'coinData'));
     }

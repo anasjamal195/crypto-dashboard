@@ -54,10 +54,9 @@ class BinanceController extends Controller
         $limit = request('limit', 100);
         $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true, null, $limit);
 
-
-
         $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
 
+        // $coinData = [];
         return view('volume-signals.index', compact('volumeSignals', 'symbol', 'pageSlug', 'coinData'));
     }
     public function getCoinReport($market, Request $request)
