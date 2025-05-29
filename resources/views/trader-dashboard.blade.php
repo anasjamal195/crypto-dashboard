@@ -2,8 +2,8 @@
 
     @php
         $accountTradeDetails = DB::table('account_trade_details')->latest()->get();
-        $futureWallet = BinanceApiService::fetchFutureWalletDetails(auth()->user()->id);
-        $spotWallet = BinanceApiService::fetchSpotWalletDetails(auth()->user()->id);
+        $futureWallet = App\Services\BinanceApiService::fetchFutureWalletDetails(auth()->user()->id);
+        $spotWallet = App\Services\BinanceApiService::fetchSpotWalletDetails(auth()->user()->id);
     @endphp
     <style>
         .wallet-card {

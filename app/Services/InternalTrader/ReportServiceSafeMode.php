@@ -74,7 +74,7 @@ class ReportServiceSafeMode
     ) {
 
         $tradesTotal = [];
-        $coinsQuery = Http::get('https://rocket.cryptoapis.store/get-all-symbols');
+        $coinsQuery = Http::get('https://rocket.cryptoapis.store/csrf-free/get-all-symbols');
 
 
 
@@ -106,9 +106,8 @@ class ReportServiceSafeMode
         // }
         // $coins = $coinsQuery->get();
 
-        $coins = $coinsQuery->json();
+        $coins = $coinsQuery->json()['data'];
 
-        dd($coins);
         // Clear Console
         system('clear');
         $cmd->info('Processing: 0 %');
@@ -120,8 +119,7 @@ class ReportServiceSafeMode
         foreach ($coins as $index => $coin) {
 
             try {
-
-                $symbol = $coin->symbol;
+                $symbol = $coin['symbol'];
 
                 Log::info("Test Request Params" . self::$interval);
                 $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 800, self::$backTestTimeUnix, 'FUTURE');
@@ -494,8 +492,8 @@ class ReportServiceSafeMode
                     $currentTrade['position'] = $tradeType;
                     $currentTrade['formula'] = self::$formula;
 
-                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
-                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
+                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestampReadable']);
+                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestampReadable']);
                     $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
 
 
@@ -529,7 +527,7 @@ class ReportServiceSafeMode
         if (! $safeModeStatus) {
 
             $lastIndex = count($data) - 1;
-            $tradeSummary = self::getTradeStatsFromReport(self::$formula, $data[$lastIndex], 18);
+            $tradeSummary = self::getTradeStatsFromReport(self::$formula, $data[$lastIndex]['binance_timestamp'], 18);
 
             if ($tradeSummary['profitableTradesFiltered']  == 0) {
                 CommonHelpers::enableSafeModeLive($symbol, 'LONG', $data[$lastIndex]['binance_timestamp']);

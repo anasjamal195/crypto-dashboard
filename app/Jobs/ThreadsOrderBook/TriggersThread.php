@@ -16,6 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use stdClass;
 
@@ -221,6 +222,16 @@ class TriggersThread implements ShouldQueue
                     Log::info("Opening on spot... " . $symbol);
                 }
 
+
+                // Check Safe Mode Enabled
+
+                $safeModeStatus = self::getSafeModeStatus($symbol, $tradeType);
+
+                if ($safeModeStatus) {
+                    CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                    $openTrade = false;
+                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode Disabled: ' . $symbol);
+                }
                 if ($openTrade) {
 
                     // Handle if current market is SPOT
@@ -923,5 +934,13 @@ class TriggersThread implements ShouldQueue
 
             return !(($crossOverCondition && $bbMiddleCondition));
         }
+    }
+
+    public static function getSafeModeStatus($symbol, $position)
+    {
+        $safeModeStatus = Http::get("https://reachoutfans.com/csrf-free/safe-mode-status/BTCUSDT/LONG");
+
+        $status = $safeModeStatus->json()['data'];
+        return $status;
     }
 }
