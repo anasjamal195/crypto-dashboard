@@ -13,6 +13,11 @@
     $supportTriggers = [];
     $resistanceTriggers = [];
 
+    $safeModeLogs = DB::table('safe_mode_logs')->where('symbol', $symbol)->where('formula', $formula)->first();
+
+    $safeModeEnableTimestamps = $safeModeLogs ? json_decode($safeModeLogs->enable_timestamps, true) : [];
+    $safeModeDisableTimestamps = $safeModeLogs ? json_decode($safeModeLogs->disable_timestamps, true) : [];
+
 @endphp
 
 @section('content')
@@ -273,29 +278,29 @@
                                                     <!-- Buy & Sell Candle Indicators Section -->
                                                     <div class="row g-0">
                                                         @php
-                                                        
-                                                                $buy = $buyCandle;
-                                                                $sell = $sellCandle;
 
-                                                                // if(!$buy || !$sell){
-                                                                //     dd('Test');
-                                                                // }
-                                                                $searchCandle = CommonHelpers::getCandleFromData(
-                                                                    $data,
-                                                                    $buy['binance_timestamp'],
-                                                                );
+                                                            $buy = $buyCandle;
+                                                            $sell = $sellCandle;
 
-                                                                $index = $searchCandle['index'];
+                                                            // if(!$buy || !$sell){
+                                                            //     dd('Test');
+                                                            // }
+                                                            $searchCandle = CommonHelpers::getCandleFromData(
+                                                                $data,
+                                                                $buy['binance_timestamp'],
+                                                            );
 
-                                                                $currentCandle = $data[$index];
-                                                                $prevCandle = $data[$index - 1];
+                                                            $index = $searchCandle['index'];
 
-                                                                $bollAnalysis = CommonHelpers::analyzeBollingerBandSwing(
-                                                                    $data,
-                                                                    $index,
-                                                                    10,
-                                                                );
-                                                            
+                                                            $currentCandle = $data[$index];
+                                                            $prevCandle = $data[$index - 1];
+
+                                                            $bollAnalysis = CommonHelpers::analyzeBollingerBandSwing(
+                                                                $data,
+                                                                $index,
+                                                                10,
+                                                            );
+
                                                         @endphp
                                                         <div class="card">
                                                             <div class="card-header ">
@@ -1437,6 +1442,8 @@
             const trades = @json($trades);
             const buyTriggers = @json($buyTriggers);
             const sellTriggers = @json($sellTriggers);
+            const safeModeEnableTimestamps = @json($safeModeEnableTimestamps);
+            const safeModeDisableTimestamps = @json($safeModeDisableTimestamps);
             const confirmTriggers = @json($confirmTriggers);
             const highestTriggers = @json($highestTriggers);
             const lowestTriggers = @json($lowestTriggers);
@@ -1491,6 +1498,18 @@
                         backgroundColor: '#ffff00', // yellow
                         borderColor: '#ffd700', // gold (slightly deeper yellow for border)
                         radius: 6
+                    };
+                } else if (safeModeEnableTimestamps.includes(binanceTimestamp)) {
+                    return {
+                        backgroundColor: '#FF9800', // yellow
+                        borderColor: '#FF9800', // gold (slightly deeper yellow for border)
+                        radius: 8
+                    };
+                } else if (safeModeDisableTimestamps.includes(binanceTimestamp)) {
+                    return {
+                        backgroundColor: '#90A4AE', // yellow
+                        borderColor: '#90A4AE', // gold (slightly deeper yellow for border)
+                        radius: 8
                     };
                 } else {
                     return {

@@ -2679,4 +2679,46 @@ class CommonHelpers
         }
         return false;
     }
+
+
+
+    // Safe mode helper functions
+    public static function enableSafeModeLive(string $symbol, string $position, $currentTimestamp, $trendType = null)
+    {
+        DB::table('safe_mode_worker_live')->updateOrInsert(
+            ['symbol' => $symbol, 'position' => $position],
+            [
+                'safe_mode' => 1,
+                'trend_type' => $trendType,
+                'last_enabled_timestamp' => $currentTimestamp,
+                'updated_at' => now()
+            ]
+        );
+    }
+
+    public static function getSafeModeStatus(string $symbol, string $position)
+    {
+        $entry = DB::table('safe_mode_worker_live')->where('symbol', $symbol)->where('position', $position)->first();
+
+        return $entry ? $entry->safe_mode : null;
+    }
+
+    public static function getSafeModeEnableTime(string $symbol, string $position)
+    {
+        $entry = DB::table('safe_mode_worker_live')->where('symbol', $symbol)->where('position', $position)->first();
+
+        return $entry ? $entry->last_enabled_timestamp : null;
+    }
+
+
+    public static function disableSafeModeLive(string $symbol, string $position)
+    {
+        DB::table('safe_mode_worker_live')->updateOrInsert(
+            ['symbol' => $symbol, 'position' => $position],
+            [
+                'safe_mode' => 0,
+                'updated_at' => now()
+            ]
+        );
+    }
 }

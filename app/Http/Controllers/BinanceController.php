@@ -10,8 +10,10 @@ use App\Services\IdealTradeService;
 use App\Services\MarketTrendService;
 use App\Services\OrderBookStrategy;
 use App\Services\ReportService\LongReportService;
+use App\Services\TradingGapAnalyzer;
 use Carbon\Carbon;
 use DateTime;
+use DateTimeZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -189,10 +191,21 @@ class BinanceController extends Controller
 
         $trendReferenceSymbol = ($formulaConfig && $formulaConfig['trendReferenceSymbol']) ? $formulaConfig['trendReferenceSymbol'] : 'BTCUSDT';
 
+        // $trendReferenceInterval = ($formulaConfig && $formulaConfig['trendReferenceInterval']) ? $formulaConfig['trendReferenceInterval'] : '1h';
         $trendReferenceInterval = ($formulaConfig && $formulaConfig['trendReferenceInterval']) ? $formulaConfig['trendReferenceInterval'] : '1h';
 
-        $startUnix = ($formulaConfig && $formulaConfig['startUnix']) ? $formulaConfig['startUnix'] : (time() * 1000 - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * 1000));
-        $endUnix = ($formulaConfig && $formulaConfig['endUnix']) ? $formulaConfig['endUnix'] : ((time() * 1000));
+        $date = new DateTime($formulaDetails->created_at, new DateTimeZone('Asia/Karachi'));
+        $date->setTimezone(new DateTimeZone('UTC')); // convert to UTC
+        $createdTimestampMs = $date->getTimestamp() * 1000; // get UTC timestamp in milliseconds
+
+        $startUnix = ($formulaConfig && $formulaConfig['startUnix'])
+            ? $formulaConfig['startUnix']
+            : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * 1000));
+
+        $endUnix = ($formulaConfig && $formulaConfig['endUnix'])
+            ? $formulaConfig['endUnix']
+            : $createdTimestampMs;
+
         $intervalMs = CommonHelpers::$binanceIntervals[$trendReferenceInterval] * 60 * 1000; // Interval in ms
 
 
@@ -204,10 +217,22 @@ class BinanceController extends Controller
 
 
 
+
+
+
+
+        // Trend reference settings for actual interval
+        $trendReferenceSymbolActual = count($tradeData) ? $tradeData[0]->symbol : 'BTCUSDT';
+        $dataTrendReferenceActual = BinanceApiService::getCandleStickData($trendReferenceSymbolActual, $interval, 1000, $startUnix, 'FUTURE');
+
+
+
+
         // Initialize statistics counters
         $rsiLimit = 65;
         $wrLimit = -10;
         $accuracyThreshold = 90;
+        $accuracyThresholdLow = 80;
 
         $rsiAbove40Profitable = $rsiAbove40Loss = $rsiAbove40Total = 0;
         $rsiBelow40Profitable = $rsiBelow40Loss = $rsiBelow40Total = 0;
@@ -239,9 +264,13 @@ class BinanceController extends Controller
 
         // Average first trade time
 
-        $firstTradeAverageTime = 0;
 
-        $startingTimestamp = $formulaConfig->startUnix;
+
+        $startingTimestamp = $formulaConfig['startUnix'];
+        $firstTradeTimestamp = !empty($tradeArr) ? json_decode($tradeArr[0]['buyingCandle'], true)['binance_timestamp'] : time() * 1000;
+        $firstTradeAverageTime = ($firstTradeTimestamp - $startingTimestamp) / (1000 * 60);
+
+        // dd($firstTradeAverageTime,$firstTradeTimestamp,$startingTimestamp);
         // Process trades for statistics in a single loop instead of multiple queries
         foreach ($tradeArr as $trade) {
             $buyingCandle = json_decode($trade['buyingCandle'], true);
@@ -251,7 +280,8 @@ class BinanceController extends Controller
 
 
 
-            $firstTradeAverageTime += ($buyingCandle['binance_timestamp'] - $startingTimestamp) / (1000 * 60);
+            $currentTradeTime = ($buyingCandle['binance_timestamp'] - $startingTimestamp) / (1000 * 60);
+            $firstTradeAverageTime = $firstTradeAverageTime < $currentTradeTime ? $firstTradeAverageTime : $currentTradeTime;
 
 
             if ($buyingCandle['trendDetails']) {
@@ -370,7 +400,7 @@ class BinanceController extends Controller
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
 
             $color = '';
-            if ($trade['lowestPricePercentage'] > $stopLoss) {
+            if ($trade['profit'] < 0) {
                 $color = 'yellow';
             }
 
@@ -383,6 +413,31 @@ class BinanceController extends Controller
                 'buyingCandle' => $trade['buyingCandle'],
             ];
         }, $tradeArr);
+
+
+
+
+        $tradeArrSkipped = DB::table('skipped_trades')->where('formula', $formula)->get();
+        $tradeArrSkipped = json_decode(json_encode($tradeArrSkipped), true);
+        $timelineDataSkipped = array_map(function ($trade) {
+
+            $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
+            $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
+            $trade['skipping_reasons'] = json_decode($trade['skipping_reasons'], true);
+            $color = 'orange';
+
+            return [
+                'symbol' => $trade['symbol'],
+                'startTime' => $trade['start_time'],
+                'endTime' => $trade['end_time'],
+                'color' => $trade['color'],
+                'id' => $trade['id'],
+                'buyingCandle' => $trade['buyingCandle'],
+                'skipping_reasons' => $trade['skipping_reasons'],
+            ];
+        }, $tradeArrSkipped);
+        // dd($timelineDataSkipped[0]);
+
 
         $openTradesQuery =  DB::table('coin_reports')->where('market', $market);
 
@@ -399,9 +454,102 @@ class BinanceController extends Controller
 
         $openSymbols = $openTradesQuery->pluck('symbol');
 
-
+        // dd($firstTradeAverageTime);
 
         // dd($dataTrendReference);
+
+
+        $timeWiseTradeCount = [];
+        $timeWiseTradeCountProfitable = [];
+        $timeWiseTradeCountProfitableQuick = [];
+        $timeWiseTradeCountLoss = [];
+        $timeWiseTradeCountSkipped = [];
+
+        foreach ($tradeArr as $trade) {
+
+            $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
+            $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
+
+            if (isset($timeWiseTradeCount[$trade['buyingCandle']['binance_timestamp']])) {
+                $timeWiseTradeCount[$trade['buyingCandle']['binance_timestamp']] += 1;
+            } else {
+                $timeWiseTradeCount[$trade['buyingCandle']['binance_timestamp']] = 1;
+            }
+
+
+
+            // Profitable Trades Count
+            if ($trade['profit'] > 0) {
+                if (isset($timeWiseTradeCountProfitable[$trade['buyingCandle']['binance_timestamp']])) {
+                    $timeWiseTradeCountProfitable[$trade['buyingCandle']['binance_timestamp']] += 1;
+                    if ($trade['duration'] <= 30) {
+                        if (isset($timeWiseTradeCountProfitableQuick[$trade['buyingCandle']['binance_timestamp']])) {
+                            $timeWiseTradeCountProfitableQuick[$trade['buyingCandle']['binance_timestamp']] += 1;
+                        } else {
+                            $timeWiseTradeCountProfitableQuick[$trade['buyingCandle']['binance_timestamp']] = 1;
+                        }
+                    }
+                } else {
+                    $timeWiseTradeCountProfitable[$trade['buyingCandle']['binance_timestamp']] = 1;
+                }
+            } else {
+                if (isset($timeWiseTradeCountLoss[$trade['buyingCandle']['binance_timestamp']])) {
+                    $timeWiseTradeCountLoss[$trade['buyingCandle']['binance_timestamp']] += 1;
+                } else {
+                    $timeWiseTradeCountLoss[$trade['buyingCandle']['binance_timestamp']] = 1;
+                }
+            }
+        }
+
+        // For Skipped Trades
+        foreach ($tradeArrSkipped as $trade) {
+
+            $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
+
+            if (isset($timeWiseTradeCountSkipped[$trade['buyingCandle']['binance_timestamp']])) {
+                $timeWiseTradeCountSkipped[$trade['buyingCandle']['binance_timestamp']] += 1;
+            } else {
+                $timeWiseTradeCountSkipped[$trade['buyingCandle']['binance_timestamp']] = 1;
+            }
+        }
+
+
+        // Plotting them in current trend data
+        foreach ($dataTrendReferenceActual as &$candle) {
+            if (isset($timeWiseTradeCount[$candle['binance_timestamp']])) {
+                $candle['total_trades'] = $timeWiseTradeCount[$candle['binance_timestamp']];
+            } else {
+                $candle['total_trades'] = 0;
+            }
+
+            // Profitable
+            if (isset($timeWiseTradeCountProfitable[$candle['binance_timestamp']])) {
+                $candle['total_trades_profitable'] = $timeWiseTradeCountProfitable[$candle['binance_timestamp']];
+            } else {
+                $candle['total_trades_profitable'] = 0;
+            }
+
+            // Loss
+            if (isset($timeWiseTradeCountLoss[$candle['binance_timestamp']])) {
+                $candle['total_trades_loss'] = $timeWiseTradeCountLoss[$candle['binance_timestamp']];
+            } else {
+                $candle['total_trades_loss'] = 0;
+            }
+
+            // Skipped
+            if (isset($timeWiseTradeCountSkipped[$candle['binance_timestamp']])) {
+                $candle['total_trades_skipped'] = $timeWiseTradeCountSkipped[$candle['binance_timestamp']];
+            } else {
+                $candle['total_trades_skipped'] = 0;
+            }
+        }
+
+
+
+        $analyzer = new TradingGapAnalyzer();
+        $result = $analyzer->findMaxTradingGap($timeWiseTradeCountProfitable, 0, 0);
+
+        // dd($result);
 
         // Return the view with consolidated data
         return view('CoinReports.coin-report', [
@@ -425,7 +573,7 @@ class BinanceController extends Controller
             'liquidatedIntervals' => $liquidatedIntervals,
             'liquidatedMarkets'  => $liquidatedMarkets,
             'tpLimit'  => $tpLimit,
-            'firstTradeAverageTime'  => count($tradeArr) ? $firstTradeAverageTime / count($tradeArr) : 0,
+            'firstTradeAverageTime'  => $startingTimestamp ? $firstTradeAverageTime : 0,
 
             // RSI Stats
             'rsiAbove40Profitable' => $rsiAbove40Profitable,
@@ -437,6 +585,8 @@ class BinanceController extends Controller
             'rsiLimit' => $rsiLimit,
             'tradesBelowTP' => $tradesBelowTP,
 
+            'timelineDataSkipped' => $timelineDataSkipped,
+
             'bullishOpenings' => $bullishOpenings,
             'bullishOpeningsProfit' => $bullishOpeningsProfit,
             'bullishOpeningsLoss' => $bullishOpeningsLoss,
@@ -444,6 +594,7 @@ class BinanceController extends Controller
             'berishOpeningsProfit' => $berishOpeningsProfit,
             'berishOpeningsLoss' => $berishOpeningsLoss,
             'accuracyThreshold' => $accuracyThreshold,
+            'accuracyThresholdLow' => $accuracyThresholdLow,
 
             'instantOpenings' => $instantOpenings,
             'instantOpeningsProfit' => $instantOpeningsProfit,
@@ -471,7 +622,9 @@ class BinanceController extends Controller
             'trendReferenceSymbol' => $trendReferenceSymbol,
             'trendReferenceInterval' => $trendReferenceInterval,
 
-
+            'dataTrendReferenceActual' => $dataTrendReferenceActual,
+            'trendReferenceSymbolActual' => $trendReferenceSymbolActual,
+            'trendReferenceIntervalActual' => $interval,
         ]);
     }
     public function getCoinReportDetails($market, Request $request)
@@ -502,10 +655,29 @@ class BinanceController extends Controller
                 return $trade;
             });
 
-        // Fetching Base Candle Data
-        $startTime = $trades->first()->buyingCandle->binance_timestamp - (CommonHelpers::$binanceIntervals[$interval] * 100 * 60 * 1000);
 
-        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startTime, $market);
+
+        // Trend Analysis Data, Only for back testing
+        $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
+        $formulaConfig = json_decode($formulaDetails->report_config, true);
+
+
+        $date = new DateTime($formulaDetails->created_at, new DateTimeZone('Asia/Karachi'));
+        $date->setTimezone(new DateTimeZone('UTC')); // convert to UTC
+        $createdTimestampMs = $date->getTimestamp() * 1000; // get UTC timestamp in milliseconds
+
+        $startUnix = ($formulaConfig && $formulaConfig['startUnix'])
+            ? $formulaConfig['startUnix']
+            : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * 1000));
+
+        $endUnix = ($formulaConfig && $formulaConfig['endUnix'])
+            ? $formulaConfig['endUnix']
+            : $createdTimestampMs;
+
+        // Fetching Base Candle Data
+        // $startTime = $trades->first()->buyingCandle->binance_timestamp - (CommonHelpers::$binanceIntervals[$interval] * 100 * 60 * 1000);
+
+        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startUnix, $market);
 
         foreach ($data as $index => &$candle) {
 
@@ -582,6 +754,7 @@ class BinanceController extends Controller
         return view('CoinReports.coin-report-details', [
             'pageSlug' => 'Report Details',
             'symbol' => $symbol,
+            'formula' => $formula,
             'interval' => $interval,
             'trades' => $trades,
             'stopLoss' => $stopLoss,

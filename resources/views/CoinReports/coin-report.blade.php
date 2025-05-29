@@ -6,7 +6,9 @@
     $percentageProgress = DB::table('formula_details')->where('formula', request('formula'))->first();
     $percentageProgress = $percentageProgress ? $percentageProgress->progress : 100;
     $bestPerformingSymbols = [];
+    $lowPerformingSymbols = [];
     $bestPerformingSymbolsTradesTotal = 0;
+    $lowPerformingSymbolsTradesTotal = 0;
     $tableKeys = CommonHelpers::$candleDataKeysCoinReports;
 
     $indicatorSumProfit = [];
@@ -105,6 +107,16 @@
                                             </option>
                                         </select>
                                     </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="showSkippedTradesChart">Skipped Trades Chart</label>
+                                        <select name="showSkippedTradesChart" id="showSkippedTradesChart"
+                                            class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('showSkippedTradesChart') == 'show' ? 'selected' : '' }}>Shown
+                                            </option>
+                                        </select>
+                                    </div>
 
                                     <div class="col-md-4 mb-3">
                                         <label for="reportSummary">Show Report Summary</label>
@@ -171,6 +183,28 @@
                                             <option value="">Hidden</option>
                                             <option value="show"
                                                 {{ request('trendAnalysisChart') == 'show' ? 'selected' : '' }}>
+                                                Shown
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="trendAnalysisActualChart">Trend Analysis Chart (Indicators)</label>
+                                        <select name="trendAnalysisActualChart" id="trendAnalysisActualChart"
+                                            class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('trendAnalysisActualChart') == 'show' ? 'selected' : '' }}>
+                                                Shown
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="showSymbolPerformanceMetrics">Show Symbol Performance Metrics</label>
+                                        <select name="showSymbolPerformanceMetrics" id="showSymbolPerformanceMetrics"
+                                            class="form-control select2">
+                                            <option value="">Hidden</option>
+                                            <option value="show"
+                                                {{ request('showSymbolPerformanceMetrics') == 'show' ? 'selected' : '' }}>
                                                 Shown
                                             </option>
                                         </select>
@@ -243,6 +277,14 @@
                                                         'number_of_trades' => $trade->total_entries,
                                                     ];
                                                     $bestPerformingSymbolsTradesTotal += $trade->total_entries;
+                                                }
+
+                                                if ($symbolAccuracy <= $accuracyThresholdLow) {
+                                                    $lowPerformingSymbols[$trade->symbol] = [
+                                                        'accuracy' => $symbolAccuracy,
+                                                        'number_of_trades' => $trade->total_entries,
+                                                    ];
+                                                    $lowPerformingSymbolsTradesTotal += $trade->total_entries;
                                                 }
                                             @endphp
                                             <tr @if ($trade->min_profit < 0) class="bg-danger" @endif>
@@ -351,12 +393,13 @@
                                                         %</td>
                                                     <td>Success rate of profitable trades </td>
                                                 </tr>
-  <tr>
+
+                                                {{-- <tr>
                                                     <td class="font-weight-bold">Average First Opening Delay</td>
                                                     <td>{{ $totalTrades ? round($firstTradeAverageTime, 2) : 0 }}
-                                                        </td>
+                                                    </td>
                                                     <td>Average time of first trade after very first candle in mins </td>
-                                                </tr>
+                                                </tr> --}}
 
 
                                                 <tr>
@@ -477,86 +520,176 @@
                                                     <td>Total trades openend on berish candle </td>
                                                 </tr>
 
-                                                <tr>
-                                                    <td colspan="3" class="font-weight-bold text-center">Symbols above
-                                                        {{ $accuracyThreshold }} % accuracy</td>
-                                                </tr>
-                                                @foreach ($bestPerformingSymbols as $symbol => $data)
+
+
+
+                                                @if (request('showSymbolPerformanceMetrics') === 'show')
                                                     <tr>
-                                                        <td class="font-weight-bold">{{ $symbol }}</td>
-                                                        <td>{{ $data['accuracy'] }} % ( {{ $data['number_of_trades'] }} )
-                                                        </td>
+                                                        <td colspan="3" class="font-weight-bold text-center">Symbols
+                                                            above
+                                                            {{ $accuracyThreshold }} % accuracy</td>
+                                                    </tr>
+                                                    @foreach ($bestPerformingSymbols as $symbol => $data)
+                                                        <tr>
+                                                            <td class="font-weight-bold">{{ $symbol }}</td>
+                                                            <td>{{ $data['accuracy'] }} % (
+                                                                {{ $data['number_of_trades'] }} )
+                                                            </td>
+                                                            <td>
+                                                                @php
+                                                                    $coinDetails = DB::table('coins')
+                                                                        ->where('symbol', $symbol)
+                                                                        ->first();
+
+                                                                @endphp
+
+                                                                <div class="coin-tags">
+                                                                    <span class="badge me-1">Primary Classification:
+                                                                    </span>
+                                                                    {{-- Primary Classification --}}
+                                                                    @if (!empty($coinDetails->classification))
+                                                                        <span
+                                                                            class="badge bg-primary me-1">{{ $coinDetails->classification }}</span>
+                                                                    @endif
+                                                                    <span class="badge me-1">Other tags: </span>
+                                                                    {{-- Other Classifications --}}
+                                                                    @if ($coinDetails->is_web3)
+                                                                        <span class="badge bg-info me-1">Web 3</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_metaverse)
+                                                                        <span class="badge bg-info me-1">Metaverse</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_defi)
+                                                                        <span class="badge bg-info me-1">Defi</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_nft)
+                                                                        <span class="badge bg-info me-1">NFT</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_altcoin)
+                                                                        <span class="badge bg-info me-1">ALT</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_meme_coin)
+                                                                        <span class="badge bg-info me-1">Meme</span>
+                                                                    @endif
+                                                                </div>
+
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                    <tr>
+                                                        <td>Total</td>
+                                                        <td>{{ $bestPerformingSymbolsTradesTotal }}</td>
                                                         <td>
                                                             @php
-                                                                $coinDetails = DB::table('coins')
-                                                                    ->where('symbol', $symbol)
-                                                                    ->first();
+                                                                $keysArray = array_keys($bestPerformingSymbols);
 
+                                                                $phpFormatted = ' [' . PHP_EOL;
+                                                                foreach ($keysArray as $key) {
+                                                                    $phpFormatted .=
+                                                                        '    "' . addslashes($key) . '",' . PHP_EOL;
+                                                                }
+                                                                $phpFormatted .= ']';
                                                             @endphp
 
-                                                            <div class="coin-tags">
-                                                                <span class="badge me-1">Primary Classification: </span>
-                                                                {{-- Primary Classification --}}
-                                                                @if (!empty($coinDetails->classification))
-                                                                    <span
-                                                                        class="badge bg-primary me-1">{{ $coinDetails->classification }}</span>
-                                                                @endif
-                                                                <span class="badge me-1">Other tags: </span>
-                                                                {{-- Other Classifications --}}
-                                                                @if ($coinDetails->is_web3)
-                                                                    <span class="badge bg-info me-1">Web 3</span>
-                                                                @endif
-
-                                                                @if ($coinDetails->is_metaverse)
-                                                                    <span class="badge bg-info me-1">Metaverse</span>
-                                                                @endif
-
-                                                                @if ($coinDetails->is_defi)
-                                                                    <span class="badge bg-info me-1">Defi</span>
-                                                                @endif
-
-                                                                @if ($coinDetails->is_nft)
-                                                                    <span class="badge bg-info me-1">NFT</span>
-                                                                @endif
-
-                                                                @if ($coinDetails->is_altcoin)
-                                                                    <span class="badge bg-info me-1">ALT</span>
-                                                                @endif
-
-                                                                @if ($coinDetails->is_meme_coin)
-                                                                    <span class="badge bg-info me-1">Meme</span>
-                                                                @endif
-                                                            </div>
+                                                            <button
+                                                                onclick="navigator.clipboard.writeText(`{{ addslashes($phpFormatted) }}`).then(() => displayToast('success','Array copied to clipboard'))"
+                                                                style="padding: 6px 14px; background-color: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                                                Copy PHP Array
+                                                            </button>
 
                                                         </td>
                                                     </tr>
-                                                @endforeach
-                                                <tr>
-                                                    <td>Total</td>
-                                                    <td>{{ $bestPerformingSymbolsTradesTotal }}</td>
-                                                    <td>
-                                                        @php
-                                                            $keysArray = array_keys($bestPerformingSymbols);
-
-                                                            $phpFormatted = ' [' . PHP_EOL;
-                                                            foreach ($keysArray as $key) {
-                                                                $phpFormatted .=
-                                                                    '    "' . addslashes($key) . '",' . PHP_EOL;
-                                                            }
-                                                            $phpFormatted .= ']';
-                                                        @endphp
-
-                                                        <button
-                                                            onclick="navigator.clipboard.writeText(`{{ addslashes($phpFormatted) }}`).then(() => displayToast('success','Array copied to clipboard'))"
-                                                            style="padding: 6px 14px; background-color: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                                            Copy PHP Array
-                                                        </button>
-
-                                                    </td>
-                                                </tr>
+                                                @endif
 
 
 
+                                                @if (request('showSymbolPerformanceMetrics') === 'show')
+                                                    <tr>
+                                                        <td colspan="3" class="font-weight-bold text-center">Symbols
+                                                            below
+                                                            {{ $accuracyThresholdLow }} % accuracy</td>
+                                                    </tr>
+                                                    @foreach ($lowPerformingSymbols as $symbol => $data)
+                                                        <tr>
+                                                            <td class="font-weight-bold">{{ $symbol }}</td>
+                                                            <td>{{ $data['accuracy'] }} % (
+                                                                {{ $data['number_of_trades'] }} )
+                                                            </td>
+                                                            <td>
+                                                                @php
+                                                                    $coinDetails = DB::table('coins')
+                                                                        ->where('symbol', $symbol)
+                                                                        ->first();
+
+                                                                @endphp
+
+                                                                <div class="coin-tags">
+                                                                    <span class="badge me-1">Primary Classification:
+                                                                    </span>
+                                                                    {{-- Primary Classification --}}
+                                                                    @if (!empty($coinDetails->classification))
+                                                                        <span
+                                                                            class="badge bg-primary me-1">{{ $coinDetails->classification }}</span>
+                                                                    @endif
+                                                                    <span class="badge me-1">Other tags: </span>
+                                                                    {{-- Other Classifications --}}
+                                                                    @if ($coinDetails->is_web3)
+                                                                        <span class="badge bg-info me-1">Web 3</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_metaverse)
+                                                                        <span class="badge bg-info me-1">Metaverse</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_defi)
+                                                                        <span class="badge bg-info me-1">Defi</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_nft)
+                                                                        <span class="badge bg-info me-1">NFT</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_altcoin)
+                                                                        <span class="badge bg-info me-1">ALT</span>
+                                                                    @endif
+
+                                                                    @if ($coinDetails->is_meme_coin)
+                                                                        <span class="badge bg-info me-1">Meme</span>
+                                                                    @endif
+                                                                </div>
+
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                    <tr>
+                                                        <td>Total</td>
+                                                        <td>{{ $lowPerformingSymbolsTradesTotal }}</td>
+                                                        <td>
+                                                            @php
+                                                                $keysArray = array_keys($bestPerformingSymbols);
+
+                                                                $phpFormatted = ' [' . PHP_EOL;
+                                                                foreach ($keysArray as $key) {
+                                                                    $phpFormatted .=
+                                                                        '    "' . addslashes($key) . '",' . PHP_EOL;
+                                                                }
+                                                                $phpFormatted .= ']';
+                                                            @endphp
+
+                                                            <button
+                                                                onclick="navigator.clipboard.writeText(`{{ addslashes($phpFormatted) }}`).then(() => displayToast('success','Array copied to clipboard'))"
+                                                                style="padding: 6px 14px; background-color: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                                                Copy PHP Array
+                                                            </button>
+
+                                                        </td>
+                                                    </tr>
+                                                @endif
 
 
 
@@ -686,6 +819,26 @@
                         </div>
                     </div>
                 @endif
+                @if (request('showSkippedTradesChart') === 'show')
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header card-header-primary">
+                                    <h4 class="card-title">Skipped Trades Chart</h4>
+                                    <p class="card-category">Visual representation of Skipped trades timelines</p>
+
+                                </div>
+
+
+                                <div class="card-body chart-container">
+
+                                    <canvas id="skippedTradesChart"></canvas>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 @if (request('trendAnalysisChart') === 'show')
                     <div class="row">
@@ -703,6 +856,28 @@
                                 <div class="card-body chart-container">
 
                                     <canvas id="trendChart"></canvas>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                @endif
+                @if (request('trendAnalysisActualChart') === 'show')
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header card-header-primary">
+                                    <h4 class="card-title">Trend Analysis on same interval</h4>
+                                    <p class="card-category">Visual representation of Trend</p>
+                                    <p class="card-category">Reference Symbol: {{ $trendReferenceSymbolActual }}</p>
+                                    <p class="card-category">Reference Interval: {{ $trendReferenceIntervalActual }}</p>
+
+                                </div>
+
+
+                                <div class="card-body chart-container">
+
+                                    <canvas id="trendChartActual"></canvas>
                                 </div>
 
                             </div>
@@ -1357,6 +1532,7 @@
                                 max: new Date(latestTime + 60000)
                             },
                             y: {
+                                display: false,
                                 beginAtZero: true
                             }
                         },
@@ -1593,6 +1769,7 @@
                                 max: new Date(latest + 60000)
                             },
                             y: {
+                                display: false,
                                 beginAtZero: true
                             }
                         },
@@ -1685,6 +1862,144 @@
     @endif
 
 
+    @if (request('showSkippedTradesChart') === 'show')
+        <script>
+            const orangeChart_rawData = @json($timelineDataSkipped);
+
+            // Filter only orange entries
+            const orangeChart_filteredData = orangeChart_rawData.filter(item => item.color === 'orange');
+
+            // Calculate durations
+            orangeChart_filteredData.forEach(item => {
+                const start = new Date(item.startTime.replace(' ', 'T'));
+                const end = new Date(item.endTime.replace(' ', 'T'));
+                item.duration = (end - start) / 1000;
+            });
+
+            window.addEventListener('load', () => {
+                orangeChart_createTimeline(orangeChart_filteredData);
+            });
+
+            function round(value) {
+                return value !== undefined && value !== null ? Number(value).toFixed(5) : '-';
+            }
+
+            function orangeChart_createTimeline(data) {
+                const ctx = document.getElementById('skippedTradesChart').getContext('2d');
+
+                const startTimes = data.map(item => new Date(item.startTime.replace(' ', 'T')).getTime());
+                const endTimes = data.map(item => new Date(item.endTime.replace(' ', 'T')).getTime());
+
+                const earliest = Math.min(...startTimes);
+                const latest = Math.max(...endTimes);
+
+                const datasets = data.map(item => {
+                    return {
+                        label: item.symbol,
+                        data: [{
+                            x: [new Date(item.startTime.replace(' ', 'T')), new Date(item.endTime.replace(' ',
+                                'T'))],
+                            y: item.symbol,
+                            buyingCandle: item.buyingCandle, // 👈 Embed this
+                            skipping_reasons: item.skipping_reasons // 👈 Embed this
+                        }],
+                        backgroundColor: item.color,
+                        borderColor: item.color,
+                        borderWidth: 4,
+                        barThickness: 8,
+                        barPercentage: 0.8,
+                        borderRadius: 6 // 👈 Add this line
+                    };
+                });
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        datasets
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        scales: {
+                            x: {
+                                type: 'time',
+                                position: 'bottom',
+                                time: {
+                                    unit: 'minute',
+                                    displayFormats: {
+                                        minute: 'HH:mm:ss'
+                                    }
+                                },
+                                min: new Date(earliest - 60000),
+                                max: new Date(latest + 60000)
+                            },
+                            y: {
+                                display: false,
+                                beginAtZero: true
+                            }
+                        },
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const point = context.raw;
+                                        const start = new Date(point.x[0]);
+                                        const end = new Date(point.x[1]);
+                                        const durationSec = (end - start) / 1000;
+
+                                        const h = Math.floor(durationSec / 3600).toString().padStart(2, '0');
+                                        const m = Math.floor((durationSec % 3600) / 60).toString().padStart(2, '0');
+                                        const s = Math.floor(durationSec % 60).toString().padStart(2, '0');
+
+                                        const candle = point.buyingCandle;
+
+                                        const lines = [
+                                            `Symbol: ${point.y}`,
+                                            `Start: ${moment(start).format('YYYY-MM-DD HH:mm:ss')}`,
+                                            `End: ${moment(end).format('YYYY-MM-DD HH:mm:ss')}`,
+                                            `Duration: ${h}:${m}:${s}`,
+                                            '',
+                                            `--- Momentum Indicators ---`,
+                                            `RSI (6): ${round(candle.rsi6)}`,
+                                            `MFI: ${round(candle.mfi)}`,
+                                            `ADX: ${round(candle.adx)}`,
+                                            `DI+: ${round(candle.di_plus)}`,
+                                            `DI-: ${round(candle.di_minus)}`,
+                                            `STOCH K: ${round(candle.K)}`,
+                                            `STOCH D: ${round(candle.D)}`,
+                                            `STOCH RSI: ${round(candle.stoch_rsi)}`,
+                                            `WR: ${round(candle.wr)}`,
+                                            '',
+
+                                        ];
+
+
+                                        lines.push('--- Skipping Reasons ---');
+
+                                        for (const key in point.skipping_reasons) {
+                                            lines.push(`- ${point.skipping_reasons[key]}`);
+                                        }
+
+
+
+
+                                        return lines;
+                                    }
+
+                                }
+
+                            },
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+        </script>
+    @endif
+
     @if (request('trendAnalysisChart') === 'show')
         <script>
             document.addEventListener("DOMContentLoaded", function() {
@@ -1767,6 +2082,182 @@
             });
         </script>
     @endif
+
+
+    @if (request('trendAnalysisActualChart') === 'show')
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const dataTrendReferenceActual = @json($dataTrendReferenceActual);
+
+                const timestamps = dataTrendReferenceActual.map(data => data.timestampReadable);
+                const closePrices = dataTrendReferenceActual.map(data => data.close);
+                const bb_upper = dataTrendReferenceActual.map(data => data.bb_upper);
+                const bb_middle = dataTrendReferenceActual.map(data => data.bb_middle);
+                const bb_lower = dataTrendReferenceActual.map(data => data.bb_lower);
+
+                const total_trades = dataTrendReferenceActual.map(data => data.total_trades);
+                const total_trades_profitable = dataTrendReferenceActual.map(data => data.total_trades_profitable);
+                const total_trades_loss = dataTrendReferenceActual.map(data => data.total_trades_loss);
+                const total_trades_skipped = dataTrendReferenceActual.map(data => data.total_trades_skipped);
+
+                const ctx = document.getElementById('trendChartActual').getContext('2d');
+                window.candlestickChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: timestamps,
+                        datasets: [{
+                                label: 'Close Prices',
+                                data: closePrices,
+                                borderColor: 'rgba(0,123,255,1)',
+                                borderWidth: 1,
+                                fill: false,
+                                tension: 0.1,
+                                pointRadius: 2
+                            },
+                            {
+                                label: 'BB Upper',
+                                data: bb_upper,
+                                borderColor: '#f0b90b',
+                                borderWidth: 1,
+                                fill: false,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+                            {
+                                label: 'BB Middle',
+                                data: bb_middle,
+                                borderColor: '#999999',
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                fill: false,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+                            {
+                                label: 'BB Lower',
+                                data: bb_lower,
+                                borderColor: '#f0b90b',
+                                borderWidth: 1,
+                                fill: false,
+                                tension: 0.1,
+                                pointRadius: 0,
+                            },
+
+                            // 🔽 Trade Stats Datasets (Hidden by Default)
+                            {
+                                label: 'Total Trades',
+                                data: total_trades,
+                                borderColor: '#f1c40f', // Yellow
+                                backgroundColor: 'rgba(241,196,15,0.2)',
+                                borderWidth: 1,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: function(context) {
+                                    const value = context.raw;
+                                    return value !== 0 ? 3 : 0;
+                                },
+                                yAxisID: 'y1',
+                                hidden: true
+                            },
+                            {
+                                label: 'Profitable Trades',
+                                data: total_trades_profitable,
+                                borderColor: '#2ecc71', // Green
+                                backgroundColor: 'rgba(46,204,113,0.2)',
+                                borderWidth: 1,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: function(context) {
+                                    const value = context.raw;
+                                    return value !== 0 ? 3 : 0;
+                                },
+                                yAxisID: 'y1',
+                                hidden: true
+                            },
+                            {
+                                label: 'Loss Trades',
+                                data: total_trades_loss,
+                                borderColor: '#e74c3c', // Red
+                                backgroundColor: 'rgba(231,76,60,0.2)',
+                                borderWidth: 1,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: function(context) {
+                                    const value = context.raw;
+                                    return value !== 0 ? 3 : 0;
+                                },
+                                yAxisID: 'y1',
+                                hidden: true
+                            },
+                            {
+                                label: 'Skipped Trades',
+                                data: total_trades_skipped,
+                                borderColor: '#9b59b6', // Purple
+                                backgroundColor: 'rgba(155,89,182,0.2)',
+                                borderWidth: 1,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: function(context) {
+                                    const value = context.raw;
+                                    return value !== 0 ? 3 : 0;
+                                },
+                                yAxisID: 'y1',
+                                hidden: true
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Timestamp',
+                                },
+                                ticks: {
+                                    color: '#ccc',
+                                    display: false,
+                                }
+                            },
+                            y: {
+                                display: false // ❌ Hide price axis
+                            },
+                            y1: {
+                                display: false, // ❌ Hide trade stats axis
+                                position: 'right',
+                                beginAtZero: true,
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        },
+                        plugins: {
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy'
+                                },
+                                zoom: {
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    wheel: {
+                                        enabled: true,
+                                        speed: 0.1,
+                                        threshold: 10,
+                                        modifierKey: 'ctrl'
+                                    },
+                                    mode: 'x'
+                                }
+                            }
+                        }
+                    }
+                });
+
+            });
+        </script>
+    @endif
+
 
 
 
