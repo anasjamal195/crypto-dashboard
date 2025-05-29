@@ -62,6 +62,13 @@ class BinanceController extends Controller
     }
     public function getCoinReport($market, Request $request)
     {
+
+
+
+
+
+
+
         $stopLoss = $request->input('stopLoss') ?? 1;
         $position = $request->input('position');
         $formula = $request->input('formula');
@@ -1036,5 +1043,20 @@ class BinanceController extends Controller
     {
         BinanceApiService::placeSellOrderSpot($orderId);
         return redirect()->back()->withSuccess('Trade Closed Successfully');
+    }
+
+    // Api Routes for external db replacement 
+    public function getAllSymbols()
+    {
+        return  response()->json([
+            'data' => DB::table('coins')->where('market', 'FUTURE')->where('status', 'T')->get()
+        ]);
+    }
+
+    public function getSafeModeStatus($symbol, $position)
+    {
+        return  response()->json([
+            'data' => CommonHelpers::getSafeModeStatus($symbol, $position),
+        ]);
     }
 }

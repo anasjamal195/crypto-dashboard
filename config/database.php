@@ -157,7 +157,6 @@ return [
 
         'mysql_master' => [
             'driver' => 'mysql',
-            'url' => env('DB_URL'),
             'host' => '170.64.211.163',
             'port' => 3306,
             'database' => 'crypto_trader',

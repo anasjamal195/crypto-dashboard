@@ -14,6 +14,7 @@ use App\Models\OrderBookSnapshot;
 use Illuminate\Support\Facades\Log;
 use stdClass;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 
 class ReportServiceSafeMode
 {
@@ -73,39 +74,41 @@ class ReportServiceSafeMode
     ) {
 
         $tradesTotal = [];
-        $coinsQuery = DB::connection('mysql_live')
-            ->table('coins')
-            ->where('market', 'FUTURE')
-            ->where('status', 'T');
+        $coinsQuery = Http::get('https://rocket.cryptoapis.store/get-all-symbols');
 
 
 
-        // Coin Type Filters
-        if (self::$filterOnCoinType) {
-            if (self::$coinTypeMetaverse)
-                $coinsQuery->where('is_metaverse', true);
-            if (self::$coinTypeAlt)
-                $coinsQuery->where('is_altcoin', true);
-            if (self::$coinTypeMeme)
-                $coinsQuery->where('is_meme_coin', true);
-            if (self::$coinTypeNft)
-                $coinsQuery->where('is_nft', true);
-            if (self::$coinTypeDefi)
-                $coinsQuery->where('is_defi', true);
-            if (self::$coinTypeWeb3)
-                $coinsQuery->where('is_web3', true);
-        }
-        if (self::$shuffleCoins) {
-            $coinsQuery->inRandomOrder();
-        }
 
-        if (self::$coinLimit) {
-            $coinsQuery->limit(self::$coinLimit);
-        } else {
-            self::$coinLimit = (clone $coinsQuery)->count();
-        }
-        $coins = $coinsQuery->get();
 
+        // // Coin Type Filters
+        // if (self::$filterOnCoinType) {
+        //     if (self::$coinTypeMetaverse)
+        //         $coinsQuery->where('is_metaverse', true);
+        //     if (self::$coinTypeAlt)
+        //         $coinsQuery->where('is_altcoin', true);
+        //     if (self::$coinTypeMeme)
+        //         $coinsQuery->where('is_meme_coin', true);
+        //     if (self::$coinTypeNft)
+        //         $coinsQuery->where('is_nft', true);
+        //     if (self::$coinTypeDefi)
+        //         $coinsQuery->where('is_defi', true);
+        //     if (self::$coinTypeWeb3)
+        //         $coinsQuery->where('is_web3', true);
+        // }
+        // if (self::$shuffleCoins) {
+        //     $coinsQuery->inRandomOrder();
+        // }
+
+        // if (self::$coinLimit) {
+        //     $coinsQuery->limit(self::$coinLimit);
+        // } else {
+        //     self::$coinLimit = (clone $coinsQuery)->count();
+        // }
+        // $coins = $coinsQuery->get();
+
+        $coins = $coinsQuery->json();
+
+        dd($coins);
         // Clear Console
         system('clear');
         $cmd->info('Processing: 0 %');

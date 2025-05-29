@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'master-process/*',  // exclude all routes under /api prefix
+            'csrf-free/*'
         ]);
     })
 
