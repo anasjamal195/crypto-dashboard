@@ -254,6 +254,8 @@
                     'analysis-tools.technical-trend-tool',
                     'analysis-tools.chart-pattern-tool',
                     'analysis-tools.indicator-comparison-tool',
+                    'analysis-tools.support-resistance-tool',
+                    'analysis-tools.analysis-summary',
                 )
                     ? 'active'
                     : '' }}">
@@ -265,6 +267,8 @@
                         'analysis-tools.technical-trend-tool',
                         'analysis-tools.chart-pattern-tool',
                         'analysis-tools.indicator-comparison-tool',
+                        'analysis-tools.support-resistance-tool',
+                        'analysis-tools.analysis-summary',
                     )
                         ? 'true'
                         : 'false' }}">
@@ -280,6 +284,8 @@
                     'analysis-tools.technical-trend-tool',
                     'analysis-tools.chart-pattern-tool',
                     'analysis-tools.indicator-comparison-tool',
+                    'analysis-tools.support-resistance-tool',
+                    'analysis-tools.analysis-summary',
                 )
                     ? 'show'
                     : '' }}"
@@ -303,15 +309,13 @@
                                 <p>{{ __('Bollinger Band Tool') }}</p>
                             </a>
                         </li>
-                        <li
-                            class="{{ request()->routeIs('analysis-tools.technical-trend-tool') ? 'active' : '' }}">
+                        <li class="{{ request()->routeIs('analysis-tools.technical-trend-tool') ? 'active' : '' }}">
                             <a href="{{ route('analysis-tools.technical-trend-tool') }}">
                                 <i class="tim-icons icon-time-alarm"></i>
                                 <p>{{ __('Technical Trend Tool') }}</p>
                             </a>
                         </li>
-                        <li
-                            class="{{ request()->routeIs('analysis-tools.chart-pattern-tool') ? 'active' : '' }}">
+                        <li class="{{ request()->routeIs('analysis-tools.chart-pattern-tool') ? 'active' : '' }}">
                             <a href="{{ route('analysis-tools.chart-pattern-tool') }}">
                                 <i class="tim-icons icon-puzzle-10"></i>
                                 <p>{{ __('Chart Pattern Tool') }}</p>
@@ -324,9 +328,24 @@
                                 <p>{{ __('Indicator Comparison') }}</p>
                             </a>
                         </li>
+
+                        <li
+                            class="{{ request()->routeIs('analysis-tools.support-resistance-tool') ? 'active' : '' }}">
+                            <a href="{{ route('analysis-tools.support-resistance-tool') }}">
+                                <i class="tim-icons icon-bank"></i>
+                                <p>{{ __('Support & Resistance Tool') }}</p>
+                            </a>
+                        </li>
+                        <li class="{{ request()->routeIs('analysis-tools.analysis-summary') ? 'active' : '' }}">
+                            <a href="{{ route('analysis-tools.analysis-summary') }}">
+                                <i class="tim-icons icon-chart-pie-36"></i>
+                                <p>{{ __('Analysis Summary') }}</p>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </li>
+
 
 
             <li class="{{ request()->is('process-handlers*') ? 'active' : '' }}">

@@ -118,6 +118,8 @@ Route::name('analysis-tools.')->prefix('analysis-tools/')->group(function () {
 	Route::get('technical-trend-tool', 'App\Http\Controllers\AnalysisToolsController@technicalTrendTool')->name('technical-trend-tool');
 	Route::get('chart-pattern-tool', 'App\Http\Controllers\AnalysisToolsController@chartPatternTool')->name('chart-pattern-tool');
 	Route::get('indicator-comparison-tool', 'App\Http\Controllers\AnalysisToolsController@indicatorComparisonTool')->name('indicator-comparison-tool');
+	Route::get('support-resistance-tool', 'App\Http\Controllers\AnalysisToolsController@supportResistanceTool')->name('support-resistance-tool');
+	Route::get('analysis-summary', 'App\Http\Controllers\AnalysisToolsController@analysisSummary')->name('analysis-summary');
 });
 
 
