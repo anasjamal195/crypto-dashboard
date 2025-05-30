@@ -2,71 +2,8 @@
 
 @section('content')
     {{-- Enhanced Candle Data Comparison Template for Black Dashboard --}}
-    <div class="row">
-        <div class="col-12">
-            <div class="card card-chart">
-                <div class="card-header">
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <form action="" method="GET" class="d-flex justify-content-start">
-                                <div class="form-group mr-3">
-                                    <label for="symbol">Symbol</label>
-
-                                    <input type="text" class="form-control" id="symbol" name="symbol"
-                                        value="{{ request('symbol', 'BTCUSDT') }}">
-                                </div>
-                                <div class="form-group mr-3">
-                                    <label for="interval">Interval</label>
-
-                                    <select name="interval" id="interval" class="form-control my-4 select2">
-                                        @foreach (\App\CommonHelpers::$binanceIntervals as $key => $value)
-                                            <option value="{{ $key }}" {{ $interval === $key ? 'selected' : '' }}>
-                                                {{ $key }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-
-                                </div>
-                                <div class="form-group mr-3">
-                                    <label for="candle1">First Candle</label>
-                                    <select name="candle1" id="candle1" class="form-control my-4 select2">
-                                        @foreach (array_reverse($coinData) as $candle)
-                                            <option value="{{ $candle['binance_timestamp'] }}"
-                                                {{ $prevCandle['binance_timestamp'] === $candle['binance_timestamp'] ? 'selected' : '' }}>
-                                                {{ $candle['timestampReadable'] }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-
-                                </div>
-                                <div class="form-group mr-3">
-                                    <label for="candle2">Second Candle</label>
-                                    <select name="candle2" id="candle2" class="form-control my-4 select2">
-                                        @foreach (array_reverse($coinData) as $candle)
-                                            <option value="{{ $candle['binance_timestamp'] }}"
-                                                {{ $currentCandle['binance_timestamp'] === $candle['binance_timestamp'] ? 'selected' : '' }}>
-                                                {{ $candle['timestampReadable'] }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-
-                                </div>
-
-                                <input type="hidden" class="form-control" id="limit" max="1000" name="limit"
-                                    value="1000">
-
-
-                                <button type="submit" class="btn  my-4 btn-primary">Update</button>
-
-
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
+    <x-symbol-interval-form :symbol="$symbol" :interval="$interval" :coinData="$coinData" :isIndicatorForm="true" :currentCandle="$currentCandle"
+        :prevCandle="$prevCandle" heading="Indicator Comparison Tool" />
 
     <x-candlestick-chart :data="$coinData" symbol="{{ $symbol }}" interval="{{ $interval }}" :indicators="[
         'ma7',
@@ -190,8 +127,7 @@
                                             {{ $key === 'volume' ? number_format($currentValue) : number_format($currentValue, 4) }}
                                         </td>
                                         <td class="text-center">
-                                            <span
-                                                class="change-badge {{ $isPositive ? 'badge-success' : 'badge-danger' }}">
+                                            <span class="change-badge {{ $isPositive ? 'badge-success' : 'badge-danger' }}">
                                                 <i
                                                     class="tim-icons {{ $isPositive ? 'icon-minimal-up' : 'icon-minimal-down' }}"></i>
                                                 {{ number_format($percentChange, 2) }}%

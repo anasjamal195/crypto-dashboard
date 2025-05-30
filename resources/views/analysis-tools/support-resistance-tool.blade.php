@@ -2,49 +2,7 @@
 
 @section('content')
 
-    <div class="row">
-        <div class="col-12">
-                <div class="card card-chart">
-                    <div class="card-header">
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <form action="" method="GET" class="d-flex justify-content-start">
-                                    <div class="form-group mr-3 d-flex flex-column">
-                                        <label for="symbol">Symbol</label>
-
-                                        <input type="text" class="form-control" id="symbol" name="symbol"
-                                            value="{{ request('symbol', 'BTCUSDT') }}">
-                                    </div>
-                                    <div class="form-group mr-3 d-flex flex-column">
-                                        <label for="interval">Interval</label>
-
-                                        <select name="interval" id="interval" class="form-control my-4 select2">
-                                            @foreach (\App\CommonHelpers::$binanceIntervals as $key => $value)
-                                                <option value="{{ $key }}"
-                                                    {{ $interval === $key ? 'selected' : '' }}>
-                                                    {{ $key }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-
-                                    </div>
-
-
-                                    <input type="hidden" class="form-control" id="limit" max="1000" name="limit"
-                                        value="1000">
-
-
-                                    <button type="submit" class="btn  my-4 btn-primary">Update</button>
-
-
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-    </div>
+    <x-symbol-interval-form :symbol="$symbol" :interval="$interval" :coinData="$coinData" heading="Support Resistance Analysis Tool" />
 
     <x-candlestick-chart :data="$coinData" symbol="{{ $symbol }}" interval="{{ $interval }}" :indicators="[
         'ma7',
@@ -180,7 +138,7 @@
                             <div class="col-md-6">
                                 <div class="progress-container">
                                     <span class="progress-badge text-danger">Short Confidence</span>
-                                    <div class="progress"  style="height:15px">
+                                    <div class="progress" style="height:15px">
                                         <div class="progress-bar bg-danger"
                                             style="width: {{ $srAnalysis['confidence_analysis']['short_confidence'] }}%">
                                             <span
@@ -926,7 +884,7 @@
             color: #f5365c !important;
         }
 
-     
+
 
         .card-stats .card-body h4 {
             font-size: 1.5rem;

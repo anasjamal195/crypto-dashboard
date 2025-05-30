@@ -219,52 +219,15 @@
             .pattern-grid {
                 grid-template-columns: 1fr;
             }
+
+            .modal-content .modal-body p {
+                color: white;
+            }
         }
     </style>
 
-    <div class="row">
-        <div class="col-12">
-                <div class="card card-chart">
-                    <div class="card-header">
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <form action="" method="GET" class="d-flex justify-content-start">
-                                    <div class="form-group mr-3 d-flex flex-column">
-                                        <label for="symbol">Symbol</label>
+    <x-symbol-interval-form :symbol="$symbol" :interval="$interval" :coinData="$coinData" heading="Chart Pattern Analysis Tool" />
 
-                                        <input type="text" class="form-control" id="symbol" name="symbol"
-                                            value="{{ request('symbol', 'BTCUSDT') }}">
-                                    </div>
-                                    <div class="form-group mr-3 d-flex flex-column">
-                                        <label for="interval">Interval</label>
-
-                                        <select name="interval" id="interval" class="form-control my-4 select2">
-                                            @foreach (\App\CommonHelpers::$binanceIntervals as $key => $value)
-                                                <option value="{{ $key }}"
-                                                    {{ $interval === $key ? 'selected' : '' }}>
-                                                    {{ $key }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-
-                                    </div>
-
-
-                                    <input type="hidden" class="form-control" id="limit" max="1000" name="limit"
-                                        value="1000">
-
-
-                                    <button type="submit" class="btn  my-4 btn-primary">Update</button>
-
-
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-    </div>
 
     <x-candlestick-chart :data="$coinData" symbol="{{ $symbol }}" interval="{{ $interval }}" :indicators="[
         'ma7',
@@ -511,17 +474,16 @@
     </div>
 
     <!-- Pattern Explanation Modal -->
-    <div class="modal fade" id="patternModal" tabindex="-1" aria-labelledby="patternModalLabel" aria-hidden="true">
+    <div class="modal fade " id="patternModal" tabindex="-1" aria-labelledby="patternModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content">
+            <div class="modal-content bg-dark">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="patternModalLabel">Pattern Explanation</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+                    <h5 class="modal-title text-primary" id="patternModalLabel">Pattern Explanation</h5>
+
                 </div>
                 <div class="modal-body">
                     <div id="patternContent">
-                        <!-- Content will be populated by JavaScript -->
+                    
                     </div>
                 </div>
             </div>
@@ -586,13 +548,13 @@
                         document.getElementById('patternContent').innerHTML = `
                     <div class="pattern-explanation">
                         <h6 class="text-info">Description:</h6>
-                        <p>${explanation.description}</p>
+                        <p class="text-white">${explanation.description}</p>
                         
                         <h6 class="text-warning">Trading Signal:</h6>
-                        <p>${explanation.signal}</p>
+                        <p class="text-white">${explanation.signal}</p>
                         
                         <h6 class="text-success">Formation:</h6>
-                        <p>${explanation.formation}</p>
+                        <p class="text-white">${explanation.formation}</p>
                         
                         <div class="alert alert-info mt-3">
                             <i class="fas fa-info-circle me-2"></i>

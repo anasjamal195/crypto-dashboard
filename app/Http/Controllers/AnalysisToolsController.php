@@ -11,6 +11,7 @@ use App\Services\PatternDetector;
 use App\Services\SupportResistanceAnalyzer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\MessageBag;
 
@@ -22,14 +23,21 @@ class AnalysisToolsController extends Controller
         $pageSlug = 'orderBookTool';
 
 
-        $symbol = request()->input('symbol', 'BTCUSDT');
-        $interval = request()->input('interval', '5m');
-        $depth = request()->input('depth', 500);
+        // Request > Cookie > Default fallback
+        $symbol = request('symbol') ?? request()->cookie('symbol', 'BTCUSDT');
+        $interval = request('interval') ?? request()->cookie('interval', '5m');
+        $limit = request('limit') ?? request()->cookie('limit', 1000);
+
+        // Store these values in cookies for next request
+        Cookie::queue('symbol', $symbol, 60 * 24 * 30); // 30 days
+        Cookie::queue('interval', $interval, 60 * 24 * 30);
+        Cookie::queue('limit', $limit, 60 * 24 * 30);
 
         $coinData = [];
         $snapshot = null;
 
         try {
+            $depth = 1000;
             if ($symbol && $depth) {
                 // Fetching Data from external server
                 $apiPointerUrl = 'https://xnfts.shop/load_balancer/orderBook.php';
@@ -103,9 +111,17 @@ class AnalysisToolsController extends Controller
     {
 
         $pageSlug = 'volumeTool';
-        $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '5m');
-        $limit = request('limit', 1000);
+
+
+        // Request > Cookie > Default fallback
+        $symbol = request('symbol') ?? request()->cookie('symbol', 'BTCUSDT');
+        $interval = request('interval') ?? request()->cookie('interval', '5m');
+        $limit = request('limit') ?? request()->cookie('limit', 1000);
+
+        // Store these values in cookies for next request
+        Cookie::queue('symbol', $symbol, 60 * 24 * 30); // 30 days
+        Cookie::queue('interval', $interval, 60 * 24 * 30);
+        Cookie::queue('limit', $limit, 60 * 24 * 30);
 
         $coinData = [];
         $volumeSignals = [];
@@ -128,10 +144,15 @@ class AnalysisToolsController extends Controller
     {
 
         $pageSlug = 'bollingerBandTool';
+        // Request > Cookie > Default fallback
+        $symbol = request('symbol') ?? request()->cookie('symbol', 'BTCUSDT');
+        $interval = request('interval') ?? request()->cookie('interval', '5m');
+        $limit = request('limit') ?? request()->cookie('limit', 1000);
 
-        $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '5m');
-        $limit = request('limit', 1000);
+        // Store these values in cookies for next request
+        Cookie::queue('symbol', $symbol, 60 * 24 * 30); // 30 days
+        Cookie::queue('interval', $interval, 60 * 24 * 30);
+        Cookie::queue('limit', $limit, 60 * 24 * 30);
 
 
         $coinData = [];
@@ -180,9 +201,15 @@ class AnalysisToolsController extends Controller
 
         $pageSlug = 'technicalTrendTool';
 
-        $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '5m');
-        $limit = request('limit', 1000);
+        // Request > Cookie > Default fallback
+        $symbol = request('symbol') ?? request()->cookie('symbol', 'BTCUSDT');
+        $interval = request('interval') ?? request()->cookie('interval', '5m');
+        $limit = request('limit') ?? request()->cookie('limit', 1000);
+
+        // Store these values in cookies for next request
+        Cookie::queue('symbol', $symbol, 60 * 24 * 30); // 30 days
+        Cookie::queue('interval', $interval, 60 * 24 * 30);
+        Cookie::queue('limit', $limit, 60 * 24 * 30);
 
         $coinData = [];
         $trendDetails = [];
@@ -209,9 +236,15 @@ class AnalysisToolsController extends Controller
 
         $pageSlug = 'chartPatternTool';
 
-        $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '5m');
-        $limit = request('limit', 1000);
+        // Request > Cookie > Default fallback
+        $symbol = request('symbol') ?? request()->cookie('symbol', 'BTCUSDT');
+        $interval = request('interval') ?? request()->cookie('interval', '5m');
+        $limit = request('limit') ?? request()->cookie('limit', 1000);
+
+        // Store these values in cookies for next request
+        Cookie::queue('symbol', $symbol, 60 * 24 * 30); // 30 days
+        Cookie::queue('interval', $interval, 60 * 24 * 30);
+        Cookie::queue('limit', $limit, 60 * 24 * 30);
 
         $coinData = [];
         $patternDetails = [];
@@ -240,9 +273,15 @@ class AnalysisToolsController extends Controller
         $pageSlug = 'indicatorComparisonTool';
 
 
-        $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '5m');
-        $limit = request('limit', 1000);
+        // Request > Cookie > Default fallback
+        $symbol = request('symbol') ?? request()->cookie('symbol', 'BTCUSDT');
+        $interval = request('interval') ?? request()->cookie('interval', '5m');
+        $limit = request('limit') ?? request()->cookie('limit', 1000);
+
+        // Store these values in cookies for next request
+        Cookie::queue('symbol', $symbol, 60 * 24 * 30); // 30 days
+        Cookie::queue('interval', $interval, 60 * 24 * 30);
+        Cookie::queue('limit', $limit, 60 * 24 * 30);
 
         $candle1 = request('candle1');
         $candle2 = request('candle2');
@@ -273,44 +312,43 @@ class AnalysisToolsController extends Controller
             $prevCandle = $coinData[$index1];
 
             $markers = [
-              [
+                [
                     'timestamp_pst' => $coinData[$index1]['timestamp_pst'],
                     'color' => '#ef5350',
                     'text' => 'Previous Candle',
                     'position' => 'belowBarf'
-              ],
-              [
+                ],
+                [
                     'timestamp_pst' => $coinData[$index2]['timestamp_pst'],
                     'color' => '#26a69a',
                     'text' => 'Current Candle',
                 ]
-              ];
+            ];
         } catch (\Throwable $th) {
             Session::flash('error', 'Error fetching coin data...');
             // dd($th);
         }
 
-        return view('analysis-tools.indicator-comparison-tool', compact('symbol', 'interval', 'pageSlug', 'coinData', 'prevCandle', 'currentCandle','markers'));
+        return view('analysis-tools.indicator-comparison-tool', compact('symbol', 'interval', 'pageSlug', 'coinData', 'prevCandle', 'currentCandle', 'markers'));
     }
 
 
 
     public function supportResistanceTool()
     {
-
         $pageSlug = 'supportResistanceTool';
 
+        // Request > Cookie > Default fallback
+        $symbol = request('symbol') ?? request()->cookie('symbol', 'BTCUSDT');
+        $interval = request('interval') ?? request()->cookie('interval', '5m');
+        $limit = request('limit') ?? request()->cookie('limit', 1000);
 
-        $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '5m');
-        $limit = request('limit', 1000);
+        // Store these values in cookies for next request
+        Cookie::queue('symbol', $symbol, 60 * 24 * 30); // 30 days
+        Cookie::queue('interval', $interval, 60 * 24 * 30);
+        Cookie::queue('limit', $limit, 60 * 24 * 30);
 
-        $coinData = [];
-        $currentCandle = [];
-        $prevCandle = [];
-        $markers = [];
-
-
+        // Fetch data
         try {
             $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
             $lastIndex = count($coinData) - 1;
@@ -334,25 +372,17 @@ class AnalysisToolsController extends Controller
                 ];
             }, $srAnalysis['sr_indexes']['resistance_indexes']);
 
-            // $breakoutMarkers = array_map(function ($breakout) use ($coinData) {
-            //     return [
-            //         'timestamp_pst' => $coinData[$breakout['breakout_index']]['timestamp_pst'],
-            //         'color' => $breakout['type'] === 'bullish_breakout' ? '26a69a' : 'ef5350',
-            //         'text' => $breakout['type'] === 'bullish_breakout' ? 'Bull Breakout' : 'Bear Breakout',
-            //         'position' => $breakout['type'] === 'bullish_breakout' ? 'belowBar' : 'aboveBar',
-            //     ];
-            // }, $srAnalysis['recent_breakouts']);
-
             $markers = array_merge($supportMarkers, $resistanceMarkers);
         } catch (\Throwable $th) {
             Session::flash('error', 'Error fetching coin data...');
+            $coinData = [];
+            $markers = [];
+            $srAnalysis = [];
         }
-
-
-
 
         return view('analysis-tools.support-resistance-tool', compact('symbol', 'interval', 'pageSlug', 'coinData', 'markers', 'srAnalysis'));
     }
+
 
 
 
@@ -361,11 +391,15 @@ class AnalysisToolsController extends Controller
 
         $pageSlug = 'analysisSummary';
 
+        // Request > Cookie > Default fallback
+        $symbol = request('symbol') ?? request()->cookie('symbol', 'BTCUSDT');
+        $interval = request('interval') ?? request()->cookie('interval', '5m');
+        $limit = request('limit') ?? request()->cookie('limit', 1000);
 
-        $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '5m');
-        $limit = request('limit', 1000);
-
+        // Store these values in cookies for next request
+        Cookie::queue('symbol', $symbol, 60 * 24 * 30); // 30 days
+        Cookie::queue('interval', $interval, 60 * 24 * 30);
+        Cookie::queue('limit', $limit, 60 * 24 * 30);
         $coinData = [];
         $analysis = [];
 
