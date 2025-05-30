@@ -25,6 +25,8 @@
         <div class="copyright">
             &copy; {{ now()->year }} {{ __('made with') }} <i class="tim-icons icon-heart-2"></i> {{ __('by') }}
             <a href="https://egeniuscare.com/" target="_blank">{{ __('eGenuiusCare') }}</a>.
+            <br>
+            {{ __('Contact support at') }} <a href="mailto:info@egeniuscare.com">info@egeniuscare.com</a>.
         </div>
     </div>
 </footer>

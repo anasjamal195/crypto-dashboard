@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
 class TestCron extends Command
@@ -37,26 +38,23 @@ class TestCron extends Command
     public function handle()
     {
 
-        $symbol = 'HBARUSDT';
+        $users = [];
 
-        $supportResistance = [
-            'support' => 1,
-            'resistance' => 1
-        ];
+        for ($i = 1; $i <= 5; $i++) {
+            $users[] = [
+                'name' => "Analysis Tool User {$i} (Beta)",
+                'email' => "analyst{$i}@egeniuscare.shop",
+                'email_verified_at' => now(),
+                'password' => Hash::make('Test1234$'),
+                'role' => 'analyst',
+                'api_key' => '#########################',
+                'api_secret' => '#########################',
+                'domain_name' => 'egeniuscare.shop',
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+        }
 
-
-
-        // $responseOpen = BinanceApiService::openMarketPositionLiveTrader($symbol, 10, 'BUY', 1, 1, 'Test', $supportResistance, 1, false, 0.05, 0.05);
-        // dd($responseOpen);
-
-
-        // $responseUpdate = BinanceApiService::placeTpSlOrders($symbol, 1, 0.2500, 0.19300, 10923632233);
-        // BinanceApiService::updateTradeDetails(10923632233, $responseUpdate['takeProfit']['orderId'], $responseUpdate['stopLoss']['orderId'], 'PENDING');
-        // dd($responseUpdate);
-
-
-        // $responseClose = BinanceApiService::closeMarketPositionLiveTrader(10923632233);
-
-        // dd($responseClose);
+        DB::table('users')->insert($users);
     }
 }

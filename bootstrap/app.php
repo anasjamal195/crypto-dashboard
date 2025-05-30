@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AnalystRoleRedirect;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     // Excluding Route Group from middleware
     ->withMiddleware(function (Middleware $middleware) {
 
+        
         $middleware->validateCsrfTokens(except: [
             'master-process/*',  // exclude all routes under /api prefix
             'csrf-free/*'
