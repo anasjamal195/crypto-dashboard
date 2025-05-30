@@ -88,7 +88,7 @@ class AnalysisToolsController extends Controller
                 $coinData = [];
             }
         } catch (\Throwable $th) {
-            dd($th);
+            // dd($th);
             Session::flash('error', 'Error fetching coin data...');
         }
 
@@ -277,7 +277,7 @@ class AnalysisToolsController extends Controller
                     'timestamp_pst' => $coinData[$index1]['timestamp_pst'],
                     'color' => '#ef5350',
                     'text' => 'Previous Candle',
-                    'position' => 'belowBar'
+                    'position' => 'belowBarf'
               ],
               [
                     'timestamp_pst' => $coinData[$index2]['timestamp_pst'],

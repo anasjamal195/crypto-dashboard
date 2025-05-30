@@ -1,21 +1,22 @@
 @extends('layouts.app')
 
 @section('content')
-
-
     <div class="row">
         <div class="col-12">
             <div class="card card-chart">
                 <div class="card-header">
                     <div class="row">
                         <div class="col-sm-6">
-                            <form action="" method="GET" class="d-flex justify-content-start">
-
+                             <form action="" method="GET" class="d-flex justify-content-start">
                                 <div class="form-group mr-3">
+                                    <label for="symbol">Symbol</label>
+
                                     <input type="text" class="form-control" id="symbol" name="symbol"
                                         value="{{ request('symbol', 'BTCUSDT') }}">
                                 </div>
                                 <div class="form-group mr-3">
+                                    <label for="interval">Interval</label>
+
                                     <select name="interval" id="interval" class="form-control my-4 select2">
                                         @foreach (\App\CommonHelpers::$binanceIntervals as $key => $value)
                                             <option value="{{ $key }}" {{ $interval === $key ? 'selected' : '' }}>
@@ -25,13 +26,12 @@
                                     </select>
 
                                 </div>
-
                                 <input type="hidden" class="form-control" id="limit" max="1000" name="limit"
                                     value="1000">
 
-                                <div class="form-group">
-                                    <button type="submit" class="btn btn-sm btn-primary">Update</button>
-                                </div>
+
+                                <button type="submit" class="btn  my-4 btn-primary">Update</button>
+
 
                             </form>
                         </div>
