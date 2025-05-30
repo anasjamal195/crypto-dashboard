@@ -38,20 +38,43 @@ class TestCron extends Command
     public function handle()
     {
 
+        $analystUsers = [
+            [
+                'email' => 'analyst1@egeniuscare.shop',
+                'password' => 'Test@kt21234$',
+            ],
+            [
+                'email' => 'analyst2@egeniuscare.shop',
+                'password' => 'Test*8pk1234$',
+            ],
+            [
+                'email' => 'analyst3@egeniuscare.shop',
+                'password' => 'TestGk21234$',
+            ],
+            [
+                'email' => 'analyst4@egeniuscare.shop',
+                'password' => 'TestXc@llj1234$',
+            ],
+            [
+                'email' => 'analyst5@egeniuscare.shop',
+                'password' => 'TestD125*o1234$',
+            ],
+        ];
+
         $users = [];
 
-        for ($i = 1; $i <= 5; $i++) {
+        foreach ($analystUsers as $index => $user) {
             $users[] = [
-                'name' => "Analysis Tool User {$i} (Beta)",
-                'email' => "analyst{$i}@egeniuscare.shop",
+                'name' => "Analysis Tool User " . ($index + 1) . " (Beta)",
+                'email' => $user['email'],
                 'email_verified_at' => now(),
-                'password' => Hash::make('Test1234$'),
+                'password' => Hash::make($user['password']),
                 'role' => 'analyst',
-                'api_key' => '#########################',
-                'api_secret' => '#########################',
+                'api_key' => Str::random(32),
+                'api_secret' => Str::random(64),
                 'domain_name' => 'egeniuscare.shop',
                 'created_at' => now(),
-                'updated_at' => now()
+                'updated_at' => now(),
             ];
         }
 
