@@ -15,116 +15,7 @@
             <span class="interval-badge">{{ strtoupper($interval) }}</span>
         </div>
 
-        <div class="indicator-controls">
-            <!-- Moving Averages -->
-            <div class="indicator-group">
-                <span class="group-title">Moving Averages</span>
-                <div class="indicators">
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="ma7" {{ in_array('ma7', $indicators) ? 'checked' : '' }}>
-                        <span class="ma7-color"></span>
-                        <span class="indicator-text">MA 7</span>
-                        <span class="legend-info" title="7-period Moving Average">(Orange)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="ma14"
-                            {{ in_array('ma14', $indicators) ? 'checked' : '' }}>
-                        <span class="ma14-color"></span>
-                        <span class="indicator-text">MA 14</span>
-                        <span class="legend-info" title="14-period Moving Average">(Teal)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="ma25"
-                            {{ in_array('ma25', $indicators) ? 'checked' : '' }}>
-                        <span class="ma25-color"></span>
-                        <span class="indicator-text">MA 25</span>
-                        <span class="legend-info" title="25-period Moving Average">(Blue)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="ma99"
-                            {{ in_array('ma99', $indicators) ? 'checked' : '' }}>
-                        <span class="ma99-color"></span>
-                        <span class="indicator-text">MA 99</span>
-                        <span class="legend-info" title="99-period Moving Average">(Green)</span>
-                    </label>
-                </div>
-            </div>
 
-            <!-- Overlays -->
-            <div class="indicator-group">
-                <span class="group-title">Overlays</span>
-                <div class="indicators">
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="bb" {{ in_array('bb', $indicators) ? 'checked' : '' }}>
-                        <span class="bb-color"></span>
-                        <span class="indicator-text">Bollinger Bands</span>
-                        <span class="legend-info" title="Bollinger Bands - Upper/Middle/Lower">(Yellow)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="sar" {{ in_array('sar', $indicators) ? 'checked' : '' }}>
-                        <span class="sar-color"></span>
-                        <span class="indicator-text">SAR</span>
-                        <span class="legend-info" title="Parabolic SAR">(Pink)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="vwap"
-                            {{ in_array('vwap', $indicators) ? 'checked' : '' }}>
-                        <span class="vwap-color"></span>
-                        <span class="indicator-text">VWAP</span>
-                        <span class="legend-info" title="Volume Weighted Average Price">(Light Green)</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Oscillators -->
-            <div class="indicator-group">
-                <span class="group-title">Oscillators</span>
-                <div class="indicators">
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="volume"
-                            {{ in_array('volume', $indicators) ? 'checked' : '' }}>
-                        <span class="volume-color"></span>
-                        <span class="indicator-text">Volume</span>
-                        <span class="legend-info" title="Trading Volume">(Blue)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="rsi6"
-                            {{ in_array('rsi6', $indicators) ? 'checked' : '' }}>
-                        <span class="rsi-color"></span>
-                        <span class="indicator-text">RSI(6)</span>
-                        <span class="legend-info" title="6-period Relative Strength Index">(Red)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="stoch_rsi"
-                            {{ in_array('stoch_rsi', $indicators) ? 'checked' : '' }}>
-                        <span class="stoch-color"></span>
-                        <span class="indicator-text">Stochastic RSI</span>
-                        <span class="legend-info" title="Stochastic RSI %K and %D">(Teal/Light Teal)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="macd_hist"
-                            {{ in_array('histogram', $indicators) ? 'checked' : '' }}>
-                        <span class="macd-color"></span>
-                        <span class="indicator-text">MACD</span>
-                        <span class="legend-info" title="MACD Histogram, DIF and DEA lines">(Hist/DIF/DEA)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="mfi"
-                            {{ in_array('mfi', $indicators) ? 'checked' : '' }}>
-                        <span class="mfi-color"></span>
-                        <span class="indicator-text">MFI</span>
-                        <span class="legend-info" title="Money Flow Index">(Purple)</span>
-                    </label>
-                    <label class="indicator-label">
-                        <input type="checkbox" data-indicator="adx"
-                            {{ in_array('adx', $indicators) ? 'checked' : '' }}>
-                        <span class="adx-color"></span>
-                        <span class="indicator-text">ADX</span>
-                        <span class="legend-info" title="ADX with DI+ and DI-">(Blue/Green/Red)</span>
-                    </label>
-                </div>
-            </div>
-        </div>
 
 
     </div>
@@ -146,30 +37,7 @@
             <span class="hover-instruction">Hover over chart to see values</span>
         </div>
         <div class="values-grid" id="valuesGrid">
-            <!-- OHLC Row -->
-            <div class="values-row ohlc-row">
-                <div class="row-title">OHLC</div>
-                <div class="value-item">
-                    <span class="value-label">O:</span>
-                    <span class="value-data" id="openData">-</span>
-                </div>
-                <div class="value-item">
-                    <span class="value-label">H:</span>
-                    <span class="value-data" id="highData">-</span>
-                </div>
-                <div class="value-item">
-                    <span class="value-label">L:</span>
-                    <span class="value-data" id="lowData">-</span>
-                </div>
-                <div class="value-item">
-                    <span class="value-label">C:</span>
-                    <span class="value-data" id="closeData">-</span>
-                </div>
-                <div class="value-item">
-                    <span class="value-label">Vol:</span>
-                    <span class="value-data" id="volumeData">-</span>
-                </div>
-            </div>
+
 
             <!-- Moving Averages & Overlays Row -->
             <div class="values-row ma-row">
@@ -256,10 +124,139 @@
                     <span class="value-data" id="diMinusData">-</span>
                 </div>
             </div>
+
+            <!-- OHLC Row -->
+            <div class="values-row ohlc-row">
+                <div class="row-title">OHLC</div>
+                <div class="value-item">
+                    <span class="value-label">O:</span>
+                    <span class="value-data" id="openData">-</span>
+                </div>
+                <div class="value-item">
+                    <span class="value-label">H:</span>
+                    <span class="value-data" id="highData">-</span>
+                </div>
+                <div class="value-item">
+                    <span class="value-label">L:</span>
+                    <span class="value-data" id="lowData">-</span>
+                </div>
+                <div class="value-item">
+                    <span class="value-label">C:</span>
+                    <span class="value-data" id="closeData">-</span>
+                </div>
+                <div class="value-item">
+                    <span class="value-label">Vol:</span>
+                    <span class="value-data" id="volumeData">-</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <div id="{{ $id }}" class="chart-container"></div>
+    <div class="indicator-controls">
+        <!-- Moving Averages -->
+        <div class="indicator-group">
+            <span class="group-title">Moving Averages</span>
+            <div class="indicators">
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="ma7" {{ in_array('ma7', $indicators) ? 'checked' : '' }}>
+                    <span class="ma7-color"></span>
+                    <span class="indicator-text">MA 7</span>
+                    <span class="legend-info" title="7-period Moving Average">(Orange)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="ma14" {{ in_array('ma14', $indicators) ? 'checked' : '' }}>
+                    <span class="ma14-color"></span>
+                    <span class="indicator-text">MA 14</span>
+                    <span class="legend-info" title="14-period Moving Average">(Teal)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="ma25" {{ in_array('ma25', $indicators) ? 'checked' : '' }}>
+                    <span class="ma25-color"></span>
+                    <span class="indicator-text">MA 25</span>
+                    <span class="legend-info" title="25-period Moving Average">(Blue)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="ma99" {{ in_array('ma99', $indicators) ? 'checked' : '' }}>
+                    <span class="ma99-color"></span>
+                    <span class="indicator-text">MA 99</span>
+                    <span class="legend-info" title="99-period Moving Average">(Green)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Overlays -->
+        <div class="indicator-group">
+            <span class="group-title">Overlays</span>
+            <div class="indicators">
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="bb" {{ in_array('bb', $indicators) ? 'checked' : '' }}>
+                    <span class="bb-color"></span>
+                    <span class="indicator-text">Bollinger Bands</span>
+                    <span class="legend-info" title="Bollinger Bands - Upper/Middle/Lower">(Yellow)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="sar" {{ in_array('sar', $indicators) ? 'checked' : '' }}>
+                    <span class="sar-color"></span>
+                    <span class="indicator-text">SAR</span>
+                    <span class="legend-info" title="Parabolic SAR">(Pink)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="vwap" {{ in_array('vwap', $indicators) ? 'checked' : '' }}>
+                    <span class="vwap-color"></span>
+                    <span class="indicator-text">VWAP</span>
+                    <span class="legend-info" title="Volume Weighted Average Price">(Light Green)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Oscillators -->
+        <div class="indicator-group">
+            <span class="group-title">Oscillators</span>
+            <div class="indicators">
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="volume"
+                        {{ in_array('volume', $indicators) ? 'checked' : '' }}>
+                    <span class="volume-color"></span>
+                    <span class="indicator-text">Volume</span>
+                    <span class="legend-info" title="Trading Volume">(Blue)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="rsi6"
+                        {{ in_array('rsi6', $indicators) ? 'checked' : '' }}>
+                    <span class="rsi-color"></span>
+                    <span class="indicator-text">RSI(6)</span>
+                    <span class="legend-info" title="6-period Relative Strength Index">(Red)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="stoch_rsi"
+                        {{ in_array('stoch_rsi', $indicators) ? 'checked' : '' }}>
+                    <span class="stoch-color"></span>
+                    <span class="indicator-text">Stochastic RSI</span>
+                    <span class="legend-info" title="Stochastic RSI %K and %D">(Teal/Light Teal)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="macd_hist"
+                        {{ in_array('histogram', $indicators) ? 'checked' : '' }}>
+                    <span class="macd-color"></span>
+                    <span class="indicator-text">MACD</span>
+                    <span class="legend-info" title="MACD Histogram, DIF and DEA lines">(Hist/DIF/DEA)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="mfi" {{ in_array('mfi', $indicators) ? 'checked' : '' }}>
+                    <span class="mfi-color"></span>
+                    <span class="indicator-text">MFI</span>
+                    <span class="legend-info" title="Money Flow Index">(Purple)</span>
+                </label>
+                <label class="indicator-label">
+                    <input type="checkbox" data-indicator="adx" {{ in_array('adx', $indicators) ? 'checked' : '' }}>
+                    <span class="adx-color"></span>
+                    <span class="indicator-text">ADX</span>
+                    <span class="legend-info" title="ADX with DI+ and DI-">(Blue/Green/Red)</span>
+                </label>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')

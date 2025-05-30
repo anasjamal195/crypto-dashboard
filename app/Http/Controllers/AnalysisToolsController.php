@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\CommonHelpers;
 use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
+use App\Services\InternalTrader\ReportService;
 use App\Services\OrderBookStrategy;
 use App\Services\PatternDetector;
 use App\Services\SupportResistanceAnalyzer;
@@ -243,23 +244,53 @@ class AnalysisToolsController extends Controller
         $interval = request('interval', '5m');
         $limit = request('limit', 1000);
 
+        $candle1 = request('candle1');
+        $candle2 = request('candle2');
+
+
         $coinData = [];
         $currentCandle = [];
         $prevCandle = [];
 
+        $markers = [];
 
         try {
             $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
             $lastIndex = count($coinData) - 1;
-            $currentCandle = $coinData[$lastIndex];
-            $prevCandle = $coinData[$lastIndex - 1];
+
+
+            $index1 = $lastIndex - 1;
+            $index2 = $lastIndex;
+
+            if ($candle1) {
+                $index1 = $lastIndex - ReportService::getIndexDiffFromTimestamps($candle1, $coinData[$lastIndex]['binance_timestamp'], $interval);
+            }
+
+            if ($candle2) {
+                $index2 = $lastIndex - ReportService::getIndexDiffFromTimestamps($candle2, $coinData[$lastIndex]['binance_timestamp'], $interval);
+            }
+            $currentCandle = $coinData[$index2];
+            $prevCandle = $coinData[$index1];
+
+            $markers = [
+              [
+                    'timestamp_pst' => $coinData[$index1]['timestamp_pst'],
+                    'color' => '#ef5350',
+                    'text' => 'Previous Candle',
+                    'position' => 'belowBar'
+              ],
+              [
+                    'timestamp_pst' => $coinData[$index2]['timestamp_pst'],
+                    'color' => '#26a69a',
+                    'text' => 'Current Candle',
+                ]
+              ];
         } catch (\Throwable $th) {
             Session::flash('error', 'Error fetching coin data...');
             // dd($th);
         }
 
-
-        return view('analysis-tools.indicator-comparison-tool', compact('symbol', 'interval', 'pageSlug', 'coinData', 'prevCandle', 'currentCandle'));
+        return view('analysis-tools.indicator-comparison-tool', compact('symbol', 'interval', 'pageSlug', 'coinData', 'prevCandle', 'currentCandle','markers'));
     }
 
 
@@ -339,83 +370,81 @@ class AnalysisToolsController extends Controller
         $analysis = [];
 
         try {
-        $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
-        $lastIndex = count($coinData) - 1;
+            $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
+            $lastIndex = count($coinData) - 1;
 
-        // Analysis summary calculation
+            // Analysis summary calculation
 
-        // Order Book Analysis
-        $depth = 500;
-        $apiPointerUrl = 'https://xnfts.shop/load_balancer/orderBook.php';
-        $orderBookData = BinanceApiService::getOrderBook($symbol, $depth, $apiPointerUrl);
-
-
-        if (!$orderBookData) {
-            return abort(500);
-        }
-
-        if (isset($orderBookData['error'])) {
-            return redirect()->back()->withError('Rate Limit Exceeded, please wait!');
-        }
-        $orderBookStrategy = new OrderBookStrategy();
-        // Analyze the order book
-        $analysis = $orderBookStrategy->analyzeOrderBook($symbol, $depth);
-        if (!$analysis['success']) {
-            return abort(500);
-        }
-
-        // Extract data from analysis
-        $analysisData = $analysis['analysis'];
-        $signals = $analysis['signals'];
-
-        // Create the snapshot record
-        $snapshot = [
-            'symbol' => $symbol,
-            'snapshot_time' => Carbon::now(),
-            'depth' => $depth,
-            'raw_data' => $orderBookData,
-            'bid_volume' => $analysisData['bid_volume'],
-            'ask_volume' => $analysisData['ask_volume'],
-            'volume_imbalance' => $analysisData['volume_imbalance'],
-            'highest_bid' => isset($orderBookData['bids'][0]) ? $orderBookData['bids'][0][0] : null,
-            'lowest_ask' => isset($orderBookData['asks'][0]) ? $orderBookData['asks'][0][0] : null,
-            'spread' => isset($orderBookData['asks'][0]) && isset($orderBookData['bids'][0])
-                ? (float)$orderBookData['asks'][0][0] - (float)$orderBookData['bids'][0][0]
-                : null,
-            'support_levels' => $analysisData['support_levels'],
-            'resistance_levels' => $analysisData['resistance_levels'],
-            'thin_liquidity_areas' => $analysisData['thin_liquidity_areas'],
-            'signal' => $signals['recommendation'],
-            'long_strength' => $signals['long']['strength'],
-            'short_strength' => $signals['short']['strength'],
-            'long_entry_points' => json_encode($signals['long']['entry_points']),
-            'short_entry_points' => json_encode($signals['short']['entry_points']),
-            'type' => 'm',
-        ];
-
-        // Volume Analysis
-        $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true, null, $limit);
+            // Order Book Analysis
+            $depth = 500;
+            $apiPointerUrl = 'https://xnfts.shop/load_balancer/orderBook.php';
+            $orderBookData = BinanceApiService::getOrderBook($symbol, $depth, $apiPointerUrl);
 
 
+            if (!$orderBookData) {
+                return abort(500);
+            }
 
-        //  Bollinger Band
-        $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($coinData, $lastIndex, 20);
+            if (isset($orderBookData['error'])) {
+                return redirect()->back()->withError('Rate Limit Exceeded, please wait!');
+            }
+            $orderBookStrategy = new OrderBookStrategy();
+            // Analyze the order book
+            $analysis = $orderBookStrategy->analyzeOrderBook($symbol, $depth);
+            if (!$analysis['success']) {
+                return abort(500);
+            }
 
-        //  Technical Trend
-        $trendDetails = CommonHelpers::detectTrend($coinData, $lastIndex, 60, 20);
+            // Extract data from analysis
+            $analysisData = $analysis['analysis'];
+            $signals = $analysis['signals'];
 
-        // Chart Pattern
-        $patternDetails = PatternDetector::analyzeEntry($coinData, $lastIndex);
+            // Create the snapshot record
+            $snapshot = [
+                'symbol' => $symbol,
+                'snapshot_time' => Carbon::now(),
+                'depth' => $depth,
+                'raw_data' => $orderBookData,
+                'bid_volume' => $analysisData['bid_volume'],
+                'ask_volume' => $analysisData['ask_volume'],
+                'volume_imbalance' => $analysisData['volume_imbalance'],
+                'highest_bid' => isset($orderBookData['bids'][0]) ? $orderBookData['bids'][0][0] : null,
+                'lowest_ask' => isset($orderBookData['asks'][0]) ? $orderBookData['asks'][0][0] : null,
+                'spread' => isset($orderBookData['asks'][0]) && isset($orderBookData['bids'][0])
+                    ? (float)$orderBookData['asks'][0][0] - (float)$orderBookData['bids'][0][0]
+                    : null,
+                'support_levels' => $analysisData['support_levels'],
+                'resistance_levels' => $analysisData['resistance_levels'],
+                'thin_liquidity_areas' => $analysisData['thin_liquidity_areas'],
+                'signal' => $signals['recommendation'],
+                'long_strength' => $signals['long']['strength'],
+                'short_strength' => $signals['short']['strength'],
+                'long_entry_points' => json_encode($signals['long']['entry_points']),
+                'short_entry_points' => json_encode($signals['short']['entry_points']),
+                'type' => 'm',
+            ];
+
+            // Volume Analysis
+            $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true, null, $limit);
 
 
 
-        //  Support Resistance Analysis
-        $analyzer = new SupportResistanceAnalyzer($coinData, $lastIndex);
-        $srAnalysis = $analyzer->analyze();
+            //  Bollinger Band
+            $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($coinData, $lastIndex, 20);
 
-        $analysis = $this->consolidateAnalysis($snapshot, $bbAnalysis, $trendDetails, $patternDetails, $srAnalysis);
+            //  Technical Trend
+            $trendDetails = CommonHelpers::detectTrend($coinData, $lastIndex, 60, 20);
+
+            // Chart Pattern
+            $patternDetails = PatternDetector::analyzeEntry($coinData, $lastIndex);
 
 
+
+            //  Support Resistance Analysis
+            $analyzer = new SupportResistanceAnalyzer($coinData, $lastIndex);
+            $srAnalysis = $analyzer->analyze();
+
+            $analysis = $this->consolidateAnalysis($snapshot, $bbAnalysis, $trendDetails, $patternDetails, $srAnalysis);
         } catch (\Throwable $th) {
             Session::flash('error', 'Error fetching coin data...');
             // dd($th);

@@ -9,12 +9,15 @@
                     <div class="row">
                         <div class="col-sm-6">
                             <form action="" method="GET" class="d-flex justify-content-start">
-
                                 <div class="form-group mr-3">
+                                    <label for="symbol">Symbol</label>
+
                                     <input type="text" class="form-control" id="symbol" name="symbol"
                                         value="{{ request('symbol', 'BTCUSDT') }}">
                                 </div>
                                 <div class="form-group mr-3">
+                                    <label for="interval">Interval</label>
+
                                     <select name="interval" id="interval" class="form-control my-4 select2">
                                         @foreach (\App\CommonHelpers::$binanceIntervals as $key => $value)
                                             <option value="{{ $key }}" {{ $interval === $key ? 'selected' : '' }}>
@@ -24,13 +27,37 @@
                                     </select>
 
                                 </div>
+                                <div class="form-group mr-3">
+                                    <label for="candle1">First Candle</label>
+                                    <select name="candle1" id="candle1" class="form-control my-4 select2">
+                                        @foreach (array_reverse($coinData) as $candle)
+                                            <option value="{{ $candle['binance_timestamp'] }}"
+                                                {{ $prevCandle['binance_timestamp'] === $candle['binance_timestamp'] ? 'selected' : '' }}>
+                                                {{ $candle['timestampReadable'] }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+
+                                </div>
+                                <div class="form-group mr-3">
+                                    <label for="candle2">Second Candle</label>
+                                    <select name="candle2" id="candle2" class="form-control my-4 select2">
+                                        @foreach (array_reverse($coinData) as $candle)
+                                            <option value="{{ $candle['binance_timestamp'] }}"
+                                                {{ $currentCandle['binance_timestamp'] === $candle['binance_timestamp'] ? 'selected' : '' }}>
+                                                {{ $candle['timestampReadable'] }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+
+                                </div>
 
                                 <input type="hidden" class="form-control" id="limit" max="1000" name="limit"
                                     value="1000">
 
-                                <div class="form-group">
-                                    <button type="submit" class="btn btn-sm btn-primary">Update</button>
-                                </div>
+
+                                <button type="submit" class="btn  my-4 btn-primary">Update</button>
+
 
                             </form>
                         </div>
@@ -54,7 +81,8 @@
         // 'mfi',
         //   'adx',
         // 'sar',
-    ]" />
+    ]"
+        :markers="$markers" />
     <div class="row my-4">
 
         <div class="col-12">
@@ -86,6 +114,7 @@
                     </div>
                 </div>
                 <div class="card-body">
+
                     <div class="table-responsive">
                         <table class="table tablesorter table-hover" id="candleComparisonTable">
                             <thead class="text-primary">
@@ -97,10 +126,15 @@
                                     <th class="text-center">
                                         <i class="tim-icons icon-time-alarm"></i>
                                         Previous Value
+                                        <br>
+                                        {{ isset($prevCandle['timestampReadable']) ? $prevCandle['timestampReadable'] : '' }}
                                     </th>
                                     <th class="text-center">
                                         <i class="tim-icons icon-refresh-01"></i>
                                         Current Value
+                                        <br>
+                                        {{ isset($currentCandle['timestampReadable']) ? $currentCandle['timestampReadable'] : '' }}
+
                                     </th>
                                     <th class="text-center">
                                         <i class="tim-icons icon-chart-bar-32"></i>
@@ -214,7 +248,8 @@
                                             <span class="indicator-badge">{{ $label }}</span>
                                         </td>
                                         <td class="text-center text-muted">{{ number_format($prevValue, 4) }}</td>
-                                        <td class="text-center font-weight-bold">{{ number_format($currentValue, 4) }}</td>
+                                        <td class="text-center font-weight-bold">{{ number_format($currentValue, 4) }}
+                                        </td>
                                         <td class="text-center">
                                             <span
                                                 class="change-badge {{ $isPositive ? 'badge-success' : 'badge-danger' }}">
@@ -563,6 +598,11 @@
 
     {{-- Custom CSS Styles --}}
     <style>
+        .select2-dropdown {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
         .section-header {
             background: linear-gradient(45deg, #1e1e2e, #2a2d3a);
             border-left: 4px solid var(--primary-color);
@@ -704,8 +744,9 @@
                     } else if (filterId === '1') {
                         // Show only rows with significant changes
                         tableRows.forEach(row => {
-                            const change = parseFloat(row.getAttribute('data-change'));
-                            row.style.display = change > 0.5 ? '' : 'none';
+                            const change = Math.abs(parseFloat(row.getAttribute(
+                                'data-change'))).toFixed(2);
+                            row.style.display = change > 0 ? '' : 'none';
                         });
                     }
                 });

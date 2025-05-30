@@ -407,9 +407,10 @@
                                             <td>
                                                 <div class="progress" style="height: 4px;">
                                                     <div class="progress-bar bg-success"
-                                                        style="width: {{ ($entry['confidence'] / 5) * 100 }}%"></div>
+                                                        style="width: {{ (round($entry['confidence'], 1) / 5) * 100 }}%">
+                                                    </div>
                                                 </div>
-                                                {{ $entry['confidence'] }}/5
+                                                {{ round($entry['confidence'], 1) }}/5
                                             </td>
                                         </tr>
                                     @empty
@@ -450,9 +451,10 @@
                                             <td>
                                                 <div class="progress" style="height: 4px;">
                                                     <div class="progress-bar bg-warning"
-                                                        style="width: {{ ($exit['confidence'] / 5) * 100 }}%"></div>
+                                                        style="width: {{ (round($exit['confidence'], 1) / 5) * 100 }}%">
+                                                    </div>
                                                 </div>
-                                                {{ $exit['confidence'] }}/5
+                                                {{ round($exit['confidence'], 1) }}/5
                                             </td>
                                         </tr>
                                     @empty
@@ -470,7 +472,7 @@
         </div>
 
         <!-- Market Conditions -->
-        <div class="row">
+        {{-- <div class="row">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
@@ -521,7 +523,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
     @else
         <div class="row justify-content-center my-4">
             <div class="col-md-8">
@@ -542,9 +544,8 @@
 @push('styles')
     <style>
         .progress {
-            height: 12px;
+            height: 15px;
             margin: 10px;
         }
     </style>
 @endpush
-
