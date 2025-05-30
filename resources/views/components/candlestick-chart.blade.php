@@ -4,6 +4,7 @@
     'interval' => '15m',
     'id' => 'chart',
     'indicators',
+    'markers' => [], // New prop for markers
 ])
 
 
@@ -20,25 +21,28 @@
                 <span class="group-title">Moving Averages</span>
                 <div class="indicators">
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="ma7"  {{ in_array('ma7',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="ma7" {{ in_array('ma7', $indicators) ? 'checked' : '' }}>
                         <span class="ma7-color"></span>
                         <span class="indicator-text">MA 7</span>
                         <span class="legend-info" title="7-period Moving Average">(Orange)</span>
                     </label>
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="ma14" {{ in_array('ma14',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="ma14"
+                            {{ in_array('ma14', $indicators) ? 'checked' : '' }}>
                         <span class="ma14-color"></span>
                         <span class="indicator-text">MA 14</span>
                         <span class="legend-info" title="14-period Moving Average">(Teal)</span>
                     </label>
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="ma25" {{ in_array('ma25',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="ma25"
+                            {{ in_array('ma25', $indicators) ? 'checked' : '' }}>
                         <span class="ma25-color"></span>
                         <span class="indicator-text">MA 25</span>
                         <span class="legend-info" title="25-period Moving Average">(Blue)</span>
                     </label>
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="ma99" {{ in_array('ma99',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="ma99"
+                            {{ in_array('ma99', $indicators) ? 'checked' : '' }}>
                         <span class="ma99-color"></span>
                         <span class="indicator-text">MA 99</span>
                         <span class="legend-info" title="99-period Moving Average">(Green)</span>
@@ -51,19 +55,20 @@
                 <span class="group-title">Overlays</span>
                 <div class="indicators">
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="bb" {{ in_array('bb',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="bb" {{ in_array('bb', $indicators) ? 'checked' : '' }}>
                         <span class="bb-color"></span>
                         <span class="indicator-text">Bollinger Bands</span>
                         <span class="legend-info" title="Bollinger Bands - Upper/Middle/Lower">(Yellow)</span>
                     </label>
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="sar" {{ in_array('sar',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="sar" {{ in_array('sar', $indicators) ? 'checked' : '' }}>
                         <span class="sar-color"></span>
                         <span class="indicator-text">SAR</span>
                         <span class="legend-info" title="Parabolic SAR">(Pink)</span>
                     </label>
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="vwap" {{ in_array('vwap',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="vwap"
+                            {{ in_array('vwap', $indicators) ? 'checked' : '' }}>
                         <span class="vwap-color"></span>
                         <span class="indicator-text">VWAP</span>
                         <span class="legend-info" title="Volume Weighted Average Price">(Light Green)</span>
@@ -76,39 +81,43 @@
                 <span class="group-title">Oscillators</span>
                 <div class="indicators">
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="volume" {{ in_array('volume',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="volume"
+                            {{ in_array('volume', $indicators) ? 'checked' : '' }}>
                         <span class="volume-color"></span>
                         <span class="indicator-text">Volume</span>
                         <span class="legend-info" title="Trading Volume">(Blue)</span>
                     </label>
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="rsi6" {{ in_array('rsi6',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="rsi6"
+                            {{ in_array('rsi6', $indicators) ? 'checked' : '' }}>
                         <span class="rsi-color"></span>
                         <span class="indicator-text">RSI(6)</span>
                         <span class="legend-info" title="6-period Relative Strength Index">(Red)</span>
                     </label>
                     <label class="indicator-label">
                         <input type="checkbox" data-indicator="stoch_rsi"
-                            {{ in_array('stoch_rsi',$indicators) ? 'checked' : '' }}>
+                            {{ in_array('stoch_rsi', $indicators) ? 'checked' : '' }}>
                         <span class="stoch-color"></span>
                         <span class="indicator-text">Stochastic RSI</span>
                         <span class="legend-info" title="Stochastic RSI %K and %D">(Teal/Light Teal)</span>
                     </label>
                     <label class="indicator-label">
                         <input type="checkbox" data-indicator="macd_hist"
-                            {{ in_array('histogram',$indicators) ? 'checked' : '' }}>
+                            {{ in_array('histogram', $indicators) ? 'checked' : '' }}>
                         <span class="macd-color"></span>
                         <span class="indicator-text">MACD</span>
                         <span class="legend-info" title="MACD Histogram, DIF and DEA lines">(Hist/DIF/DEA)</span>
                     </label>
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="mfi" {{ in_array('mfi',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="mfi"
+                            {{ in_array('mfi', $indicators) ? 'checked' : '' }}>
                         <span class="mfi-color"></span>
                         <span class="indicator-text">MFI</span>
                         <span class="legend-info" title="Money Flow Index">(Purple)</span>
                     </label>
                     <label class="indicator-label">
-                        <input type="checkbox" data-indicator="adx" {{ in_array('adx',$indicators) ? 'checked' : '' }}>
+                        <input type="checkbox" data-indicator="adx"
+                            {{ in_array('adx', $indicators) ? 'checked' : '' }}>
                         <span class="adx-color"></span>
                         <span class="indicator-text">ADX</span>
                         <span class="legend-info" title="ADX with DI+ and DI-">(Blue/Green/Red)</span>
@@ -265,6 +274,9 @@
         document.addEventListener("DOMContentLoaded", function() {
             const chartData = @json($data);
             const chartId = "{{ $id }}";
+
+            // New markers prop
+            const markers = @json($markers); // Get markers from the props
 
             // Color scheme for dark theme
             const colors = {
@@ -478,6 +490,20 @@
             });
             candleSeries.setData(candles);
 
+            // Prepare the markers in the format needed by setMarkers
+            const formattedMarkers = markers.map(marker => ({
+                time: convertTime(marker.timestamp_pst), // Convert timestamp to chart's time format
+                position: marker.position || 'aboveBar', // Default position is 'aboveBar'
+                shape: marker.shape || 'circle', // Default shape is 'circle'
+                color: marker.color || '#ff0000', // Default color is red
+                size: marker.size || 1.5, // Default size is 1.5
+                text: marker.text || '',
+            }));
+
+            // Add markers to the candlestick series
+            candleSeries.setMarkers(formattedMarkers);
+
+
             // Volume series with proper scaling
             const volumeSeries = chart.addHistogramSeries({
                 color: colors.volume,
@@ -490,7 +516,7 @@
                     bottom: 0.0
                 },
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
 
             // RSI series
@@ -499,7 +525,7 @@
                 lineWidth: 2,
                 priceScaleId: 'rsi',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
 
             // MFI series  
@@ -508,7 +534,7 @@
                 lineWidth: 2,
                 priceScaleId: 'rsi',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
 
             // Stochastic RSI series
@@ -517,35 +543,35 @@
                 lineWidth: 2,
                 priceScaleId: 'stoch',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
             const stochDSeries = chart.addLineSeries({
                 color: 'rgba(78, 205, 196, 0.7)',
                 lineWidth: 2,
                 priceScaleId: 'stoch',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
 
             // MACD Histogram
             const macdHistSeries = chart.addHistogramSeries({
                 priceScaleId: 'macd',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
             const difSeries = chart.addLineSeries({
                 color: '#00d4aa', // Teal color for DIF
                 lineWidth: 2,
                 priceScaleId: 'macd',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
             const deaSeries = chart.addLineSeries({
                 color: '#ff6b35', // Orange color for DEA
                 lineWidth: 2,
                 priceScaleId: 'macd',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
 
             // ADX and DI series
@@ -554,56 +580,63 @@
                 lineWidth: 2,
                 priceScaleId: 'adx',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
             const diPlusSeries = chart.addLineSeries({
                 color: colors.upColor,
                 lineWidth: 1,
                 priceScaleId: 'adx',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
             const diMinusSeries = chart.addLineSeries({
                 color: colors.downColor,
                 lineWidth: 1,
                 priceScaleId: 'adx',
                 lastValueVisible: false,
-                priceLineVisible: false,
+                priceLineVisible: false
             });
 
             // Moving averages
             const ma7Series = chart.addLineSeries({
                 color: colors.ma7,
-                lineWidth: 2
+                lineWidth: 2,
+                priceLineVisible: false
             });
             const ma14Series = chart.addLineSeries({
                 color: colors.ma14,
-                lineWidth: 2
+                lineWidth: 2,
+                priceLineVisible: false
             });
             const ma25Series = chart.addLineSeries({
                 color: colors.ma25,
-                lineWidth: 2
+                lineWidth: 2,
+                priceLineVisible: false
             });
             const ma99Series = chart.addLineSeries({
                 color: colors.ma99,
-                lineWidth: 2
+                lineWidth: 2,
+                priceLineVisible: false
             });
 
             // Bollinger Bands
             const bbUpperSeries = chart.addLineSeries({
                 color: colors.bb,
                 lineWidth: 1,
-                lineStyle: 2
+                lineStyle: 2,
+                priceLineVisible: false
             });
             const bbMiddleSeries = chart.addLineSeries({
                 color: colors.bb,
                 lineWidth: 1,
-                lineStyle: 2
+                lineStyle: 2,
+                priceLineVisible: false
             });
             const bbLowerSeries = chart.addLineSeries({
                 color: colors.bb,
                 lineWidth: 1,
-                lineStyle: 2
+                lineStyle: 2,
+                priceLineVisible: false
             });
 
             // SAR and VWAP
@@ -611,11 +644,13 @@
                 color: colors.sar,
                 lineWidth: 1,
                 lineStyle: 3,
-                pointMarkersVisible: true
+                pointMarkersVisible: true,
+                priceLineVisible: false
             });
             const vwapSeries = chart.addLineSeries({
                 color: colors.vwap,
-                lineWidth: 2
+                lineWidth: 2,
+                priceLineVisible: false
             });
 
             // Configure price scales with proper spacing
@@ -746,7 +781,6 @@
                     document.getElementById('highData').textContent = '-';
                     document.getElementById('lowData').textContent = '-';
                     document.getElementById('closeData').textContent = '-';
-                    document.getElementById('priceData').textContent = '-';
                     document.getElementById('volumeData').textContent = '-';
                     document.getElementById('ma7Data').textContent = '-';
                     document.getElementById('ma14Data').textContent = '-';
@@ -896,11 +930,11 @@
             // if (candles.length > 0) {
             //     const latest = candles[candles.length - 1];
             //     document.getElementById('priceInfo').innerHTML = `
-            //         <span class="price-label">O:</span> <span class="price-value">${latest.open.toFixed(2)}</span>
-            //         <span class="price-label">H:</span> <span class="price-value">${latest.high.toFixed(2)}</span>
-            //         <span class="price-label">L:</span> <span class="price-value">${latest.low.toFixed(2)}</span>
-            //         <span class="price-label">C:</span> <span class="price-value">${latest.close.toFixed(2)}</span>
-            //     `;
+        //         <span class="price-label">O:</span> <span class="price-value">${latest.open.toFixed(2)}</span>
+        //         <span class="price-label">H:</span> <span class="price-value">${latest.high.toFixed(2)}</span>
+        //         <span class="price-label">L:</span> <span class="price-value">${latest.low.toFixed(2)}</span>
+        //         <span class="price-label">C:</span> <span class="price-value">${latest.close.toFixed(2)}</span>
+        //     `;
             // }
 
             // Handle window resize

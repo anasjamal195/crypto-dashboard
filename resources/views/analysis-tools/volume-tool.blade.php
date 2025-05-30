@@ -44,7 +44,7 @@
             </div>
         </div>
 
-        <x-candlestick-chart :data="$coinData" symbol="{{ $symbol }}" interval="{{ $interval }}"
+        <x-candlestick-chart :data="$coinData" symbol="{{ $symbol }}" interval="{{ $interval }}" :markers="[]"
             :indicators="[
                 // 'ma7',
                 // 'ma14',

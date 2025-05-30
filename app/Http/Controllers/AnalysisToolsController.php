@@ -6,6 +6,7 @@ use App\CommonHelpers;
 use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
 use App\Services\OrderBookStrategy;
+use App\Services\PatternDetector;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
@@ -27,8 +28,6 @@ class AnalysisToolsController extends Controller
         $snapshot = null;
 
         try {
-            //code...
-
             if ($symbol && $depth) {
                 // Fetching Data from external server
                 $apiPointerUrl = 'https://xnfts.shop/load_balancer/orderBook.php';
@@ -94,7 +93,7 @@ class AnalysisToolsController extends Controller
 
 
 
-        return view('analysis-tools.order-book-tool', compact('snapshot', 'pageSlug', 'coinData','interval','symbol'));
+        return view('analysis-tools.order-book-tool', compact('snapshot', 'pageSlug', 'coinData', 'interval', 'symbol'));
     }
 
 
@@ -128,11 +127,49 @@ class AnalysisToolsController extends Controller
 
         $pageSlug = 'bollingerBandTool';
 
+        $symbol = request('symbol', 'BTCUSDT');
+        $interval = request('interval', '5m');
+        $limit = request('limit', 1000);
+
+
+        $coinData = [];
+        $volumeSignals = [];
+
+        $markers = [];
+
+        $bbAnalysis = [];
+        try {
+            $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
+
+            $lastIndex = count($coinData) - 1;
+            $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($coinData, $lastIndex, 20);
+            if ($bbAnalysis['signal'] === 'LONG') {
+                $markers[] = [
+                    'timestamp_pst' => $coinData[$lastIndex]['timestamp_pst'],
+                    'color' => '#26a69a',
+                    'text' => 'B',
+                ];
+            } else if ($bbAnalysis['signal'] === 'SHORT') {
+                $markers[] = [
+                    'timestamp_pst' => $coinData[$lastIndex]['timestamp_pst'],
+                    'color' => '#ef5350',
+                    'text' => 'S',
+                ];
+            } else {
+                $markers[] = [
+                    'timestamp_pst' => $coinData[$lastIndex]['timestamp_pst'],
+                    'color' => '#9e9e9e',
+                    'text' => 'N',
+                ];
+            }
+        } catch (\Throwable $th) {
+            Session::flash('error', 'Error fetching coin data...');
+        }
 
 
 
 
-        return view('analysis-tools.bollinger-band-tool', compact('pageSlug'));
+        return view('analysis-tools.bollinger-band-tool', compact('symbol', 'markers', 'interval', 'pageSlug', 'coinData', 'bbAnalysis'));
     }
 
 
@@ -141,11 +178,27 @@ class AnalysisToolsController extends Controller
 
         $pageSlug = 'technicalTrendTool';
 
+        $symbol = request('symbol', 'BTCUSDT');
+        $interval = request('interval', '5m');
+        $limit = request('limit', 1000);
+
+        $coinData = [];
+        $trendDetails = [];
 
 
+        try {
+            $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
+            $lastIndex = count($coinData) - 1;
+            $trendDetails = CommonHelpers::detectTrend($coinData, $lastIndex, 60, 20);
+        } catch (\Throwable $th) {
+            Session::flash('error', 'Error fetching coin data...');
+            // dd($th);
+        }
+
+        // dd($trendDetails);
 
 
-        return view('analysis-tools.technical-trend-tool', compact('pageSlug'));
+        return view('analysis-tools.technical-trend-tool', compact('symbol', 'interval', 'pageSlug', 'coinData', 'trendDetails'));
     }
 
 
@@ -154,11 +207,29 @@ class AnalysisToolsController extends Controller
 
         $pageSlug = 'chartPatternTool';
 
+        $symbol = request('symbol', 'BTCUSDT');
+        $interval = request('interval', '5m');
+        $limit = request('limit', 1000);
+
+        $coinData = [];
+        $patternDetails = [];
+
+
+        try {
+            $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
+            $lastIndex = count($coinData) - 1;
+            $patternDetails = PatternDetector::analyzeEntry($coinData, $lastIndex);
+        } catch (\Throwable $th) {
+            Session::flash('error', 'Error fetching coin data...');
+            // dd($th);
+        }
 
 
 
 
-        return view('analysis-tools.chart-pattern-tool', compact('pageSlug'));
+
+
+        return view('analysis-tools.chart-pattern-tool', compact('symbol', 'interval', 'pageSlug', 'coinData', 'patternDetails'));
     }
 
     public function indicatorComparisonTool()
@@ -167,9 +238,26 @@ class AnalysisToolsController extends Controller
         $pageSlug = 'indicatorComparisonTool';
 
 
+        $symbol = request('symbol', 'BTCUSDT');
+        $interval = request('interval', '5m');
+        $limit = request('limit', 1000);
+
+        $coinData = [];
+        $currentCandle = [];
+        $prevCandle = [];
 
 
+        try {
+            $coinData = BinanceApiService::getCandleStickData($symbol, $interval, $limit, null, 'FUTURE', true);
+            $lastIndex = count($coinData) - 1;
+            $currentCandle = $coinData[$lastIndex];
+            $prevCandle = $coinData[$lastIndex - 1];
+        } catch (\Throwable $th) {
+            Session::flash('error', 'Error fetching coin data...');
+            // dd($th);
+        }
 
-        return view('analysis-tools.indicator-comparison-tool', compact('pageSlug'));
+
+        return view('analysis-tools.indicator-comparison-tool', compact('symbol', 'interval', 'pageSlug', 'coinData', 'prevCandle', 'currentCandle'));
     }
 }
