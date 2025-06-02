@@ -1011,7 +1011,7 @@ class ReportServiceSafeMode
     {
 
 
-        $rawData = DB::table('coin_reports')
+        $rawData = DB::table('coin_reports_safe_mode')
             ->selectRaw("
         JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
         symbol,
