@@ -7,6 +7,7 @@ use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
 use App\Services\BinanceVolumeIndicatorsService;
 use App\Services\IdealTradeService;
+use App\Services\InternalTrader\ReportService;
 use App\Services\InternalTrader\ReportServiceSafeMode;
 use App\Services\MarketTrendService;
 use App\Services\OrderBookStrategy;
@@ -520,6 +521,8 @@ class BinanceController extends Controller
             }
         }
 
+        $progressionDetailsLONG = ReportService::getProgressionDetails($formula, 'LONG', $endUnix);
+        $progressionDetailsSHORT = ReportService::getProgressionDetails($formula, 'SHORT', $endUnix);
 
         // Plotting them in current trend data
         foreach ($dataTrendReferenceActual as &$candle) {
@@ -549,6 +552,10 @@ class BinanceController extends Controller
             } else {
                 $candle['total_trades_skipped'] = 0;
             }
+
+
+            $candle['accuracy_long'] = ReportService::parseAccuracy($progressionDetailsLONG, $candle['binance_timestamp']);
+            $candle['accuracy_short'] = ReportService::parseAccuracy($progressionDetailsSHORT, $candle['binance_timestamp']);
         }
 
 
@@ -1062,14 +1069,21 @@ class BinanceController extends Controller
 
     public function getSafeModeAccuracy($position)
     {
-        $formula = 'Safe Mode Base Report LONG';
-        $formula = 'Safe Mode Base Report LONG';
+
+        $formula = '';
         $timestampMillis = round(microtime(true) * 1000);
 
-        $accuracyMap = ReportServiceSafeMode::getProfitableCoins($formula, $timestampMillis);
+
+        if ($position === 'LONG') {
+            $formula = 'Safe Mode Base Report LONG';
+        } else {
+            $formula = 'Safe Mode Base Report SHORT';
+        }
+
+        $progressionDetails = ReportServiceSafeMode::getProgressionDetails($formula, $position, $timestampMillis);
 
         return  response()->json([
-            'data' => ReportServiceSafeMode::parseAccuracy($accuracyMap, $timestampMillis),
+            'data' => ReportServiceSafeMode::parseAccuracy($progressionDetails, $timestampMillis),
         ]);
     }
 }

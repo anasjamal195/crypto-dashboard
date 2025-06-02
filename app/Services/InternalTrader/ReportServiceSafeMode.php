@@ -164,7 +164,7 @@ class ReportServiceSafeMode
 
 
         self::$timeWiseTradesCount = self::getTimestampWiseProfitableTrades(self::$formula, $endUnix);
-        self::$timeWiseTradeProgression = self::getProfitableCoins(self::$formula, $endUnix);
+
 
         $classPath = app_path('Services/InternalTrader/ReportServiceSafeMode.php');
 
@@ -551,7 +551,7 @@ class ReportServiceSafeMode
         // }
 
 
-        
+
 
 
 
@@ -1007,20 +1007,21 @@ class ReportServiceSafeMode
         }
     }
 
-    public static function getProfitableCoins($formula, $binance_timestamp)
+    public static function getProgressionDetails($formula, $position, $binance_timestamp)
     {
 
 
         $rawData = DB::table('coin_reports_safe_mode')
             ->selectRaw("
-        JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
-        symbol,
-        COUNT(*) as total_trades,
-        SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as profitable_trades,
-        SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as loss_trades,
-        ROUND((SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as accuracy
-    ")
+                    JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
+                    symbol,
+                    COUNT(*) as total_trades,
+                    SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as profitable_trades,
+                    SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as loss_trades,
+                    ROUND((SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as accuracy
+                ")
             ->where('formula', $formula)
+            ->where('position', $position)
             ->whereNotNull('sellingCandle')
             ->whereRaw("JSON_EXTRACT(sellingCandle, '$.binance_timestamp') <= ?", [$binance_timestamp])
             ->groupBy(
@@ -1063,12 +1064,12 @@ class ReportServiceSafeMode
 
         return $grouped;
     }
-    public static function parseAccuracy($grouped,$endTime, $hours = null)
+
+    public static function parseAccuracy($grouped, $endTime, $hours = null)
     {
 
         $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
 
-        $latest = null;
 
         if (!$hours) {
             $filterHoursStartTime = 0;
@@ -1084,6 +1085,8 @@ class ReportServiceSafeMode
                 $totalProfits += $data['total_profit'];
             }
         }
+
+
 
         $totalTrades = $totalProfits + $totalLosses;
         return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;

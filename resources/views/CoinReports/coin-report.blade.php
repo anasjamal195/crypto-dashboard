@@ -2099,7 +2099,8 @@
                 const total_trades_profitable = dataTrendReferenceActual.map(data => data.total_trades_profitable);
                 const total_trades_loss = dataTrendReferenceActual.map(data => data.total_trades_loss);
                 const total_trades_skipped = dataTrendReferenceActual.map(data => data.total_trades_skipped);
-                const accuracy = dataTrendReferenceActual.map(data => data.accuracy);
+                const accuracy_long = dataTrendReferenceActual.map(data => data.accuracy_long);
+                const accuracy_short = dataTrendReferenceActual.map(data => data.accuracy_short);
 
                 const ctx = document.getElementById('trendChartActual').getContext('2d');
                 window.candlestickChart = new Chart(ctx, {
@@ -2207,8 +2208,8 @@
                             },
 
                             {
-                                label: 'Accuracy',
-                                data: accuracy,
+                                label: 'Accuracy Long',
+                                data: accuracy_long,
                                 borderColor: '#8e44ad', // Deep purple
                                 backgroundColor: 'rgba(142, 68, 173, 0.2)', // Light transparent purple
                                 borderWidth: 1,
@@ -2220,7 +2221,23 @@
                                 },
                                 yAxisID: 'y2',
                                 hidden: true
+                            },
+                            {
+                                label: 'Accuracy Short',
+                                data: accuracy_short,
+                                borderColor: '#16a085', // Teal
+                                backgroundColor: 'rgba(22, 160, 133, 0.2)', // Light transparent teal
+                                borderWidth: 1,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: function(context) {
+                                    const value = context.raw;
+                                    return value !== 0 ? 3 : 0;
+                                },
+                                yAxisID: 'y2',
+                                hidden: true
                             }
+
 
                         ],
                     },
