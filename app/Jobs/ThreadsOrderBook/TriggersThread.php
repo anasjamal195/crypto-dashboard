@@ -8,6 +8,7 @@ use App\Services\BinanceApiService;
 use App\Services\IdealTradeService;
 use App\Services\MailerService;
 use App\Services\MarketTrendService;
+use App\Services\SupportResistanceAnalyzer;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -619,38 +620,19 @@ class TriggersThread implements ShouldQueue
     {
 
 
-        if ($data[$index]['rsi6'] > 70 && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
-            self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
-        }
+        $srAnalyzer = new SupportResistanceAnalyzer($data, $index, 100, 2);
+        $srAnalysis =  $srAnalyzer->analyze();
 
-        if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
+        $signal = self::detectShortEntryWithSR($data, $index, $srAnalysis);
 
-            $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-            $sellCondition =
-
-                $data[$index]['close'] < $data[$index]['bb_upper']
-                && $data[$index]['open'] > $data[$index]['bb_upper']
-                && $data[$index]['stoch_d'] < $data[$index - 1]['stoch_d']
-                && $data[$index]['stoch_k'] < $data[$index - 1]['stoch_k']
-                && $bbAnalysis['price_action']['is_near_upper_band']
-                && !$bbAnalysis['bb_squeeze']
-                && $data[$index]['histogram'] < $data[$index - 1]['histogram']
-                && $data[$index - 1]['stoch_d'] < 100
-                && $data[$index - 1]['stoch_k'] < 100;
-
-
-            if ($sellCondition) {
-                self::confirmOpening($symbol, 'SHORT', $data, $index);
-                $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'SHORT', $data, $index, '30m');
-                if ($allowOnHigherTrend) {
-                    return 'SHORT';
-                }
-            }
+        if (!$signal) {
+            return null;
         }
 
 
-        // No conditions met so return null
-        return null;
+
+
+        return 'SHORT';
     }
 
 
@@ -956,7 +938,244 @@ class TriggersThread implements ShouldQueue
             return !(($crossOverCondition && $bbMiddleCondition));
         }
     }
+    public static function detectShortEntryWithSR($data, $index, $srAnalysis = null)
+    {
+        // Safety check
+        if ($index < 3 || !isset($data[$index]) || !isset($data[$index - 1])) {
+            return null;
+        }
 
+        $current = $data[$index];
+        $prev1 = $data[$index - 1];
+        $prev2 = $data[$index - 2];
+        $prev3 = $data[$index - 3];
+
+        // === SUPPORT/RESISTANCE ANALYSIS ===
+        $srScore = 0;
+        $srConfirmation = false;
+        $suggestedSL = null;
+        $suggestedTP = null;
+        $riskReward = 0;
+
+        if ($srAnalysis && isset($srAnalysis['trading_signals'])) {
+            foreach ($srAnalysis['trading_signals'] as $signal) {
+                if ($signal['type'] === 'sell') {
+                    $srConfirmation = true;
+                    $srScore = $signal['confidence'];
+                    $suggestedSL = $signal['stop_loss'];
+                    $suggestedTP = $signal['take_profit_1'];
+                    $riskReward = $signal['risk_reward']['ratio'] ?? 0;
+                    break;
+                }
+            }
+        }
+
+        // Analyze resistance levels for additional confirmation
+        $nearResistance = false;
+        $resistanceStrength = 0;
+        $resistanceDistance = 999;
+
+        if ($srAnalysis && isset($srAnalysis['support_resistance_levels'])) {
+            foreach ($srAnalysis['support_resistance_levels'] as $level) {
+                if ($level['type'] === 'resistance') {
+                    $distance = abs($current['close'] - $level['avg_price']) / $current['close'];
+                    $resistanceDistance = min($resistanceDistance, $distance);
+
+                    // Check if price is near resistance (within 0.5%)
+                    if ($distance <= 0.005) {
+                        $nearResistance = true;
+                        $resistanceStrength = $level['confidence'];
+
+                        // Bonus points for high-volume resistance touches
+                        if ($level['total_volume'] > 500000) {
+                            $srScore += 10;
+                        }
+
+                        // Bonus for recent touches
+                        if (isset($level['last_touch_index']) && ($index - $level['last_touch_index']) < 20) {
+                            $srScore += 15;
+                        }
+                    }
+                }
+            }
+        }
+
+        // === TECHNICAL INDICATOR ANALYSIS ===
+
+        // 1. Trend Analysis
+        $trendScore = 0;
+
+        // Moving Average Bearish Alignment
+        if ($current['ma7'] < $current['ma14'] && $current['ma14'] < $current['ma25']) {
+            $trendScore += 20;
+        }
+
+        // Price position relative to MAs
+        if ($current['close'] < $current['ma14']) $trendScore += 10;
+        if ($current['close'] < $current['ma25']) $trendScore += 10;
+
+        // Bollinger Band position (near upper band suggests reversal)
+        $bbPosition = ($current['close'] - $current['bb_lower']) / ($current['bb_upper'] - $current['bb_lower']);
+        if ($bbPosition > 0.8) $trendScore += 15; // Near upper band
+        if ($bbPosition > 0.9) $trendScore += 10; // Very close to upper band
+
+        // 2. Momentum Analysis
+        $momentumScore = 0;
+
+        // RSI Analysis
+        if ($current['rsi6'] > 70) $momentumScore += 20; // Overbought
+        if ($current['rsi6'] > 65 && $current['rsi6'] < $prev1['rsi6']) $momentumScore += 15; // Turning down
+        if ($current['rsi6'] < $prev1['rsi6'] && $current['close'] > $prev1['close']) $momentumScore += 10; // Bearish divergence
+
+        // Stochastic Analysis
+        if ($current['stoch_k'] > 80 && $current['stoch_d'] > 80) $momentumScore += 15;
+        if ($current['stoch_k'] < $prev1['stoch_k'] && $current['stoch_d'] < $prev1['stoch_d']) $momentumScore += 10;
+
+        // Williams %R
+        if ($current['wr'] > -20) $momentumScore += 10; // Overbought
+
+        // MACD Analysis
+        if ($current['dif'] < $current['dea'] && $current['histogram'] < 0) $momentumScore += 10;
+        if ($current['histogram'] < $prev1['histogram']) $momentumScore += 10; // Weakening momentum
+
+        // 3. Volume Analysis
+        $volumeScore = 0;
+
+        // Volume spike confirmation
+        if ($current['volume'] > $current['volumeMA5'] * 1.3) $volumeScore += 15;
+        if ($current['volume'] > $current['volumeMA10'] * 1.2) $volumeScore += 10;
+
+        // OBV bearish confirmation
+        if ($current['obv'] < $prev1['obv']) $volumeScore += 10;
+        if ($current['obv'] < $prev2['obv'] && $current['obv'] < $prev3['obv']) $volumeScore += 5;
+
+        // Money Flow Index
+        if ($current['mfi'] < 50 && $current['mfi'] < $prev1['mfi']) $volumeScore += 10;
+
+        // 4. Price Action Analysis
+        $priceActionScore = 0;
+
+        // Bearish candlestick
+        if ($current['close'] < $current['open']) $priceActionScore += 10;
+
+        // Long upper wick (rejection)
+        $upperWick = $current['high'] - max($current['open'], $current['close']);
+        $bodySize = abs($current['close'] - $current['open']);
+        if ($upperWick > $bodySize * 1.5) $priceActionScore += 15;
+
+        // Failed breakout pattern
+        if ($current['high'] > $prev1['high'] && $current['close'] < $prev1['close']) $priceActionScore += 20;
+
+        // Lower highs pattern
+        if ($current['high'] < $prev1['high'] && $prev1['high'] < $prev2['high']) $priceActionScore += 10;
+
+        // === ADVANCED FILTERS ===
+
+        // Market structure confirmation
+        $structureScore = 0;
+        if ($srAnalysis && isset($srAnalysis['market_structure'])) {
+            $structure = $srAnalysis['market_structure'];
+
+            // Resistance-heavy environment
+            if ($structure['resistance_count'] > $structure['support_count']) {
+                $structureScore += 10;
+            }
+
+            // Recent resistance interaction
+            if (isset($structure['nearest_resistance']) && $resistanceDistance < 0.01) {
+                $structureScore += 15;
+            }
+        }
+
+        // === RISK MANAGEMENT CHECKS ===
+
+        // Volatility filter
+        $bbWidth = ($current['bb_upper'] - $current['bb_lower']) / $current['bb_middle'];
+        $highVolatility = $bbWidth > 0.08;
+
+        // VWAP distance filter
+        $vwapDistance = abs($current['close'] - $current['vwap']) / $current['close'];
+        $tooFarFromVWAP = $vwapDistance > 0.05;
+
+        // ADX trend strength
+        $weakTrend = $current['adx'] < 20;
+
+        // Recent strong bullish momentum check
+        $recentBullMomentum = ($prev1['close'] > $prev2['close'] * 1.015) &&
+            ($prev2['close'] > $prev3['close'] * 1.015);
+
+        // === SCORING SYSTEM ===
+
+        $totalTechnicalScore = $trendScore + $momentumScore + $volumeScore + $priceActionScore + $structureScore;
+        $totalScore = $totalTechnicalScore + ($srScore * 0.8); // Weight S/R analysis
+
+        // === ENTRY CONDITIONS ===
+
+        // Base requirements
+        $baseConditionsMet = ($totalTechnicalScore >= 60) && // Strong technical setup
+            ($current['close'] < $current['open']) && // Bearish candle
+            !$highVolatility && // Reasonable volatility
+            !$tooFarFromVWAP && // Near VWAP
+            !$recentBullMomentum; // No strong counter-trend
+
+        // Enhanced conditions with S/R
+        $enhancedConditionsMet = $baseConditionsMet &&
+            ($srConfirmation || $nearResistance) && // S/R confirmation
+            ($srScore >= 60); // Minimum S/R confidence
+
+        // Premium conditions (highest accuracy)
+        $premiumConditionsMet = $enhancedConditionsMet &&
+            ($resistanceStrength >= 80) && // Strong resistance
+            ($totalScore >= 100) && // High combined score
+            ($riskReward >= 1.5); // Good risk/reward
+
+        // === RETURN SIGNAL ===
+
+        if ($data[$index]['rsi6'] <= 70 && $data[$index - 1]['rsi6'] >= 70 && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] &&  $nearResistance && $srScore >= 70) {
+            return 'SHORT';
+        }
+        return null;
+
+        if ($premiumConditionsMet) {
+            return [
+                'signal' => 'SHORT',
+                'confidence' => min(95, $totalScore),
+                'entry_price' => $current['close'],
+                'stop_loss' => $suggestedSL ?? ($current['high'] * 1.005),
+                'take_profit_1' => $suggestedTP ?? ($current['close'] * 0.98),
+                'take_profit_2' => $current['close'] * 0.96,
+                'risk_reward' => $riskReward,
+                'analysis' => [
+                    'technical_score' => $totalTechnicalScore,
+                    'sr_score' => $srScore,
+                    'total_score' => $totalScore,
+                    'near_resistance' => $nearResistance,
+                    'resistance_strength' => $resistanceStrength,
+                    'conditions_met' => 'premium'
+                ]
+            ];
+        } elseif ($enhancedConditionsMet) {
+            return [
+                'signal' => 'SHORT',
+                'confidence' => min(85, $totalScore * 0.9),
+                'entry_price' => $current['close'],
+                'stop_loss' => $suggestedSL ?? ($current['high'] * 1.003),
+                'take_profit_1' => $suggestedTP ?? ($current['close'] * 0.985),
+                'take_profit_2' => $current['close'] * 0.97,
+                'risk_reward' => $riskReward,
+                'analysis' => [
+                    'technical_score' => $totalTechnicalScore,
+                    'sr_score' => $srScore,
+                    'total_score' => $totalScore,
+                    'near_resistance' => $nearResistance,
+                    'resistance_strength' => $resistanceStrength,
+                    'conditions_met' => 'enhanced'
+                ]
+            ];
+        }
+
+        return null;
+    }
     public static function getSafeModeStatus($symbol, $position)
     {
         $safeModeStatus = Http::get("https://reachoutfans.com/csrf-free/safe-mode-status/BTCUSDT/LONG");
