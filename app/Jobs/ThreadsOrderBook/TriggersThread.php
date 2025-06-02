@@ -39,10 +39,10 @@ class TriggersThread implements ShouldQueue
 
 
     // Meta data
-    public $stopLoss = 0.5;
+    public $stopLoss = 1;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.3;
+    public $targetProfit = 0.4;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
     public $formula = 'RSI Swings';
@@ -225,13 +225,25 @@ class TriggersThread implements ShouldQueue
 
                 // Check Safe Mode Enabled
 
-                $safeModeStatus = self::getSafeModeStatus($symbol, $tradeType);
+                // $safeModeStatus = self::getSafeModeStatus($symbol, $tradeType);
 
-                if ($safeModeStatus) {
+                // if ($safeModeStatus) {
+                //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                //     $openTrade = false;
+                //     Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode Disabled: ' . $symbol);
+                // }
+
+
+                $accuracyStatus = self::getAccuracy($tradeType);
+
+                if ($accuracyStatus < 75) {
                     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                     $openTrade = false;
-                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode Disabled: ' . $symbol);
+                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);
                 }
+
+
+
                 if ($openTrade) {
 
                     // Handle if current market is SPOT
@@ -939,6 +951,14 @@ class TriggersThread implements ShouldQueue
     public static function getSafeModeStatus($symbol, $position)
     {
         $safeModeStatus = Http::get("https://reachoutfans.com/csrf-free/safe-mode-status/BTCUSDT/LONG");
+
+        $status = $safeModeStatus->json()['data'];
+        return $status;
+    }
+
+    public static function getAccuracy($position)
+    {
+        $safeModeStatus = Http::get("https://reachoutfans.com/csrf-free/safe-mode-accuracy/" . $position);
 
         $status = $safeModeStatus->json()['data'];
         return $status;

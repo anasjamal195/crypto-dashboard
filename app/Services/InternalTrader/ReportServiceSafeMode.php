@@ -69,42 +69,13 @@ class ReportServiceSafeMode
     public static $baseReportFormula = 'Safe Mode Report (Flat) - Thursday, May 29, 2025 02:56 PM';
 
     public static $timeWiseTradesCount = [];
+    public static $timeWiseTradeProgression = [];
     public static function generateCoinReport(
         $cmd = null
     ) {
 
         $tradesTotal = [];
         $coinsQuery = Http::get('https://rocket.cryptoapis.store/csrf-free/get-all-symbols');
-
-
-
-
-
-        // // Coin Type Filters
-        // if (self::$filterOnCoinType) {
-        //     if (self::$coinTypeMetaverse)
-        //         $coinsQuery->where('is_metaverse', true);
-        //     if (self::$coinTypeAlt)
-        //         $coinsQuery->where('is_altcoin', true);
-        //     if (self::$coinTypeMeme)
-        //         $coinsQuery->where('is_meme_coin', true);
-        //     if (self::$coinTypeNft)
-        //         $coinsQuery->where('is_nft', true);
-        //     if (self::$coinTypeDefi)
-        //         $coinsQuery->where('is_defi', true);
-        //     if (self::$coinTypeWeb3)
-        //         $coinsQuery->where('is_web3', true);
-        // }
-        // if (self::$shuffleCoins) {
-        //     $coinsQuery->inRandomOrder();
-        // }
-
-        // if (self::$coinLimit) {
-        //     $coinsQuery->limit(self::$coinLimit);
-        // } else {
-        //     self::$coinLimit = (clone $coinsQuery)->count();
-        // }
-        // $coins = $coinsQuery->get();
 
         $coins = $coinsQuery->json()['data'];
 
@@ -193,6 +164,7 @@ class ReportServiceSafeMode
 
 
         self::$timeWiseTradesCount = self::getTimestampWiseProfitableTrades(self::$formula, $endUnix);
+        self::$timeWiseTradeProgression = self::getProfitableCoins(self::$formula, $endUnix);
 
         $classPath = app_path('Services/InternalTrader/ReportServiceSafeMode.php');
 
@@ -522,58 +494,64 @@ class ReportServiceSafeMode
 
 
 
-        $safeModeStatus = CommonHelpers::getSafeModeStatus($symbol, 'LONG');
-        // Check to enable safe mode on very last candle
-        if (! $safeModeStatus) {
+        // $safeModeStatus = CommonHelpers::getSafeModeStatus($symbol, 'LONG');
+        // // Check to enable safe mode on very last candle
+        // if (! $safeModeStatus) {
 
-            $lastIndex = count($data) - 1;
-            $tradeSummary = self::getTradeStatsFromReport(self::$formula, $data[$lastIndex]['binance_timestamp'], 18);
-
-            if ($tradeSummary['profitableTradesFiltered']  == 0) {
-                CommonHelpers::enableSafeModeLive($symbol, 'LONG', $data[$lastIndex]['binance_timestamp']);
-            }
-        }
-
-        // Check to disable safe mode on very last candle
-        if ($safeModeStatus) {
-
-            $safeModeStartTime = CommonHelpers::getSafeModeEnableTime($symbol, 'LONG');
-            $indexDiff = self::getIndexDiffFromTimestamps($safeModeStartTime, $data[$index]['binance_timestamp'], self::$interval, true);
-
-            $safeModeStartIndex = $index - $indexDiff;
-            $lowestClosePrice = $data[$safeModeStartIndex]['close'];
-            $highestClosePrice = $data[$safeModeStartIndex]['close'];
-
-            for ($i = $safeModeStartIndex; $i <= $index; $i++) {
-                if ($lowestClosePrice > $data[$i]['close']) {
-                    $lowestClosePrice = $data[$i]['close'];
-                }
-                if ($highestClosePrice < $data[$i]['close']) {
-                    $highestClosePrice = $data[$i]['close'];
-                }
-            }
+        //     $lastIndex = count($data) - 1;
+        //     $tradeSummary = self::getTradeStatsFromReport(self::$formula, $data[$lastIndex]['binance_timestamp'], 18);
 
 
-            $percentDiffFromLowest = CommonHelpers::getPercentDiff($lowestClosePrice, $data[$index]['close'], true);
-            $percentDiffHighestLowest = CommonHelpers::getPercentDiff($lowestClosePrice, $highestClosePrice, true);
+        //     $netAccuracy = self::parseAccuracy($data[$lastIndex]['binance_timestamp']);
+        //     if ($netAccuracy < 75) {
+        //         CommonHelpers::enableSafeModeLive($symbol, 'LONG', $data[$lastIndex]['binance_timestamp']);
+        //     }
+        // }
+
+        // // Check to disable safe mode on very last candle
+        // if ($safeModeStatus) {
+
+        //     // $safeModeStartTime = CommonHelpers::getSafeModeEnableTime($symbol, 'LONG');
+        //     // $indexDiff = self::getIndexDiffFromTimestamps($safeModeStartTime, $data[$index]['binance_timestamp'], self::$interval, true);
+
+        //     // $safeModeStartIndex = $index - $indexDiff;
+        //     // $lowestClosePrice = $data[$safeModeStartIndex]['close'];
+        //     // $highestClosePrice = $data[$safeModeStartIndex]['close'];
+
+        //     // for ($i = $safeModeStartIndex; $i <= $index; $i++) {
+        //     //     if ($lowestClosePrice > $data[$i]['close']) {
+        //     //         $lowestClosePrice = $data[$i]['close'];
+        //     //     }
+        //     //     if ($highestClosePrice < $data[$i]['close']) {
+        //     //         $highestClosePrice = $data[$i]['close'];
+        //     //     }
+        //     // }
+
+
+        //     // $percentDiffFromLowest = CommonHelpers::getPercentDiff($lowestClosePrice, $data[$index]['close'], true);
+        //     // $percentDiffHighestLowest = CommonHelpers::getPercentDiff($lowestClosePrice, $highestClosePrice, true);
 
 
 
-            $percentageDiffEnableCondition = 5;
+        //     // $percentageDiffEnableCondition = 5;
 
-            if ($percentDiffHighestLowest <= 5) {
-                $percentageDiffEnableCondition = $percentDiffHighestLowest + 0.5;
-            }
+        //     // if ($percentDiffHighestLowest <= 5) {
+        //     //     $percentageDiffEnableCondition = $percentDiffHighestLowest + 0.5;
+        //     // }
 
-            $safeModeDisableConditions = (
-                $data[$index]['close'] > $supportResistance['resistance']
-                && $data[$index]['open'] > $supportResistance['resistance']
-                && $percentDiffFromLowest >= $percentageDiffEnableCondition
-            );
-            if ($safeModeDisableConditions) {
-                CommonHelpers::disableSafeModeLive($symbol, 'LONG');
-            }
-        }
+
+        //     $netAccuracy = self::parseAccuracy($data[$lastIndex]['binance_timestamp']);
+
+        //     $safeModeDisableConditions = (
+        //         $netAccuracy >= 75
+        //     );
+        //     if ($safeModeDisableConditions) {
+        //         CommonHelpers::disableSafeModeLive($symbol, 'LONG');
+        //     }
+        // }
+
+
+        
 
 
 
@@ -1027,5 +1005,87 @@ class ReportServiceSafeMode
 
             return !(($crossOverCondition && $bbMiddleCondition));
         }
+    }
+
+    public static function getProfitableCoins($formula, $binance_timestamp)
+    {
+
+
+        $rawData = DB::table('coin_reports')
+            ->selectRaw("
+        JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
+        symbol,
+        COUNT(*) as total_trades,
+        SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as profitable_trades,
+        SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as loss_trades,
+        ROUND((SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as accuracy
+    ")
+            ->where('formula', $formula)
+            ->whereNotNull('sellingCandle')
+            ->whereRaw("JSON_EXTRACT(sellingCandle, '$.binance_timestamp') <= ?", [$binance_timestamp])
+            ->groupBy(
+                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp'))"),
+                'symbol'
+            )
+            ->orderBy('buying_timestamp', 'ASC')
+            ->get();
+        $grouped = [];
+
+        foreach ($rawData as $row) {
+            $timestamp = $row->buying_timestamp;
+
+            if (!isset($grouped[$timestamp])) {
+                $grouped[$timestamp] = [
+                    'timestamp' => $timestamp,
+                    'total_profit' => 0,
+                    'total_loss' => 0,
+                    'accuracy' => 0,
+                    'high_accuracy_symbols' => [],
+                ];
+            }
+
+            $grouped[$timestamp]['total_profit'] += $row->profitable_trades;
+            $grouped[$timestamp]['total_loss'] += $row->loss_trades;
+
+            if ($row->accuracy > 90) {
+                $grouped[$timestamp]['high_accuracy_symbols'][] = $row->symbol;
+            }
+        }
+
+        // Now calculate overall accuracy per timestamp
+        foreach ($grouped as &$item) {
+            $totalTrades = $item['total_profit'] + $item['total_loss'];
+            $item['accuracy'] = $totalTrades > 0
+                ? round(($item['total_profit'] / $totalTrades) * 100, 2)
+                : 0;
+        }
+
+
+        return $grouped;
+    }
+    public static function parseAccuracy($grouped,$endTime, $hours = null)
+    {
+
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+        $latest = null;
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+            }
+        }
+
+        $totalTrades = $totalProfits + $totalLosses;
+        return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
     }
 }

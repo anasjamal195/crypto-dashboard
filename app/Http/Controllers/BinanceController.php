@@ -7,6 +7,7 @@ use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
 use App\Services\BinanceVolumeIndicatorsService;
 use App\Services\IdealTradeService;
+use App\Services\InternalTrader\ReportServiceSafeMode;
 use App\Services\MarketTrendService;
 use App\Services\OrderBookStrategy;
 use App\Services\ReportService\LongReportService;
@@ -1056,6 +1057,19 @@ class BinanceController extends Controller
     {
         return  response()->json([
             'data' => CommonHelpers::getSafeModeStatus($symbol, $position),
+        ]);
+    }
+
+    public function getSafeModeAccuracy($position)
+    {
+        $formula = 'Safe Mode Base Report LONG';
+        $formula = 'Safe Mode Base Report LONG';
+        $timestampMillis = round(microtime(true) * 1000);
+
+        $accuracyMap = ReportServiceSafeMode::getProfitableCoins($formula, $timestampMillis);
+
+        return  response()->json([
+            'data' => ReportServiceSafeMode::parseAccuracy($accuracyMap, $timestampMillis),
         ]);
     }
 }

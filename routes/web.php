@@ -20,6 +20,7 @@ Route::name('master-process.')->prefix('master-process/')->group(function () {
 });
 Route::name('csrf-free.')->prefix('csrf-free/')->group(function () {
 	Route::get('safe-mode-status/{symbol}/{position}', 'App\Http\Controllers\BinanceController@getSafeModeStatus')->name('safe-mode.status');
+	Route::get('safe-mode-accuracy/{position}', 'App\Http\Controllers\BinanceController@getSafeModeAccuracy')->name('safe-mode.accuracy');
 	Route::get('get-all-symbols', 'App\Http\Controllers\BinanceController@getAllSymbols')->name('symbols.all');
 });
 

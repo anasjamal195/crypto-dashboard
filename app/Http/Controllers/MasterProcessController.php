@@ -173,8 +173,6 @@ class MasterProcessController extends Controller
         // Optionally, parse 'processed' as a boolean
         $processed = filter_var($validated['processed'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-
-
         return response()->json(BinanceApiService::getCandleStickDataCached(
             $validated['symbol'],
             $validated['interval'],
@@ -187,11 +185,9 @@ class MasterProcessController extends Controller
     }
 
 
-
     public function syncDomain()
     {
         $domain = request('domain_name');
-
         try {
             $count = CommonHelpers::syncExternalUsers($domain);
             return redirect()->back()->withSuccess('Domain synced successfully. Updated ' . $count . ' users...');
@@ -199,4 +195,6 @@ class MasterProcessController extends Controller
             return redirect()->back()->withErrors('Failed to sync domain: ' . $e->getMessage());
         }
     }
+
+
 }

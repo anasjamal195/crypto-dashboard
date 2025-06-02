@@ -2099,6 +2099,7 @@
                 const total_trades_profitable = dataTrendReferenceActual.map(data => data.total_trades_profitable);
                 const total_trades_loss = dataTrendReferenceActual.map(data => data.total_trades_loss);
                 const total_trades_skipped = dataTrendReferenceActual.map(data => data.total_trades_skipped);
+                const accuracy = dataTrendReferenceActual.map(data => data.accuracy);
 
                 const ctx = document.getElementById('trendChartActual').getContext('2d');
                 window.candlestickChart = new Chart(ctx, {
@@ -2204,6 +2205,23 @@
                                 yAxisID: 'y1',
                                 hidden: true
                             },
+
+                            {
+                                label: 'Accuracy',
+                                data: accuracy,
+                                borderColor: '#8e44ad', // Deep purple
+                                backgroundColor: 'rgba(142, 68, 173, 0.2)', // Light transparent purple
+                                borderWidth: 1,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: function(context) {
+                                    const value = context.raw;
+                                    return value !== 0 ? 3 : 0;
+                                },
+                                yAxisID: 'y2',
+                                hidden: true
+                            }
+
                         ],
                     },
                     options: {
