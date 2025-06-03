@@ -27,7 +27,7 @@ class ReportService
     public static $targetProfit = 0.4;
     public static $stopLoss = 1;
     public static $stopLossWaitingDuration = 0;
-    public static $longEnabled = false;
+    public static $longEnabled = true;
     public static $shortEnabled = true;
     public static $earlyClosingEnabled = true;
 
@@ -59,9 +59,9 @@ class ReportService
 
     public static $safeModeTimestamp = null;
     public static $lastDisableTime = null;
-    public static $isBaseReport ;
+    public static $isBaseReport;
 
-    public static $backTestTimeUnix ;
+    public static $backTestTimeUnix;
 
 
     // public static $backTestTimeUnix = 1746644400000; // Bullish
@@ -74,8 +74,8 @@ class ReportService
     public static $progressionDetailsSHORT = [];
 
 
-    public static $formula ;
-    public static $baseReportFormula ;
+    public static $formula;
+    public static $baseReportFormula;
     public static $timeWiseTradesCount = [];
 
 
