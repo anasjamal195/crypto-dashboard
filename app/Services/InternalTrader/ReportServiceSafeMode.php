@@ -92,7 +92,6 @@ class ReportServiceSafeMode
             try {
                 $symbol = $coin['symbol'];
 
-                Log::info("Test Request Params" . self::$interval);
                 $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 800, self::$backTestTimeUnix, 'FUTURE');
 
                 $trades = self::processCandles($symbol, $data);
@@ -112,7 +111,7 @@ class ReportServiceSafeMode
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                dd($e);
+                // dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }

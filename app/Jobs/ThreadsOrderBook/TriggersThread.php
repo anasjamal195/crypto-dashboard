@@ -868,6 +868,10 @@ class TriggersThread implements ShouldQueue
 
 
         $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE', true);
+
+        if (!$dataHigher) {
+            return null;
+        }
         $indexHigher = count($dataHigher) - 2;
 
         if ($position === 'LONG') {
