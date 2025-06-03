@@ -273,7 +273,6 @@ class TriggersThread implements ShouldQueue
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Opening Position: ' . $symbol);
 
                         try {
-
                             if (self::$isSpot && $tradeType === 'LONG')
                                 BinanceApiService::placeBuyOrderSpot($tradeInstance->symbol, $tradeInstance->buyPrice,  'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
                             else
@@ -607,6 +606,8 @@ class TriggersThread implements ShouldQueue
 
                 if ($allowOnHigherTrend) {
                     return 'LONG';
+                } else {
+                    Log::info("Refused long due to 1h-trend on " . $symbol);
                 }
             }
         }
@@ -628,6 +629,9 @@ class TriggersThread implements ShouldQueue
         if (!$signal) {
             return null;
         }
+        Log::info("Going to open short on " . $symbol);
+
+
 
 
 

@@ -29,7 +29,7 @@ class ReportServiceSafeMode
     public static $stopLoss = 1;
     public static $stopLossWaitingDuration = 0;
     public static $longEnabled = true;
-    public static $shortEnabled = false;
+    public static $shortEnabled = true;
     public static $earlyClosingEnabled = true;
 
     // Trend Analysis
