@@ -1082,11 +1082,9 @@ class BinanceController extends Controller
         $timestampMillis = round(microtime(true) * 1000);
 
 
-        if ($position === 'LONG') {
-            $formula = 'Safe Mode Base Report LONG';
-        } else {
-            $formula = 'Safe Mode Base Report SHORT';
-        }
+
+        $formula = 'Safe Mode Base Report';
+
 
         $progressionDetails = ReportServiceSafeMode::getProgressionDetails($formula, $position, $timestampMillis);
 
