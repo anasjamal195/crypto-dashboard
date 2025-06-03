@@ -246,7 +246,7 @@ class BinanceController extends Controller
         $rsiBelow40Profitable = $rsiBelow40Loss = $rsiBelow40Total = 0;
 
         $tradesBelowTP = 0;
-        $tpLimit = 0.4;
+        $tpLimit = 0.5;
 
         $bb_lower_count = $bb_lower_profit = $bb_lower_loss = 0;
         $bb_upper_count = $bb_upper_profit = $bb_upper_loss = 0;
@@ -268,6 +268,7 @@ class BinanceController extends Controller
         $profitableChangeSum = 0;
         $lossChangeSum = 0;
 
+        $earlyClosedProfitable = $earlyClosedLoss = 0;
 
 
         // Average first trade time
@@ -288,10 +289,16 @@ class BinanceController extends Controller
 
 
 
+
+
             $currentTradeTime = ($buyingCandle['binance_timestamp'] - $startingTimestamp) / (1000 * 60);
             $firstTradeAverageTime = $firstTradeAverageTime < $currentTradeTime ? $firstTradeAverageTime : $currentTradeTime;
 
 
+
+            if ($trade['closed_early']) {
+                $isProfit ? $earlyClosedProfitable++ : $earlyClosedLoss++;
+            }
             if ($buyingCandle['trendDetails']) {
 
                 $trend = json_decode($buyingCandle['trendDetails'], true);
@@ -389,8 +396,6 @@ class BinanceController extends Controller
                     $isProfit ? $berishOpeningsProfit++ : $berishOpeningsLoss++;
                 }
             }
-
-
 
             // if($confirmCandle['binance_timestamp'] ==  $buyingCandle['binance_timestamp']){
             //     $instantOpenings++;
@@ -626,6 +631,9 @@ class BinanceController extends Controller
             'wrLimit' => $wrLimit,
             'wrTotal' => $wrLoss + $wrProfitable,
 
+            'earlyClosedProfitable' => $earlyClosedProfitable,
+            'earlyClosedLoss' => $earlyClosedLoss,
+            'earlyClosedTotal' => $earlyClosedProfitable + $earlyClosedLoss,
 
             // Opened Symbols Stats
             'openSymbols' => $openSymbols,

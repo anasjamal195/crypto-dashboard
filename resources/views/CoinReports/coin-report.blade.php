@@ -405,6 +405,14 @@
                                                 <tr>
                                                     <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
                                                 </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Early Closed</td>
+                                                    <td>{{ $earlyClosedTotal }}</td>
+                                                    <td>Trades that closed early after 12-candles</td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
 
                                                 <tr>
                                                     <td class="font-weight-bold">Currently Open Symbols</td>
