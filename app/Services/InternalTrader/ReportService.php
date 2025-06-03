@@ -39,7 +39,7 @@ class ReportService
     public static $coinLimit = 0; // Use 0 for all coins
     public static $shuffleCoins = false;
 
-    public static $filterOnCoinType = true;
+    public static $filterOnCoinType = false;
     public static $coinTypeMetaverse = true;
     public static $coinTypeAlt = true;
     public static $coinTypeMeme = false;
@@ -59,9 +59,9 @@ class ReportService
 
     public static $safeModeTimestamp = null;
     public static $lastDisableTime = null;
-    public static $isBaseReport = false;
+    public static $isBaseReport ;
 
-    public static $backTestTimeUnix = 1747925580000;
+    public static $backTestTimeUnix ;
 
 
     // public static $backTestTimeUnix = 1746644400000; // Bullish
@@ -74,14 +74,27 @@ class ReportService
     public static $progressionDetailsSHORT = [];
 
 
-    public static $formula = 'Filtered Report (Bearish SHORT)';
-    public static $baseReportFormula = 'Filtered Report (Bearish SHORT) - Monday, June 2, 2025 10:25 PM';
+    public static $formula ;
+    public static $baseReportFormula ;
     public static $timeWiseTradesCount = [];
 
 
     public static function generateCoinReport(
-        $cmd = null
+        $cmd = null,
+        $formula = 'Default',
+        $timestamp = null,
+        $baseReportFormula = '',
+        $baseReport = true
     ) {
+
+
+        self::$formula = $formula;
+        self::$backTestTimeUnix = $timestamp;
+        self::$baseReportFormula = $baseReportFormula;
+        self::$isBaseReport = $baseReport;
+
+
+
 
         $tradesTotal = [];
         $coinsQuery = DB::table('coins')->where('market', 'FUTURE')->where('status', 'T')
@@ -167,6 +180,7 @@ class ReportService
 
         $cmd->info('Completed Report for : ' . self::$formula);
         $cmd->info('Total Coins Processed : ' . count($coins));
+        return self::$formula;
     }
 
     public static function addFormulaDetails()
