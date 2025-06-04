@@ -114,7 +114,7 @@ class ReportServiceSafeMode
                 $symbol = $coin['symbol'];
 
                 // Log::info("Test Request Params" . self::$interval);
-                $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 420, self::$backTestTimeUnix, 'FUTURE');
+                $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 420, null, 'FUTURE');
 
                 $trades = self::processCandles($symbol, $data);
 
@@ -400,11 +400,6 @@ class ReportServiceSafeMode
                 continue;
             }
 
-            // 20 mins weight after each trade
-            if ($waitingCandles) {
-                $waitingCandles--;
-                continue;
-            }
 
             $supportResistance = self::getSupportResistance($data, $index);
             $orderBookSnapshot = self::getOrderBookSnapshot($symbol, $data, $index);
@@ -480,8 +475,8 @@ class ReportServiceSafeMode
                     $currentTrade['position'] = $tradeType;
                     $currentTrade['formula'] = self::$formula;
 
-                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
-                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
+                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestampReadable']);
+                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestampReadable']);
                     $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
 
                     // Resetting params
