@@ -340,8 +340,9 @@ class ReportServiceSafeMode
             'coinTypeWeb3' => self::$coinTypeWeb3,
         ];
 
-        DB::table('formula_details')->insert([
+        DB::table('formula_details')->updateOrInsert([
             'formula' => self::$formula,
+        ], [
             'details' => $html,
             'report_config' => json_encode($reportConfig),
             'created_at' => Carbon::now()->toDateTimeString(),
