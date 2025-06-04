@@ -6,7 +6,13 @@
         $spotWallet = App\Services\BinanceApiService::fetchSpotWalletDetails(auth()->user()->id);
 
         $longAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('LONG');
+        if($longAccuracyDetails['accuracy'] < 0){
+            $longAccuracyDetails['accuracy'] = 100;
+        }
         $shortAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('SHORT');
+        if($shortAccuracyDetails['accuracy'] < 0){
+            $shortAccuracyDetails['accuracy'] = 100;
+        }
         // dd($accuracyDetailsLong,$accuracyDetailsShort);
     @endphp
     <style>
