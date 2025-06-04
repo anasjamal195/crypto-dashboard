@@ -1089,7 +1089,7 @@ class BinanceController extends Controller
         $progressionDetails = ReportServiceSafeMode::getProgressionDetails($formula, $position, $timestampMillis);
 
         return  response()->json([
-            'data' => ReportServiceSafeMode::parseAccuracy($progressionDetails, $timestampMillis),
+            'data' => ReportServiceSafeMode::parseAccuracy($progressionDetails, $timestampMillis, 6),
         ]);
     }
 }

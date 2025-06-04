@@ -95,7 +95,7 @@ class TriggersThread implements ShouldQueue
                             // Decrement index to get last completed candle
                             $index--;
 
-
+                            
                             // ==================Decision Block==================
 
 
