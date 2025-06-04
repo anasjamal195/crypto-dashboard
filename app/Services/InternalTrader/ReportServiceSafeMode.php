@@ -185,7 +185,7 @@ class ReportServiceSafeMode
 
     public static function addFormulaDetails()
     {
-        self::$formula = self::$formula . ' - ' . Carbon::now()->format('l, F j, Y h:i A');
+        // self::$formula = self::$formula . ' - ' . Carbon::now()->format('l, F j, Y h:i A');
         $date = date('Y-m-d H:i:s');
 
         $dateRange = null;

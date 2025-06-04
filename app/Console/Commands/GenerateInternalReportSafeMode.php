@@ -29,7 +29,9 @@ class GenerateInternalReportSafeMode extends Command
     {
         while (true) {
             try {
-                ReportServiceSafeMode::generateCoinReport($this);
+                $formula = 'Safe Mode Base Report';
+                $timestamp = null;
+                ReportServiceSafeMode::generateCoinReport($this, $formula, $timestamp, '', true);
             } catch (\Throwable $th) {
                 $this->error($th->getMessage());
             }
