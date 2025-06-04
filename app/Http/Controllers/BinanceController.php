@@ -64,16 +64,11 @@ class BinanceController extends Controller
     public function getCoinReport($market, Request $request)
     {
 
-
-
-
-
-
-
         $stopLoss = $request->input('stopLoss') ?? 1;
         $position = $request->input('position');
         $formula = $request->input('formula');
 
+        $tableName = 'coin_reports_safe_mode';
         // Return early with default values if no formula provided
         if (!$request->has('formula')) {
             return view('CoinReports.coin-report', [
@@ -98,7 +93,7 @@ class BinanceController extends Controller
         }
 
         // Build base query with common filters
-        $baseQuery = DB::table('coin_reports')->where('market', $market);
+        $baseQuery = DB::table($tableName)->where('market', $market);
 
         if ($position) {
             $baseQuery->where('position', $position);
@@ -452,7 +447,7 @@ class BinanceController extends Controller
         // dd($timelineDataSkipped[0]);
 
 
-        $openTradesQuery =  DB::table('coin_reports')->where('market', $market);
+        $openTradesQuery =  DB::table($tableName)->where('market', $market);
 
         if ($position) {
             $openTradesQuery->where('position', $position);
