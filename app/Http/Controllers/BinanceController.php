@@ -68,7 +68,7 @@ class BinanceController extends Controller
         $position = $request->input('position');
         $formula = $request->input('formula');
 
-        $tableName = $request->input('safe_mode_view') ? 'coin_reports_safe_mode' : 'coin_report';
+        $tableName = $request->input('safe_mode_view') ? 'coin_reports_safe_mode' : 'coin_reports';
 
         // Return early with default values if no formula provided
         if (!$request->has('formula')) {
