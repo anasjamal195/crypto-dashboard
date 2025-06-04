@@ -312,7 +312,7 @@
                         Accuracy Threshold: 75%
                     </div>
                     <div class="stats">
-                        <i class="tim-icons icon-refresh-01 text-warning"></i>
+                        <i class="tim-icons icon-time-alarm text-info"></i>
                         Last Updated: {{ $longAccuracyDetails['lastUpdateTime'] }}
                     </div>
                 </div>
@@ -396,7 +396,7 @@
                         Accuracy Threshold: 77%
                     </div>
                     <div class="stats">
-                        <i class="tim-icons icon-refresh-01 text-warning"></i>
+                        <i class="tim-icons icon-time-alarm text-info"></i>
                         Last Updated: {{ $shortAccuracyDetails['lastUpdateTime'] }}
                     </div>
                 </div>
