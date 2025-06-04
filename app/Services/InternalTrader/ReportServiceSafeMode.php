@@ -14,7 +14,6 @@ use App\Services\SupportResistanceAnalyzer;
 use Illuminate\Support\Facades\Log;
 use stdClass;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
 
 class ReportServiceSafeMode
 {
@@ -40,7 +39,7 @@ class ReportServiceSafeMode
     public static $coinLimit = 0; // Use 0 for all coins
     public static $shuffleCoins = false;
 
-    public static $filterOnCoinType = true;
+    public static $filterOnCoinType = false;
     public static $coinTypeMetaverse = true;
     public static $coinTypeAlt = true;
     public static $coinTypeMeme = false;
@@ -60,45 +59,106 @@ class ReportServiceSafeMode
 
     public static $safeModeTimestamp = null;
     public static $lastDisableTime = null;
-    public static $isBaseReport = true;
+    public static $isBaseReport;
 
-    public static $backTestTimeUnix = null;
+    public static $backTestTimeUnix;
 
-    public static $formula = 'Safe Mode Base Report';
 
-    public static $baseReportFormula = 'Safe Mode Report (Flat) - Thursday, May 29, 2025 02:56 PM';
+    // public static $backTestTimeUnix = 1746644400000; // Bullish
+    // public static $backTestTimeUnix = 1747925580000; // Bearish
 
+
+
+
+    public static $progressionDetailsLONG = [];
+    public static $progressionDetailsSHORT = [];
+
+
+    public static $formula;
+    public static $baseReportFormula;
     public static $timeWiseTradesCount = [];
-    public static $timeWiseTradeProgression = [];
+
+
     public static function generateCoinReport(
-        $cmd = null
+        $cmd = null,
+        $formula = 'Default',
+        $timestamp = null,
+        $baseReportFormula = '',
+        $baseReport = true
     ) {
 
-        $tradesTotal = [];
-        $coinsQuery = Http::get('https://rocket.cryptoapis.store/csrf-free/get-all-symbols');
 
-        $coins = $coinsQuery->json()['data'];
+        self::$formula = $formula;
+        self::$backTestTimeUnix = $timestamp;
+        self::$baseReportFormula = $baseReportFormula;
+        self::$isBaseReport = $baseReport;
+
+
+
+
+        $tradesTotal = [];
+        $coinsQuery = DB::table('coins')->where('market', 'FUTURE')->where('status', 'T')
+
+
+            // ->whereIn(
+            //     'symbol',
+            //     [
+            //         'JTOUSDT'
+
+            //     ]
+            // )
+        ;
+
+
+        // Coin Type Filters
+        if (self::$filterOnCoinType) {
+            if (self::$coinTypeMetaverse)
+                $coinsQuery->where('is_metaverse', true);
+            if (self::$coinTypeAlt)
+                $coinsQuery->where('is_altcoin', true);
+            if (self::$coinTypeMeme)
+                $coinsQuery->where('is_meme_coin', true);
+            if (self::$coinTypeNft)
+                $coinsQuery->where('is_nft', true);
+            if (self::$coinTypeDefi)
+                $coinsQuery->where('is_defi', true);
+            if (self::$coinTypeWeb3)
+                $coinsQuery->where('is_web3', true);
+        }
+        if (self::$shuffleCoins) {
+            $coinsQuery->inRandomOrder();
+        }
+
+        if (self::$coinLimit) {
+            $coinsQuery->limit(self::$coinLimit);
+        } else {
+            self::$coinLimit = (clone $coinsQuery)->count();
+        }
+        $coins = $coinsQuery->get();
 
         // Clear Console
         system('clear');
         $cmd->info('Processing: 0 %');
 
         self::addFormulaDetails();
-        DB::table('confirmed_trades_safe_mode')->truncate();
+        DB::table('confirmed_trades')->truncate();
 
 
         foreach ($coins as $index => $coin) {
 
             try {
-                $symbol = $coin['symbol'];
 
-                $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 800, self::$backTestTimeUnix, 'FUTURE');
+
+                $symbol = $coin->symbol;
+
+                Log::info("Test Request Params" . self::$interval);
+                $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, self::$backTestTimeUnix, 'FUTURE');
 
                 $trades = self::processCandles($symbol, $data);
 
                 // Insert trades into the database
-                DB::table('coin_reports_safe_mode')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formula)->where('market', 'FUTURE')->delete();
-                DB::table('coin_reports_safe_mode')->insert($trades);
+                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formula)->where('market', 'FUTURE')->delete();
+                DB::table('coin_reports')->insert($trades);
 
 
                 $tradesTotal[$symbol] = $trades;
@@ -120,11 +180,12 @@ class ReportServiceSafeMode
 
         $cmd->info('Completed Report for : ' . self::$formula);
         $cmd->info('Total Coins Processed : ' . count($coins));
+        return self::$formula;
     }
 
     public static function addFormulaDetails()
     {
-        // self::$formula = self::$formula . ' - ' . Carbon::now()->format('l, F j, Y h:i A');
+        self::$formula = self::$formula . ' - ' . Carbon::now()->format('l, F j, Y h:i A');
         $date = date('Y-m-d H:i:s');
 
         $dateRange = null;
@@ -162,10 +223,13 @@ class ReportServiceSafeMode
 
 
 
-        self::$timeWiseTradesCount = self::getTimestampWiseProfitableTrades(self::$formula, $endUnix);
+        self::$timeWiseTradesCount = self::getTimestampWiseProfitableTrades(self::$baseReportFormula, $endUnix);
+
+        self::$progressionDetailsLONG = self::getProgressionDetails(self::$baseReportFormula, 'LONG', $endUnix);
+        self::$progressionDetailsSHORT = self::getProgressionDetails(self::$baseReportFormula, 'SHORT', $endUnix);
 
 
-        $classPath = app_path('Services/InternalTrader/ReportServiceSafeMode.php');
+        $classPath = app_path('Services/InternalTrader/ReportService.php');
 
         // Output path
         $outputPath = storage_path('app/public/formula_bkp_service_' . self::$formula . '.txt');
@@ -320,9 +384,8 @@ class ReportServiceSafeMode
             'coinTypeWeb3' => self::$coinTypeWeb3,
         ];
 
-        DB::table('formula_details')->updateOrInsert([
+        DB::table('formula_details')->insert([
             'formula' => self::$formula,
-        ], [
             'details' => $html,
             'report_config' => json_encode($reportConfig),
             'created_at' => Carbon::now()->toDateTimeString(),
@@ -344,7 +407,17 @@ class ReportServiceSafeMode
         $extremePrice = 0;
 
 
+        $intervalToMins = CommonHelpers::$binanceIntervals[self::$interval];
+        $timestamp = $data[0]['binance_timestamp'] - (60 * $intervalToMins * 1000 * 1000);
+        $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, $timestamp, 'FUTURE');
 
+        $data = array_map(function ($candle) {
+            $candle['timestamp'] = $candle['timestamp'] / 1000;
+            $date = new \DateTime("@{$candle['timestamp']}");
+            $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
+            $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
+            return $candle;
+        }, array_merge($averageAdjustmetCandles, $data));
 
         $waitingCandles = 0;
         $openingIndex = 0;
@@ -379,7 +452,7 @@ class ReportServiceSafeMode
             ];
 
             // Skip Adjustment Candles and Volume Adjustment
-            if ($index < 300) {
+            if ($index < 1200) {
                 continue;
             }
 
@@ -463,16 +536,20 @@ class ReportServiceSafeMode
                     $currentTrade['position'] = $tradeType;
                     $currentTrade['formula'] = self::$formula;
 
-                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestampReadable']);
-                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestampReadable']);
+                    $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
+                    $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
                     $currentTrade['duration'] = ($sellingTimestamp->getTimestamp() - $buyingTimestamp->getTimestamp()) / 60;
 
 
 
 
-                    error_log("LONG Entry for {$symbol}: " . $currentTrade['profit']);
+                    error_log("$tradeType Entry for {$symbol}: " . $currentTrade['profit']);
+
+                    if ($currentTrade['profit'] < 0) {
 
 
+                        // dd(self::getTradeStatsFromReport(self::$baseReportFormula, $data[$openingIndex]['binance_timestamp']));
+                    }
 
                     // Resetting params
                     $extremePrice = 0;
@@ -486,70 +563,11 @@ class ReportServiceSafeMode
             }
         }
 
+
         self::confirmOpening($symbol, 'LONG', $data, $index);
         self::confirmOpening($symbol, 'SHORT', $data, $index);
 
-        // self::logSafeModeEntry(self::$formula, $symbol, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
-
-
-
-        // $safeModeStatus = CommonHelpers::getSafeModeStatus($symbol, 'LONG');
-        // // Check to enable safe mode on very last candle
-        // if (! $safeModeStatus) {
-
-        //     $lastIndex = count($data) - 1;
-        //     $tradeSummary = self::getTradeStatsFromReport(self::$formula, $data[$lastIndex]['binance_timestamp'], 18);
-
-
-        //     $netAccuracy = self::parseAccuracy($data[$lastIndex]['binance_timestamp']);
-        //     if ($netAccuracy < 75) {
-        //         CommonHelpers::enableSafeModeLive($symbol, 'LONG', $data[$lastIndex]['binance_timestamp']);
-        //     }
-        // }
-
-        // // Check to disable safe mode on very last candle
-        // if ($safeModeStatus) {
-
-        //     // $safeModeStartTime = CommonHelpers::getSafeModeEnableTime($symbol, 'LONG');
-        //     // $indexDiff = self::getIndexDiffFromTimestamps($safeModeStartTime, $data[$index]['binance_timestamp'], self::$interval, true);
-
-        //     // $safeModeStartIndex = $index - $indexDiff;
-        //     // $lowestClosePrice = $data[$safeModeStartIndex]['close'];
-        //     // $highestClosePrice = $data[$safeModeStartIndex]['close'];
-
-        //     // for ($i = $safeModeStartIndex; $i <= $index; $i++) {
-        //     //     if ($lowestClosePrice > $data[$i]['close']) {
-        //     //         $lowestClosePrice = $data[$i]['close'];
-        //     //     }
-        //     //     if ($highestClosePrice < $data[$i]['close']) {
-        //     //         $highestClosePrice = $data[$i]['close'];
-        //     //     }
-        //     // }
-
-
-        //     // $percentDiffFromLowest = CommonHelpers::getPercentDiff($lowestClosePrice, $data[$index]['close'], true);
-        //     // $percentDiffHighestLowest = CommonHelpers::getPercentDiff($lowestClosePrice, $highestClosePrice, true);
-
-
-
-        //     // $percentageDiffEnableCondition = 5;
-
-        //     // if ($percentDiffHighestLowest <= 5) {
-        //     //     $percentageDiffEnableCondition = $percentDiffHighestLowest + 0.5;
-        //     // }
-
-
-        //     $netAccuracy = self::parseAccuracy($data[$lastIndex]['binance_timestamp']);
-
-        //     $safeModeDisableConditions = (
-        //         $netAccuracy >= 75
-        //     );
-        //     if ($safeModeDisableConditions) {
-        //         CommonHelpers::disableSafeModeLive($symbol, 'LONG');
-        //     }
-        // }
-
-
+        self::logSafeModeEntry(self::$formula, $symbol, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
         // For shifting indexes
         $data_new = [];
         foreach ($data as $d) {
@@ -558,6 +576,7 @@ class ReportServiceSafeMode
         // dd($data_new);
         $data = $data_new;
 
+        // dd("Test");
         return $trades;
     }
 
@@ -568,9 +587,20 @@ class ReportServiceSafeMode
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps)
     {
 
+
+
         // Long Conditions
         if (self::$longEnabled) {
             $skippingReasons = [];
+
+            if (!self::$isBaseReport) {
+                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONG, $data[$index]['binance_timestamp']);
+                if ($currentAccuracy != -1) {
+                    if ($currentAccuracy < 75) {
+                        return null;
+                    }
+                }
+            }
 
             if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
                 self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
@@ -611,6 +641,17 @@ class ReportServiceSafeMode
             if (!$signal) {
                 return null;
             }
+
+
+            if (!self::$isBaseReport) {
+                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORT, $data[$index]['binance_timestamp']);
+                if ($currentAccuracy != -1) {
+                    if ($currentAccuracy < 77) {
+                        return null;
+                    }
+                }
+            }
+
             return 'SHORT';
         }
 
@@ -643,16 +684,75 @@ class ReportServiceSafeMode
 
         // Testing Report
         $tradeStats = [
-
             'profitableTradesFiltered' => $totalProfitable,
-
         ];
+
+        return $tradeStats;
+
+
+
+
+
+
+
+
+
+
+
+        $trades = DB::table('coin_reports')
+            ->where('formula', $formula)
+            ->whereNotNull('sellingCandle')
+            ->whereRaw("JSON_EXTRACT(sellingCandle, '$.binance_timestamp') < ?", [$binance_timestamp])
+            ->whereRaw("JSON_EXTRACT(buyingCandle, '$.binance_timestamp') > ?", [$filterHoursStartTime])
+            ->where('profit', '>', 0)
+            ->count();
+
+        // foreach ($trades as $trade) {
+
+        //     $tradeTimestamp = json_decode($trade->buyingCandle, true)['binance_timestamp'];
+        //     if ($trade->profit > 0) {
+
+        //         if ($tradeTimestamp >= $filterHoursStartTime) {
+        //             $profitableTradesFilterHour++;
+        //         }
+
+        //         if ($trade->duration >= $lengthThresholdMins) {
+        //             $lengthyTradesFilterHour++;
+        //         }
+        //         $profitable++;
+        //     } else {
+        //         if ($tradeTimestamp >= $filterHoursStartTime) {
+        //             $lossTradesFilterHour++;
+        //         }
+        //         $loss++;
+        //     }
+
+
+        //     if ($trade->duration >= $lengthThresholdMins) {
+        //         $lengthyTrades++;
+        //     }
+        // }
+
+        $tradeStats = [
+            'trades' => $trades,
+            // 'totalTrades' => count($trades),
+            'totalProfitable' => $profitable,
+            'totalLoss' => $loss,
+            'lengthyTrades' => $lengthyTrades,
+            'lengthThresholdMins' => $lengthThresholdMins,
+            // 'profitableTradesFiltered' => $profitableTradesFilterHour,
+            'profitableTradesFiltered' => $trades,
+            'lossTradesFiltered' => $lossTradesFilterHour,
+            'lengthyTradesFiltered' => $lengthyTradesFilterHour,
+            'filterTimeInHours' => $profitableTradesFilterHour,
+        ];
+
         return $tradeStats;
     }
 
     public static function getTimestampWiseProfitableTrades($formula, $binance_timestamp)
     {
-        $trades = DB::table('coin_reports_safe_mode')
+        $trades = DB::table('coin_reports')
             ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp, COUNT(*) as trade_count")
             ->where('formula', $formula)
             ->whereNotNull('sellingCandle')
@@ -668,6 +768,129 @@ class ReportServiceSafeMode
 
 
 
+    public static function getProgressionDetails($formula, $position, $binance_timestamp)
+    {
+
+
+        $rawData = DB::table('coin_reports')
+            ->selectRaw("
+                    JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
+                    symbol,
+                    COUNT(*) as total_trades,
+                    SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as profitable_trades,
+                    SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as loss_trades,
+                    ROUND((SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as accuracy
+                ")
+            ->where('formula', $formula)
+            ->where('position', $position)
+            ->whereNotNull('sellingCandle')
+            ->whereRaw("JSON_EXTRACT(sellingCandle, '$.binance_timestamp') <= ?", [$binance_timestamp])
+            ->groupBy(
+                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp'))"),
+                'symbol'
+            )
+            ->orderBy('buying_timestamp', 'ASC')
+            ->get();
+        $grouped = [];
+
+        foreach ($rawData as $row) {
+            $timestamp = $row->buying_timestamp;
+
+            if (!isset($grouped[$timestamp])) {
+                $grouped[$timestamp] = [
+                    'timestamp' => $timestamp,
+                    'total_profit' => 0,
+                    'total_loss' => 0,
+                    'accuracy' => 0,
+                    'high_accuracy_symbols' => [],
+                ];
+            }
+
+            $grouped[$timestamp]['total_profit'] += $row->profitable_trades;
+            $grouped[$timestamp]['total_loss'] += $row->loss_trades;
+
+            if ($row->accuracy > 90) {
+                $grouped[$timestamp]['high_accuracy_symbols'][] = $row->symbol;
+            }
+        }
+
+        // Now calculate overall accuracy per timestamp
+        foreach ($grouped as &$item) {
+            $totalTrades = $item['total_profit'] + $item['total_loss'];
+            $item['accuracy'] = $totalTrades > 0
+                ? round(($item['total_profit'] / $totalTrades) * 100, 2)
+                : 0;
+        }
+
+
+        return $grouped;
+    }
+
+
+
+
+
+
+
+
+    public static function parseAccuracy($grouped, $endTime, $hours = null)
+    {
+
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+            }
+        }
+
+
+
+        $totalTrades = $totalProfits + $totalLosses;
+        return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
+    }
+
+    public static function parseStats($grouped, $endTime, $hours = null)
+    {
+
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+            }
+        }
+
+
+
+        $totalTrades = $totalProfits + $totalLosses;
+        return [
+            'accuracy' => $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1,
+            'profitable' => $totalProfits,
+            'losses' => $totalLosses,
+            'total' => $totalTrades,
+        ];
+    }
     public static function handleClosingConditions($symbol, $data, $index, $tradeType, $openingIndex, $open_price)
     {
         $candle = $data[$index];
@@ -737,6 +960,7 @@ class ReportServiceSafeMode
     }
     public static function getOrderBookSnapshot($symbol, $data, $index)
     {
+
         // Fetch OrderBook snapshot
         $timestamp = $data[$index]['timestampReadable'];
         $snapshot = OrderBookSnapshot::where('snapshot_time', '<=', Carbon::parse($timestamp)->addMinutes(5))
@@ -836,7 +1060,7 @@ class ReportServiceSafeMode
 
 
 
-        $id =  DB::table('confirmed_trades_safe_mode')->insertGetId([
+        $id =  DB::table('confirmed_trades')->insertGetId([
             'coin_name' => $symbol,
             'position' => $position,
             'confirm_candle_timestamp' => $data[$index]['binance_timestamp'],
@@ -847,12 +1071,12 @@ class ReportServiceSafeMode
             'update_time' => Carbon::now()->toDateTimeString(),
 
         ]);
-        return DB::table('confirmed_trades_safe_mode')->where('ict_id', $id)->first();
+        return DB::table('confirmed_trades')->where('ict_id', $id)->first();
     }
 
     public static function getIctId($symbol, $position)
     {
-        $lastEntry =  DB::table('confirmed_trades_safe_mode')->where('coin_name', $symbol)->where('position', $position)->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
+        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('position', $position)->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
         return $lastEntry ? $lastEntry->ict_id : null;
     }
     public static function checkConfirmTradeValidity($symbol, $position, $data, $index)
@@ -864,10 +1088,10 @@ class ReportServiceSafeMode
             return null;
         }
 
-        $lastEntry = DB::table('confirmed_trades_safe_mode')->where('ict_id', $ictId)->first();
+        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
         $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->confirm_candle_timestamp, self::$interval);
         if ($indexDiff > $lastEntry->candles_to_check) {
-            DB::table('confirmed_trades_safe_mode')->where('ict_id', $ictId)->update([
+            DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
                 'trade_confirmed' => 1,
                 'update_time' => Carbon::now()->toDateTimeString(),
             ]);
@@ -882,7 +1106,7 @@ class ReportServiceSafeMode
     public static function confirmOpening($symbol, $position, $data, $index)
     {
 
-        DB::table('confirmed_trades_safe_mode')->where('coin_name', $symbol)->where('position', $position)->orderBy('update_time', 'DESC')->delete();
+        DB::table('confirmed_trades')->where('coin_name', $symbol)->where('position', $position)->orderBy('update_time', 'DESC')->delete();
         return true;
     }
 
@@ -893,7 +1117,7 @@ class ReportServiceSafeMode
 
 
 
-        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 300, $data[$index]['binance_timestamp'], 'FUTURE');
+        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
         $indexHigher = count($dataHigher) - 2;
 
         if ($position === 'LONG') {
@@ -963,123 +1187,6 @@ class ReportServiceSafeMode
 
             return !(($crossOverCondition && $bbMiddleCondition));
         }
-    }
-
-    public static function getProgressionDetails($formula, $position, $binance_timestamp)
-    {
-
-
-        $rawData = DB::table('coin_reports_safe_mode')
-            ->selectRaw("
-                    JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
-                    symbol,
-                    COUNT(*) as total_trades,
-                    SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as profitable_trades,
-                    SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as loss_trades,
-                    ROUND((SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as accuracy
-                ")
-            ->where('formula', $formula)
-            ->where('position', $position)
-            ->whereNotNull('sellingCandle')
-            ->whereRaw("JSON_EXTRACT(sellingCandle, '$.binance_timestamp') <= ?", [$binance_timestamp])
-            ->groupBy(
-                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp'))"),
-                'symbol'
-            )
-            ->orderBy('buying_timestamp', 'ASC')
-            ->get();
-        $grouped = [];
-
-        foreach ($rawData as $row) {
-            $timestamp = $row->buying_timestamp;
-
-            if (!isset($grouped[$timestamp])) {
-                $grouped[$timestamp] = [
-                    'timestamp' => $timestamp,
-                    'total_profit' => 0,
-                    'total_loss' => 0,
-                    'accuracy' => 0,
-                    'high_accuracy_symbols' => [],
-                ];
-            }
-
-            $grouped[$timestamp]['total_profit'] += $row->profitable_trades;
-            $grouped[$timestamp]['total_loss'] += $row->loss_trades;
-
-            if ($row->accuracy > 90) {
-                $grouped[$timestamp]['high_accuracy_symbols'][] = $row->symbol;
-            }
-        }
-
-        // Now calculate overall accuracy per timestamp
-        foreach ($grouped as &$item) {
-            $totalTrades = $item['total_profit'] + $item['total_loss'];
-            $item['accuracy'] = $totalTrades > 0
-                ? round(($item['total_profit'] / $totalTrades) * 100, 2)
-                : 0;
-        }
-
-
-        return $grouped;
-    }
-
-    public static function parseAccuracy($grouped, $endTime, $hours = null)
-    {
-
-        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
-
-
-        if (!$hours) {
-            $filterHoursStartTime = 0;
-        }
-
-
-        $totalProfits = 0;
-        $totalLosses = 0;
-
-        foreach ($grouped as $timestamp => $data) {
-            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
-                $totalLosses += $data['total_loss'];
-                $totalProfits += $data['total_profit'];
-            }
-        }
-
-
-
-        $totalTrades = $totalProfits + $totalLosses;
-        return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
-    }
-
-    public static function parseStats($grouped, $endTime, $hours = null)
-    {
-
-        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
-
-
-        if (!$hours) {
-            $filterHoursStartTime = 0;
-        }
-
-
-        $totalProfits = 0;
-        $totalLosses = 0;
-
-        foreach ($grouped as $timestamp => $data) {
-            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
-                $totalLosses += $data['total_loss'];
-                $totalProfits += $data['total_profit'];
-            }
-        }
-
-
-
-        $totalTrades = $totalProfits + $totalLosses;
-        return [
-            'accuracy' => $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1,
-            'profitable' => $totalProfits,
-            'losses' => $totalLosses,
-            'total' => $totalTrades,
-        ];
     }
 
     // SR ANALYSIS FUNCTIONS
