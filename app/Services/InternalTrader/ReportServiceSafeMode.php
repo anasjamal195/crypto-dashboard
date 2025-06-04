@@ -1050,6 +1050,37 @@ class ReportServiceSafeMode
         return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
     }
 
+    public static function parseStats($grouped, $endTime, $hours = null)
+    {
+
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+            }
+        }
+
+
+
+        $totalTrades = $totalProfits + $totalLosses;
+        return [
+            'accuracy' => $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1,
+            'profitable' => $totalProfits,
+            'losses' => $totalLosses,
+            'total' => $totalTrades,
+        ];
+    }
 
     // SR ANALYSIS FUNCTIONS
     public static function detectShortEntryWithSR($data, $index, $srAnalysis = null)

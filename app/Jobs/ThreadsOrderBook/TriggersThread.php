@@ -235,10 +235,10 @@ class TriggersThread implements ShouldQueue
                 // }
 
 
-                $accuracyStatus = self::getAccuracy($tradeType);
+                $accuracyStats = self::getAccuracy($tradeType);
 
                 if ($tradeType === 'LONG') {
-                    if ($accuracyStatus < 75) {
+                    if ($accuracyStats['accuracy'] < 75) {
                         CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                         $openTrade = false;
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);
@@ -246,7 +246,7 @@ class TriggersThread implements ShouldQueue
                 }
 
                 if ($tradeType === 'SHORT') {
-                    if ($accuracyStatus < 77) {
+                    if ($accuracyStats['accuracy'] < 77) {
                         CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                         $openTrade = false;
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);

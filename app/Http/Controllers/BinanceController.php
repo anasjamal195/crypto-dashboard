@@ -1080,16 +1080,16 @@ class BinanceController extends Controller
 
         $formula = '';
         $timestampMillis = round(microtime(true) * 1000);
-
-
-
         $formula = 'Safe Mode Base Report';
-
-
         $progressionDetails = ReportServiceSafeMode::getProgressionDetails($formula, $position, $timestampMillis);
-
+        $stats = ReportServiceSafeMode::parseStats($progressionDetails, $timestampMillis, 6);
         return  response()->json([
-            'data' => ReportServiceSafeMode::parseAccuracy($progressionDetails, $timestampMillis, 6),
+            'data' => [
+                'accuracy' => $stats['accuracy'],
+                'profits' => $stats['profitable'],
+                'losses' => $stats['losses'],
+                'total' => $stats['total'],
+            ],
         ]);
     }
 }
