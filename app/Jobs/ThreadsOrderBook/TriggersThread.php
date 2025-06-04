@@ -95,7 +95,7 @@ class TriggersThread implements ShouldQueue
                             // Decrement index to get last completed candle
                             $index--;
 
-                            
+
                             // ==================Decision Block==================
 
 
@@ -580,6 +580,9 @@ class TriggersThread implements ShouldQueue
     {
 
         // return 'LONG';
+        if ($index == -2) {
+            return null;
+        }
         // Long Conditions
         if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
             self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
@@ -620,7 +623,9 @@ class TriggersThread implements ShouldQueue
     public static function handleOpeningConditionsShort($symbol, $data, $index)
     {
 
-
+        if ($index == -2) {
+            return null;
+        }
         $srAnalyzer = new SupportResistanceAnalyzer($data, $index, 100, 2);
         $srAnalysis =  $srAnalyzer->analyze();
 
