@@ -1079,12 +1079,17 @@ class BinanceController extends Controller
         $formula = 'Safe Mode Base Report';
         $progressionDetails = ReportServiceSafeMode::getProgressionDetails($formula, $position, $timestampMillis);
         $stats = ReportServiceSafeMode::parseStats($progressionDetails, $timestampMillis, 6);
+        $lastUpdateTime = DB::table('coin_reports_safe_mode')->where('formula', $formula)->orderBy('created_at', 'DESC')->first();
+
         return  response()->json([
             'data' => [
                 'accuracy' => $stats['accuracy'],
                 'profits' => $stats['profitable'],
                 'losses' => $stats['losses'],
                 'total' => $stats['total'],
+                'lastUpdateTime' => $lastUpdateTime ? Carbon::parse($lastUpdateTime->created_at, 'UTC')
+                    ->setTimezone('Asia/Karachi')
+                    ->format('d M Y h:i A') : null,
             ],
         ]);
     }

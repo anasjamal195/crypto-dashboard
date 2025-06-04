@@ -6,11 +6,11 @@
         $spotWallet = App\Services\BinanceApiService::fetchSpotWalletDetails(auth()->user()->id);
 
         $longAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('LONG');
-        if($longAccuracyDetails['accuracy'] < 0){
+        if ($longAccuracyDetails['accuracy'] < 0) {
             $longAccuracyDetails['accuracy'] = 100;
         }
         $shortAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('SHORT');
-        if($shortAccuracyDetails['accuracy'] < 0){
+        if ($shortAccuracyDetails['accuracy'] < 0) {
             $shortAccuracyDetails['accuracy'] = 100;
         }
         // dd($accuracyDetailsLong,$accuracyDetailsShort);
@@ -311,6 +311,10 @@
                         <i class="tim-icons icon-refresh-01 text-warning"></i>
                         Accuracy Threshold: 75%
                     </div>
+                    <div class="stats">
+                        <i class="tim-icons icon-refresh-01 text-warning"></i>
+                        Last Updated: {{ $longAccuracyDetails['lastUpdateTime'] }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -390,6 +394,10 @@
                     <div class="stats">
                         <i class="tim-icons icon-refresh-01 text-warning"></i>
                         Accuracy Threshold: 77%
+                    </div>
+                    <div class="stats">
+                        <i class="tim-icons icon-refresh-01 text-warning"></i>
+                        Last Updated: {{ $shortAccuracyDetails['lastUpdateTime'] }}
                     </div>
                 </div>
             </div>

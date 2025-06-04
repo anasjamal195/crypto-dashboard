@@ -102,10 +102,7 @@ class ReportServiceSafeMode
 
         $coins = $coinsQuery->json()['data'];
 
-        // Clear Console
-        // system('clear');
-        // $cmd->info('Processing: 0 %');
-
+        self::$coinLimit = count($coins);
         self::addFormulaDetails();
         DB::table('confirmed_trades_safe_mode')->truncate();
 
