@@ -220,6 +220,18 @@
                                         </select>
                                     </div>
 
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label for="safe_mode_view">Show Safe Mode Reports</label>
+                                        <select name="safe_mode_view" id="safe_mode_view" class="form-control select2">
+                                            <option value="">Disable</option>
+                                            <option value="show" {{ request('safe_mode_view') ? 'selected' : '' }}>
+                                                Enable</option>
+                                        </select>
+                                    </div>
+
+
+
                                     <div class="col-md-8 d-flex align-items-end justify-content-end">
                                         <div class="form-group d-flex gap-2">
                                             <button type="submit" class="btn btn-primary btn-round mr-2">Apply</button>

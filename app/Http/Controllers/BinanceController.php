@@ -68,7 +68,8 @@ class BinanceController extends Controller
         $position = $request->input('position');
         $formula = $request->input('formula');
 
-        $tableName = 'coin_reports_safe_mode';
+        $tableName = $request->input('safe_mode_view') ? 'coin_reports_safe_mode' : 'coin_report';
+
         // Return early with default values if no formula provided
         if (!$request->has('formula')) {
             return view('CoinReports.coin-report', [
@@ -521,8 +522,8 @@ class BinanceController extends Controller
             }
         }
 
-        $progressionDetailsLONG = ReportService::getProgressionDetails($formula, 'LONG', $endUnix);
-        $progressionDetailsSHORT = ReportService::getProgressionDetails($formula, 'SHORT', $endUnix);
+        $progressionDetailsLONG = request('safe_mode_view') ? ReportServiceSafeMode::getProgressionDetails($formula, 'LONG', $endUnix) : ReportService::getProgressionDetails($formula, 'LONG', $endUnix);
+        $progressionDetailsSHORT = request('safe_mode_view') ? ReportServiceSafeMode::getProgressionDetails($formula, 'SHORT', $endUnix) : ReportService::getProgressionDetails($formula, 'SHORT', $endUnix);
 
         // Plotting them in current trend data
         foreach ($dataTrendReferenceActual as &$candle) {
@@ -554,8 +555,8 @@ class BinanceController extends Controller
             }
 
 
-            $candle['accuracy_long'] = ReportService::parseAccuracy($progressionDetailsLONG, $candle['binance_timestamp']);
-            $candle['accuracy_short'] = ReportService::parseAccuracy($progressionDetailsSHORT, $candle['binance_timestamp']);
+            $candle['accuracy_long'] = request('safe_mode_view') ? ReportServiceSafeMode::parseAccuracy($progressionDetailsLONG, $candle['binance_timestamp'], 6) : ReportService::parseAccuracy($progressionDetailsLONG, $candle['binance_timestamp'], 6);
+            $candle['accuracy_short'] =  request('safe_mode_view') ? ReportServiceSafeMode::parseAccuracy($progressionDetailsSHORT, $candle['binance_timestamp'], 6) : ReportService::parseAccuracy($progressionDetailsSHORT, $candle['binance_timestamp'], 6);
         }
 
 
