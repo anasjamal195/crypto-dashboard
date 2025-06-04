@@ -157,8 +157,8 @@ class ReportServiceSafeMode
                 $trades = self::processCandles($symbol, $data);
 
                 // Insert trades into the database
-                DB::table('coin_reports')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formula)->where('market', 'FUTURE')->delete();
-                DB::table('coin_reports')->insert($trades);
+                DB::table('coin_reports_safe_mode')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formula)->where('market', 'FUTURE')->delete();
+                DB::table('coin_reports_safe_mode')->insert($trades);
 
 
                 $tradesTotal[$symbol] = $trades;
@@ -699,7 +699,7 @@ class ReportServiceSafeMode
 
 
 
-        $trades = DB::table('coin_reports')
+        $trades = DB::table('coin_reports_safe_mode')
             ->where('formula', $formula)
             ->whereNotNull('sellingCandle')
             ->whereRaw("JSON_EXTRACT(sellingCandle, '$.binance_timestamp') < ?", [$binance_timestamp])
@@ -752,7 +752,7 @@ class ReportServiceSafeMode
 
     public static function getTimestampWiseProfitableTrades($formula, $binance_timestamp)
     {
-        $trades = DB::table('coin_reports')
+        $trades = DB::table('coin_reports_safe_mode')
             ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp, COUNT(*) as trade_count")
             ->where('formula', $formula)
             ->whereNotNull('sellingCandle')
@@ -772,7 +772,7 @@ class ReportServiceSafeMode
     {
 
 
-        $rawData = DB::table('coin_reports')
+        $rawData = DB::table('coin_reports_safe_mode')
             ->selectRaw("
                     JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
                     symbol,
