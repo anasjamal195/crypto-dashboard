@@ -220,7 +220,7 @@
                                         </select>
                                     </div>
 
-                                    
+
                                     <div class="col-md-4 mb-3">
                                         <label for="safe_mode_view">Show Safe Mode Reports</label>
                                         <select name="safe_mode_view" id="safe_mode_view" class="form-control select2">
@@ -404,6 +404,15 @@
                                                     <td>{{ $totalTrades ? round(100 - ($stopLossesTrades / $totalTrades) * 100, 2) : 0 }}
                                                         %</td>
                                                     <td>Success rate of profitable trades </td>
+                                                </tr>
+
+
+                                                <tr>
+                                                    <td class="font-weight-bold">Base Accuracy</td>
+                                                    <td>{{ round($baseAccuracy, 2) }}
+                                                        %</td>
+                                                    <td>Success rate of Base Report from {{ round($baseFrequency, 2) }}
+                                                        trades </td>
                                                 </tr>
 
                                                 {{-- <tr>

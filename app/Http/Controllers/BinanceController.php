@@ -193,6 +193,8 @@ class BinanceController extends Controller
 
 
 
+        
+
         $trendReferenceSymbol = ($formulaConfig && $formulaConfig['trendReferenceSymbol']) ? $formulaConfig['trendReferenceSymbol'] : 'BTCUSDT';
 
         // $trendReferenceInterval = ($formulaConfig && $formulaConfig['trendReferenceInterval']) ? $formulaConfig['trendReferenceInterval'] : '1h';
@@ -566,6 +568,25 @@ class BinanceController extends Controller
 
         // dd($result);
 
+
+        $baseFrequency = 0;
+        $baseAccuracy = 0;
+        if ($formulaConfig && $formulaConfig['isBaseReport'] && $formulaConfig['baseReportFormula']) {
+
+
+            $profits = DB::table($tableName)->where('formula', $formulaConfig['baseReportFormula'])->where('profit', '>', 0)->count();
+            $total = DB::table($tableName)->where('formula', $formulaConfig['baseReportFormula'])->count();
+
+            if ($total) {
+                $baseAccuracy = ($profits / $total) * 100;
+                $baseFrequency = $total;
+            }
+        }
+
+
+
+
+
         // Return the view with consolidated data
         return view('CoinReports.coin-report', [
             'tradeData'          => $tradeData,
@@ -643,6 +664,8 @@ class BinanceController extends Controller
             'dataTrendReferenceActual' => $dataTrendReferenceActual,
             'trendReferenceSymbolActual' => $trendReferenceSymbolActual,
             'trendReferenceIntervalActual' => $interval,
+            'baseAccuracy' => $baseAccuracy,
+            'baseFrequency' => $baseFrequency,
         ]);
     }
     public function getCoinReportDetails($market, Request $request)
