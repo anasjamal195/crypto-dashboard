@@ -16,6 +16,7 @@ use App\Services\TradingGapAnalyzer;
 use Carbon\Carbon;
 use DateTime;
 use DateTimeZone;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -70,8 +71,14 @@ class BinanceController extends Controller
 
         $tableName = $request->input('safe_mode_view') ? 'coin_reports_safe_mode' : 'coin_reports';
 
+
+
+
+
+        $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
+
         // Return early with default values if no formula provided
-        if (!$request->has('formula')) {
+        if (!$request->has('formula') || !$formulaDetails) {
             return view('CoinReports.coin-report', [
                 'tradeData'          => [],
                 'profitableTrades'   => 0,
@@ -90,6 +97,90 @@ class BinanceController extends Controller
                 'liquidatedIntervals' => [],
                 'accuracyThreshold' => 0,
                 'liquidatedMarkets'  => [],
+                'tpLimit' => 0.4,
+
+
+
+            ]);
+
+            return view('CoinReports.coin-report', [
+                'tradeData'          => [],
+                'profitableTrades'   => 0,
+                'profitsTotal'       => 0,
+                'timelineData'       => [],
+                'reportAnalysis'       => [],
+                'tradesAbove1h'      => 0,
+                'tradesAbove1hLoss'  => 0,
+                'tradesAbove1hProfit' => 0,
+                'maxNearbyTrades'    => [],
+                'averageDuration'    => 0,
+                'stopLossesTotal'    => 0,
+                'stopLoss'           => 0,
+                'stopLossesTrades'   => 0,
+                'pageSlug'           => $pageSlug,
+                'interval'           => $interval,
+                'market'             => $market,
+                'liquidatedSymbols'  => [],
+                'liquidatedIntervals' => [],
+                'liquidatedMarkets'  => [],
+                'tpLimit'  => 0.4,
+                'firstTradeAverageTime'  =>  0,
+
+                // RSI Stats
+                'rsiAbove40Profitable' => 0,
+                'rsiAbove40Loss' => 0,
+                'rsiAbove40Total' => 0,
+                'rsiBelow40Profitable' => 0,
+                'rsiBelow40Loss' => 0,
+                'rsiBelow40Total' => 0,
+                'rsiLimit' => 0,
+                'tradesBelowTP' => 0,
+
+                'timelineDataSkipped' => [],
+
+                'bullishOpenings' => 0,
+                'bullishOpeningsProfit' => 0,
+                'bullishOpeningsLoss' => 0,
+                'berishOpenings' => 0,
+                'berishOpeningsProfit' => 0,
+                'berishOpeningsLoss' => 0,
+                'accuracyThreshold' => 0,
+                'accuracyThresholdLow' => 0,
+
+                'instantOpenings' => 0,
+                'instantOpeningsProfit' => 0,
+                'instantOpeningsLoss' => 0,
+                'instantOpeningsSymbols' => [],
+                'instantAverageTime' =>  0,
+                'instantAverageTimeProfit' =>  0,
+                'instantAverageTimeLoss' =>  0,
+
+                'wrProfitable' => 0,
+                'wrLoss' => 0,
+                'wrBelowProfitable' => 0,
+                'wrBelowLoss' => 0,
+                'wrBelowTotal' => 0,
+                'wrLimit' => 0,
+                'wrTotal' => 0,
+
+                'earlyClosedProfitable' => 0,
+                'earlyClosedLoss' => 0,
+                'earlyClosedTotal' => 0,
+
+                // Opened Symbols Stats
+                'openSymbols' => [],
+                'tradeArr' => [],
+
+                // Trend Analysis Data
+                'dataTrendReference' => [],
+                'trendReferenceSymbol' => '',
+                'trendReferenceInterval' => '',
+
+                'dataTrendReferenceActual' => [],
+                'trendReferenceSymbolActual' => '',
+                'trendReferenceIntervalActual' => '',
+                'baseAccuracy' => 0,
+                'baseFrequency' => 0,
             ]);
         }
 
@@ -188,12 +279,9 @@ class BinanceController extends Controller
         $reportAnalysis = !empty($tradeArr) ? CommonHelpers::analyzeTradeReport($tradeArr) : [];
 
         // Trend Analysis Data, Only for back testing
-        $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
-        $formulaConfig = json_decode($formulaDetails->report_config, true);
+        $formulaConfig = $formulaDetails ? json_decode($formulaDetails->report_config, true) : null;
 
 
-
-        
 
         $trendReferenceSymbol = ($formulaConfig && $formulaConfig['trendReferenceSymbol']) ? $formulaConfig['trendReferenceSymbol'] : 'BTCUSDT';
 
@@ -219,12 +307,6 @@ class BinanceController extends Controller
 
 
         $dataTrendReference = BinanceApiService::getCandleStickData($trendReferenceSymbol, $trendReferenceInterval, $candleCount, $startUnix, 'FUTURE');
-
-
-
-
-
-
 
 
         // Trend reference settings for actual interval
@@ -273,7 +355,7 @@ class BinanceController extends Controller
 
 
 
-        $startingTimestamp = $formulaConfig['startUnix'];
+        $startingTimestamp = $startUnix;
         $firstTradeTimestamp = !empty($tradeArr) ? json_decode($tradeArr[0]['buyingCandle'], true)['binance_timestamp'] : time() * 1000;
         $firstTradeAverageTime = ($firstTradeTimestamp - $startingTimestamp) / (1000 * 60);
 
@@ -571,7 +653,7 @@ class BinanceController extends Controller
 
         $baseFrequency = 0;
         $baseAccuracy = 0;
-        if ($formulaConfig && $formulaConfig['isBaseReport'] && $formulaConfig['baseReportFormula']) {
+        if ($formulaConfig && isset($formulaConfig['isBaseReport']) && isset($formulaConfig['baseReportFormula'])) {
 
 
             $profits = DB::table($tableName)->where('formula', $formulaConfig['baseReportFormula'])->where('profit', '>', 0)->count();
