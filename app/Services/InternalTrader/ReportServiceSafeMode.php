@@ -25,8 +25,8 @@ class ReportServiceSafeMode
     public static $supportResistanceCandleSpan = 12;
 
     public static $interval = '5m';
-    public static $targetProfit = 0.4;
-    public static $stopLoss = 1;
+    public static $targetProfit = 1;
+    public static $stopLoss = 0.8;
     public static $stopLossWaitingDuration = 0;
     public static $longEnabled = true;
     public static $shortEnabled = true;
@@ -521,7 +521,7 @@ class ReportServiceSafeMode
             if (!self::$isBaseReport) {
                 $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONG, $data[$index]['binance_timestamp'], 6);
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 75) {
+                    if ($currentAccuracy < 73) {
                         return null;
                     }
                 }
@@ -544,12 +544,12 @@ class ReportServiceSafeMode
 
                 if ($buyCondition) {
                     self::confirmOpening($symbol, 'LONG', $data, $index);
-                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
-                    if ($allowOnHigherTrend) {
-                        return 'LONG';
-                    } else {
-                        $skippingReasons[10] = '1h-candle trend rejected';
-                    }
+                    // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+                    // if ($allowOnHigherTrend) {
+                    return 'LONG';
+                    // } else {
+                    //     $skippingReasons[10] = '1h-candle trend rejected';
+                    // }
                 }
             }
         }
@@ -571,7 +571,7 @@ class ReportServiceSafeMode
             if (!self::$isBaseReport) {
                 $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORT, $data[$index]['binance_timestamp'], 6);
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 77) {
+                    if ($currentAccuracy < 75) {
                         return null;
                     }
                 }
@@ -1242,7 +1242,7 @@ class ReportServiceSafeMode
 
         // === RETURN SIGNAL ===
 
-        if ($data[$index]['rsi6'] <= 70 && $data[$index - 1]['rsi6'] >= 70 && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] &&  $nearResistance && $srScore >= 70) {
+        if ($data[$index]['rsi6'] <= 65 && $data[$index - 1]['rsi6'] >= 65 && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] &&  $nearResistance && $srScore >= 70) {
             return 'SHORT';
         }
         return null;
@@ -1284,6 +1284,7 @@ class ReportServiceSafeMode
                 ]
             ];
         }
+
         return null;
     }
 }

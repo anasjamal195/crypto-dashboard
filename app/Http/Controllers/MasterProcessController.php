@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\CommonHelpers;
+use App\Jobs\ThreadsOrderBook\TriggersThread;
 use App\Models\User;
 use App\Services\BinanceApiService;
 use Illuminate\Http\Request;
@@ -61,6 +62,7 @@ class MasterProcessController extends Controller
             'FETCH_LIVE_TRADES_FUTURE',
             'CLOSE_LIVE_TRADE',
             'SYNC_USERS',
+            'RESTART_WORKER'
         ];
 
         // Prepare errors array
@@ -94,6 +96,9 @@ class MasterProcessController extends Controller
             case 'SYNC_USERS':
                 $data = $this->syncUsers();
                 return $this->jsonResponse($data, 'Live trades closed successfully', 200, true);
+            case 'RESTART_WORKER':
+                $data = $this->restartWorker();
+                return $this->jsonResponse($data, 'Worker Restarted successfully', 200, true);
 
             default:
                 return $this->jsonResponse(null, 'Action not found', 404, false);
@@ -151,6 +156,17 @@ class MasterProcessController extends Controller
     }
 
 
+    protected function restartWorker()
+    {
+        // Safely Closing Live trades that are active
+        $workerId = request('workerId');
+        $email = request('email');
+
+        $userId = User::where('email', $email)->first()->id;
+        TriggersThread::dispatch($workerId, $userId);
+        return true;
+    }
+
     protected function syncUsers()
     {
         $users = User::where('is_active', true)->where('role', 'trader')->get();
@@ -195,6 +211,4 @@ class MasterProcessController extends Controller
             return redirect()->back()->withErrors('Failed to sync domain: ' . $e->getMessage());
         }
     }
-
-
 }

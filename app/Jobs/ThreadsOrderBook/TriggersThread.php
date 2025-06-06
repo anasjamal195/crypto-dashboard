@@ -36,17 +36,17 @@ class TriggersThread implements ShouldQueue
     public $triggerIndex = 0;
     public $workerId;
     public $account;
-
+    public $openOrderIdRestarted;
 
 
     // Meta data
-    public $stopLoss = 1;
+    public $stopLoss = 0.8;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.4;
+    public $targetProfit = 1;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
-    public $formula = 'RSI Swings';
+    public $formula = 'Accuracy Filteration';
 
     // Confirmed Trades Entries
 
@@ -59,205 +59,236 @@ class TriggersThread implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($workerId, $account)
+    public function __construct($workerId, $account, $openOrderIdRestarted = null)
     {
         $this->workerId = $workerId;
         $this->account = $account;
+        $this->openOrderIdRestarted = $openOrderIdRestarted;
     }
 
     public function handle(): void
     {
         while (true) {
+
+
+
+
             CommonHelpers::updateWorkerTicker($this->workerId);
 
+
+            // Check if any trade is open while worker was restarted
+
+
             try {
-                $tradeToOpen = null;
-                $tradeType = null;
-                // Main Loop to process coins list
-                while (true) {
-                    CommonHelpers::updateWorkerTicker($this->workerId);
 
-                    $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->get();
 
-                    foreach ($worker_symbols as $worker_symbol) {
+                if (!$this->openOrderIdRestarted) {
+
+
+                    $tradeToOpen = null;
+                    $tradeType = null;
+                    // Main Loop to process coins list
+                    while (true) {
                         CommonHelpers::updateWorkerTicker($this->workerId);
 
+                        $worker_symbols = DB::table('worker_symbols')->where('worker_id', $this->workerId)->get();
 
-                        try {
-                            $symbol = $worker_symbol->symbol;
-                            $tradeInstance = new stdClass;
-                            $trade_acc = $this->account;
-                            // Log::info("Test Request Params" . self::$interval);
-
-                            $data = BinanceApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
-
-                            $index = count($data) - 1;
-                            // Decrement index to get last completed candle
-                            $index--;
+                        foreach ($worker_symbols as $worker_symbol) {
+                            CommonHelpers::updateWorkerTicker($this->workerId);
 
 
-                            // ==================Decision Block==================
+                            try {
+                                $symbol = $worker_symbol->symbol;
+                                $tradeInstance = new stdClass;
+                                $trade_acc = $this->account;
+                                // Log::info("Test Request Params" . self::$interval);
+
+                                $data = BinanceApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
+
+                                $index = count($data) - 1;
+                                // Decrement index to get last completed candle
+                                $index--;
 
 
-                            $buyLongCondition = self::handleOpeningConditionsLong($symbol, $data, $index);
-
-                            $sellShortCondition = self::handleOpeningConditionsShort($symbol, $data, $index);
+                                // ==================Decision Block==================
 
 
+                                $buyLongCondition = self::handleOpeningConditionsLong($symbol, $data, $index);
 
-                            // This block checks which weather to open trades or not
-                            if (
-                                ($buyLongCondition && $sellShortCondition)
-                                ||
-                                (!$buyLongCondition && !$sellShortCondition)
-                            ) {
-                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                                continue;
-                            } else if ($buyLongCondition) {
-                                $tradeType = 'LONG';
-                            } else if ($sellShortCondition) {
-                                $tradeType = 'SHORT';
-                            }
-
-                            Log::info("Conditions Met " . $symbol);
-
-                            // ========================================================================
+                                $sellShortCondition = self::handleOpeningConditionsShort($symbol, $data, $index);
 
 
 
+                                // This block checks which weather to open trades or not
+                                if (
+                                    ($buyLongCondition && $sellShortCondition)
+                                    ||
+                                    (!$buyLongCondition && !$sellShortCondition)
+                                ) {
+                                    CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                    continue;
+                                } else if ($buyLongCondition) {
+                                    $tradeType = 'LONG';
+                                } else if ($sellShortCondition) {
+                                    $tradeType = 'SHORT';
+                                }
 
-                            // ===========Initiate Open Trade Process==================================
-                            $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType, self::$interval);
+                                Log::info("Conditions Met " . $symbol);
 
-                            if (!$tradeInstance) {
+                                // ========================================================================
+
+
+
+
+                                // ===========Initiate Open Trade Process==================================
+                                $tradeInstance = CommonHelpers::getTradeHandler($symbol, $this->account, $tradeType, self::$interval);
+
+                                if (!$tradeInstance) {
+                                    break;
+                                }
+                                Log::info("Trade instance found " . $symbol);
+
+                                CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
+                                $tradeToOpen =  $tradeInstance;
+                                Log::info("Opening Confirmed in main loop, breaking to open... " . $symbol);
+
                                 break;
+                            } catch (\Exception $e) {
+                                Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
+                                Log::error($e->getTraceAsString());
                             }
-                            Log::info("Trade instance found " . $symbol);
 
-                            CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
-                            $tradeToOpen =  $tradeInstance;
-                            Log::info("Opening Confirmed in main loop, breaking to open... " . $symbol);
+                            // Worker Tickers
 
-                            break;
-                        } catch (\Exception $e) {
-                            Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
-                            Log::error($e->getTraceAsString());
+
+                            sleep(2);
                         }
 
-                        // Worker Tickers
 
-
-                        sleep(2);
+                        // If an opening trade found than break the parent loop
+                        if ($tradeToOpen)
+                            break;
                     }
 
 
-                    // If an opening trade found than break the parent loop
-                    if ($tradeToOpen)
-                        break;
+
+
+
+                    // Here we can add functionality to process trade that meets triggers
+
+                    $openTrade = true;
+                    $trade_acc = $tradeToOpen->tradeAccount;
+                    $symbol = $tradeToOpen->symbol;
+                    $tradeInstance = $tradeToOpen;
+
+
+                    // Fixed wait after each trade (Skipped for now)
+                    // $lastOrderClose = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
+                    // if ($lastOrderClose) {
+                    //     $lastOrderClose = $lastOrderClose->created_at;
+                    //     $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
+                    //     if ($timeDiff < 20) {
+                    //         $openTrade = false;
+                    //         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipped due to last order close time: ' . $symbol);
+                    //     }
+                    // }
+
+
+                    if (!$this->openOrderIdRestarted) {
+
+                        $currentOpenOrders = 0;
+
+                        if (self::$isSpot && $tradeType === 'LONG')
+                            $currentOpenOrders = DB::table('live_trades_spot_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
+                        else
+                            $currentOpenOrders = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
+
+                        // Condition to limit open orders for a symbol in long or short
+                        if ($currentOpenOrders >= 1) {
+                            $openTrade = false;
+                        }
+
+                        Log::info("No open orders found, progressing to open... " . $symbol);
+
+                        // Check candle closing 
+                        // $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
+
+                        // if (!$isCandleClosing) {
+
+                        //     Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to candle closing: ' . $symbol);
+
+                        //     $openTrade = false;
+                        // }
+
+                        self::$isSpot = CommonHelpers::getMetaValue($this->account, 'enable_spot', 0);
+                        if (!self::$isSpot) {
+
+                            if ($tradeType === 'LONG' && !CommonHelpers::getMetaValue($this->account, 'enable_long_multithread', 0)) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                $openTrade = false;
+                                Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to LONG Disabled: ' . $symbol);
+                            }
+
+                            if ($tradeType === 'SHORT' && !CommonHelpers::getMetaValue($this->account, 'enable_short_multithread', 0)) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                $openTrade = false;
+                                Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SHORT Disabled: ' . $symbol);
+                            }
+                        } else {
+
+                            if ($tradeType === 'SHORT') {
+                                $openTrade = false;
+                            }
+
+                            Log::info("Opening on spot... " . $symbol);
+                        }
+
+
+                        // Check Safe Mode Enabled
+
+                        // $safeModeStatus = self::getSafeModeStatus($symbol, $tradeType);
+
+                        // if ($safeModeStatus) {
+                        //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                        //     $openTrade = false;
+                        //     Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode Disabled: ' . $symbol);
+                        // }
+
+
+                        $accuracyStats = self::getAccuracy($tradeType);
+
+                        if ($tradeType === 'LONG') {
+                            if ($accuracyStats['accuracy'] < 75) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                $openTrade = false;
+                                Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);
+                            }
+                        }
+
+                        if ($tradeType === 'SHORT') {
+                            if ($accuracyStats['accuracy'] < 77) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                $openTrade = false;
+                                Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);
+                            }
+                        }
+                    }
                 }
 
 
 
-                // Here we can add functionality to process trade that meets triggers
-
-                $openTrade = true;
-                $trade_acc = $tradeToOpen->tradeAccount;
-                $symbol = $tradeToOpen->symbol;
-                $tradeInstance = $tradeToOpen;
 
 
-                // Fixed wait after each trade (Skipped for now)
-                // $lastOrderClose = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
-                // if ($lastOrderClose) {
-                //     $lastOrderClose = $lastOrderClose->created_at;
-                //     $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
-                //     if ($timeDiff < 20) {
-                //         $openTrade = false;
-                //         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipped due to last order close time: ' . $symbol);
-                //     }
-                // }
-                $currentOpenOrders = 0;
 
-                if (self::$isSpot && $tradeType === 'LONG')
-                    $currentOpenOrders = DB::table('live_trades_spot_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
-                else
-                    $currentOpenOrders = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->count();
-
-                // Condition to limit open orders for a symbol in long or short
-                if ($currentOpenOrders >= 1) {
-                    $openTrade = false;
-                }
-
-                Log::info("No open orders found, progressing to open... " . $symbol);
-
-                // Check candle closing 
-                // $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 40;
-
-                // if (!$isCandleClosing) {
-
-                //     Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to candle closing: ' . $symbol);
-
-                //     $openTrade = false;
-                // }
-
-                self::$isSpot = CommonHelpers::getMetaValue($this->account, 'enable_spot', 0);
-                if (!self::$isSpot) {
-
-                    if ($tradeType === 'LONG' && !CommonHelpers::getMetaValue($this->account, 'enable_long_multithread', 0)) {
-                        CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                        $openTrade = false;
-                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to LONG Disabled: ' . $symbol);
-                    }
-
-                    if ($tradeType === 'SHORT' && !CommonHelpers::getMetaValue($this->account, 'enable_short_multithread', 0)) {
-                        CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                        $openTrade = false;
-                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SHORT Disabled: ' . $symbol);
-                    }
-                } else {
-
-                    if ($tradeType === 'SHORT') {
-                        $openTrade = false;
-                    }
-
-                    Log::info("Opening on spot... " . $symbol);
-                }
-
-
-                // Check Safe Mode Enabled
-
-                // $safeModeStatus = self::getSafeModeStatus($symbol, $tradeType);
-
-                // if ($safeModeStatus) {
-                //     CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                //     $openTrade = false;
-                //     Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode Disabled: ' . $symbol);
-                // }
-
-
-                $accuracyStats = self::getAccuracy($tradeType);
-
-                if ($tradeType === 'LONG') {
-                    if ($accuracyStats['accuracy'] < 75) {
-                        CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                        $openTrade = false;
-                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);
-                    }
-                }
-
-                if ($tradeType === 'SHORT') {
-                    if ($accuracyStats['accuracy'] < 77) {
-                        CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                        $openTrade = false;
-                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);
-                    }
-                }
-
-
-                if ($openTrade) {
+                if ($openTrade || $this->openOrderIdRestarted) {
 
                     // Handle if current market is SPOT
 
+                    if ($this->openOrderIdRestarted) {
+
+                        $lastOpenOrder = DB::table('live_trades_future_results')->where('orderId', $this->openOrderIdRestarted)->first();
+                        $tradeInstance = CommonHelpers::getTradeHandler($lastOpenOrder->symbol, $this->account, $lastOpenOrder->position, self::$interval);
+                    }
                     $open_order = null;
 
                     if (self::$isSpot && $tradeType === 'LONG')
@@ -265,25 +296,31 @@ class TriggersThread implements ShouldQueue
                     else
                         $open_order = CommonHelpers::checkOpenOrder($symbol, $tradeInstance->position, 'FUTURE', $trade_acc);
 
-                    if (!(isset($open_order['is_open']) && $open_order['is_open'])) {
-                        $supportResistanceArr = [
-                            'support' => 1,
-                            'resistance' => 1,
-                        ];
-                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Opening Position: ' . $symbol);
 
-                        try {
-                            if (self::$isSpot && $tradeType === 'LONG')
-                                BinanceApiService::placeBuyOrderSpot($tradeInstance->symbol, $tradeInstance->buyPrice,  'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
-                            else
-                                BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
-                        } catch (\Throwable $th) {
-                            CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
-                            Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $th);
-                            Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipping Opening Position due to error: ' . $symbol);
-                            continue;
+
+
+                    if (!(isset($open_order['is_open']) && $open_order['is_open'])  || $this->openOrderIdRestarted) {
+
+
+                        if (!$this->openOrderIdRestarted) {
+                            $supportResistanceArr = [
+                                'support' => 1,
+                                'resistance' => 1,
+                            ];
+                            Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Opening Position: ' . $symbol);
+
+                            try {
+                                if (self::$isSpot && $tradeType === 'LONG')
+                                    BinanceApiService::placeBuyOrderSpot($tradeInstance->symbol, $tradeInstance->buyPrice,  'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
+                                else
+                                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
+                            } catch (\Throwable $th) {
+                                CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $th);
+                                Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipping Opening Position due to error: ' . $symbol);
+                                continue;
+                            }
                         }
-
                         $tradeLoop = true;
                         // Proceed trade until the position is closed
                         while ($tradeLoop) {
@@ -324,6 +361,7 @@ class TriggersThread implements ShouldQueue
 
                         // Trade Completion, Remove and free this coin from this worker and prepare for next iteration
                         CommonHelpers::workerFreeAllSymbols($this->workerId, $this->account);
+                        $this->openOrderIdRestarted = null;
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Trade Successfully Closed: ' . $symbol);
                     }
                 } else {
@@ -599,22 +637,16 @@ class TriggersThread implements ShouldQueue
                 && !$bbAnalysis['bb_squeeze']
                 && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
 
-
-
             if ($buyCondition) {
                 self::confirmOpening($symbol, 'LONG', $data, $index);
-                Log::info("Going to open long on " . $symbol);
-
-                $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
-
-                if ($allowOnHigherTrend) {
-                    return 'LONG';
-                } else {
-                    Log::info("Refused long due to 1h-trend on " . $symbol);
-                }
+                // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+                // if ($allowOnHigherTrend) {
+                return 'LONG';
+                // } else {
+                //     $skippingReasons[10] = '1h-candle trend rejected';
+                // }
             }
         }
-
 
         // No conditions met so return null
         return null;
@@ -634,6 +666,7 @@ class TriggersThread implements ShouldQueue
         if (!$signal) {
             return null;
         }
+
         Log::info("Going to open short on " . $symbol);
 
 
@@ -1144,7 +1177,7 @@ class TriggersThread implements ShouldQueue
 
         // === RETURN SIGNAL ===
 
-        if ($data[$index]['rsi6'] <= 70 && $data[$index - 1]['rsi6'] >= 70 && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] &&  $nearResistance && $srScore >= 70) {
+        if ($data[$index]['rsi6'] <= 65 && $data[$index - 1]['rsi6'] >= 65 && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] &&  $nearResistance && $srScore >= 70) {
             return 'SHORT';
         }
         return null;

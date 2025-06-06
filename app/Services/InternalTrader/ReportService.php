@@ -24,8 +24,8 @@ class ReportService
     public static $supportResistanceCandleSpan = 12;
 
     public static $interval = '5m';
-    public static $targetProfit = 0.4;
-    public static $stopLoss = 1;
+    public static $targetProfit = 1;
+    public static $stopLoss = 0.8;
     public static $stopLossWaitingDuration = 0;
     public static $longEnabled = true;
     public static $shortEnabled = true;
@@ -39,7 +39,7 @@ class ReportService
     public static $coinLimit = 0; // Use 0 for all coins
     public static $shuffleCoins = false;
 
-    public static $filterOnCoinType = false;
+    public static $filterOnCoinType = true;
     public static $coinTypeMetaverse = true;
     public static $coinTypeAlt = true;
     public static $coinTypeMeme = false;
@@ -48,9 +48,7 @@ class ReportService
     public static $coinTypeWeb3 = false;
 
 
-
     // Confirmed Trades table settings
-
     public static $candlesToCheck = 1000;
     public static $volumeMA5ValidFor = 1000;
     public static $upperWickValidFor = 1000;
@@ -594,9 +592,9 @@ class ReportService
             $skippingReasons = [];
 
             if (!self::$isBaseReport) {
-                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONG, $data[$index]['binance_timestamp']);
+                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONG, $data[$index]['binance_timestamp'], 6);
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 75) {
+                    if ($currentAccuracy < 73) {
                         return null;
                     }
                 }
@@ -619,12 +617,12 @@ class ReportService
 
                 if ($buyCondition) {
                     self::confirmOpening($symbol, 'LONG', $data, $index);
-                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
-                    if ($allowOnHigherTrend) {
-                        return 'LONG';
-                    } else {
-                        $skippingReasons[10] = '1h-candle trend rejected';
-                    }
+                    // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+                    // if ($allowOnHigherTrend) {
+                    return 'LONG';
+                    // } else {
+                    //     $skippingReasons[10] = '1h-candle trend rejected';
+                    // }
                 }
             }
         }
@@ -644,9 +642,9 @@ class ReportService
 
 
             if (!self::$isBaseReport) {
-                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORT, $data[$index]['binance_timestamp']);
+                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORT, $data[$index]['binance_timestamp'], 6);
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 77) {
+                    if ($currentAccuracy < 75) {
                         return null;
                     }
                 }
@@ -1352,7 +1350,7 @@ class ReportService
 
         // === RETURN SIGNAL ===
 
-        if ($data[$index]['rsi6'] <= 70 && $data[$index - 1]['rsi6'] >= 70 && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] &&  $nearResistance && $srScore >= 70) {
+        if ($data[$index]['rsi6'] <= 65 && $data[$index - 1]['rsi6'] >= 65 && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] &&  $nearResistance && $srScore >= 70) {
             return 'SHORT';
         }
         return null;

@@ -2629,6 +2629,17 @@ class CommonHelpers
                     return true;
                 }
             }
+
+
+            // Attempt a restart action
+            $data = [
+                'action' => 'RESTART_WORKER',
+                'email' => $account->email,
+                'openOrderId' => $trade->orderId,
+                'workerId' => $trade->worker_id,
+            ];
+
+            $response = Http::post($url, $data);
         }
     }
 
