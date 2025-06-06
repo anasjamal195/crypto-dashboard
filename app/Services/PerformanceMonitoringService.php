@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use phpseclib3\Net\SSH2;
 use Exception;
 
 class PerformanceMonitoringService
@@ -372,19 +373,18 @@ class PerformanceMonitoringService
      */
     private function connect()
     {
-        if ($this->connection && is_resource($this->connection)) {
+        if ($this->connection && $this->connection->isConnected()) {
             return;
         }
 
-        $this->connection = ssh2_connect($this->host, $this->port);
+        $this->connection = new SSH2($this->host, $this->port);
         
-        if (!$this->connection) {
-            throw new Exception("Cannot connect to {$this->host}:{$this->port}");
-        }
-
-        if (!ssh2_auth_password($this->connection, $this->username, $this->password)) {
+        if (!$this->connection->login($this->username, $this->password)) {
             throw new Exception("Authentication failed for {$this->username}@{$this->host}");
         }
+
+        // Set timeout for commands
+        $this->connection->setTimeout(30);
     }
 
     /**
@@ -392,19 +392,15 @@ class PerformanceMonitoringService
      */
     private function executeCommand($command)
     {
-        if (!$this->connection) {
+        if (!$this->connection || !$this->connection->isConnected()) {
             throw new Exception("No SSH connection available");
         }
 
-        $stream = ssh2_exec($this->connection, $command);
+        $output = $this->connection->exec($command);
         
-        if (!$stream) {
+        if ($output === false) {
             throw new Exception("Failed to execute command: {$command}");
         }
-
-        stream_set_blocking($stream, true);
-        $output = stream_get_contents($stream);
-        fclose($stream);
 
         return $output;
     }
@@ -414,8 +410,8 @@ class PerformanceMonitoringService
      */
     private function disconnect()
     {
-        if ($this->connection && is_resource($this->connection)) {
-            ssh2_disconnect($this->connection);
+        if ($this->connection && $this->connection->isConnected()) {
+            $this->connection->disconnect();
             $this->connection = null;
         }
     }
