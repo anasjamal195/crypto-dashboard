@@ -76,7 +76,7 @@ class ProcessController extends Controller
             // Dispatch All threads
             Artisan::call('queue:flush');
             foreach ($threads as $workerId) {
-                TriggersThread::dispatch($workerId, auth()->user()->id);
+                TriggersThread::dispatch($workerId, auth()->user()->id, null);
             }
             return redirect()->back()->withSuccess('Action ' . 'Multithread Started');
         } catch (\Throwable $th) {

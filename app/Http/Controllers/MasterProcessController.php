@@ -161,9 +161,10 @@ class MasterProcessController extends Controller
         // Safely Closing Live trades that are active
         $workerId = request('workerId');
         $email = request('email');
+        $openOrderId = request('openOrderId');
 
         $userId = User::where('email', $email)->first()->id;
-        TriggersThread::dispatch($workerId, $userId);
+        TriggersThread::dispatch($workerId, $userId, $openOrderId);
         return true;
     }
 
