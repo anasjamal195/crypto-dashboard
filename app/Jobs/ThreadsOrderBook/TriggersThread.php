@@ -43,7 +43,7 @@ class TriggersThread implements ShouldQueue
     public $stopLoss = 0.8;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 1;
+    public $targetProfit = 0.8;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
     public $formula = 'Accuracy Filteration';
