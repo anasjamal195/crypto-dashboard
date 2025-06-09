@@ -58,11 +58,6 @@ class ManageProcesses extends Command
             }
 
 
-
-
-            
-
-
             $accounts = DB::table('users')->where('is_active', true)->where('role', 'trader')->where('domain_name', '!=', 'egeniuscare.shop')->get();
 
             foreach ($accounts as $account) {
