@@ -309,7 +309,7 @@
                 <div class="card-footer">
                     <div class="stats">
                         <i class="tim-icons icon-refresh-01 text-warning"></i>
-                        Accuracy Threshold: 75%
+                        Accuracy Threshold: 73%
                     </div>
                     <div class="stats">
                         <i class="tim-icons icon-time-alarm text-info"></i>
@@ -393,7 +393,7 @@
                 <div class="card-footer">
                     <div class="stats">
                         <i class="tim-icons icon-refresh-01 text-warning"></i>
-                        Accuracy Threshold: 77%
+                        Accuracy Threshold: 73%
                     </div>
                     <div class="stats">
                         <i class="tim-icons icon-time-alarm text-info"></i>
