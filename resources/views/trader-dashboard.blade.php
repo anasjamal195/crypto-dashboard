@@ -4,12 +4,12 @@
         $accountTradeDetails = DB::table('account_trade_details')->latest()->get();
         $futureWallet = App\Services\BinanceApiService::fetchFutureWalletDetails(auth()->user()->id);
         $spotWallet = App\Services\BinanceApiService::fetchSpotWalletDetails(auth()->user()->id);
-
-        $longAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('LONG');
+        $safeModeAccuracyFormula = 'Safe Mode Base Macd Swings Report';
+        $longAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('LONG',$safeModeAccuracyFormula);
         if ($longAccuracyDetails['accuracy'] < 0) {
             $longAccuracyDetails['accuracy'] = 100;
         }
-        $shortAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('SHORT');
+        $shortAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('SHORT',$safeModeAccuracyFormula);
         if ($shortAccuracyDetails['accuracy'] < 0) {
             $shortAccuracyDetails['accuracy'] = 100;
         }

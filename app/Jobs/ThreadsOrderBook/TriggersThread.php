@@ -29,7 +29,7 @@ class TriggersThread implements ShouldQueue
     public $timeout = 360000000;
     public $tradeInstance;
     public $supportResistanceCandleSpan = 3;
-    public static $interval = '5m';
+    public static $interval = '15m';
     public static $isSpot;
     public $supportResistance;
     public $triggerPrice = 0;
@@ -46,7 +46,7 @@ class TriggersThread implements ShouldQueue
     public $targetProfit = 1;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
-    public $formula = 'Accuracy Filteration';
+    public $formula = 'MACD Swings with accuracy filteration (15m)';
 
     // Confirmed Trades Entries
 
@@ -72,7 +72,6 @@ class TriggersThread implements ShouldQueue
             CommonHelpers::updateWorkerTicker($this->workerId);
             // Handle restarted worker
             $this->manageRestartedWorker($this->openOrderIdRestarted);
-
 
             // Check if any trade is open while worker was restarted
             try {
@@ -232,12 +231,11 @@ class TriggersThread implements ShouldQueue
                 }
 
 
-
-
-                $accuracyStats = self::getAccuracy($tradeType);
+                $safeModeFormula = 'Safe Mode Base Macd Swings Report';
+                $accuracyStats = self::getAccuracy($tradeType, $safeModeFormula);
 
                 if ($tradeType === 'LONG') {
-                    if ($accuracyStats['accuracy'] < 75) {
+                    if ($accuracyStats['accuracy'] < 73) {
                         CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                         $openTrade = false;
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);
@@ -245,7 +243,7 @@ class TriggersThread implements ShouldQueue
                 }
 
                 if ($tradeType === 'SHORT') {
-                    if ($accuracyStats['accuracy'] < 77) {
+                    if ($accuracyStats['accuracy'] < 73) {
                         CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                         $openTrade = false;
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to SAFE Mode low accuracy: ' . $symbol);
@@ -645,37 +643,39 @@ class TriggersThread implements ShouldQueue
 
     public static function handleOpeningConditionsLong($symbol, $data, $index)
     {
-        // return 'LONG';
         if ($index == -2) {
             return null;
         }
         // Long Conditions
-        if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+        if (
+            $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0
+
+            && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0
+            && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0
+            && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0
+            && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)
+
+        ) {
             self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
         }
 
         if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
 
             $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-            $buyCondition = $data[$index]['close'] > $data[$index]['bb_lower']
-                && $data[$index]['open'] < $data[$index]['bb_lower']
-                && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
-                && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
-                && $bbAnalysis['price_action']['is_near_lower_band']
-                && !$bbAnalysis['bb_squeeze']
-                && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
+            $openCondition =
+                (
+                    $data[$index]['rsi6'] < 30
+                    && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+                    && $bbAnalysis['price_action']['is_near_lower_band']
+                    && $data[$index]['close'] > $data[$index]['bb_lower']
+                    && $data[$index]['open'] < $data[$index]['bb_lower']
+                );
 
-            if ($buyCondition) {
+            if ($openCondition) {
                 self::confirmOpening($symbol, 'LONG', $data, $index);
-                // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
-                // if ($allowOnHigherTrend) {
                 return 'LONG';
-                // } else {
-                //     $skippingReasons[10] = '1h-candle trend rejected';
-                // }
             }
         }
-
         // No conditions met so return null
         return null;
     }
@@ -686,23 +686,37 @@ class TriggersThread implements ShouldQueue
         if ($index == -2) {
             return null;
         }
-        $srAnalyzer = new SupportResistanceAnalyzer($data, $index, 100, 2);
-        $srAnalysis =  $srAnalyzer->analyze();
+        if (
+            $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0
+            && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0
+            && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0
+            && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0
+            && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)
 
-        $signal = self::detectShortEntryWithSR($data, $index, $srAnalysis);
-
-        if (!$signal) {
-            return null;
+        ) {
+            self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
         }
 
-        Log::info("Going to open short on " . $symbol);
+        if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
 
+            $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+            $openCondition =
+                (
+                    $data[$index]['rsi6'] > 70
+                    && $data[$index]['rsi6'] < $data[$index - 1]['rsi6']
+                    && $bbAnalysis['price_action']['is_near_upper_band']
+                    && $data[$index]['close'] < $data[$index]['bb_upper']
+                    && $data[$index]['open'] > $data[$index]['bb_upper']
+                );
 
+            if ($openCondition) {
+                self::confirmOpening($symbol, 'SHORT', $data, $index);
 
+                return 'SHORT';
+            }
+        }
 
-
-
-        return 'SHORT';
+        return null;
     }
 
 
@@ -1258,10 +1272,9 @@ class TriggersThread implements ShouldQueue
         return $status;
     }
 
-    public static function getAccuracy($position)
+    public static function getAccuracy($position, $formula = 'Safe Mode Base Report')
     {
-        $safeModeStatus = Http::get("https://reachoutfans.com/csrf-free/safe-mode-accuracy/" . $position);
-
+        $safeModeStatus = Http::get("https://reachoutfans.com/csrf-free/safe-mode-accuracy/" . $position . '/' . $formula);
         $status = $safeModeStatus->json()['data'];
         return $status;
     }

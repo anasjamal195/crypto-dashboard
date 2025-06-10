@@ -1176,12 +1176,10 @@ class BinanceController extends Controller
         ]);
     }
 
-    public function getSafeModeAccuracy($position)
+    public function getSafeModeAccuracy($position,$formula)
     {
 
-        $formula = '';
         $timestampMillis = round(microtime(true) * 1000);
-        $formula = 'Safe Mode Base Report';
         $progressionDetails = ReportServiceSafeMode::getProgressionDetails($formula, $position, $timestampMillis);
         $stats = ReportServiceSafeMode::parseStats($progressionDetails, $timestampMillis, 6);
         $lastUpdateTime = DB::table('coin_reports_safe_mode')->where('formula', $formula)->orderBy('created_at', 'DESC')->first();
