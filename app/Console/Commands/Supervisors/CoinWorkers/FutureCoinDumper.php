@@ -38,7 +38,7 @@ class FutureCoinDumper extends Command
 
     // For trade handler table
     public static $interval;
-    public static $leverage = 3;
+    public static $leverage = 1;
     public static $openPrice;
     public static $user_id = 2;
     public static $tp = 0.5;

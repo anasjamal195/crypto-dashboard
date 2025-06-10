@@ -69,25 +69,13 @@ class TriggersThread implements ShouldQueue
     public function handle(): void
     {
         while (true) {
-
-
-
-
             CommonHelpers::updateWorkerTicker($this->workerId);
-
-
             // Handle restarted worker
             $this->manageRestartedWorker($this->openOrderIdRestarted);
 
 
-
             // Check if any trade is open while worker was restarted
-
-
             try {
-
-
-
 
 
                 $tradeToOpen = null;
@@ -101,7 +89,6 @@ class TriggersThread implements ShouldQueue
                     foreach ($worker_symbols as $worker_symbol) {
                         CommonHelpers::updateWorkerTicker($this->workerId);
 
-
                         try {
                             $symbol = $worker_symbol->symbol;
                             $tradeInstance = new stdClass;
@@ -114,15 +101,11 @@ class TriggersThread implements ShouldQueue
                             // Decrement index to get last completed candle
                             $index--;
 
-
                             // ==================Decision Block==================
 
 
                             $buyLongCondition = self::handleOpeningConditionsLong($symbol, $data, $index);
-
                             $sellShortCondition = self::handleOpeningConditionsShort($symbol, $data, $index);
-
-
 
                             // This block checks which weather to open trades or not
                             if (
