@@ -168,7 +168,7 @@ class ReportServiceHyperLiquid
             $diffInMins = CommonHelpers::$binanceIntervals[self::$interval];
 
             $startUnix = self::$backTestTimeUnix;
-            $endUnix = self::$backTestTimeUnix + ($diffInMins * 60 * 1000 * 1000);
+            $endUnix = self::$backTestTimeUnix + ($diffInMins * 60 * 1000 * 5000);
 
             // Get current time in milliseconds
             $currentUnixMillis = round(microtime(true) * 1000);
