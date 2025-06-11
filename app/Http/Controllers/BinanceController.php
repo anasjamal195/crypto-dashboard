@@ -6,6 +6,7 @@ use App\CommonHelpers;
 use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
 use App\Services\BinanceVolumeIndicatorsService;
+use App\Services\HyperLiquidApiService;
 use App\Services\IdealTradeService;
 use App\Services\InternalTrader\ReportService;
 use App\Services\InternalTrader\ReportServiceSafeMode;
@@ -64,6 +65,16 @@ class BinanceController extends Controller
     }
     public function getCoinReport($market, Request $request)
     {
+
+
+
+        $data = HyperLiquidApiService::fetchTopUSDTPairsByVolume(1000);
+
+        dd($data);
+
+
+
+
 
         $stopLoss = $request->input('stopLoss') ?? 1;
         $position = $request->input('position');
@@ -1176,7 +1187,7 @@ class BinanceController extends Controller
         ]);
     }
 
-    public function getSafeModeAccuracy($position,$formula)
+    public function getSafeModeAccuracy($position, $formula)
     {
 
         $timestampMillis = round(microtime(true) * 1000);

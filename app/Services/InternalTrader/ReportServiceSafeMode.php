@@ -335,6 +335,8 @@ class ReportServiceSafeMode
             'coinTypeDefi' => self::$coinTypeDefi,
             'coinTypeNft' => self::$coinTypeNft,
             'coinTypeWeb3' => self::$coinTypeWeb3,
+            'exchange' => 'binance',
+
         ];
 
         DB::table('formula_details')->updateOrInsert([

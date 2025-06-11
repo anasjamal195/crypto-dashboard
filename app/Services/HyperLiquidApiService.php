@@ -12,10 +12,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class BinanceApiService
+class HyperLiquidApiService
 {
     protected static $httpClient = null;
-    protected static $binanceIntervals = [
+    protected static $hyperLiquidIntervals = [
         '1s'  => 1 / 60,  // 1 second (not commonly used)
         '1m'  => 1,       // 1 minute
         '3m'  => 3,       // 3 minutes
@@ -92,54 +92,31 @@ class BinanceApiService
     }
     public static function fetchTopUSDTPairsByVolume($limit = 10)
     {
-        // Get trading status info from Binance Futures
-        $exchangeInfoUrl = 'https://fapi.binance.com/fapi/v1/exchangeInfo';
-        $tickerInfoUrl = 'https://fapi.binance.com/fapi/v1/ticker/24hr';
+        // Hyperliquid endpoint
+        $url = 'https://api.hyperliquid.xyz/info';
 
-        // Fetch Futures Exchange Info and Ticker Data
-        $exchangeResponse = self::getHttpClient()->get($exchangeInfoUrl);
-        $exchangeData = $exchangeResponse->json();
+        // Step 1: Get market metadata (including futures)
+        $metaPayload = [
+            'type' => 'meta'
+        ];
 
-        $tickerResponse = self::getHttpClient()->get($tickerInfoUrl);
-        $tickers = $tickerResponse->json();
+        $metaResponse = self::getHttpClient()
+            ->withOptions(['verify' => !app()->environment('local')])
+            ->post($url, $metaPayload);
 
-        // Build a map of symbol => status for Futures market
-        $statusMap = [];
-        foreach ($exchangeData['symbols'] as $symbol) {
-            $statusMap[$symbol['symbol']] = $symbol['status'];
+
+        $metaData = $metaResponse->json();
+
+
+        if (!isset($metaData['universe'])) {
+            return [];
         }
 
-        // Get Spot Market Trading Pairs
-        $spotMarketUrl = 'https://api.binance.com/api/v3/exchangeInfo'; // Binance Spot market pairs endpoint
-        $spotMarketResponse = json_decode(file_get_contents($spotMarketUrl), true);
-        $spotMarketSymbols = [];
-
-        // Filter Spot market symbols with USDT as the quoteAsset
-        foreach ($spotMarketResponse['symbols'] as $symbolInfo) {
-            if ($symbolInfo['status'] == 'TRADING' && $symbolInfo['quoteAsset'] == 'USDT') {
-                $spotMarketSymbols[] = $symbolInfo['symbol'];
-            }
-        }
-
-        // Filter USDT pairs that are TRADING and available on the Spot market
-        $usdtPairs = array_filter($tickers, function ($ticker) use ($statusMap, $spotMarketSymbols) {
-            return str_ends_with($ticker['symbol'], 'USDT') &&
-                isset($statusMap[$ticker['symbol']]) &&
-                $statusMap[$ticker['symbol']] === 'TRADING' &&
-                in_array($ticker['symbol'], $spotMarketSymbols); // Check if it exists on the Spot market
-        });
-
-        // Sort by quoteVolume
-        usort($usdtPairs, function ($a, $b) {
-            return (float)$b['quoteVolume'] <=> (float)$a['quoteVolume'];
-        });
-
-        // Get top N base assets based on volume
-        $topBaseAssets = array_map(function ($ticker) {
-            return $ticker['symbol'];
-        }, array_slice($usdtPairs, 0, $limit));
-
-        return $topBaseAssets;
+        // Step 2: Filter futures contracts where quote is USDC
+        $usdtPairs = array_map(function ($symbol) {
+            return $symbol['name'] . 'USDT';
+        }, $metaData['universe']);
+        return $usdtPairs;
     }
 
 
@@ -229,6 +206,7 @@ class BinanceApiService
         } catch (\Exception $e) {
             Log::error("Error in External POST request: " . $e->getMessage());
         }
+
         return null;
     }
 
@@ -284,7 +262,7 @@ class BinanceApiService
 
 
                 $now = now();
-                $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
+                $intervalToMins = self::$hyperLiquidIntervals[$interval];
                 $minutesToNextRounded = $intervalToMins - ($now->minute % $intervalToMins);
                 $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
 
@@ -322,7 +300,7 @@ class BinanceApiService
 
                     // Save cache to next rounded time
                     $now = now();
-                    $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
+                    $intervalToMins = self::$hyperLiquidIntervals[$interval];
                     $minutesToNextRounded = $intervalToMins - ($now->minute % $intervalToMins);
                     $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
 
@@ -410,12 +388,14 @@ class BinanceApiService
      * @return array
      * @throws \Exception If the API request fails.
      */
-    public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
+    public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = null, $market = 'SPOT', $processed = true)
     {
-        $cacheKey = "binance_api_weight_klines";
+        $cacheKey = "hyperliquid_api_weight_klines";
+
+
         $balancerServerSequence = [
-            'https://xnfts.shop/load_balancer/index.php', // Chain Server II
-            'https://digitalfitnesshub.shop/wp-includes/restful-api/',
+            'https://digitalfitnesshub.shop/wp-includes/restful-api/index-hyperliquid.php', // Testnet fallback (if needed)
+            'https://xnfts.shop/load_balancer/index-hyperliquid.php', // Primary endpoint
         ];
         static $serverUrlKey = 0;
 
@@ -425,29 +405,32 @@ class BinanceApiService
         $usedWeight = Cache::get($cacheKey, 0);
         $remainingWeight = 1200 - $usedWeight;
 
+
+        $startTime = ($timestamp ?? (time() * 1000)) - (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit - 1));
+        $endTime = $startTime + (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit + 1));
+
         $params = [
-            'symbol' => $symbol,
-            'interval' => $interval,
-            'limit' => $limit,
-            'startTime' => $timestamp,
+            "type" => "candleSnapshot",
+            "req" => [
+                "coin" => str_replace('USDT', '', $symbol),                        // Replace with the coin you need
+                "interval" => $interval,
+                "startTime" => $startTime,           // Replace with your actual start epoch (in milliseconds)
+                "endTime" => $endTime              // Replace with your actual end epoch (in milliseconds)
+            ]
         ];
 
         $serverId = 'parent';
 
         // If weight is sufficient, try parent server first
         if (intval($remainingWeight) >= 100) {
-            $base_url = $market === 'FUTURE' ?
-                config('binance.api.future_base_url') . config('binance.endpoints.klines') :
-                config('binance.api.base_url') . config('binance.endpoints.klines');
+            $base_url = 'https://api.hyperliquid.xyz/info';
+            $response = Http::withOptions(['verify' => !app()->environment('local')])->post($base_url, $params);
 
-            $response = Http::withOptions(['verify' => !app()->environment('local')])->get($base_url, $params);
+            $usedWeight = $usedWeight + 20;
+            $secondsRemaining = 60 - now()->second;
+            Cache::put($cacheKey, $usedWeight, now()->addSeconds($secondsRemaining));
 
-            $headers = $response->getHeaders();
-            if (isset($headers["x-mbx-used-weight-1m"][0])) {
-                $usedWeight = (int) $headers["x-mbx-used-weight-1m"][0];
-                $secondsRemaining = 60 - now()->second;
-                Cache::put($cacheKey, $usedWeight, now()->addSeconds($secondsRemaining));
-            }
+
 
             // If successful and valid JSON, return it
             if ($response->successful() && $response->json()) {
@@ -464,12 +447,11 @@ class BinanceApiService
 
         while ($attempts < $totalServers) {
             $currentServerUrl = $balancerServerSequence[$serverUrlKey];
-            $params['balancerServerSequence'] = $balancerServerSequence;
-            $params['nextServer'] = $serverUrlKey;
+            // $params['balancerServerSequence'] = $balancerServerSequence;
+            // $params['nextServer'] = $serverUrlKey;
 
             try {
                 $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($currentServerUrl, $params);
-
                 if ($response->successful() && $response->json()) {
                     return $processed ? self::processData($response->json(), $market) : $response->json();
                 }
@@ -533,14 +515,15 @@ class BinanceApiService
             'di_minus' => null,
             'ema12' => null,
             'ema26' => null,
-            'exchange' => 'binance',
+            'exchange' => 'hyperliquid',
+
         ];
 
         // dd($response ? $response->body() : 'No response received from any server');
     }
 
 
-    protected static function processData($data, $market = 'SPOT', $cacheUpto = null)
+    protected static function processData($data, $market = 'FUTURE', $cacheUpto = null)
     {
         // Calculate KDJ (predefined function)
         $KDJ = self::calculateKDJ($data);
@@ -614,12 +597,12 @@ class BinanceApiService
         // Process each candle
         foreach ($data as $index => $candle) {
             // Extract basic candle data
-            $timestamp = $candle[0];
-            $open = (float) $candle[1];
-            $high = (float) $candle[2];
-            $low = (float) $candle[3];
-            $close = (float) $candle[4];
-            $volume = (float) $candle[5];
+            $timestamp = $candle['t'] ?? $candle[0]; // timestamp in ms
+            $open = (float)($candle['o'] ?? $candle[1]);
+            $high = (float)($candle['h'] ?? $candle[2]);
+            $low = (float)($candle['l'] ?? $candle[3]);
+            $close = (float)($candle['c'] ?? $candle[4]);
+            $volume = (float)($candle['v'] ?? $candle[5]);
 
             // Store values for future calculations
             $closePrices[] = $close;
@@ -1064,7 +1047,7 @@ class BinanceApiService
                 'ema26' => end($ema26),
 
                 'cacheResetTime' =>  $cacheUpto,
-                'exchange' => 'binance',
+                'exchange' => 'hyperliquid',
 
             ];
         }
@@ -1073,7 +1056,6 @@ class BinanceApiService
     }
     public static function getCoinCategoryDetails($symbol)
     {
-
 
 
         $url = config('binance.cmcApi.base_url') . config('binance.cmcApi.info');
@@ -1400,7 +1382,7 @@ class BinanceApiService
     {
         $data = BinanceApiService::getCandleStickDataPast($symbol, $interval, 100, $timestampNow, 'FUTURE');
 
-        $intervalInMs = self::$binanceIntervals[$interval] * 60000;
+        $intervalInMs = self::$hyperLiquidIntervals[$interval] * 60000;
         $candle = $data[count($data) - 1];
         $previousCandle = $data[count($data) - 2];
         // Convert full RSI to RS
@@ -1474,11 +1456,12 @@ class BinanceApiService
                 continue;
             }
 
-            $timestamp = $candle[0];
-            $open = (float) $candle[1];
-            $high = (float) $candle[2];
-            $low = (float) $candle[3];
-            $close = (float) $candle[4];
+            $timestamp = $candle['t'] ?? $candle[0]; // timestamp in ms
+            $open = (float)($candle['o'] ?? $candle[1]);
+            $high = (float)($candle['h'] ?? $candle[2]);
+            $low = (float)($candle['l'] ?? $candle[3]);
+            $close = (float)($candle['c'] ?? $candle[4]);
+            $volume = (float)($candle['v'] ?? $candle[5]);
 
             array_push($highs, $high);
             array_push($lows, $low);
@@ -1566,7 +1549,7 @@ class BinanceApiService
     {
 
 
-        $intervalInMins = self::$binanceIntervals[$interval];
+        $intervalInMins = self::$hyperLiquidIntervals[$interval];
 
         $revisedTimestamp = $timestamp - ($intervalInMins * ($limit) * 60000) +  1000;
 

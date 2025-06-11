@@ -182,7 +182,7 @@ class ReportServiceSafeModeMacdSwing
         self::$progressionDetailsLONG = self::getProgressionDetails(self::$baseReportFormula, 'LONG', $endUnix);
         self::$progressionDetailsSHORT = self::getProgressionDetails(self::$baseReportFormula, 'SHORT', $endUnix);
 
-        $classPath = app_path('Services/InternalTrader/ReportServiceSafeMode.php');
+        $classPath = app_path('Services/InternalTrader/ReportServiceSafeModeMacdSwing.php');
 
         // Output path
         $outputPath = storage_path('app/public/formula_bkp_service_' . self::$formula . '.txt');
@@ -335,6 +335,8 @@ class ReportServiceSafeModeMacdSwing
             'coinTypeDefi' => self::$coinTypeDefi,
             'coinTypeNft' => self::$coinTypeNft,
             'coinTypeWeb3' => self::$coinTypeWeb3,
+            'exchange' => 'binance',
+
         ];
 
         DB::table('formula_details')->updateOrInsert([

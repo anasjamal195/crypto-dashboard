@@ -10,12 +10,13 @@ use DateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\OrderBookSnapshot;
+use App\Services\HyperLiquidApiService;
 use App\Services\SupportResistanceAnalyzer;
 use Illuminate\Support\Facades\Log;
 use stdClass;
 use Illuminate\Support\Facades\File;
 
-class ReportService
+class ReportServiceHyperLiquid
 {
 
 
@@ -95,44 +96,9 @@ class ReportService
 
 
         $tradesTotal = [];
-        $coinsQuery = DB::table('coins')->where('market', 'FUTURE')->where('status', 'T')
+        $coins = HyperLiquidApiService::fetchTopUSDTPairsByVolume(1000);
 
-
-            // ->whereIn(
-            //     'symbol',
-            //     [
-            //         'JTOUSDT'
-
-            //     ]
-            // )
-        ;
-
-
-        // Coin Type Filters
-        if (self::$filterOnCoinType) {
-            if (self::$coinTypeMetaverse)
-                $coinsQuery->where('is_metaverse', true);
-            if (self::$coinTypeAlt)
-                $coinsQuery->where('is_altcoin', true);
-            if (self::$coinTypeMeme)
-                $coinsQuery->where('is_meme_coin', true);
-            if (self::$coinTypeNft)
-                $coinsQuery->where('is_nft', true);
-            if (self::$coinTypeDefi)
-                $coinsQuery->where('is_defi', true);
-            if (self::$coinTypeWeb3)
-                $coinsQuery->where('is_web3', true);
-        }
-        if (self::$shuffleCoins) {
-            $coinsQuery->inRandomOrder();
-        }
-
-        if (self::$coinLimit) {
-            $coinsQuery->limit(self::$coinLimit);
-        } else {
-            self::$coinLimit = (clone $coinsQuery)->count();
-        }
-        $coins = $coinsQuery->get();
+        self::$coinLimit = count($coins);
 
         // Clear Console
         system('clear');
@@ -147,10 +113,10 @@ class ReportService
             try {
 
 
-                $symbol = $coin->symbol;
+                $symbol = $coin;
 
                 Log::info("Test Request Params" . self::$interval);
-                $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, self::$backTestTimeUnix, 'FUTURE');
+                $data = HyperLiquidApiService::getCandleStickData($symbol, self::$interval, 2000, self::$backTestTimeUnix, 'FUTURE');
 
                 $trades = self::processCandles($symbol, $data);
 
@@ -227,7 +193,7 @@ class ReportService
         self::$progressionDetailsSHORT = self::getProgressionDetails(self::$baseReportFormula, 'SHORT', $endUnix);
 
 
-        $classPath = app_path('Services/InternalTrader/ReportService.php');
+        $classPath = app_path('Services/InternalTrader/ReportServiceHyperLiquid.php');
 
         // Output path
         $outputPath = storage_path('app/public/formula_bkp_service_' . self::$formula . '.txt');
@@ -380,8 +346,7 @@ class ReportService
             'coinTypeDefi' => self::$coinTypeDefi,
             'coinTypeNft' => self::$coinTypeNft,
             'coinTypeWeb3' => self::$coinTypeWeb3,
-            'exchange' => 'binance',
-
+            'exchange' => 'hyperliquid',
         ];
 
         DB::table('formula_details')->insert([
@@ -407,9 +372,6 @@ class ReportService
         $extremePrice = 0;
 
 
-        $intervalToMins = CommonHelpers::$binanceIntervals[self::$interval];
-        $timestamp = $data[0]['binance_timestamp'] - (60 * $intervalToMins * 1000 * 1000);
-        $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, $timestamp, 'FUTURE');
 
         $data = array_map(function ($candle) {
             $candle['timestamp'] = $candle['timestamp'] / 1000;
@@ -417,7 +379,7 @@ class ReportService
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
             return $candle;
-        }, array_merge($averageAdjustmetCandles, $data));
+        }, $data);
 
         $waitingCandles = 0;
         $openingIndex = 0;
@@ -452,7 +414,7 @@ class ReportService
             ];
 
             // Skip Adjustment Candles and Volume Adjustment
-            if ($index < 1200) {
+            if ($index < 200) {
                 continue;
             }
 
@@ -535,6 +497,7 @@ class ReportService
                     $currentTrade['lowestPricePercentage'] = abs((($open_price - $extremePrice) / $open_price)) * 100;
                     $currentTrade['position'] = $tradeType;
                     $currentTrade['formula'] = self::$formula;
+                    $currentTrade['exchange'] = 'hyperliquid';
 
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestamp']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestamp']);
