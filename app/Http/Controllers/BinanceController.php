@@ -801,22 +801,28 @@ class BinanceController extends Controller
         $formulaConfig = json_decode($formulaDetails->report_config, true);
 
 
+
         $date = new DateTime($formulaDetails->created_at, new DateTimeZone('Asia/Karachi'));
         $date->setTimezone(new DateTimeZone('UTC')); // convert to UTC
         $createdTimestampMs = $date->getTimestamp() * 1000; // get UTC timestamp in milliseconds
 
+        $isHyperliquid = ($formulaConfig && $formulaConfig['exchange'] === 'hyperliquid');
         $startUnix = ($formulaConfig && $formulaConfig['startUnix'])
             ? $formulaConfig['startUnix']
-            : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * 1000));
+            : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * ($isHyperliquid ? 5000 : 1000)));
 
         $endUnix = ($formulaConfig && $formulaConfig['endUnix'])
             ? $formulaConfig['endUnix']
             : $createdTimestampMs;
 
+
         // Fetching Base Candle Data
         // $startTime = $trades->first()->buyingCandle->binance_timestamp - (CommonHelpers::$binanceIntervals[$interval] * 100 * 60 * 1000);
 
-        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startUnix, $market);
+        $data = $isHyperliquid ?
+            HyperLiquidApiService::getCandleStickData($symbol, $interval, 5000, $startUnix, $market)
+            :
+            BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startUnix, $market);
 
         foreach ($data as $index => &$candle) {
 
