@@ -27,57 +27,59 @@ class GenerateInternalReport extends Command
     public function handle()
     {
 
-        // $formula = 'All Coins Base  (Bullish)';
-        // $timestamp = 1746644400000;
-        // $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, '', true);
+        $reportDetails = [
+            [
+                'formula' => 'Macd Swings Hyperliquid - Current',
+                'timestamp' => null,
+                'includeFiltered' => true,
+            ],
 
-        // $formula = 'All Coins Filtered (Bullish)';
-        // $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
+            // [
+            //     'formula' => 'Macd Swings Hyperliquid - Bullish',
+            //     'timestamp' => 1746126000000,
+            //     'includeFiltered' => true,
+            // ],
+            // [
+            //     'formula' => 'All Coins Base Hyperliquid  Bearish',
+            //     'timestamp' => 1745607600000,
+            //     'includeFiltered' => true,
+            // ],
+            // [
+            //     'formula' => 'Macd Swings Hyperliquid - Slight Bearish',
+            //     'timestamp' => 1745607600000,
+            //     'includeFiltered' => true,
+            // ],
+            // [
+            //     'formula' => 'Macd Swings Hyperliquid - Slight Bullish',
+            //     'timestamp' => 1744830000000,
+            //     'includeFiltered' => true,
+            // ],
+            // [
+            //     'formula' => 'Macd Swings Hyperliquid - Flat',
+            //     'timestamp' => 1732561200000,
+            //     'includeFiltered' => true,
+            // ],
+            // [
+            //     'formula' => 'Macd Swings Hyperliquid - Mixed',
+            //     'timestamp' => 1744225200000,
+            //     'includeFiltered' => true,
+            // ],
+
+        ];
 
 
-        $formula = 'All Coins Base  (Bearish)';
-        $timestamp = 1746126000000;
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, '', true);
+        foreach ($reportDetails as $details) {
+            $formula = $details['formula'] . ' - Base';
+            $timestamp = $details['timestamp'];
+            $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, '', true);
 
-        $formula = 'All Coins Filtered (Bearish)';
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
+            if ($details['includeFiltered']) {
+                $formula = $details['formula'] . ' - Filtered';
+                $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
+            }
+        }
 
-
-        $formula = 'All Coins Base  (Slight Bearish)';
-        $timestamp = 1745607600000;
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, '', true);
-
-        $formula = 'All Coins Filtered (Slight Bearish)';
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
-
-
-
-        $formula = 'All Coins Base  (Slight Bullish)';
-        $timestamp = 1744830000000;
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, '', true);
-
-        $formula = 'All Coins Filtered (Slight Bullish)';
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
-
-
-        $formula = 'All Coins Base  (Flat)';
-        $timestamp = 1732561200000;
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, '', true);
-
-        $formula = 'All Coins Filtered (Flat)';
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
-
-        $formula = 'All Coins Base  (Mixed)';
-        $timestamp = 1744225200000;
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, '', true);
-
-        $formula = 'All Coins Filtered (Mixed)';
-        $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
 
         dd("Done on all trends with all coins");
-
-
-
-        // ReportService::generateCoinReport($this);
     }
 }
