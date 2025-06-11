@@ -300,9 +300,10 @@ class BinanceController extends Controller
         $date->setTimezone(new DateTimeZone('UTC')); // convert to UTC
         $createdTimestampMs = $date->getTimestamp() * 1000; // get UTC timestamp in milliseconds
 
+        $isHyperliquid = ($formulaConfig && $formulaConfig['exchange'] === 'hyperliquid');
         $startUnix = ($formulaConfig && $formulaConfig['startUnix'])
             ? $formulaConfig['startUnix']
-            : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * 1000));
+            : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * ($isHyperliquid ? 5000 : 1000)));
 
         $endUnix = ($formulaConfig && $formulaConfig['endUnix'])
             ? $formulaConfig['endUnix']
@@ -314,12 +315,19 @@ class BinanceController extends Controller
         $candleCount = intval(($endUnix - $startUnix) / $intervalMs);
 
 
-        $dataTrendReference = BinanceApiService::getCandleStickData($trendReferenceSymbol, $trendReferenceInterval, $candleCount, $startUnix, 'FUTURE');
+        $dataTrendReference =
+            $isHyperliquid ?
+            HyperLiquidApiService::getCandleStickData($trendReferenceSymbol, $trendReferenceInterval, $candleCount, $startUnix, 'FUTURE')
+            :
+            BinanceApiService::getCandleStickData($trendReferenceSymbol, $trendReferenceInterval, $candleCount, $startUnix, 'FUTURE');
 
 
         // Trend reference settings for actual interval
         $trendReferenceSymbolActual = count($tradeData) ? $tradeData[0]->symbol : 'BTCUSDT';
-        $dataTrendReferenceActual = BinanceApiService::getCandleStickData($trendReferenceSymbolActual, $interval, 1000, $startUnix, 'FUTURE');
+        $dataTrendReferenceActual = $isHyperliquid ?
+            HyperLiquidApiService::getCandleStickData($trendReferenceSymbolActual, $interval, 5000, $startUnix, 'FUTURE')
+            :
+            BinanceApiService::getCandleStickData($trendReferenceSymbolActual, $interval, 1000, $startUnix, 'FUTURE');
 
 
 
