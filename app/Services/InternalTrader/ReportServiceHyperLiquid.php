@@ -24,7 +24,7 @@ class ReportServiceHyperLiquid
     public static $delayMs = 10;
     public static $supportResistanceCandleSpan = 12;
 
-    public static $interval = '5m';
+    public static $interval = '15m';
     public static $targetProfit = 1;
     public static $stopLoss = 0.8;
     public static $stopLossWaitingDuration = 0;

@@ -584,7 +584,7 @@ class ReportService
 
     // Function to check opening Conditions
 
-    public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps)
+     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps)
     {
 
 
@@ -602,20 +602,50 @@ class ReportService
                 }
             }
 
-            if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+            if (
+
+                // $data[$index]['ma7'] < $data[$index]['ma99']
+                // && $data[$index - 1]['ma7'] > $data[$index - 1]['ma99']
+                $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0
+
+                && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0
+                && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0
+                && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0
+                // && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
+                // && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0
+
+
+                && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)
+
+            ) {
                 self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
             }
 
             if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
 
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-                $buyCondition = $data[$index]['close'] > $data[$index]['bb_lower']
-                    && $data[$index]['open'] < $data[$index]['bb_lower']
-                    && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
-                    && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
-                    && $bbAnalysis['price_action']['is_near_lower_band']
-                    && !$bbAnalysis['bb_squeeze']
-                    && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
+                $buyCondition =
+                    (
+                        // $data[$index]['close'] > $data[$index]['bb_lower']
+                        // && $data[$index]['open'] < $data[$index]['bb_lower']
+                        // && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
+                        // && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
+                        // && $bbAnalysis['price_action']['is_near_lower_band']
+                        // && !$bbAnalysis['bb_squeeze']
+                        // && $data[$index]['histogram'] > $data[$index - 1]['histogram']
+
+                        $data[$index]['rsi6'] < 30
+                        && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+
+
+
+                        && $bbAnalysis['price_action']['is_near_lower_band']
+                        && $data[$index]['close'] > $data[$index]['bb_lower']
+                        && $data[$index]['open'] < $data[$index]['bb_lower']
+
+
+
+                    );
 
                 if ($buyCondition) {
                     self::confirmOpening($symbol, 'LONG', $data, $index);
@@ -632,27 +662,56 @@ class ReportService
 
         // Short Conditions
         if (self::$shortEnabled) {
-
-            $srAnalyzer = new SupportResistanceAnalyzer($data, $index, 100, 2);
-            $srAnalysis =  $srAnalyzer->analyze();
-
-            $signal = self::detectShortEntryWithSR($data, $index, $srAnalysis);
-
-            if (!$signal) {
-                return null;
-            }
-
+            $skippingReasons = [];
 
             if (!self::$isBaseReport) {
                 $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORT, $data[$index]['binance_timestamp'], 6);
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 75) {
+                    if ($currentAccuracy < 73) {
                         return null;
                     }
                 }
             }
 
-            return 'SHORT';
+            if (
+
+
+                $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0
+
+                && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0
+                && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0
+                && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0
+
+                && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)
+
+            ) {
+                self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
+            }
+
+            if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
+
+                $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+                $buyCondition =
+                    (
+
+
+                        $data[$index]['rsi6'] > 70
+                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6']
+
+                        && $bbAnalysis['price_action']['is_near_upper_band']
+                        && $data[$index]['close'] < $data[$index]['bb_upper']
+                        && $data[$index]['open'] > $data[$index]['bb_upper']
+
+
+
+                    );
+
+                if ($buyCondition) {
+                    self::confirmOpening($symbol, 'SHORT', $data, $index);
+
+                    return 'SHORT';
+                }
+            }
         }
 
 
