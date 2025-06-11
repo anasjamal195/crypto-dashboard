@@ -69,6 +69,24 @@ class BinanceController extends Controller
 
 
 
+        $response = HyperLiquidApiService::openMarketPositionLiveTrader(
+            'XRPUSDT',
+            10,
+            'BUY',
+            1,
+            null,
+            "Testing HyperLiquid",
+            [
+                'support' => 1,
+                'resistance' => 1,
+            ],
+            1,
+            false,
+            0.5,
+            0.5
+        );
+        dd($response);
+
         // $data = HyperLiquidApiService::fetchTopUSDTPairsByVolume(1000);
 
         // dd($data);
