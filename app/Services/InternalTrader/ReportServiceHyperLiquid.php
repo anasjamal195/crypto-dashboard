@@ -116,7 +116,7 @@ class ReportServiceHyperLiquid
                 $symbol = $coin;
 
                 Log::info("Test Request Params" . self::$interval);
-                $data = HyperLiquidApiService::getCandleStickData($symbol, self::$interval, 2000, self::$backTestTimeUnix, 'FUTURE');
+                $data = HyperLiquidApiService::getCandleStickData($symbol, self::$interval, 5000, self::$backTestTimeUnix, 'FUTURE');
 
                 $trades = self::processCandles($symbol, $data);
 
