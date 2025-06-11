@@ -303,7 +303,7 @@ class BinanceController extends Controller
         $date->setTimezone(new DateTimeZone('UTC')); // convert to UTC
         $createdTimestampMs = $date->getTimestamp() * 1000; // get UTC timestamp in milliseconds
 
-        $isHyperliquid = ($formulaConfig && $formulaConfig['exchange'] === 'hyperliquid');
+        $isHyperliquid = ($formulaConfig && isset($formulaConfig['exchange']) && $formulaConfig['exchange'] === 'hyperliquid');
         $startUnix = ($formulaConfig && $formulaConfig['startUnix'])
             ? $formulaConfig['startUnix']
             : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * ($isHyperliquid ? 5000 : 1000)));
@@ -809,7 +809,7 @@ class BinanceController extends Controller
         $date->setTimezone(new DateTimeZone('UTC')); // convert to UTC
         $createdTimestampMs = $date->getTimestamp() * 1000; // get UTC timestamp in milliseconds
 
-        $isHyperliquid = ($formulaConfig && $formulaConfig['exchange'] === 'hyperliquid');
+        $isHyperliquid = ($formulaConfig && isset($formulaConfig['exchange']) && $formulaConfig['exchange'] === 'hyperliquid');
         $startUnix = ($formulaConfig && $formulaConfig['startUnix'])
             ? $formulaConfig['startUnix']
             : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * ($isHyperliquid ? 5000 : 1000)));
