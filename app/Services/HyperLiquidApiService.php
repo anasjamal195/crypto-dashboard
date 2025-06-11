@@ -92,32 +92,36 @@ class HyperLiquidApiService
     }
     public static function fetchTopUSDTPairsByVolume($limit = 10)
     {
-        // Hyperliquid endpoint
         $url = 'https://api.hyperliquid.xyz/info';
 
-        // Step 1: Get market metadata (including futures)
-        $metaPayload = [
-            'type' => 'meta'
-        ];
-
+        $volumeThreshold = 1000000;
+        // Step 1: Get market metadata
+        $metaPayload = ['type' => 'metaAndAssetCtxs'];
         $metaResponse = self::getHttpClient()
             ->withOptions(['verify' => !app()->environment('local')])
             ->post($url, $metaPayload);
-
-
         $metaData = $metaResponse->json();
 
+        $symbolMeta = $metaData[0];
+        $ctxData = $metaData[1];
 
-        if (!isset($metaData['universe'])) {
+        if (!isset($symbolMeta['universe'])) {
             return [];
         }
 
-        // Step 2: Filter futures contracts where quote is USDC
-        $usdtPairs = array_map(function ($symbol) {
-            return $symbol['name'] . 'USDT';
-        }, $metaData['universe']);
-        return $usdtPairs;
+        // Step 2: Get 24h stats (volume, etc.)
+        $finalSymbols = [];
+
+        foreach ($symbolMeta['universe'] as $index => $metaDetails) {
+
+            if ($ctxData[$index]['dayNtlVlm'] >= $volumeThreshold) {
+                $finalSymbols[] = $metaDetails['name'] . 'USDT';
+            }
+        }
+
+        return $finalSymbols;
     }
+
 
 
     public static function fetchBinanceUSDTPairs()
@@ -235,7 +239,7 @@ class HyperLiquidApiService
         $remainingWeight = 1200 - $usedWeight;
 
 
-        $startTime = ($timestamp ?? (time() * 1000)) - (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit - 1));
+        $startTime = $timestamp ? ($timestamp + (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * 1)) : (((time() * 1000)) - (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit - 1)));
         $endTime = $startTime + (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit + 1));
 
         $params = [
@@ -396,7 +400,7 @@ class HyperLiquidApiService
         $remainingWeight = 1200 - $usedWeight;
 
 
-        $startTime = ($timestamp ?? (time() * 1000)) - (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit - 1));
+        $startTime = $timestamp ? ($timestamp + (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * 1)) : (((time() * 1000)) - (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit - 1)));
         $endTime = $startTime + (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit + 1));
 
         $params = [

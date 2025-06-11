@@ -69,6 +69,9 @@ class BinanceController extends Controller
 
 
 
+        // $data = HyperLiquidApiService::fetchTopUSDTPairsByVolume(1000);
+
+        // dd($data);
 
 
 
