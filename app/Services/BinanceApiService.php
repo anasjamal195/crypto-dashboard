@@ -2269,206 +2269,80 @@ class BinanceApiService
 
     // Future Api's
     public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false, $stopLossPercentage = 0.5, $targetProfit = 0.5)
-    {
+{
+    $market = 'FUTURE';
+    
+    // Get current price from Hyperliquid
+    $current_price = HyperliquidApiService::getCurrentPrice($symbol);
 
-        $market = 'FUTURE';
-        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
+    $user = User::find($trader);
+    $privateKey = $user->hyperliquid_private_key; // Hyperliquid uses private key instead of API key/secret
+    $walletAddress = $user->hyperliquid_wallet_address;
+    
+    $base_url = config('hyperliquid.api.base_url', 'https://api.hyperliquid.xyz');
 
-        $user = User::find($trader);
-        $apiKey = $user->api_key;
-        $apiSecret = $user->api_secret;
-        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
-
-
-        // Step 1: Set leverage
-
-        $leverageUrl = $base_url . config('binance.endpoints.leverage');
-
-        $leverageData = [
-            "symbol" => $symbol,
-            "leverage" => $leverage,
-            "timestamp" => round(microtime(true) * 1000),
+    // Step 1: Set leverage (Hyperliquid endpoint)
+    try {
+        $leveragePayload = [
+            'type' => 'updateLeverage',
+            'asset' => $symbol,
+            'isCross' => true,
+            'leverage' => $leverage
         ];
-
-        $leverageQuery = http_build_query($leverageData);
-        $leverageSignature = hash_hmac('sha256', $leverageQuery, $apiSecret);
-        $leverageQuery .= "&signature=" . $leverageSignature;
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $leverageUrl . "?" . $leverageQuery);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["X-MBX-APIKEY: $apiKey"]);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $leverageResponse = curl_exec($ch);
-        curl_close($ch);
-        $leverageResponse = json_decode($leverageResponse, true);
-        if (isset($leverageResponse['code']) && $leverageResponse['code'] < 0) {
-            throw new Exception("Failed to set leverage: " . $leverageResponse['msg']);
+        
+        $leverageResponse = HyperliquidApiService::sendSignedRequest($leveragePayload, $privateKey, $walletAddress);
+        
+        if (isset($leverageResponse['status']) && $leverageResponse['status'] === 'err') {
+            throw new Exception("Failed to set leverage: " . $leverageResponse['response']);
         }
-        // Step 2: Fetch trading rules
-        $exchangeInfoUrl =  $base_url . config('binance.endpoints.exchange_info');
-        $exchangeInfo = json_decode(file_get_contents($exchangeInfoUrl . "?symbol=$symbol"), true);
+    } catch (Exception $e) {
+        throw new Exception("Failed to set leverage: " . $e->getMessage());
+    }
 
-        foreach ($exchangeInfo['symbols'] as $excInfo) {
-            if ($excInfo['symbol'] == $symbol) {
-                $filters = $excInfo['filters'];
-                break;
-            }
-        }
+    // Step 2: Get asset info (equivalent to Binance exchange info)
+    $assetInfo = HyperliquidApiService::getAssetInfo($symbol);
+    if (!$assetInfo) {
+        throw new Exception("Asset info not found for symbol $symbol");
+    }
 
-        // Extract LOT_SIZE filter values
-        $lotSize = null;
-        foreach ($filters as $filter) {
-            if ($filter['filterType'] == 'LOT_SIZE') {
-                $lotSize = $filter;
-                break;
-            }
-        }
+    // Step 3: Calculate position quantity
+    $positionSize = $tradeAmount * $leverage; // Total position size with leverage
+    $quantity = $positionSize / $current_price; // Contract quantity based on the price
 
-        if ($lotSize === null) {
-            throw new Exception("LOT_SIZE filter not found for symbol $symbol");
-        }
+    // Adjust quantity to match Hyperliquid's size increment (szDecimals)
+    $szDecimals = $assetInfo['szDecimals'] ?? 3;
+    $quantity = round($quantity, $szDecimals);
 
-        // Step 3: Calculate position quantity
-        $positionSize = $tradeAmount * $leverage; // Total position size with leverage
-        $quantity = $positionSize / $current_price;      // Contract quantity based on the price
+    $timestamp = round(microtime(true) * 1000);
 
-        // Adjust quantity to match LOT_SIZE step size
-        $quantity = floor($quantity / $lotSize['stepSize']) * $lotSize['stepSize'];
-
-
-        $url = $base_url . config('binance.endpoints.order');
-
-        $timestamp =  round(microtime(true) * 1000);
-
-
-
-
-        // Prepare query string for signature
-        $queryString = http_build_query([
-            'symbol' => $symbol,
-            "side" => $position,
-            "type" => "MARKET",
-            'quantity' => strval($quantity),
-            'timestamp' => $timestamp,
-        ]);
-
-        // Generate signature
-        $signature = hash_hmac('sha256', $queryString, $apiSecret);
-
-        // Append signature to the query string
-        $queryString .= '&signature=' . $signature;
-
-
-        // For Dummy Trades
-        if ($isDummy) {
-
-            $orderId = random_int(100000, 999999);
-            $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
-            // Calculate liquidation price
-            $entryPrice = $current_price; // Assuming trade executed at provided price
-            $accountMargin = $tradeAmount; // User's margin
-            $liquidationPrice = 0;
-            $stopLoss = 0;
-
-            if ($position === 'BUY') {
-                $stopLoss = $current_price * (1 - 0.5 / 100);
-            } else if ($position === 'SELL') {
-                $stopLoss = $current_price * (1 + 0.5 / 100);
-            }
-
-
-            while ($exists) {
-                $orderId = random_int(100000, 999999);
-                $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
-            }
-            $data =  [
-                'orderId' => $orderId,
-                'symbol' => $symbol,
-                'side' => $position,
-                'amount' => $tradeAmount,
-                'market' => $market,
-                'type' => 'open',
-                'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
-                'qty' => $quantity,
-                'leverage' => $leverage,
-                'stopLoss' => $stopLoss,
-                'stopLossReductionPrecentage' => 0.1,
-                'price' => $current_price,
-                'trade_status' => 'open',
-                'trade_acc' => $trader,
-                'targetProfit' => 0.4,
-                'formula' => 'Dummy: ' . $formula,
-                'isDummy' => true,
-                'liqPrice' => $liquidationPrice,
-                'created_at' => Carbon::now('Asia/Karachi'),
-            ];
-
-            DB::table('live_trades_future_results')->insert(
-                $data
-            );
-            $data['support'] = $supportResistance['support'];
-            $data['resistance'] = $supportResistance['resistance'];
-            if ($position === 'BUY') {
-                $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
-            } else if ($position === 'SELL') {
-                $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
-            }
-            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
-            MailerService::sendFutureTradeDynamicEmail($data);
-
-
-
-            return $data;
-        }
-
-        $response = self::getHttpClient()->withHeaders([
-            'X-MBX-APIKEY' => $apiKey,
-        ])->asForm()->post($url, [
-            'symbol' => $symbol,
-            "side" => $position,
-            "type" => "MARKET",
-            'quantity' => strval($quantity),
-            'timestamp' => $timestamp,
-            'signature' => $signature
-        ]);
-        $response = $response->json();
-
-
-        if (isset($response['code']) && $response['code'] < 0) {
-            throw new Exception("Order failed: " . $response['msg']);
-        }
-
+    // For Dummy Trades
+    if ($isDummy) {
+        $orderId = random_int(100000, 999999);
+        $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
+        
         // Calculate liquidation price
-        $entryPrice = $current_price; // Assuming trade executed at provided price
-        $accountMargin = $tradeAmount; // User's margin
+        $entryPrice = $current_price;
+        $accountMargin = $tradeAmount;
         $liquidationPrice = 0;
         $stopLoss = 0;
-        $takeProfitPrice = 0;
 
         if ($position === 'BUY') {
-            $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
-            $stopLoss = $current_price * (1 - $stopLossPercentage / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - $stopLossPercentage / 100);
+            $stopLoss = $current_price * (1 - 0.5 / 100);
         } else if ($position === 'SELL') {
-            $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
-            $stopLoss = $current_price * (1 + $stopLossPercentage / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + $stopLossPercentage / 100);
+            $stopLoss = $current_price * (1 + 0.5 / 100);
         }
 
-
-        if ($position === 'BUY') {
-            $takeProfitPrice =  $current_price * (1 + $targetProfit / 100);
-        } else if ($position === 'SELL') {
-            $takeProfitPrice =  $current_price * (1 - $targetProfit / 100);
+        while ($exists) {
+            $orderId = random_int(100000, 999999);
+            $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
         }
-
-
-        $data =  [
-            'orderId' => $response['orderId'],
-            'symbol' => $response['symbol'],
-            'side' => $response['side'],
+        
+        $data = [
+            'orderId' => $orderId,
+            'symbol' => $symbol,
+            'side' => $position,
             'amount' => $tradeAmount,
             'market' => $market,
-
             'type' => 'open',
             'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
             'qty' => $quantity,
@@ -2478,40 +2352,136 @@ class BinanceApiService
             'price' => $current_price,
             'trade_status' => 'open',
             'trade_acc' => $trader,
-            'targetProfit' => $targetProfit,
-            'formula' => $formula,
-            'turnoverPoint' => $turnoverPoint,
+            'targetProfit' => 0.4,
+            'formula' => 'Dummy: ' . $formula,
+            'isDummy' => true,
             'liqPrice' => $liquidationPrice,
-            'currentSupport' => $supportResistance['support'],
-            'currentResistance' => $supportResistance['resistance'],
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
-        DB::table('live_trades_future_results')->insert(
-            $data
-        );
+        DB::table('live_trades_future_results')->insert($data);
+        
         $data['support'] = $supportResistance['support'];
         $data['resistance'] = $supportResistance['resistance'];
+        
         if ($position === 'BUY') {
             $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
         } else if ($position === 'SELL') {
             $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
         }
-        $data['subject'] = 'FUTURE:' . $data['type'] . ' ' . $data['position'] . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+        
+        $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
-
-
-        // Temporarily Disabled
-        // CommonHelpers::updateLiveTradeSession($trader);
-
-
-
-        $tpSlOrders = self::placeTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $response['orderId']);
-        self::insertTradeDetails($response['orderId'], $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
-
 
         return $data;
     }
+
+    // Hyperliquid market order payload
+    $orderPayload = [
+        'type' => 'order',
+        'orders' => [
+            [
+                'a' => HyperliquidApiService::getAssetIndex($symbol), // Asset index
+                's' => $position === 'BUY' ? $quantity : -$quantity, // Size (positive for buy, negative for sell)
+                'p' => null, // null for market order
+                't' => [
+                    'limit' => [
+                        'tif' => 'Ioc' // Immediate or Cancel for market-like behavior
+                    ]
+                ],
+                'r' => false // reduce only
+            ]
+        ],
+        'grouping' => 'na'
+    ];
+
+    try {
+        $response = HyperliquidApiService::sendSignedRequest($orderPayload, $privateKey, $walletAddress);
+        
+        if (isset($response['status']) && $response['status'] === 'err') {
+            throw new Exception("Order failed: " . $response['response']);
+        }
+        
+        if (!isset($response['response']['data']['statuses'][0]['resting'])) {
+            throw new Exception("Order execution failed");
+        }
+        
+        $orderResult = $response['response']['data']['statuses'][0]['resting'];
+        $orderId = $orderResult['oid'] ?? random_int(100000, 999999);
+        
+    } catch (Exception $e) {
+        throw new Exception("Order failed: " . $e->getMessage());
+    }
+
+    // Calculate liquidation price
+    $entryPrice = $current_price;
+    $accountMargin = $tradeAmount;
+    $liquidationPrice = 0;
+    $stopLoss = 0;
+    $takeProfitPrice = 0;
+
+    if ($position === 'BUY') {
+        $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
+        $stopLoss = $current_price * (1 - $stopLossPercentage / 100) < $liquidationPrice 
+            ? $liquidationPrice * (1 + 0.3 / 100) 
+            : $current_price * (1 - $stopLossPercentage / 100);
+    } else if ($position === 'SELL') {
+        $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
+        $stopLoss = $current_price * (1 + $stopLossPercentage / 100) > $liquidationPrice 
+            ? $liquidationPrice * (1 - 0.3 / 100) 
+            : $current_price * (1 + $stopLossPercentage / 100);
+    }
+
+    if ($position === 'BUY') {
+        $takeProfitPrice = $current_price * (1 + $targetProfit / 100);
+    } else if ($position === 'SELL') {
+        $takeProfitPrice = $current_price * (1 - $targetProfit / 100);
+    }
+
+    $data = [
+        'orderId' => $orderId,
+        'symbol' => $symbol,
+        'side' => $position,
+        'amount' => $tradeAmount,
+        'market' => $market,
+        'type' => 'open',
+        'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
+        'qty' => $quantity,
+        'leverage' => $leverage,
+        'stopLoss' => $stopLoss,
+        'stopLossReductionPrecentage' => 0.1,
+        'price' => $current_price,
+        'trade_status' => 'open',
+        'trade_acc' => $trader,
+        'targetProfit' => $targetProfit,
+        'formula' => $formula,
+        'turnoverPoint' => $turnoverPoint,
+        'liqPrice' => $liquidationPrice,
+        'currentSupport' => $supportResistance['support'],
+        'currentResistance' => $supportResistance['resistance'],
+        'created_at' => Carbon::now('Asia/Karachi'),
+    ];
+
+    DB::table('live_trades_future_results')->insert($data);
+    
+    $data['support'] = $supportResistance['support'];
+    $data['resistance'] = $supportResistance['resistance'];
+    
+    if ($position === 'BUY') {
+        $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
+    } else if ($position === 'SELL') {
+        $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
+    }
+    
+    $data['subject'] = 'FUTURE:' . $data['type'] . ' ' . $data['position'] . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+    MailerService::sendFutureTradeDynamicEmail($data);
+
+    // Place TP/SL orders for Hyperliquid
+    $tpSlOrders = self::placeHyperliquidTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $orderId);
+    self::insertTradeDetails($orderId, $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+
+    return $data;
+}
 
     public static function closeMarketPositionLiveTrader($openOrderId)
     {
