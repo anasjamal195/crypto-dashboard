@@ -6,6 +6,7 @@ use App\CommonHelpers;
 use App\Jobs\ThreadsOrderBook\TriggersThread;
 use App\Models\User;
 use App\Services\BinanceApiService;
+use App\Services\HyperLiquidApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -191,6 +192,30 @@ class MasterProcessController extends Controller
         $processed = filter_var($validated['processed'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         return response()->json(BinanceApiService::getCandleStickDataCached(
+            $validated['symbol'],
+            $validated['interval'],
+            $validated['limit'],
+            $validated['startTime'],
+            $validated['market'],
+            $processed,
+
+        ));
+    }
+    public function handleExternalCandleStickRequestHyperliquid(Request $request)
+    {
+        $validated = $request->validate([
+            'symbol' => 'required|string',
+            'interval' => 'required|string',
+            'limit' => 'required|integer',
+            'startTime' => 'nullable|string',
+            'market' => 'required|string|in:SPOT,FUTURE',
+            'processed' => 'nullable|string',
+        ]);
+
+        // Optionally, parse 'processed' as a boolean
+        $processed = filter_var($validated['processed'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        return response()->json(HyperLiquidApiService::getCandleStickDataCached(
             $validated['symbol'],
             $validated['interval'],
             $validated['limit'],

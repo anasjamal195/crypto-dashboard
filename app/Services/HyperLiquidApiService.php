@@ -183,7 +183,7 @@ class HyperLiquidApiService
 
     public static function getCandleStickDataExternal($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
-        $url = config('binance.master_server_url') . 'master-process/external-candlestick'; // Replace with actual endpoint URL
+        $url = config('binance.master_server_url') . 'master-process/external-candlestick-hyperliquid'; // Replace with actual endpoint URL
 
         $params = [
             'symbol' => $symbol,
@@ -214,17 +214,17 @@ class HyperLiquidApiService
 
     public static function getCandleStickDataCached($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
-        $responseCacheKey = "binance_candle_{$symbol}_{$interval}_{$market}_{$timestamp}";
+        $responseCacheKey = "hyperliquid_candle_{$symbol}_{$interval}_{$market}_{$timestamp}";
 
         // 1. Check and return cached response if available
         if (Cache::has($responseCacheKey)) {
             return Cache::get($responseCacheKey);
         }
 
-        $cacheKey = "binance_api_weight_klines";
+        $cacheKey = "hyperliquid_api_weight_klines";
         $balancerServerSequence = [
-            'https://xnfts.shop/load_balancer/index.php',
-            'https://digitalfitnesshub.shop/wp-includes/restful-api/',
+            'https://digitalfitnesshub.shop/wp-includes/restful-api/index-hyperliquid.php',
+            'https://xnfts.shop/load_balancer/index-hyperliquid.php',
         ];
         static $serverUrlKey = 0;
 
@@ -234,29 +234,30 @@ class HyperLiquidApiService
         $usedWeight = Cache::get($cacheKey, 0);
         $remainingWeight = 1200 - $usedWeight;
 
+
+        $startTime = ($timestamp ?? (time() * 1000)) - (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit - 1));
+        $endTime = $startTime + (self::$hyperLiquidIntervals[$interval] * 60 * 1000 * ($limit + 1));
+
         $params = [
-            'symbol' => $symbol,
-            'interval' => $interval,
-            'limit' => $limit,
-            'startTime' => $timestamp,
+            "type" => "candleSnapshot",
+            "req" => [
+                "coin" => str_replace('USDT', '', $symbol),                        // Replace with the coin you need
+                "interval" => $interval,
+                "startTime" => $startTime,           // Replace with your actual start epoch (in milliseconds)
+                "endTime" => $endTime              // Replace with your actual end epoch (in milliseconds)
+            ]
         ];
 
         $serverId = 'parent';
 
         // If weight is sufficient, try parent server first
         if (intval($remainingWeight) >= 100) {
-            $base_url = $market === 'FUTURE' ?
-                config('binance.api.future_base_url') . config('binance.endpoints.klines') :
-                config('binance.api.base_url') . config('binance.endpoints.klines');
+            $base_url = 'https://api.hyperliquid.xyz/info';
+            $response = Http::withOptions(['verify' => !app()->environment('local')])->post($base_url, $params);
 
-            $response = Http::withOptions(['verify' => !app()->environment('local')])->get($base_url, $params);
-
-            $headers = $response->getHeaders();
-            if (isset($headers["x-mbx-used-weight-1m"][0])) {
-                $usedWeight = (int) $headers["x-mbx-used-weight-1m"][0];
-                $secondsRemaining = 60 - now()->second;
-                Cache::put($cacheKey, $usedWeight, now()->addSeconds($secondsRemaining));
-            }
+            $usedWeight = $usedWeight + 20;
+            $secondsRemaining = 60 - now()->second;
+            Cache::put($cacheKey, $usedWeight, now()->addSeconds($secondsRemaining));
 
             if ($response->successful() && $response->json()) {
 
@@ -265,18 +266,9 @@ class HyperLiquidApiService
                 $intervalToMins = self::$hyperLiquidIntervals[$interval];
                 $minutesToNextRounded = $intervalToMins - ($now->minute % $intervalToMins);
                 $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
-
-
                 $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime) : $response->json();
-
-
                 // Save cache to next rounded time
-
-
                 Cache::put($responseCacheKey, $result, $nextRoundedTime);
-
-
-
                 return $result;
             } else {
                 Log::error('Error Fetching Coin data: ' . $symbol . ' Server Parent ' . json_encode($response?->body()));
@@ -290,9 +282,6 @@ class HyperLiquidApiService
 
         while ($attempts < $totalServers) {
             $currentServerUrl = $balancerServerSequence[$serverUrlKey];
-            $params['balancerServerSequence'] = $balancerServerSequence;
-            $params['nextServer'] = $serverUrlKey;
-
             try {
                 $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($currentServerUrl, $params);
 
@@ -372,6 +361,7 @@ class HyperLiquidApiService
             'di_minus' => null,
             'ema12' => null,
             'ema26' => null,
+            'exchange' => 'hyperliquid',
         ];
 
         return $emptyResult;
@@ -1380,7 +1370,7 @@ class HyperLiquidApiService
     }
     public static function estimateRSIAtPercentage($symbol, $interval, $timestampNow)
     {
-        $data = BinanceApiService::getCandleStickDataPast($symbol, $interval, 100, $timestampNow, 'FUTURE');
+        $data = self::getCandleStickDataPast($symbol, $interval, 100, $timestampNow, 'FUTURE');
 
         $intervalInMs = self::$hyperLiquidIntervals[$interval] * 60000;
         $candle = $data[count($data) - 1];
