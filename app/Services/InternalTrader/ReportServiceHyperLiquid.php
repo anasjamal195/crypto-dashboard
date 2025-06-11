@@ -160,7 +160,7 @@ class ReportServiceHyperLiquid
 
 
         if (!self::$backTestTimeUnix) {
-            self::$backTestTimeUnix = time() * 1000 - (CommonHelpers::$binanceIntervals[self::$interval] * 60 * 1000 * 1000);
+            self::$backTestTimeUnix = time() * 1000 - (CommonHelpers::$binanceIntervals[self::$interval] * 60 * 1000 * 5000);
         }
 
 

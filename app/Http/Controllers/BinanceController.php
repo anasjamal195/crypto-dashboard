@@ -917,13 +917,6 @@ class BinanceController extends Controller
         $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
         $historicalTrends = MarketTrendService::getVolumesGraph($request->symbol);
 
-
-
-
-
-
-
-
         return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'volumeSignals' => [], 'totalProfit' => 0]);
     }
     public function getAvailableBalance(Request $request)
