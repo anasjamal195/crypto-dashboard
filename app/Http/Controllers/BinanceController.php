@@ -34,18 +34,18 @@ class BinanceController extends Controller
                 return redirect()->back()->withError('Error Deleting Report!');
             DB::table('coin_reports')->where('formula', $formula)->delete();
             DB::table('formula_details')->where('formula', $formula)->delete();
-            return redirect()->back()->withSuccess('Current Report Deleted Successfully!');
+            return redirect()->route('coinReport', 'FUTURE')->withSuccess('Current Report Deleted Successfully!');
         } else if (request('incomplete_only')) {
 
             $formulas =   DB::table('formula_details')->where('progress', '!=', 100)->pluck('formula');
             DB::table('coin_reports')->whereIn('formula', $formulas)->delete();
             DB::table('formula_details')->whereIn('formula', $formulas)->delete();
-            return redirect()->back()->withSuccess(count($formulas) . " Reports Deleted Successfully!");
+            return redirect()->route('coinReport', 'FUTURE')->withSuccess(count($formulas) . " Reports Deleted Successfully!");
         } else if (request('delete_all')) {
             $count =   DB::table('formula_details')->get()->count();
             DB::table('coin_reports')->truncate();
             DB::table('formula_details')->truncate();
-            return redirect()->back()->withSuccess($count . " Reports Deleted Successfully!");
+            return redirect()->route('coinReport', 'FUTURE')->withSuccess($count . " Reports Deleted Successfully!");
         } else {
             return redirect()->back()->withError('Error Deleting Report!');
         }
