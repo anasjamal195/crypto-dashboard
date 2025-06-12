@@ -10,6 +10,7 @@ use DateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\OrderBookSnapshot;
+use App\Services\HyperLiquidApiService;
 use App\Services\SupportResistanceAnalyzer;
 use Illuminate\Support\Facades\Log;
 use stdClass;
@@ -79,6 +80,7 @@ class ReportServiceSafeModeMacdSwing
     public static $baseReportFormula;
     public static $timeWiseTradesCount = [];
 
+    public static $activeExchange = 'hyperliquid';
 
     public static function generateCoinReport(
         $cmd = null,
@@ -111,7 +113,10 @@ class ReportServiceSafeModeMacdSwing
                 $symbol = $coin['symbol'];
 
                 // Log::info("Test Request Params" . self::$interval);
-                $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 420, null, 'FUTURE');
+                $data = self::$activeExchange === 'binance' ?
+                    BinanceApiService::getCandleStickData($symbol, self::$interval, 420, null, 'FUTURE')
+                    : HyperLiquidApiService::getCandleStickData($symbol, self::$interval, 420, null, 'FUTURE');
+
 
                 $trades = self::processCandles($symbol, $data);
 
@@ -998,7 +1003,12 @@ class ReportServiceSafeModeMacdSwing
     public static function checkTrendOnHigherCandles($symbol, $position, $data, $index, $higherInterval = '1h')
     {
 
-        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
+        $dataHigher =
+            $data = self::$activeExchange === 'binance' ?
+            BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE')
+            : HyperLiquidApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
+
+            
         $indexHigher = count($dataHigher) - 2;
 
         if ($position === 'LONG') {
