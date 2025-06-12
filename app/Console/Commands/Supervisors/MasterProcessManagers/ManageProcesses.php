@@ -34,19 +34,26 @@ class ManageProcesses extends Command
         $remoteMonitor = new PerformanceMonitoringService('209.38.95.33', 'root', 'l@v1k2*l09g$m@xeiTp');
 
         $mysqlRestartAttempts = 0;
-        $mysqlRestartAttemptsLimit = 3;
+        $pythonServerRestartAttempts = 0;
 
         $currentProcess = 'laravel_master_safety_worker';
         while (true) {
 
-
             $pythonServerHealth = self::checkPythonServerHealth('http://209.38.95.33:5000/health', 15);
 
             if (!$pythonServerHealth['success']) {
-                CommonHelpers::addSafetyLog('PYTHON_SERVER_DOWN', 'Python sdk server is down. Stopping all processes');
-                $remoteMonitor->stopAllSupervisorProcesses();
-                SupervisorService::stop($currentProcess);
-                break;
+                CommonHelpers::addSafetyLog('PYTHON_SERVER_RESTART_ATTEMPT', 'Python sdk server is down. Attempting Restart... ' . (3 - $pythonServerRestartAttempts) . ' attempts left');
+                $pythonServerRestartAttempts++;
+                if ($pythonServerRestartAttempts > 3) {
+                    $remoteMonitor->stopSupervisorProcesses();
+                    CommonHelpers::addSafetyLog('STOPPED_ALL_PROCESSES', 'Python sdk server is down. Restart failed');
+                    SupervisorService::stop($currentProcess);
+                    break;
+                }
+
+                $remoteMonitor->restartSupervisorProcesses('hyperliquid-sdk');
+                sleep(5);
+                continue;
             }
 
 
@@ -55,17 +62,17 @@ class ManageProcesses extends Command
 
             if ($sqlStatus['status'] !== 'running') {
                 // Attempt Restart
-                $remoteMonitor->startMysql();
                 $mysqlRestartAttempts++;
 
                 // Attempt restart 3 times and than stop all supervisor processes and perform server reboot (BETA)
                 if ($mysqlRestartAttempts > 3) {
-                    $remoteMonitor->stopAllSupervisorProcesses();
+                    $remoteMonitor->stopSupervisorProcesses();
                     CommonHelpers::addSafetyLog('STOPPED_ALL_PROCESSES', 'SQL down on live site. Restart Failed!');
                     SupervisorService::stop($currentProcess);
                     break;
                 }
-                CommonHelpers::addSafetyLog('SQL_RESTART_ATTEMPT_' . $mysqlRestartAttempts, 'SQL down on live site. Attempting restart. ' . (3 - $mysqlRestartAttempts) . ' attempts left');
+                $remoteMonitor->startMysql();
+                CommonHelpers::addSafetyLog('SQL_RESTART_ATTEMPT', 'SQL down on live site. Attempting restart. ' . (3 - $mysqlRestartAttempts) . ' attempts left');
                 sleep(5);
                 continue;
             }

@@ -31,18 +31,18 @@ class PerformanceMonitoringService
     public function getServerStats($useCache = true)
     {
         $cacheKey = $this->cachePrefix . md5($this->host);
-        
+
         if ($useCache && Cache::has($cacheKey)) {
             return Cache::get($cacheKey);
         }
 
         try {
             $this->connect();
-            
+
             // Execute all commands in a single SSH session for efficiency
             $commands = $this->buildStatsCommands();
             $results = $this->executeMultipleCommands($commands);
-            
+
             $stats = [
                 'timestamp' => now()->toISOString(),
                 'server_ip' => $this->host,
@@ -60,7 +60,6 @@ class PerformanceMonitoringService
             }
 
             return $stats;
-
         } catch (Exception $e) {
             Log::error('Server monitoring error: ' . $e->getMessage());
             $this->disconnect();
@@ -77,7 +76,7 @@ class PerformanceMonitoringService
             $this->connect();
             $output = $this->executeCommand('systemctl is-active mysql || systemctl is-active mysqld');
             $this->disconnect();
-            
+
             return [
                 'status' => trim($output) === 'active' ? 'running' : 'stopped',
                 'service_name' => $this->detectMysqlServiceName()
@@ -107,16 +106,19 @@ class PerformanceMonitoringService
     /**
      * Stop all supervisor processes
      */
-    public function stopAllSupervisorProcesses()
+    public function stopSupervisorProcesses($process = null)
     {
         try {
             $this->connect();
-            $output = $this->executeCommand('supervisorctl stop all');
+
+            $cmd = $process ? ('supervisorctl stop ' . $process) : 'supervisorctl stop all';
+            $output = $this->executeCommand($cmd);
+
             $this->disconnect();
-            
+
             // Clear cache to force refresh on next call
             $this->clearCache();
-            
+
             return [
                 'success' => true,
                 'message' => 'All supervisor processes stopped',
@@ -132,20 +134,47 @@ class PerformanceMonitoringService
         }
     }
 
+    public function restartSupervisorProcesses($process = null)
+    {
+        try {
+            $this->connect();
+
+            $cmd = $process ? ('supervisorctl restart ' . $process) : 'supervisorctl restart all';
+
+            $output = $this->executeCommand($cmd);
+            $this->disconnect();
+
+            // Clear cache to force refresh on next call
+            $this->clearCache();
+
+            return [
+                'success' => true,
+                'message' => 'All supervisor processes stopped',
+                'output' => $output
+            ];
+        } catch (Exception $e) {
+            Log::error('Failed to stop supervisor processes: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Failed to stop supervisor processes',
+                'error' => $e->getMessage()
+            ];
+        }
+    }
     /**
      * Get lightweight server health check
      */
     public function getQuickHealthCheck()
     {
         $cacheKey = $this->cachePrefix . 'quick_' . md5($this->host);
-        
+
         if (Cache::has($cacheKey)) {
             return Cache::get($cacheKey);
         }
 
         try {
             $this->connect();
-            
+
             // Minimal commands for quick health check
             $commands = [
                 'uptime' => 'uptime',
@@ -153,10 +182,10 @@ class PerformanceMonitoringService
                 'memory' => 'free -m | awk \'NR==2{printf "%.1f", $3*100/$2}\'',
                 'mysql' => 'systemctl is-active mysql || systemctl is-active mysqld'
             ];
-            
+
             $results = $this->executeMultipleCommands($commands);
             $this->disconnect();
-            
+
             $health = [
                 'timestamp' => now()->toISOString(),
                 'uptime' => trim($results['uptime']),
@@ -167,7 +196,6 @@ class PerformanceMonitoringService
 
             Cache::put($cacheKey, $health, 15); // Shorter cache for quick checks
             return $health;
-
         } catch (Exception $e) {
             Log::error('Quick health check failed: ' . $e->getMessage());
             throw $e;
@@ -183,21 +211,21 @@ class PerformanceMonitoringService
             $this->connect();
             $serviceName = $this->detectMysqlServiceName();
             $command = "systemctl {$action} {$serviceName}";
-            
+
             $output = $this->executeCommand($command);
-            
+
             // Verify the action
             sleep(2); // Give service time to change state
             $status = $this->executeCommand("systemctl is-active {$serviceName}");
-            
+
             $this->disconnect();
-            
+
             // Clear cache to force refresh
             $this->clearCache();
-            
+
             $isRunning = trim($status) === 'active';
             $expectedState = $action === 'start' ? true : false;
-            
+
             return [
                 'success' => $isRunning === $expectedState,
                 'action' => $action,
@@ -205,7 +233,6 @@ class PerformanceMonitoringService
                 'service_name' => $serviceName,
                 'output' => $output
             ];
-            
         } catch (Exception $e) {
             Log::error("MySQL {$action} failed: " . $e->getMessage());
             return [
@@ -238,7 +265,7 @@ class PerformanceMonitoringService
     private function executeMultipleCommands($commands)
     {
         $results = [];
-        
+
         foreach ($commands as $key => $command) {
             try {
                 $results[$key] = $this->executeCommand($command);
@@ -247,7 +274,7 @@ class PerformanceMonitoringService
                 Log::warning("Command '{$command}' failed: " . $e->getMessage());
             }
         }
-        
+
         return $results;
     }
 
@@ -271,7 +298,7 @@ class PerformanceMonitoringService
     {
         // Parse CPU
         $cpuUsage = (float) str_replace('%', '', trim($results['cpu_usage']));
-        
+
         // Parse Memory
         $memoryLines = explode("\n", $results['memory_info']);
         $memoryLine = '';
@@ -281,18 +308,18 @@ class PerformanceMonitoringService
                 break;
             }
         }
-        
+
         $memoryParts = preg_split('/\s+/', trim($memoryLine));
         $totalMem = isset($memoryParts[1]) ? (int) $memoryParts[1] : 0;
         $usedMem = isset($memoryParts[2]) ? (int) $memoryParts[2] : 0;
         $memoryUsage = $totalMem > 0 ? round(($usedMem / $totalMem) * 100, 1) : 0;
-        
+
         // Parse Disk
         $diskUsage = (float) str_replace('%', '', trim($results['disk_usage']));
-        
+
         // Parse Load Average
         $loadAvg = trim($results['load_avg']);
-        
+
         return [
             'cpu_usage_percent' => $cpuUsage,
             'memory_usage_percent' => $memoryUsage,
@@ -326,10 +353,10 @@ class PerformanceMonitoringService
 
         $lines = explode("\n", trim($output));
         $processes = [];
-        
+
         foreach ($lines as $line) {
             if (empty(trim($line))) continue;
-            
+
             $parts = preg_split('/\s+/', trim($line), 3);
             if (count($parts) >= 2) {
                 $processes[] = [
@@ -339,11 +366,11 @@ class PerformanceMonitoringService
                 ];
             }
         }
-        
+
         return [
             'processes' => $processes,
             'total_count' => count($processes),
-            'running_count' => count(array_filter($processes, function($p) {
+            'running_count' => count(array_filter($processes, function ($p) {
                 return $p['status'] === 'RUNNING';
             }))
         ];
@@ -358,7 +385,7 @@ class PerformanceMonitoringService
             $this->connect();
             $mysqlCheck = $this->executeCommand('systemctl list-units --type=service | grep -E "(mysql|mysqld)" | head -1');
             $this->disconnect();
-            
+
             if (strpos($mysqlCheck, 'mysqld') !== false) {
                 return 'mysqld';
             }
@@ -378,7 +405,7 @@ class PerformanceMonitoringService
         }
 
         $this->connection = new SSH2($this->host, $this->port);
-        
+
         if (!$this->connection->login($this->username, $this->password)) {
             throw new Exception("Authentication failed for {$this->username}@{$this->host}");
         }
@@ -397,7 +424,7 @@ class PerformanceMonitoringService
         }
 
         $output = $this->connection->exec($command);
-        
+
         if ($output === false) {
             throw new Exception("Failed to execute command: {$command}");
         }
@@ -425,7 +452,7 @@ class PerformanceMonitoringService
             $this->cachePrefix . md5($this->host),
             $this->cachePrefix . 'quick_' . md5($this->host)
         ];
-        
+
         foreach ($keys as $key) {
             Cache::forget($key);
         }
