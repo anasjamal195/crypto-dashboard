@@ -447,7 +447,7 @@ class TriggersThread implements ShouldQueue
                 $takeProfitPrice = $currentCandle['close'] * (1 + $takeProfitPercentage / 100);
                 $stopLossPrice = $currentCandle['close'];
 
-                $tpSlOrders =                 self::$activeExchange === 'binance' ?
+                $tpSlOrders = self::$activeExchange === 'binance' ?
                     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
                     : HyperLiquidApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
                 if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
