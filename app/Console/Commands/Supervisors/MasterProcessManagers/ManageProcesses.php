@@ -4,6 +4,7 @@ namespace App\Console\Commands\Supervisors\MasterProcessManagers;
 
 use App\CommonHelpers;
 use App\Services\PerformanceMonitoringService;
+use App\Services\SupervisorService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -35,6 +36,7 @@ class ManageProcesses extends Command
         $mysqlRestartAttempts = 0;
         $mysqlRestartAttemptsLimit = 3;
 
+        $currentProcess = 'laravel_master_safety_worker';
         while (true) {
 
 
@@ -43,6 +45,7 @@ class ManageProcesses extends Command
             if (!$pythonServerHealth['success']) {
                 CommonHelpers::addSafetyLog('PYTHON_SERVER_DOWN', 'Python sdk server is down. Stopping all processes');
                 $remoteMonitor->stopAllSupervisorProcesses();
+                SupervisorService::stop($currentProcess);
                 break;
             }
 
@@ -59,6 +62,7 @@ class ManageProcesses extends Command
                 if ($mysqlRestartAttempts > 3) {
                     $remoteMonitor->stopAllSupervisorProcesses();
                     CommonHelpers::addSafetyLog('STOPPED_ALL_PROCESSES', 'SQL down on live site. Restart Failed!');
+                    SupervisorService::stop($currentProcess);
                     break;
                 }
                 CommonHelpers::addSafetyLog('SQL_RESTART_ATTEMPT_' . $mysqlRestartAttempts, 'SQL down on live site. Attempting restart. ' . (3 - $mysqlRestartAttempts) . ' attempts left');
