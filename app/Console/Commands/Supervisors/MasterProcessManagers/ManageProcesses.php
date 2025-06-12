@@ -41,6 +41,7 @@ class ManageProcesses extends Command
 
             $pythonServerHealth = self::checkPythonServerHealth('http://209.38.95.33:5000/health', 15);
 
+            
             if (!$pythonServerHealth['success']) {
                 CommonHelpers::addSafetyLog('PYTHON_SERVER_RESTART_ATTEMPT', 'Python sdk server is down. Attempting Restart... ' . (3 - $pythonServerRestartAttempts) . ' attempts left');
                 $pythonServerRestartAttempts++;
