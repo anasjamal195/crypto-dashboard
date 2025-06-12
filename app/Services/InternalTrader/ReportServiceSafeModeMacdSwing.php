@@ -478,6 +478,7 @@ class ReportServiceSafeModeMacdSwing
                     $currentTrade['lowestPricePercentage'] = abs((($open_price - $extremePrice) / $open_price)) * 100;
                     $currentTrade['position'] = $tradeType;
                     $currentTrade['formula'] = self::$formula;
+                    $currentTrade['exchange'] = self::$activeExchange;
 
                     $buyingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['buyingCandle'], true)['timestampReadable']);
                     $sellingTimestamp = DateTime::createFromFormat('Y-m-d H:i:s', json_decode($currentTrade['sellingCandle'], true)['timestampReadable']);
@@ -1008,7 +1009,7 @@ class ReportServiceSafeModeMacdSwing
             BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE')
             : HyperLiquidApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
 
-            
+
         $indexHigher = count($dataHigher) - 2;
 
         if ($position === 'LONG') {
