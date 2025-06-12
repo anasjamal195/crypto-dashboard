@@ -5,6 +5,7 @@ namespace App\Jobs\ThreadsOrderBook;
 use App\CommonHelpers;
 use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
+use App\Services\HyperLiquidApiService;
 use App\Services\IdealTradeService;
 use App\Services\MailerService;
 use App\Services\MarketTrendService;
@@ -69,10 +70,14 @@ class TriggersThread implements ShouldQueue
     public function handle(): void
     {
         while (true) {
+
+
             CommonHelpers::updateWorkerTicker($this->workerId);
             // Handle restarted worker
             $this->manageRestartedWorker($this->openOrderIdRestarted);
 
+            // Set Active Exchange
+            self::$activeExchange = CommonHelpers::getMetaValue($this->account, 'active_exchange', 'binance');
             // Check if any trade is open while worker was restarted
             try {
                 $tradeToOpen = null;
@@ -92,7 +97,11 @@ class TriggersThread implements ShouldQueue
                             $trade_acc = $this->account;
                             // Log::info("Test Request Params" . self::$interval);
 
-                            $data = BinanceApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
+
+
+                            $data = self::$activeExchange === 'binance' ?
+                                BinanceApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE')
+                                : HyperLiquidApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
 
                             $index = count($data) - 1;
                             // Decrement index to get last completed candle
@@ -273,10 +282,15 @@ class TriggersThread implements ShouldQueue
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Opening Position: ' . $symbol);
 
                         try {
-                            if (self::$isSpot && $tradeType === 'LONG')
-                                BinanceApiService::placeBuyOrderSpot($tradeInstance->symbol, $tradeInstance->buyPrice,  'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
-                            else
-                                BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
+                            if (self::$isSpot && $tradeType === 'LONG') {
+                                self::$activeExchange === 'binance' ?
+                                    BinanceApiService::placeBuyOrderSpot($tradeInstance->symbol, $tradeInstance->buyPrice,  'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit)
+                                    : HyperLiquidApiService::placeBuyOrderSpot($tradeInstance->symbol, $tradeInstance->buyPrice,  'BUY', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
+                            } else {
+                                self::$activeExchange === 'binance' ?
+                                    BinanceApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit)
+                                    : HyperLiquidApiService::openMarketPositionLiveTrader($tradeInstance->symbol, $tradeInstance->buyPrice, $tradeInstance->position === 'LONG' ? 'BUY' : 'SELL', $tradeInstance->leverage, $tradeInstance->tradeAccount, $this->formula, $supportResistanceArr, 0, false, $this->stopLoss, $this->targetProfit);
+                            }
                         } catch (\Throwable $th) {
                             CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                             Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $th);
@@ -399,10 +413,16 @@ class TriggersThread implements ShouldQueue
         if ($currentCandle['close'] < $stopLoss || $closeEarly) {
             // Checking Upper Wick Formation
 
-            if ($open_order['market'] === 'SPOT')
-                BinanceApiService::placeSellOrderSpot($open_order['orderId']);
-            else
-                BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId']);
+            if ($open_order['market'] === 'SPOT') {
+                self::$activeExchange === 'binance' ?
+                    BinanceApiService::placeSellOrderSpot($open_order['orderId'])
+                    : HyperLiquidApiService::placeSellOrderSpot($open_order['orderId']);
+            } else {
+                self::$activeExchange === 'binance' ?
+                    BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId'])
+                    : HyperLiquidApiService::closeMarketPositionLiveTrader($open_order['orderId']);
+            }
+
 
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
@@ -427,11 +447,15 @@ class TriggersThread implements ShouldQueue
                 $takeProfitPrice = $currentCandle['close'] * (1 + $takeProfitPercentage / 100);
                 $stopLossPrice = $currentCandle['close'];
 
-                $tpSlOrders = BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
+                $tpSlOrders =                 self::$activeExchange === 'binance' ?
+                    BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
+                    : HyperLiquidApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
                 if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
                     return false;
                 }
-                BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+                self::$activeExchange === 'binance' ?
+                    BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING')
+                    : HyperLiquidApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
             }
 
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
@@ -511,7 +535,9 @@ class TriggersThread implements ShouldQueue
 
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
 
-            BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId']);
+            self::$activeExchange === 'binance' ?
+                BinanceApiService::closeMarketPositionLiveTrader($open_order['orderId'])
+                : HyperLiquidApiService::closeMarketPositionLiveTrader($open_order['orderId']);
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
                 'previousPrice' => $currentCandle['close'],
                 'currentPrice' => $currentCandle['close'],
@@ -535,12 +561,17 @@ class TriggersThread implements ShouldQueue
                 $takeProfitPrice = $currentCandle['close'] * (1 - $takeProfitPercentage / 100);
                 $stopLossPrice = $currentCandle['close'];
 
-                $tpSlOrders = BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
+                $tpSlOrders =  self::$activeExchange === 'binance' ?
+                    BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
+                    : HyperLiquidApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
 
                 if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
                     return false;
                 }
-                BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+
+                self::$activeExchange === 'binance' ?
+                    BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING')
+                    : HyperLiquidApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
             }
 
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
@@ -940,7 +971,9 @@ class TriggersThread implements ShouldQueue
 
 
 
-        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE', true);
+        $dataHigher =  self::$activeExchange === 'binance' ?
+            BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE', true)
+            : HyperLiquidApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE', true);
 
         if (!$dataHigher) {
             return null;
