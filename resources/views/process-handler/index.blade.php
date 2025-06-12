@@ -34,7 +34,7 @@
                     : 'https://assets-global.website-files.com/64aaf8b72edb45c865cf5a26/65a12c9bb7d48f9d93c66f86_favicon-32x32.png'; // Hyperliquid logo
             @endphp
 
-            <a href="{{ route('toggle-exchange', $toggleTo) }}" class="btn btn-sm m-2 {{ $btnClass }}">
+            <a href="{{ route('user.toggle-exchange', $toggleTo) }}" class="btn btn-sm m-2 {{ $btnClass }}">
                 <img src="{{ $iconUrl }}" alt="{{ $exchangeName }}" width="18" height="18"
                     style="margin-right: 6px;">
                 {{ $exchangeName }} Active
