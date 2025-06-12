@@ -11,9 +11,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use kornrunner\Keccak;
-use MessagePack\MessagePack;
-use Web3p\EthereumUtil\Util;
 
 class HyperLiquidApiService
 {
@@ -37,9 +34,6 @@ class HyperLiquidApiService
         '1M'  => 43200,   // 1 month (approx 30 days)
     ];
 
-
-    // Future Api's
-    private static $baseUrl = 'https://api.hyperliquid.xyz';
     /**
      * Initialize or retrieve the HTTP client.
      */
@@ -1557,25 +1551,21 @@ class HyperLiquidApiService
     // Live Trades Functions 
     public static function getCurrentPrice($symbol, $market = 'SPOT')
     {
-        try {
-            $client = new Client();
-            $response = $client->get(self::$baseUrl . '/info', [
-                'json' => [
-                    'type' => 'allMids'
-                ]
-            ]);
+        $params = [
+            'symbol' => $symbol,
+        ];
+        $url = '';
+        if ($market == 'FUTURE')
+            $url = config('binance.api.future_base_url') . config('binance.endpoints.ticker_price');
+        else
+            $url = config('binance.api.base_url') . config('binance.endpoints.ticker_price');
 
-            $data = json_decode($response->getBody()->getContents(), true);
+        $ticker = self::getHttpClient()->get($url, $params);
 
-            $price = $data[$symbol] ?? '0';
+        Log::info('Price Response for ' . $symbol . ': ' . json_encode(isset($ticker['price']) ? $ticker['price'] : '0'));
 
-            Log::info('Price Response for ' . $symbol . ': ' . $price);
 
-            return $price;
-        } catch (Exception $e) {
-            Log::error('Error getting price for ' . $symbol . ': ' . $e->getMessage());
-            return '0';
-        }
+        return isset($ticker['price']) ? $ticker['price'] : '0';
     }
 
     private static function getTotalCommission($apiResponse)
@@ -1885,7 +1875,7 @@ class HyperLiquidApiService
         $market = $buy_order->market;
         $amount = $buy_order->amount;
         $interval = $buy_order->interval;
-        $current_price = self::getCurrentPrice($symbol, $market);
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
         $user = User::find($trader);
         $apiKey = $user->api_key;
@@ -2144,7 +2134,7 @@ class HyperLiquidApiService
 
         $market = 'SPOT';
 
-        $current_price = self::getCurrentPrice($symbol, $market);
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
         $user = User::find($trader);
         $apiKey = $user->api_key;
@@ -2250,40 +2240,34 @@ class HyperLiquidApiService
     }
 
 
-
+    // Future Api's
     public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false, $stopLossPercentage = 0.5, $targetProfit = 0.5)
     {
+
         $market = 'FUTURE';
-        $current_price = self::getCurrentPrice($symbol, $market);
-
-        $user = User::find($trader);
-        $apiKey = '0x294c8D64F96f3ae8C3811677B79870c56AF16795';
-        $apiSecret = 'e5437617d80a6e2959dd8e04a4a4dd89ac5da316528aeb307899e19e2ed2fb31';
-
-        // Step 1: Set leverage
-        self::setLeverage($symbol, $leverage, $apiKey, $apiSecret);
-
-        dd("Leverage Set");
-        // Step 2: Get asset info for precision
-        $assetInfo = self::getAssetInfo($symbol);
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
         // Step 3: Calculate position quantity
-        $positionSize = $tradeAmount * $leverage;
-        $quantity = $positionSize / $current_price;
+        $positionSize = $tradeAmount * $leverage; // Total position size with leverage
+        $quantity = $positionSize / $current_price;      // Contract quantity based on the price
 
-        // Adjust quantity to match asset precision
-        $quantity = self::adjustQuantityPrecision($quantity, $assetInfo);
 
-        // Step 4: Place market order
-        $orderResponse = self::placeMarketOrder($symbol, $position === 'BUY', $quantity, $apiKey, $apiSecret);
 
-        if (isset($orderResponse['status']) && $orderResponse['status'] === 'error') {
-            throw new Exception("Order failed: " . $orderResponse['response']);
-        }
 
-        // Calculate liquidation price and stop loss
-        $entryPrice = $current_price;
-        $accountMargin = $tradeAmount;
+        $timestamp =  round(microtime(true) * 1000);
+
+        $openResponse = self::SDKopenPosition($symbol, $position, $tradeAmount, $leverage, $trader);
+
+        $response = [
+            'orderId' => $openResponse['orderId'],
+            'side' => $position,
+            'symbol' => $symbol,
+        ];
+
+
+        // Calculate liquidation price
+        $entryPrice = $current_price; // Assuming trade executed at provided price
+        $accountMargin = $tradeAmount; // User's margin
         $liquidationPrice = 0;
         $stopLoss = 0;
         $takeProfitPrice = 0;
@@ -2291,20 +2275,23 @@ class HyperLiquidApiService
         if ($position === 'BUY') {
             $liquidationPrice = $entryPrice - ($accountMargin / ($quantity * $leverage));
             $stopLoss = $current_price * (1 - $stopLossPercentage / 100) < $liquidationPrice ? $liquidationPrice * (1 + 0.3 / 100) : $current_price * (1 - $stopLossPercentage / 100);
-            $takeProfitPrice = $current_price * (1 + $targetProfit / 100);
         } else if ($position === 'SELL') {
             $liquidationPrice = $entryPrice + ($accountMargin / ($quantity * $leverage));
             $stopLoss = $current_price * (1 + $stopLossPercentage / 100) > $liquidationPrice ? $liquidationPrice * (1 - 0.3 / 100) : $current_price * (1 + $stopLossPercentage / 100);
-            $takeProfitPrice = $current_price * (1 - $targetProfit / 100);
         }
 
-        // Generate a unique order ID (Hyperliquid uses different structure)
-        $orderId = $orderResponse['response']['statuses'][0]['resting']['oid'] ?? uniqid('hl_', true);
 
-        $data = [
-            'orderId' => $orderId,
-            'symbol' => $symbol,
-            'side' => $position,
+        if ($position === 'BUY') {
+            $takeProfitPrice =  $current_price * (1 + $targetProfit / 100);
+        } else if ($position === 'SELL') {
+            $takeProfitPrice =  $current_price * (1 - $targetProfit / 100);
+        }
+
+
+        $data =  [
+            'orderId' => $response['orderId'],
+            'symbol' => $response['symbol'],
+            'side' => $response['side'],
             'amount' => $tradeAmount,
             'market' => $market,
             'type' => 'open',
@@ -2325,30 +2312,31 @@ class HyperLiquidApiService
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
-        DB::table('live_trades_future_results')->insert($data);
-
+        DB::table('live_trades_future_results')->insert(
+            $data
+        );
         $data['support'] = $supportResistance['support'];
         $data['resistance'] = $supportResistance['resistance'];
-
         if ($position === 'BUY') {
             $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
         } else if ($position === 'SELL') {
             $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
         }
-
         $data['subject'] = 'FUTURE:' . $data['type'] . ' ' . $data['position'] . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
 
-        // Place TP/SL orders
-        $tpSlOrders = self::placeTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $orderId);
-        self::insertTradeDetails($orderId, $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'] ?? null, $tpSlOrders['stopLoss']['orderId'] ?? null, 'PENDING');
+
+        // Temporarily Disabled
+        // CommonHelpers::updateLiveTradeSession($trader);
+
+
+
+        $tpSlOrders = self::placeTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $response['orderId']);
+
+        self::insertTradeDetails($response['orderId'], $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
 
         return $data;
     }
-
-
-
-
 
     public static function closeMarketPositionLiveTrader($openOrderId)
     {
@@ -2360,85 +2348,11 @@ class HyperLiquidApiService
         $symbol = $openOrder->symbol;
         $trader = $openOrder->trade_acc;
         $quantity = $openOrder->qty;
-        $current_price = self::getCurrentPrice($symbol, $market);
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
 
         $response = null;
         $positionDetails = self::getPositionDetails($symbol, $trader);
-
-        $user = User::find($trader);
-        $apiKey = $user->api_key;
-        $apiSecret = $user->api_secret;
-        $base_url = $market == 'FUTURE' ? config('binance.api.future_base_url') : config('binance.api.base_url');
-        $url = $base_url . config('binance.endpoints.order');
-
-        $timestamp =  round(microtime(true) * 1000);
-        // Prepare query string for signature
-        $queryString = http_build_query([
-            'symbol' => $symbol,
-            "side" => $position,
-            "type" => "MARKET",
-            'quantity' => strval($quantity),
-            'timestamp' => $timestamp,
-        ]);
-
-        // Generate signature
-        $signature = hash_hmac('sha256', $queryString, $apiSecret);
-
-        // Append signature to the query string
-        $queryString .= '&signature=' . $signature;
-
-
-        if ($openOrder->isDummy) {
-
-            $orderId = random_int(100000, 999999);
-            $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
-            while ($exists) {
-                $orderId = random_int(100000, 999999);
-                $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
-            }
-            $currentProfit = 0;
-            if ($position === 'BUY') {
-                $currentProfit = (($openOrder->price - $current_price) / $openOrder->price) * 100;
-            } else {
-                $currentProfit = (($current_price - $openOrder->price) / $openOrder->price) * 100;
-            }
-            $data =  [
-                'orderId' => $orderId,
-                'pairId' => $openOrder->pairId,
-                'symbol' => $symbol,
-                'market' => $market,
-                'side' => $position,
-                'amount' => $openOrder->amount,
-                'qty' => $quantity,
-                'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
-                'type' => 'close',
-                'trade_status' => 'close',
-                'leverage' => 0,
-                'price' => $current_price,
-                'currentProfit' => $currentProfit,
-                'isDummy' => $openOrder->isDummy,
-                'trade_acc' => $trader,
-                'liqPrice' => 0,
-                'created_at' => Carbon::now('Asia/Karachi'),
-            ];
-
-            DB::table('live_trades_future_results')->insert(
-                $data
-            );
-            DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
-                'trade_status' => 'close',
-                'pairId' => $orderId,
-
-            ]);
-            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
-
-            MailerService::sendFutureTradeDynamicEmail($data);
-            return $data;
-        }
-
-
-
 
 
         $closedInternally = true;
@@ -2467,22 +2381,13 @@ class HyperLiquidApiService
             $closedInternally = false;
         } else {
 
-            $response = self::getHttpClient()->withHeaders([
-                'X-MBX-APIKEY' => $apiKey,
-            ])->asForm()->post($url, [
+            $closeResponse = self::SDKclosePosition($symbol, $trader);
+
+            $response = [
+                'orderId' => $closeResponse['orderId'],
+                'side' => $position,
                 'symbol' => $symbol,
-                "side" => $position,
-                "type" => "MARKET",
-                'quantity' => strval($quantity),
-                'timestamp' => $timestamp,
-                'signature' => $signature
-            ]);
-            $response = $response->json();
-
-
-            if (isset($response['code']) && $response['code'] < 0) {
-                throw new Exception("Order failed: " . $response['msg']);
-            }
+            ];
         }
 
 
@@ -2513,7 +2418,6 @@ class HyperLiquidApiService
             'currentProfit' => $currentProfit,
             'trade_acc' => $trader,
             'liqPrice' => 0,
-
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
@@ -2527,20 +2431,20 @@ class HyperLiquidApiService
         $realizedPnl = 0;
 
         // For close order
-        $feeDetails = self::getFeeDetails($response['orderId']);
+        // $feeDetails = self::getFeeDetails($response['orderId']);
 
-        foreach ($feeDetails as $fee) {
-            $feeUsdt += floatval($fee['commission']);
-            $realizedPnl += floatval($fee['realizedPnl']);
-        }
+        // foreach ($feeDetails as $fee) {
+        //     $feeUsdt += floatval($fee['commission']);
+        //     $realizedPnl += floatval($fee['realizedPnl']);
+        // }
 
-        // For close order
-        $feeDetails = self::getFeeDetails($openOrderId);
+        // // For close order
+        // $feeDetails = self::getFeeDetails($openOrderId);
 
-        foreach ($feeDetails as $fee) {
-            $feeUsdt += floatval($fee['commission']);
-            $realizedPnl += floatval($fee['realizedPnl']);
-        }
+        // foreach ($feeDetails as $fee) {
+        //     $feeUsdt += floatval($fee['commission']);
+        //     $realizedPnl += floatval($fee['realizedPnl']);
+        // }
 
         DB::table('live_trades_future_results')->where('orderId', $response['orderId'])->update([
             'trade_status' => 'close',
@@ -2562,7 +2466,7 @@ class HyperLiquidApiService
         MailerService::sendFutureTradeDynamicEmail($data);
 
         // Temporarily Disabled
-        CommonHelpers::updateLiveTradeSession($trader);
+        // CommonHelpers::updateLiveTradeSession($trader);
 
 
         self::cancelExistingStopOrders($openOrderId);
@@ -2575,126 +2479,6 @@ class HyperLiquidApiService
 
         return $data;
     }
-
-
-
-
-    private static function placeMarketOrder($symbol, $isBuy, $quantity, $apiKey, $secretKey)
-    {
-        try {
-            $timestamp = round(microtime(true) * 1000);
-
-            $orderRequest = [
-                'coin' => $symbol,
-                'is_buy' => $isBuy,
-                'sz' => $quantity,
-                'limit_px' => null,
-                'order_type' => ['limit' => ['tif' => 'Ioc']], // Immediate or Cancel for market-like behavior
-                'reduce_only' => false
-            ];
-
-            $action = [
-                'type' => 'order',
-                'orders' => [$orderRequest]
-            ];
-
-            $signature = self::signMessage($action, $secretKey);
-
-            $client = new Client();
-            $response = $client->post(self::$baseUrl . '/exchange', [
-                'json' => [
-                    'action' => $action,
-                    'nonce' => $timestamp,
-                    'signature' => $signature,
-                    'vaultAddress' => null
-                ],
-                'headers' => [
-                    'Content-Type' => 'application/json'
-                ]
-            ]);
-
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (Exception $e) {
-            return [
-                'status' => 'error',
-                'response' => $e->getMessage()
-            ];
-        }
-    }
-    private static function setLeverage($symbol, $leverage, $apiKey, $secretKey)
-    {
-        try {
-            $timestamp = round(microtime(true) * 1000);
-
-            $action = [
-                'type' => 'updateLeverage',
-                'asset' => $symbol,
-                'isCross' => true,
-                'leverage' => $leverage
-            ];
-
-            // Use the correct signing method
-            $signature = self::signUserSignedAction($action, $secretKey, $timestamp);
-
-            $requestBody = [
-                'action' => $action,
-                'nonce' => $timestamp,
-                'signature' => $signature,
-                'vaultAddress' => null
-            ];
-
-            $response = self::getHttpClient()->post(self::$baseUrl . '/exchange', [
-                'json' => $requestBody,
-                'headers' => [
-                    'Content-Type' => 'application/json'
-                ]
-            ]);
-
-            dd($response->body());
-
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (Exception $e) {
-            Log::error('Error setting leverage: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    private static function getAssetInfo($symbol)
-    {
-        try {
-            $client = new Client();
-            $response = $client->get(self::$baseUrl . '/info', [
-                'json' => [
-                    'type' => 'meta'
-                ]
-            ]);
-
-            $data = json_decode($response->getBody()->getContents(), true);
-
-            // Find the asset info for the symbol
-            foreach ($data['universe'] as $asset) {
-                if ($asset['name'] === $symbol) {
-                    return $asset;
-                }
-            }
-
-            return null;
-        } catch (Exception $e) {
-            Log::error('Error getting asset info: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    private static function adjustQuantityPrecision($quantity, $assetInfo)
-    {
-        if (!$assetInfo) {
-            return round($quantity, 6); // Default precision
-        }
-
-        $szDecimals = $assetInfo['szDecimals'] ?? 6;
-        return round($quantity, $szDecimals);
-    }
-
 
     public static function getFeeDetails($orderId, $market = 'FUTURE')
     {
@@ -2739,34 +2523,7 @@ class HyperLiquidApiService
 
     public static function getPositionDetails($symbol, $trader)
     {
-        try {
-            $user = User::find($trader);
-            $apiKey = $user->api_key;
-
-            $client = new Client();
-            $response = $client->post(self::$baseUrl . '/info', [
-                'json' => [
-                    'type' => 'clearinghouseState',
-                    'user' => $apiKey
-                ]
-            ]);
-
-            $data = json_decode($response->getBody()->getContents(), true);
-
-            // Find position for the symbol
-            foreach ($data['assetPositions'] as $position) {
-                if ($position['position']['coin'] === $symbol) {
-                    return [
-                        'positionAmt' => $position['position']['szi']
-                    ];
-                }
-            }
-
-            return ['positionAmt' => 0];
-        } catch (Exception $e) {
-            Log::error('Error getting position details: ' . $e->getMessage());
-            return ['positionAmt' => 0];
-        }
+        return self::SDKgetPositionDetails($symbol, $trader);
     }
 
     public static function openMarketPosition($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $trade = null)
@@ -2776,7 +2533,7 @@ class HyperLiquidApiService
 
 
 
-        $current_price = self::getCurrentPrice($symbol, $market);
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
         $user = User::find($trader);
         $apiKey = $user->api_key;
@@ -2923,7 +2680,7 @@ class HyperLiquidApiService
         $quantity = $openOrder->qty;
 
 
-        $current_price = self::getCurrentPrice($symbol, $market);
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
         $user = User::find($trader);
         $apiKey = $user->api_key;
@@ -3000,6 +2757,11 @@ class HyperLiquidApiService
 
 
 
+
+
+
+
+
     //  For handling stop loss to binance end
     public static function placeOrUpdateStopMarketOrder($symbol, $trader, $stopPrice, $openOrderId)
     {
@@ -3022,7 +2784,7 @@ class HyperLiquidApiService
             $quantity = $openOrder->qty;
 
 
-            $current_price = self::getCurrentPrice($symbol, $market);
+            $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
 
             $response =  self::getLastCloseOrder($symbol, $trader);
@@ -3110,53 +2872,18 @@ class HyperLiquidApiService
         $side = ($positionDetails['positionAmt'] > 0) ? 'SELL' : 'BUY';
 
         // Check for existing stop order
-        $existingStopOrder = self::getExistingStopOrder($symbol, $trader, $side);
-        // dd($existingStopOrder);
-        if ($existingStopOrder) {
-            // Cancel existing stop order
-            self::cancelOrder($symbol, $trader, $existingStopOrder['orderId']);
-        }
-
-        // Place new stop order
-        // Place new stop order
-        $timestamp = round(microtime(true) * 1000);
-
-        // Create parameters array
-        $params = [
-            'symbol' => $symbol,
-            'side' => $side,
-            'type' => 'STOP_MARKET',
-            'stopPrice' => $stopPrice,
-            'quantity' => abs($positionDetails['positionAmt']),
-            'timestamp' => $timestamp,
-        ];
-
-        // Convert to query string for signature
-        $queryString = http_build_query($params);
-
-        // Generate signature
-        $signature = hash_hmac('sha256', $queryString, $secretKey);
-
-        // Try using Guzzle directly for more control
-        $client = new \GuzzleHttp\Client();
-        $response = $client->request('POST', 'https://fapi.binance.com/fapi/v1/order', [
-            'headers' => [
-                'X-MBX-APIKEY' => $apiKey,
-                'Content-Type' => 'application/x-www-form-urlencoded',
-            ],
-            'query' => $params + ['signature' => $signature],
-        ]);
-
-        // Get the response body as a string
-        $responseBody = $response->getBody()->getContents();
-
-        // Decode the JSON response
-        $jsonResponse = json_decode($responseBody, true);
+        self::cancelExistingStopOrders($openOrderId);
 
 
         // Return the JSON response
-        return $jsonResponse;
+        return null;
     }
+
+
+
+
+
+
     private static function getExistingStopOrder($symbol, $trader, $side)
     {
         $user = User::find($trader);
@@ -3187,75 +2914,25 @@ class HyperLiquidApiService
     }
     public static function cancelOrder($symbol, $trader, $orderId)
     {
-        $user = User::find($trader);
-        $apiKey = $user->api_key;
-        $secretKey = $user->api_secret;
 
-        $timestamp = round(microtime(true) * 1000);
-        $queryString = "symbol=$symbol&orderId=$orderId&timestamp=$timestamp";
-        $signature = hash_hmac('sha256', $queryString, $secretKey);
-        $queryString .= "&signature=$signature";
-
-        $url = "https://fapi.binance.com/fapi/v1/order?$queryString";
-
-        $ch = curl_init();
-
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "X-MBX-APIKEY: $apiKey"
-        ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL verification
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Disable host verification
-
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            return [
-                'error' => true,
-                'message' => curl_error($ch)
-            ];
-        }
-
-        curl_close($ch);
-
-        return json_decode($response, true);
+        self::SDKcancelOpenOrders($symbol, $orderId, $trader);
+        return true;
     }
 
     private static function getLastCloseOrder($symbol, $trader)
     {
-        $user = User::find($trader);
-        $apiKey = $user->api_key;
-        $secretKey = $user->api_secret;
 
-        $timestamp = round(microtime(true) * 1000);
-        $queryString = "symbol=$symbol&timestamp=$timestamp";
-        $signature = hash_hmac('sha256', $queryString, $secretKey);
-        $queryString .= "&signature=$signature";
 
-        $url = "https://fapi.binance.com/fapi/v1/allOrders?$queryString";
-
-        $response = self::getHttpClient()->withHeaders([
-            'X-MBX-APIKEY' => $apiKey,
-        ])->get($url);
-
-        $orders = $response->json();
-
-        if (!is_array($orders)) {
-            Log::error("Unexpected response from Binance allOrders: " . json_encode($orders));
-            return false;
-        }
-        // dd(array_reverse($orders));
-        // Find last closed (FILLED) order
-        foreach (array_reverse($orders) as $order) {
-            if ($order['status'] === 'FILLED') {
-                return $order;
-            }
-        }
-
-        return false;
+        return self::SDKgetLastFilledOrder($symbol, $trader);
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -3274,18 +2951,23 @@ class HyperLiquidApiService
      * @return array An array containing both order responses
      */
 
-
     public static function placeTpSlOrders($symbol, $trader, float $takeProfitPrice, float $stopLossPrice, $openOrderId, $priceMargin = 0.2)
     {
+
+
         $user = User::find($trader);
         $apiKey = $user->api_key;
         $secretKey = $user->api_secret;
 
+
+
+
         // Cancel existing orders before placing new ones
-        self::cancelExistingStopOrders($openOrderId);
+        self::SDKcancelOpenOrders($symbol, null, $trader);
+
 
         // Get position details
-        $positionDetails = self::getPositionDetails($symbol, $trader);
+        $positionDetails = self::SDKgetPositionDetails($symbol, $trader);
         if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
             self::closeMarketPositionLiveTrader($openOrderId);
             return [
@@ -3294,12 +2976,19 @@ class HyperLiquidApiService
             ];
         }
 
+
+        // Determine position side
         $positionAmt = $positionDetails['positionAmt'];
         $positionSide = $positionAmt > 0 ? 'LONG' : 'SHORT';
+
+        // Set order sides based on position direction
+        $tpSide = $positionSide === 'LONG' ? 'SELL' : 'BUY';
+        $slSide = $positionSide === 'LONG' ? 'SELL' : 'BUY';
+
+        // Absolute quantity (remove negative sign for short positions)
         $quantity = abs($positionAmt);
 
-        $current_price = self::getCurrentPrice($symbol, 'FUTURE');
-
+        $current_price = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
         if ($positionSide === 'LONG') {
             $takeProfitPrice = CommonHelpers::roundToMatchPrecision($current_price, $takeProfitPrice * (1 + $priceMargin / 100));
             $stopLossPrice = CommonHelpers::roundToMatchPrecision($current_price, $stopLossPrice * (1 - $priceMargin / 100));
@@ -3307,35 +2996,15 @@ class HyperLiquidApiService
             $takeProfitPrice = CommonHelpers::roundToMatchPrecision($current_price, $takeProfitPrice * (1 - $priceMargin / 100));
             $stopLossPrice = CommonHelpers::roundToMatchPrecision($current_price, $stopLossPrice * (1 + $priceMargin / 100));
         }
-
         // Place Take Profit order
-        $tpOrder = self::placeOrder(
-            $symbol,
-            $positionSide === 'LONG' ? false : true, // opposite direction
-            $quantity,
-            $takeProfitPrice,
-            'tp',
-            $apiKey,
-            $secretKey
-        );
+        $orderIds = self::SDKplaceTpSlOrders($symbol, $takeProfitPrice, $stopLossPrice, $trader);
 
-        // Place Stop Loss order
-        $slOrder = self::placeOrder(
-            $symbol,
-            $positionSide === 'LONG' ? false : true, // opposite direction
-            $quantity,
-            $stopLossPrice,
-            'sl',
-            $apiKey,
-            $secretKey
-        );
 
         return [
-            'takeProfit' => $tpOrder,
-            'stopLoss' => $slOrder
+            'takeProfit' => ['orderId' => $orderIds['tpOrderId']],
+            'stopLoss' => ['orderId' => $orderIds['slOrderId']]
         ];
     }
-
 
 
     public static function getTradeOrdersDetails($openOrderId)
@@ -3345,29 +3014,23 @@ class HyperLiquidApiService
     }
 
 
-    private static function cancelExistingStopOrders($openOrderId)
+    public static function cancelExistingStopOrders($openOrderId)
     {
-        // Implementation for canceling existing orders
-        // This would need to be implemented based on your specific requirements
-        // and how you track orders in your database
 
-        try {
-            $existingOrders = DB::table('trade_orders')
-                ->where('openOrderId', $openOrderId)
-                ->where('status', 'PENDING')
-                ->get();
+        $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
+        $symbol = $openOrder->symbol;
+        $trader = $openOrder->trade_acc;
 
-            foreach ($existingOrders as $order) {
-                // Cancel the order via API if needed
-                // Update status in database
-                DB::table('trade_orders')
-                    ->where('id', $order->id)
-                    ->update(['status' => 'CANCELLED']);
-            }
-        } catch (Exception $e) {
-            Log::error('Error canceling existing orders: ' . $e->getMessage());
+        $existingStopOrder = self::getTradeOrdersDetails($openOrderId);
+
+        if ($existingStopOrder) {
+
+            self::cancelOrder($symbol, $trader, $existingStopOrder->tp_order_id);
+            self::cancelOrder($symbol, $trader, $existingStopOrder->sl_order_id);
         }
     }
+
+
     public static function updateTradeDetails($openOrderId, $tp, $sl, $tp_order_id, $sl_order_id, $status)
     {
         DB::table('trade_orders')->where('openOrderId', $openOrderId)->where('status', 'PENDING')->update([
@@ -3381,7 +3044,7 @@ class HyperLiquidApiService
 
     public static function insertTradeDetails($openOrderId, $tp, $sl, $tp_order_id, $sl_order_id, $status)
     {
-        DB::table('trade_orders')->insert([
+        DB::table('trade_orders')->where('openOrderId', $openOrderId)->where('status', 'PENDING')->insert([
             'openOrderId' => $openOrderId,
             'tp' => $tp,
             'sl' => $sl,
@@ -3405,49 +3068,65 @@ class HyperLiquidApiService
      * @param string $secretKey Binance API secret key
      * @return array The order response
      */
-    private static function placeOrder($symbol, $isBuy, $quantity, $triggerPrice, $orderType, $apiKey, $secretKey)
+    private static function placeOrder($symbol, $side, $type, $quantity, $triggerPrice, $apiKey, $secretKey)
     {
+        // Create timestamp
+        $timestamp = round(microtime(true) * 1000);
+
+        // Set up the parameters
+        $params = [
+            'symbol' => $symbol,
+            'side' => $side,
+            'type' => $type,
+            'quantity' => $quantity,
+            'timestamp' => $timestamp,
+            'reduceOnly' => 'true', // Ensures the order only reduces position
+        ];
+
+        // Add the appropriate price parameter based on order type
+        if ($type === 'TAKE_PROFIT_MARKET') {
+            $params['stopPrice'] = $triggerPrice;
+            $params['priceProtect'] = 'true'; // Optional: Adds price protection
+            $params['workingType'] = 'MARK_PRICE'; // Uses mark price as trigger
+        } elseif ($type === 'STOP_MARKET') {
+            $params['stopPrice'] = $triggerPrice;
+            $params['priceProtect'] = 'true'; // Optional: Adds price protection
+            $params['workingType'] = 'MARK_PRICE'; // Uses mark price as trigger
+        }
+
+        // Convert to query string for signature
+        $queryString = http_build_query($params);
+
+        // Generate signature
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+
         try {
-            $timestamp = round(microtime(true) * 1000);
+            // Create Guzzle client
+            $client = new \GuzzleHttp\Client();
 
-            $orderRequest = [
-                'coin' => $symbol,
-                'is_buy' => $isBuy,
-                'sz' => $quantity,
-                'limit_px' => $triggerPrice,
-                'order_type' => ['trigger' => ['triggerPx' => $triggerPrice, 'isMarket' => true, 'tpsl' => $orderType]],
-                'reduce_only' => true
-            ];
-
-            $action = [
-                'type' => 'order',
-                'orders' => [$orderRequest]
-            ];
-
-            $signature = self::signMessage($action, $secretKey);
-
-            $client = new Client();
-            $response = $client->post(self::$baseUrl . '/exchange', [
-                'json' => [
-                    'action' => $action,
-                    'nonce' => $timestamp,
-                    'signature' => $signature,
-                    'vaultAddress' => null
-                ],
+            // Make the request
+            $response = $client->request('POST', 'https://fapi.binance.com/fapi/v1/order', [
                 'headers' => [
-                    'Content-Type' => 'application/json'
-                ]
+                    'X-MBX-APIKEY' => $apiKey,
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                ],
+                'query' => $params + ['signature' => $signature],
             ]);
 
-            $responseBody = json_decode($response->getBody()->getContents(), true);
-
-            // Add orderId for compatibility
-            if (isset($responseBody['response']['statuses'][0]['resting']['oid'])) {
-                $responseBody['orderId'] = $responseBody['response']['statuses'][0]['resting']['oid'];
+            // Parse and return the response
+            $responseBody = $response->getBody()->getContents();
+            return json_decode($responseBody, true);
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            // Handle errors and return error information
+            if ($e->hasResponse()) {
+                $errorBody = $e->getResponse()->getBody()->getContents();
+                return [
+                    'error' => true,
+                    'message' => json_decode($errorBody, true),
+                    'code' => $e->getCode()
+                ];
             }
 
-            return $responseBody;
-        } catch (Exception $e) {
             return [
                 'error' => true,
                 'message' => $e->getMessage(),
@@ -3594,7 +3273,7 @@ class HyperLiquidApiService
         $amount = $buy_order->amount;
 
 
-        $current_price = self::getCurrentPrice($symbol, $market);
+        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
         $user = User::find($trader);
         $apiKey = $user->api_key;
@@ -3748,165 +3427,178 @@ class HyperLiquidApiService
 
 
 
-    // ========================= Request Signing Helpers ===================================
-    /**
-     * Sign a user signed action for Hyperliquid
-     * This implements the EIP-712 signing mechanism used by Hyperliquid
-     */
-    private static function signUserSignedAction($action, $secretKey, $nonce)
+
+
+    // HyperLiquid Python SDK Endpoints 
+
+
+    public static function SDKopenPosition($symbol, $position, $tradeAmount, $leverage, $trader)
     {
-        // Remove '0x' prefix if present
-        $privateKey = str_replace('0x', '', $secretKey);
+        $url = config('hyperliquid.sdk_api.base_url') . config('hyperliquid.sdk_endpoints.open_position');
+        $user = User::find($trader);
+        $privateKey = $user->hyperliquid_private_key;
+        $walletAddress = $user->hyperliquid_wallet_address;
 
-        // Create the signing hash using msgpack
-        $actionHash = self::hashAction($action);
-        $nonceHash = self::hashNonce($nonce);
 
-        // Create the message to sign
-        $message = hex2bin($actionHash . $nonceHash);
+        // Opening Position
+        $response = self::getHttpClient()->post($url, [
+            'private_key' => $privateKey,
+            'wallet_address' => $walletAddress,
+            'symbol' => str_replace('USDT', '', $symbol),
+            "is_long" => $position === 'BUY',
+            "amount_usd" => $tradeAmount,
+            "leverage" => $leverage,
+            "reduce_only" => false,
 
-        // Add Ethereum message prefix
-        $prefix = "\x19Ethereum Signed Message:\n" . strlen($message);
-        $messageHash = Keccak::hash($prefix . $message, 256);
+        ]);
 
-        // Sign the message
-        $signature = self::signMessage($messageHash, $privateKey);
-
+        $data = $response->json();
+        $orderId = $data['data']['response']['data']['statuses'][0]['filled']['oid'];
         return [
-            'r' => '0x' . $signature['r'],
-            's' => '0x' . $signature['s'],
-            'v' => $signature['v']
+
+            'orderId' => $orderId,
+            'position_details' => $data['position_details']
+
         ];
     }
 
-    /**
-     * Hash an action using msgpack
-     */
-    private static function hashAction($action)
+
+    public static function SDKclosePosition($symbol, $trader)
     {
-        // Ensure proper field ordering and types
-        $normalizedAction = self::normalizeAction($action);
+        $url = config('hyperliquid.sdk_api.base_url') . config('hyperliquid.sdk_endpoints.close_position');
+        $user = User::find($trader);
+        $privateKey = $user->hyperliquid_private_key;
+        $walletAddress = $user->hyperliquid_wallet_address;
 
-        // Serialize with msgpack
-        $packed = MessagePack::pack($normalizedAction);
+        // Closing Position
+        $response = self::getHttpClient()->post($url, [
+            'private_key' => $privateKey,
+            'wallet_address' => $walletAddress,
+            'symbol' => str_replace('USDT', '', $symbol),
+        ]);
 
-        // Hash with keccak256
-        return Keccak::hash($packed, 256);
+        $data = $response->json();
+        $orderId = $data['data']['response']['data']['statuses'][0]['filled']['oid'];
+        return [
+            'orderId' => $orderId,
+        ];
     }
 
-    /**
-     * Hash a nonce
-     */
-    private static function hashNonce($nonce)
+
+
+    public static function SDKplaceTpSlOrders($symbol, $tp, $sl, $trader)
     {
-        // Convert nonce to proper format
-        $nonceBytes = pack('J', $nonce); // 64-bit big-endian
-        return Keccak::hash($nonceBytes, 256);
+        $url = config('hyperliquid.sdk_api.base_url') . config('hyperliquid.sdk_endpoints.update_tp_sl');
+        $user = User::find($trader);
+        $privateKey = $user->hyperliquid_private_key;
+        $walletAddress = $user->hyperliquid_wallet_address;
+
+        // Closing Position
+        $response = self::getHttpClient()->post($url, [
+            'private_key' => $privateKey,
+            'wallet_address' => $walletAddress,
+            'symbol' => str_replace('USDT', '', $symbol),
+            "tp_price" => $tp,
+            "sl_price" => $sl,
+        ]);
+
+        $data = $response->json();
+        $tpOrderId = $data['place_result']['data'][0]['result']['response']['data']['statuses'][0]['resting']['oid'];
+        $slOrderId = $data['place_result']['data'][1]['result']['response']['data']['statuses'][0]['resting']['oid'];
+
+        return [
+            'tpOrderId' => $tpOrderId,
+            'slOrderId' => $slOrderId,
+        ];
+    }
+    public static function SDKcancelOpenOrders($symbol, $orderId = null, $trader)
+    {
+        $url = config('hyperliquid.sdk_api.base_url') . config('hyperliquid.sdk_endpoints.cancel_orders');
+        $user = User::find($trader);
+        $privateKey = $user->hyperliquid_private_key;
+        $walletAddress = $user->hyperliquid_wallet_address;
+
+        // Closing Position
+        $response = self::getHttpClient()->post($url, [
+            'private_key' => $privateKey,
+            'wallet_address' => $walletAddress,
+            'symbol' => str_replace('USDT', '', $symbol),
+            'oid' => $orderId,
+        ]);
+
+        $data = $response->json();
+        
+        return $data['data'];
     }
 
-    /**
-     * Normalize action to ensure consistent serialization
-     */
-    private static function normalizeAction($action)
+
+
+    public static function SDKgetPositionDetails($symbol, $trader)
     {
-        $normalized = [];
+        $url = config('hyperliquid.sdk_api.base_url') . config('hyperliquid.sdk_endpoints.position_details');
+        $user = User::find($trader);
+        $privateKey = $user->hyperliquid_private_key;
+        $walletAddress = $user->hyperliquid_wallet_address;
 
-        // Ensure consistent field ordering (important for msgpack)
-        $fieldOrder = ['type', 'asset', 'isCross', 'leverage'];
+        // Closing Position
+        $response = self::getHttpClient()->post($url, [
+            'private_key' => $privateKey,
+            'wallet_address' => $walletAddress,
+            'symbol' => str_replace('USDT', '', $symbol),
+        ]);
 
-        foreach ($fieldOrder as $field) {
-            if (isset($action[$field])) {
-                $value = $action[$field];
 
-                // Normalize strings (lowercase addresses, etc.)
-                if (is_string($value) && preg_match('/^0x[a-fA-F0-9]+$/', $value)) {
-                    // This is an address, make it lowercase
-                    $value = strtolower($value);
-                }
+        $data = $response->json();
 
-                $normalized[$field] = $value;
-            }
+        if (!isset($data['data'][0]['position'])) {
+            return null;
         }
 
-        return $normalized;
-    }
-
-    /**
-     * Sign a message hash with private key
-     */
-    private static function signMessage($messageHash, $privateKey)
-    {
-        $util = new Util();
-
-        // Convert hex strings to proper format
-        $messageHashBin = hex2bin($messageHash);
-        $privateKeyBin = hex2bin($privateKey);
-
-        // Sign the message
-        $signature = $util->ecsign($messageHashBin, $privateKeyBin);
+        $position = $data['data'][0]['position'];
 
         return [
-            'r' => bin2hex($signature['r']),
-            's' => bin2hex($signature['s']),
-            'v' => $signature['v']
+            'symbol' => $symbol,
+            'positionAmt' => $position['szi'], // Amount of asset held (positive = long, negative = short)
+            'entryPrice' => $position['entryPx'], // Entry price of the position
+            'markPrice' => self::getCurrentPrice($symbol), // Current price of the asset
+            'unRealizedProfit' => $position['unrealizedPnl'], // Unrealized PnL
+            'liquidationPrice' => $position['liquidationPx'], // Liquidation price
+            'marginType' => $position['leverage']['type'], // Margin type (cross or isolated)
+            'leverage' => $position['leverage']['value'], // Leverage used
+            'positionSide' => $position['szi'] > 0 ? 'LONG' : 'SHORT', // Position side (BOTH, LONG, SHORT)
         ];
     }
-
-    /**
-     * Alternative simpler approach using EIP-712 structured data signing
-     * This might be more accurate to Hyperliquid's implementation
-     */
-    private static function signUserSignedActionEIP712($action, $secretKey, $nonce)
+    public static function SDKgetLastFilledOrder($symbol, $trader)
     {
-        // Remove '0x' prefix if present
-        $privateKey = str_replace('0x', '', $secretKey);
+        $url = config('hyperliquid.sdk_api.base_url') . config('hyperliquid.sdk_endpoints.last_filled_order');
+        $user = User::find($trader);
+        $privateKey = $user->hyperliquid_private_key;
+        $walletAddress = $user->hyperliquid_wallet_address;
 
-        // Create EIP-712 domain
-        $domain = [
-            'name' => 'Hyperliquid',
-            'version' => '1',
-            'chainId' => 421614, // Hyperliquid testnet chain ID - adjust as needed
-            'verifyingContract' => '0x' . str_repeat('0', 40) // May need adjustment
+        // Closing Position
+        $response = self::getHttpClient()->post($url, [
+            'private_key' => $privateKey,
+            'wallet_address' => $walletAddress,
+            'symbol' => str_replace('USDT', '', $symbol),
+        ]);
+
+
+        $data = $response->json();
+
+        if (!isset($data['data']) || empty($data['data'])) {
+            return null;
+        }
+
+        $order = $data['data'];
+
+
+        return [
+            'orderId' => $order['oid'],
+            'origType' => 'MARKET',
+            'avgPrice' => $order['px'],
+            'qty' => 'sz',
+            'symbol' => $symbol,
+            'side' => $order['side'] === 'A' ? 'LONG' : 'SHORT',
         ];
-
-        // Create the structured data
-        $types = [
-            'EIP712Domain' => [
-                ['name' => 'name', 'type' => 'string'],
-                ['name' => 'version', 'type' => 'string'],
-                ['name' => 'chainId', 'type' => 'uint256'],
-                ['name' => 'verifyingContract', 'type' => 'address']
-            ],
-            'HyperliquidTransaction' => [
-                ['name' => 'action', 'type' => 'string'],
-                ['name' => 'nonce', 'type' => 'uint256']
-            ]
-        ];
-
-        $message = [
-            'action' => json_encode($action, JSON_UNESCAPED_SLASHES),
-            'nonce' => $nonce
-        ];
-
-        // This is a simplified version - you might need a proper EIP-712 library
-        // For production, consider using a dedicated EIP-712 signing library
-
-        return self::signTypedData($domain, $types, $message, $privateKey);
-    }
-
-    /**
-     * Simplified EIP-712 signing (you should use a proper library for production)
-     */
-    private static function signTypedData($domain, $types, $message, $privateKey)
-    {
-        // This is a placeholder - implement proper EIP-712 signing
-        // You should use a library like web3p/ethereum-util with proper EIP-712 support
-
-        // For now, return a basic signature structure
-        // In production, implement full EIP-712 signing
-        $messageString = json_encode($message, JSON_UNESCAPED_SLASHES);
-        $messageHash = Keccak::hash($messageString, 256);
-
-        return self::signMessage($messageHash, $privateKey);
     }
 }
