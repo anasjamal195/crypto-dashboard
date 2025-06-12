@@ -38,6 +38,15 @@ class ManageProcesses extends Command
         while (true) {
 
 
+            $pythonServerHealth = self::checkPythonServerHealth('http://209.38.95.33:5000/health', 15);
+
+            if (!$pythonServerHealth['success']) {
+                CommonHelpers::addSafetyLog('PYTHON_SERVER_DOWN', 'Python sdk server is down. Stopping all processes');
+                $remoteMonitor->stopAllSupervisorProcesses();
+                break;
+            }
+
+
             // Check server Stats and Perform actions likewise
             $sqlStatus =   $remoteMonitor->getMysqlStatus();
 
@@ -48,14 +57,16 @@ class ManageProcesses extends Command
 
                 // Attempt restart 3 times and than stop all supervisor processes and perform server reboot (BETA)
                 if ($mysqlRestartAttempts > 3) {
-
                     $remoteMonitor->stopAllSupervisorProcesses();
+                    CommonHelpers::addSafetyLog('STOPPED_ALL_PROCESSES', 'SQL down on live site. Restart Failed!');
                     break;
                 }
-
+                CommonHelpers::addSafetyLog('SQL_RESTART_ATTEMPT_' . $mysqlRestartAttempts, 'SQL down on live site. Attempting restart. ' . (3 - $mysqlRestartAttempts) . ' attempts left');
                 sleep(5);
                 continue;
             }
+
+
 
 
             $accounts = DB::table('users')->where('is_active', true)->where('role', 'trader')->where('domain_name', '!=', 'egeniuscare.shop')->get();
@@ -84,5 +95,42 @@ class ManageProcesses extends Command
 
             CommonHelpers::delayMS(100);
         }
+    }
+
+
+
+
+
+
+    public static function checkPythonServerHealth($url, $timeout)
+    {
+        $startTime = microtime(true);
+
+        // Initialize cURL
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Hyperliquid-Health-Monitor/1.0');
+
+        // Execute request
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        $endTime = microtime(true);
+        $responseTime = round(($endTime - $startTime) * 1000); // Convert to milliseconds
+
+        return [
+            'success' => $response !== false && $httpCode === 200,
+            'data' => $response,
+            'http_code' => $httpCode,
+            'error' => $error,
+            'response_time' => $responseTime
+        ];
     }
 }
