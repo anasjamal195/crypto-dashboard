@@ -66,12 +66,6 @@ class BinanceController extends Controller
     public function getCoinReport($market, Request $request)
     {
 
-
-
-
-
-
-
         $stopLoss = $request->input('stopLoss') ?? 1;
         $position = $request->input('position');
         $formula = $request->input('formula');

@@ -626,13 +626,6 @@ class ReportService
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
                 $buyCondition =
                     (
-                        // $data[$index]['close'] > $data[$index]['bb_lower']
-                        // && $data[$index]['open'] < $data[$index]['bb_lower']
-                        // && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
-                        // && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
-                        // && $bbAnalysis['price_action']['is_near_lower_band']
-                        // && !$bbAnalysis['bb_squeeze']
-                        // && $data[$index]['histogram'] > $data[$index - 1]['histogram']
 
                         $data[$index]['rsi6'] < 30
                         && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
@@ -649,12 +642,7 @@ class ReportService
 
                 if ($buyCondition) {
                     self::confirmOpening($symbol, 'LONG', $data, $index);
-                    // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
-                    // if ($allowOnHigherTrend) {
                     return 'LONG';
-                    // } else {
-                    //     $skippingReasons[10] = '1h-candle trend rejected';
-                    // }
                 }
             }
         }
@@ -693,17 +681,11 @@ class ReportService
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
                 $buyCondition =
                     (
-
-
                         $data[$index]['rsi6'] > 70
                         && $data[$index]['rsi6'] < $data[$index - 1]['rsi6']
-
                         && $bbAnalysis['price_action']['is_near_upper_band']
                         && $data[$index]['close'] < $data[$index]['bb_upper']
                         && $data[$index]['open'] > $data[$index]['bb_upper']
-
-
-
                     );
 
                 if ($buyCondition) {
