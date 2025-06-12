@@ -30,8 +30,8 @@
                 $exchangeName = $isBinance ? 'Binance' : 'Hyperliquid';
                 $btnClass = $isBinance ? 'btn-warning' : 'btn-success';
                 $iconUrl = $isBinance
-                    ? 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png?v=029' // Binance logo
-                    : 'https://assets-global.website-files.com/64aaf8b72edb45c865cf5a26/65a12c9bb7d48f9d93c66f86_favicon-32x32.png'; // Hyperliquid logo
+                    ? asset('black') . '/img/binance_logo.png' // Binance logo
+                    : asset('black') . '/img/hyperliquid_logo.png'; // Binance logo // Hyperliquid logo
             @endphp
 
             <a href="{{ route('user.toggle-exchange', $toggleTo) }}" class="btn btn-sm m-2 {{ $btnClass }}">
