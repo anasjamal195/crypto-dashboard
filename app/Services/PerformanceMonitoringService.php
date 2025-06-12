@@ -382,9 +382,9 @@ class PerformanceMonitoringService
     private function detectMysqlServiceName()
     {
         try {
-            $this->connect();
+          
             $mysqlCheck = $this->executeCommand('systemctl list-units --type=service | grep -E "(mysql|mysqld)" | head -1');
-            $this->disconnect();
+          
 
             if (strpos($mysqlCheck, 'mysqld') !== false) {
                 return 'mysqld';

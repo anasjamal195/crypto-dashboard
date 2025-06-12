@@ -41,9 +41,8 @@ class ManageProcesses extends Command
 
             $pythonServerHealth = self::checkPythonServerHealth('http://209.38.95.33:5000/health', 15);
 
-            
+
             if (!$pythonServerHealth['success']) {
-                CommonHelpers::addSafetyLog('PYTHON_SERVER_RESTART_ATTEMPT', 'Python sdk server is down. Attempting Restart... ' . (3 - $pythonServerRestartAttempts) . ' attempts left');
                 $pythonServerRestartAttempts++;
                 if ($pythonServerRestartAttempts > 3) {
                     $remoteMonitor->stopSupervisorProcesses();
@@ -51,7 +50,7 @@ class ManageProcesses extends Command
                     SupervisorService::stop($currentProcess);
                     break;
                 }
-
+                CommonHelpers::addSafetyLog('PYTHON_SERVER_RESTART_ATTEMPT', 'Python sdk server is down. Attempting Restart... ' . (3 - $pythonServerRestartAttempts) . ' attempts left');
                 $remoteMonitor->restartSupervisorProcesses('hyperliquid-sdk');
                 sleep(5);
                 continue;
