@@ -161,6 +161,26 @@ class ProcessController extends Controller
         return redirect()->back()->withSuccess('Toggled  ' . $position . ' status');
     }
 
+
+
+    public function toggleExchange($exchange)
+    {
+
+
+        DB::table('user_meta')->updateOrInsert(
+            [
+                'user_id' => auth()->user()->id,
+                'meta_key' => 'active_exchange'
+            ],
+            [
+                'meta_value' => $exchange
+            ]
+        );
+
+
+        return redirect()->back()->withSuccess('Active exchange set to ' . ucwords($exchange));
+    }
+
     public function toggleMarket()
     {
 

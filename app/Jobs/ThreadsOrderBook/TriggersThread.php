@@ -37,7 +37,7 @@ class TriggersThread implements ShouldQueue
     public $workerId;
     public $account;
     public $openOrderIdRestarted;
-
+    public static $activeExchange;
 
     // Meta data
     public $stopLoss = 0.8;
@@ -75,8 +75,6 @@ class TriggersThread implements ShouldQueue
 
             // Check if any trade is open while worker was restarted
             try {
-
-
                 $tradeToOpen = null;
                 $tradeType = null;
                 // Main Loop to process coins list
@@ -251,12 +249,6 @@ class TriggersThread implements ShouldQueue
                 }
 
 
-
-
-
-
-
-
                 if ($openTrade) {
 
                     // Handle if current market is SPOT
@@ -273,8 +265,6 @@ class TriggersThread implements ShouldQueue
 
 
                     if (!(isset($open_order['is_open']) && $open_order['is_open'])) {
-
-
 
                         $supportResistanceArr = [
                             'support' => 1,
@@ -408,7 +398,6 @@ class TriggersThread implements ShouldQueue
 
         if ($currentCandle['close'] < $stopLoss || $closeEarly) {
             // Checking Upper Wick Formation
-
 
             if ($open_order['market'] === 'SPOT')
                 BinanceApiService::placeSellOrderSpot($open_order['orderId']);

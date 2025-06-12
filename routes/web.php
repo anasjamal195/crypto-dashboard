@@ -101,6 +101,7 @@ Route::get('/process-handler/restart/{process_name}', 'App\Http\Controllers\Proc
 Route::get('/process-handler/stop/{process_name}', 'App\Http\Controllers\ProcessController@stop')->name('process-handler.stop')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/process-handler/action/{action}', 'App\Http\Controllers\ProcessController@performAction')->name('process-handler.action')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/process-handler/toggle-position/{position}', 'App\Http\Controllers\ProcessController@togglePosition')->name('user.toggle-position')->middleware(['auth', AnalystRoleRedirect::class]);
+Route::get('/process-handler/toggle-exchange/{exchange}', 'App\Http\Controllers\ProcessController@toggleExchange')->name('user.toggle-exchange')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/process-handler/toggle-market', 'App\Http\Controllers\ProcessController@toggleMarket')->name('user.toggle-market')->middleware(['auth', AnalystRoleRedirect::class]);
 
 

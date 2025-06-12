@@ -23,6 +23,22 @@
 
             <a href="{{ route('user.toggle-market') }}"
                 class="btn  btn-sm m-2 {{ \App\CommonHelpers::getMetaValue(auth()->user()->id, 'enable_spot', 0) == 1 ? 'btn-info' : 'btn-primary' }}">{{ \App\CommonHelpers::getMetaValue(auth()->user()->id, 'enable_spot', 0) == 1 ? 'Spot Mode' : 'Future Mode' }}</a>
+            @php
+                $activeExchange = \App\CommonHelpers::getMetaValue(auth()->user()->id, 'active_exchange', 'binance');
+                $isBinance = $activeExchange === 'binance';
+                $toggleTo = $isBinance ? 'hyperliquid' : 'binance';
+                $exchangeName = $isBinance ? 'Binance' : 'Hyperliquid';
+                $btnClass = $isBinance ? 'btn-warning' : 'btn-success';
+                $iconUrl = $isBinance
+                    ? 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png?v=029' // Binance logo
+                    : 'https://assets-global.website-files.com/64aaf8b72edb45c865cf5a26/65a12c9bb7d48f9d93c66f86_favicon-32x32.png'; // Hyperliquid logo
+            @endphp
+
+            <a href="{{ route('toggle-exchange', $toggleTo) }}" class="btn btn-sm m-2 {{ $btnClass }}">
+                <img src="{{ $iconUrl }}" alt="{{ $exchangeName }}" width="18" height="18"
+                    style="margin-right: 6px;">
+                {{ $exchangeName }} Active
+            </a>
         @endif
 
 
