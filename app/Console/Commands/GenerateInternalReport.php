@@ -28,17 +28,17 @@ class GenerateInternalReport extends Command
     {
 
         $reportDetails = [
-            [
-                'formula' => 'Macd Swings Hyperliquid - Current',
-                'timestamp' => null,
-                'includeFiltered' => true,
-            ],
-
             // [
-            //     'formula' => 'Macd Swings Hyperliquid - Bullish',
-            //     'timestamp' => 1746126000000,
+            //     'formula' => 'Macd Swings Hyperliquid - Current',
+            //     'timestamp' => null,
             //     'includeFiltered' => true,
             // ],
+
+            [
+                'formula' => 'Testing - Bullish',
+                'timestamp' => 1746126000000,
+                'includeFiltered' => true,
+            ],
             // [
             //     'formula' => 'All Coins Base Hyperliquid  Bearish',
             //     'timestamp' => 1745607600000,
@@ -71,8 +71,12 @@ class GenerateInternalReport extends Command
         foreach ($reportDetails as $details) {
             $formula = $details['formula'] . ' - Base';
             $timestamp = $details['timestamp'];
-            $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, '', true);
+            // $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
 
+            $backtestFormula = [
+                'baseReportFormulaMACD' => 'MACD Testing - Bullish - Base - Friday, June 13, 2025 10:39 PM',
+                'baseReportFormulaSR' => 'SR Testing - Bullish - Base - Friday, June 13, 2025 10:39 PM',
+            ];
             if ($details['includeFiltered']) {
                 $formula = $details['formula'] . ' - Filtered';
                 $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);

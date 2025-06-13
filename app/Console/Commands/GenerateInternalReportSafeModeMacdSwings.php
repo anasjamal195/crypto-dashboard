@@ -30,7 +30,7 @@ class GenerateInternalReportSafeModeMacdSwings extends Command
     {
         while (true) {
             try {
-                $formula = 'Safe Mode Base Macd Swings Report';
+                $formula = 'Base Report';
                 $timestamp = null;
                 ReportServiceSafeModeMacdSwing::generateCoinReport($this, $formula, $timestamp, '', true);
             } catch (\Throwable $th) {
