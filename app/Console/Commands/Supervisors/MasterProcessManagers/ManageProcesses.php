@@ -7,6 +7,7 @@ use App\Services\PerformanceMonitoringService;
 use App\Services\SupervisorService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class ManageProcesses extends Command
 {
@@ -74,6 +75,15 @@ class ManageProcesses extends Command
                 $remoteMonitor->startMysql();
                 CommonHelpers::addSafetyLog('SQL_RESTART_ATTEMPT', 'SQL down on live site. Attempting restart. ' . (3 - $mysqlRestartAttempts) . ' attempts left');
                 sleep(5);
+                $sqlStatus =  $remoteMonitor->getMysqlStatus();
+                if ($sqlStatus['status'] !== 'running') {
+                    $url = "https://rocket.cryptoapis.store/master-process/handle/" . config('binance.process_manager_client_key');
+                    $data = [
+                        'action' => 'RESTART_MULTITHREAD',
+                    ];
+                    $response = Http::post($url, $data);
+                    sleep(10);
+                }
                 continue;
             }
 

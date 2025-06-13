@@ -7,7 +7,9 @@ use App\Jobs\ThreadsOrderBook\TriggersThread;
 use App\Models\User;
 use App\Services\BinanceApiService;
 use App\Services\HyperLiquidApiService;
+use App\Services\SupervisorService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 class MasterProcessController extends Controller
@@ -63,7 +65,8 @@ class MasterProcessController extends Controller
             'FETCH_LIVE_TRADES_FUTURE',
             'CLOSE_LIVE_TRADE',
             'SYNC_USERS',
-            'RESTART_WORKER'
+            'RESTART_WORKER',
+            'RESTART_MULTITHREAD'
         ];
 
         // Prepare errors array
@@ -100,6 +103,9 @@ class MasterProcessController extends Controller
             case 'RESTART_WORKER':
                 $data = $this->restartWorker();
                 return $this->jsonResponse($data, 'Worker Restarted successfully', 200, true);
+            case 'RESTART_MULTITHREAD':
+                $data = $this->restartMultithread();
+                return $this->jsonResponse($data, 'Multithread Restarted successfully', 200, true);
 
             default:
                 return $this->jsonResponse(null, 'Action not found', 404, false);
@@ -170,6 +176,53 @@ class MasterProcessController extends Controller
 
         $userId = User::where('email', $email)->first()->id;
         TriggersThread::dispatch($workerId, $userId, $openOrderId);
+        return true;
+    }
+    protected function restartMultithread()
+    {
+        try {
+            // Cleanup
+            DB::statement('UPDATE trade_handler SET isWorkerDispatched = 0');
+            DB::statement('UPDATE workers SET symbol_count = 0');
+            DB::statement('UPDATE workers SET trade_status = 0');
+            DB::statement('DELETE FROM worker_symbols WHERE 1');
+            Artisan::call('queue:flush');
+            Artisan::call('queue:clear');
+            SupervisorService::executeCommand('killall -9 php');
+            DB::table('jobs')->truncate();
+
+            $threads = DB::table('workers')->where('active_status', 1)->pluck('worker_id');
+
+            // Prepare Processes for start sequence
+            // Start Sequence
+            $processes = [
+                // 'laravel_saftey_worker',
+                'laravel_future_coin_dumper',
+                // 'laravel_order_book_signals_worker',
+            ];
+
+            foreach ($threads as $index => $thread) {
+                $processes[] = 'laravel_thread_workers:laravel_thread_workers_' . sprintf("%02d", $index);
+            }
+            $processes[] = 'acc_2_order_book_long_worker';
+
+            // ===================================
+
+
+
+            foreach ($processes as $process)
+                SupervisorService::restart($process);
+
+            // Dispatch All threads
+            Artisan::call('queue:flush');
+            foreach ($threads as $workerId) {
+                TriggersThread::dispatch($workerId, auth()->user()->id, null);
+            }
+            return redirect()->back()->withSuccess('Action ' . 'Multithread Started');
+        } catch (\Throwable $th) {
+            return redirect()->back()->withError('Failed to Perform Multithread Restart ');
+        }
+
         return true;
     }
 
