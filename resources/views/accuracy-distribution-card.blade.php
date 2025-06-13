@@ -1,5 +1,4 @@
 @php
-    $safeModeAccuracyFormula = 'Safe Mode Base Macd Swings Report';
 
     $longAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('LONG', $safeModeAccuracyFormula);
     if ($longAccuracyDetails['accuracy'] < 0) {
