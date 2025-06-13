@@ -5,6 +5,7 @@ namespace App;
 use App\Models\User;
 use App\Services\BinanceApiService;
 use App\Services\BinanceVolumeIndicatorsService;
+use App\Services\HyperLiquidApiService;
 use App\Services\MailerService;
 use App\Services\SupervisorService;
 use Carbon\Carbon;
@@ -2550,6 +2551,7 @@ class CommonHelpers
                         "realizedPnl" => $trade['realizedPnl'],
                         "feeUsdt" => $trade['feeUsdt'],
                         "turnoverPoint" => $trade['turnoverPoint'],
+                        "exchange" => $trade['exchange'],
                         "worker_id" => $trade['worker_id'],
                         "last_trade_update_seconds" => $trade['last_trade_update_seconds'],
                         "last_worker_update_seconds" => $trade['last_worker_update_seconds'],
@@ -2610,11 +2612,20 @@ class CommonHelpers
 
             $trader = self::getTraderIdFromDomainName($trade->domain_name, 'trader');
 
-            $positionDetails = BinanceApiService::getPositionDetails($trade->symbol, $trader);
+            $positionDetails = $trade->exchange === 'binance' ?
+                BinanceApiService::getPositionDetails($trade->symbol, $trader)
+                : HyperLiquidApiService::getPositionDetails($trade->symbol, $trader);
 
             if (!$positionDetails || $positionDetails['positionAmt'] == 0) {
-                BinanceApiService::cancelOrder($trade->symbol, $trader, $trade->tp_order_id);
-                BinanceApiService::cancelOrder($trade->symbol, $trader, $trade->sl_order_id);
+
+
+                $trade->exchange === 'binance' ?
+                    BinanceApiService::cancelOrder($trade->symbol, $trader, $trade->tp_order_id)
+                    : HyperLiquidApiService::cancelOrder($trade->symbol, $trader, $trade->tp_order_id);
+
+                $trade->exchange === 'binance' ?
+                    BinanceApiService::cancelOrder($trade->symbol, $trader, $trade->sl_order_id)
+                    : HyperLiquidApiService::cancelOrder($trade->symbol, $trader, $trade->sl_order_id);
 
                 // Send a closing signal to accounts server
                 $data = [

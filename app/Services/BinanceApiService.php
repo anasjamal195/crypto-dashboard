@@ -2484,6 +2484,7 @@ class BinanceApiService
             'liqPrice' => $liquidationPrice,
             'currentSupport' => $supportResistance['support'],
             'currentResistance' => $supportResistance['resistance'],
+            'exchange' => 'binance',
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
@@ -2676,7 +2677,7 @@ class BinanceApiService
             'currentProfit' => $currentProfit,
             'trade_acc' => $trader,
             'liqPrice' => 0,
-
+            'exchange' => 'binance',
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 

@@ -152,7 +152,11 @@ class MasterProcessController extends Controller
     {
         // Safely Closing Live trades that are active
         $openOrderId = request('openOrderId');
-        BinanceApiService::closeMarketPositionLiveTrader($openOrderId);
+        $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
+
+        $openOrder->exchange === 'binance' ?
+            BinanceApiService::closeMarketPositionLiveTrader($openOrderId)
+            : HyperLiquidApiService::closeMarketPositionLiveTrader($openOrderId);
         return true;
     }
 

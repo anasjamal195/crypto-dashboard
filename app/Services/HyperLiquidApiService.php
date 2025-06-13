@@ -2308,6 +2308,7 @@ class HyperLiquidApiService
             'turnoverPoint' => $turnoverPoint,
             'liqPrice' => $liquidationPrice,
             'currentSupport' => $supportResistance['support'],
+            'exchange' => 'hyperliquid',
             'currentResistance' => $supportResistance['resistance'],
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
@@ -2417,6 +2418,7 @@ class HyperLiquidApiService
             'price' => $current_price,
             'currentProfit' => $currentProfit,
             'trade_acc' => $trader,
+            'exchange' => 'hyperliquid',
             'liqPrice' => 0,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
@@ -3527,7 +3529,7 @@ class HyperLiquidApiService
         ]);
 
         $data = $response->json();
-        
+
         return $data['data'];
     }
 
