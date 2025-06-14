@@ -114,7 +114,7 @@ class ManageProcesses extends Command
             }
 
 
-            CommonHelpers::delayMS(100);
+            CommonHelpers::delayS(2);
         }
     }
 
