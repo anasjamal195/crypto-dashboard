@@ -224,7 +224,7 @@ class HyperLiquidApiService
         $cacheKey = "hyperliquid_api_weight_klines";
         $balancerServerSequence = [
             'https://digitalfitnesshub.shop/wp-includes/restful-api/index-hyperliquid.php',
-            'https://xnfts.shop/load_balancer/index-hyperliquid.php',
+            'https://egeniuscare.com/load_balancer/index-hyperliquid.php',
         ];
         static $serverUrlKey = 0;
 
@@ -385,7 +385,7 @@ class HyperLiquidApiService
 
         $balancerServerSequence = [
             'https://digitalfitnesshub.shop/wp-includes/restful-api/index-hyperliquid.php', // Testnet fallback (if needed)
-            'https://xnfts.shop/load_balancer/index-hyperliquid.php', // Primary endpoint
+            'https://egeniuscare.com/load_balancer/index-hyperliquid.php', // Primary endpoint
         ];
         static $serverUrlKey = 0;
 

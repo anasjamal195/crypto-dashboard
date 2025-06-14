@@ -245,7 +245,7 @@ class BinanceApiService
 
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
-            'https://xnfts.shop/load_balancer/index.php',
+            'https://egeniuscare.com/load_balancer/index.php',
             'https://digitalfitnesshub.shop/wp-includes/restful-api/',
         ];
         static $serverUrlKey = 0;
@@ -414,7 +414,7 @@ class BinanceApiService
     {
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
-            'https://xnfts.shop/load_balancer/index.php', // Chain Server II
+            'https://egeniuscare.com/load_balancer/index.php', // Chain Server II
             'https://digitalfitnesshub.shop/wp-includes/restful-api/',
         ];
         static $serverUrlKey = 0;
