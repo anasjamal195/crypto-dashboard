@@ -71,12 +71,9 @@ class GenerateInternalReport extends Command
         foreach ($reportDetails as $details) {
             $formula = $details['formula'] . ' - Base';
             $timestamp = $details['timestamp'];
-            // $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
+            $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
 
-            $backtestFormula = [
-                'baseReportFormulaMACD' => 'MACD Testing - Bullish - Base - Friday, June 13, 2025 10:39 PM',
-                'baseReportFormulaSR' => 'SR Testing - Bullish - Base - Friday, June 13, 2025 10:39 PM',
-            ];
+
             if ($details['includeFiltered']) {
                 $formula = $details['formula'] . ' - Filtered';
                 $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
