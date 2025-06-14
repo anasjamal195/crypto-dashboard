@@ -1422,8 +1422,7 @@ class TriggersThread implements ShouldQueue
     public static function checkConditionSetLongSR($symbol, $data, $index)
     {
 
-        $safeModeFormulaSR = 'SR Base Report';
-        $accuracyStatsSR = self::getAccuracy('LONG', $safeModeFormulaSR);
+        $accuracyStatsSR = self::getAccuracy('LONG', 'Base Report','SR');
         if ($accuracyStatsSR['accuracy'] < 75) {
             Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
             return null;
@@ -1446,9 +1445,7 @@ class TriggersThread implements ShouldQueue
     public static function checkConditionSetLongMACD($symbol, $data, $index)
     {
 
-
-        $safeModeFormulaMACD = 'MACD Base Report';
-        $accuracyStatsMACD = self::getAccuracy('LONG', $safeModeFormulaMACD);
+        $accuracyStatsMACD = self::getAccuracy('LONG', 'Base Report','MACD');;
         if ($accuracyStatsMACD['accuracy'] < 73) {
             Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
             return null;
@@ -1496,8 +1493,8 @@ class TriggersThread implements ShouldQueue
     public static function checkConditionSetShortSR($symbol, $data, $index)
     {
 
-        $safeModeFormulaSR = 'SR Base Report';
-        $accuracyStatsSR = self::getAccuracy('SHORT', $safeModeFormulaSR);
+       
+        $accuracyStatsSR = self::getAccuracy('SHORT', 'Base Report','SR');
         if ($accuracyStatsSR['accuracy'] < 75) {
             Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
             return null;
@@ -1519,8 +1516,7 @@ class TriggersThread implements ShouldQueue
     {
 
 
-        $safeModeFormulaMACD = 'MACD Base Report';
-        $accuracyStatsMACD = self::getAccuracy('SHORT', $safeModeFormulaMACD);
+        $accuracyStatsMACD = self::getAccuracy('SHORT', 'Base Report','MACD');
         if ($accuracyStatsMACD['accuracy'] < 73) {
             Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
             return null;
@@ -1558,12 +1554,30 @@ class TriggersThread implements ShouldQueue
 
         return null;
     }
-  
 
-    public static function getAccuracy($position, $formula = 'Safe Mode Base Report')
+
+    public static function getAccuracy($position, $formula = 'Safe Mode Base Report', $tagName = null)
     {
-        $safeModeStatus = Http::get("https://reachoutfans.com/csrf-free/safe-mode-accuracy/" . $position . '/' . $formula);
-        $status = $safeModeStatus->json()['data'];
-        return $status;
+        // Encode parameters to avoid URL issues
+        $positionEncoded = urlencode($position);
+        $formulaEncoded = urlencode($formula);
+
+        // Build URL
+        $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$positionEncoded}/{$formulaEncoded}";
+
+        if ($tagName !== null) {
+            $url .= '/' . urlencode($tagName);
+        }
+
+        // Make HTTP GET request
+        $response = Http::get($url);
+
+        // Extract data or fail gracefully
+        if ($response->successful() && isset($response->json()['data'])) {
+            return $response->json()['data'];
+        }
+
+        // Optional: return fallback value or throw exception
+        return null; // or throw new \Exception("Failed to get accuracy");
     }
 }

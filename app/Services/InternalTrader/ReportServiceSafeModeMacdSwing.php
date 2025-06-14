@@ -131,8 +131,7 @@ class ReportServiceSafeModeMacdSwing
                 $trades = self::processCandles($symbol, $data);
 
                 // Insert trades into the database
-                DB::table('coin_reports_safe_mode')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formulaMACD)->where('market', 'FUTURE')->delete();
-                DB::table('coin_reports_safe_mode')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formulaSR)->where('market', 'FUTURE')->delete();
+                DB::table('coin_reports_safe_mode')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formula)->where('market', 'FUTURE')->delete();
                 DB::table('coin_reports_safe_mode')->insert($trades);
 
 
@@ -153,10 +152,7 @@ class ReportServiceSafeModeMacdSwing
             CommonHelpers::delayMS(self::$delayMs);
         }
 
-        return [
-            'baseReportFormulaMACD' => self::$baseReportFormulaMACD,
-            'baseReportFormulaSR' => self::$baseReportFormulaSR,
-        ];
+        return self::$formula;
     }
 
     public static function addFormulaDetails()
@@ -201,11 +197,11 @@ class ReportServiceSafeModeMacdSwing
 
         self::$timeWiseTradesCount = self::getTimestampWiseProfitableTrades(self::$baseReportFormula, $endUnix);
 
-        self::$progressionDetailsLONGMACD = self::getProgressionDetails(self::$baseReportFormulaMACD, 'LONG', $endUnix);
-        self::$progressionDetailsLONGSR = self::getProgressionDetails(self::$baseReportFormulaSR, 'LONG', $endUnix);
+        self::$progressionDetailsLONGMACD = self::getProgressionDetails(self::$baseReportFormula, 'LONG', $endUnix, 'MACD');
+        self::$progressionDetailsLONGSR = self::getProgressionDetails(self::$baseReportFormula, 'LONG', $endUnix, 'SR');
 
-        self::$progressionDetailsSHORTMACD = self::getProgressionDetails(self::$baseReportFormulaMACD, 'SHORT', $endUnix);
-        self::$progressionDetailsSHORTSR = self::getProgressionDetails(self::$baseReportFormulaSR, 'SHORT', $endUnix);
+        self::$progressionDetailsSHORTMACD = self::getProgressionDetails(self::$baseReportFormula, 'SHORT', $endUnix, 'MACD');
+        self::$progressionDetailsSHORTSR = self::getProgressionDetails(self::$baseReportFormula, 'SHORT', $endUnix, 'SR');
 
 
         $classPath = app_path('Services/InternalTrader/ReportServiceSafeModeMacdSwing.php');
@@ -341,8 +337,6 @@ class ReportServiceSafeModeMacdSwing
             'longEnabled' => self::$longEnabled,
             'shortEnabled' => self::$shortEnabled,
             'formula' => self::$formula,
-            'formulaMACD' => self::$formulaMACD,
-            'formulaSR' => self::$formulaSR,
             'earlyClosingEnabled' => self::$earlyClosingEnabled,
             'startUnix' => $startUnix,
             'endUnix' => $endUnix,
@@ -367,17 +361,9 @@ class ReportServiceSafeModeMacdSwing
 
         ];
 
-        self::$formulaMACD = 'MACD ' . self::$formula;
-        self::$formulaSR = 'SR ' . self::$formula;
+
         DB::table('formula_details')->insert([
-            'formula' => self::$formulaMACD,
-            'details' => $html,
-            'report_config' => json_encode($reportConfig),
-            'created_at' => Carbon::now()->toDateTimeString(),
-            'updated_at' => Carbon::now()->toDateTimeString(),
-        ]);
-        DB::table('formula_details')->insert([
-            'formula' => self::$formulaSR,
+            'formula' => self::$formula,
             'details' => $html,
             'report_config' => json_encode($reportConfig),
             'created_at' => Carbon::now()->toDateTimeString(),
@@ -442,7 +428,8 @@ class ReportServiceSafeModeMacdSwing
 
             if ($open_price == 0) {
 
-                $tradeType = self::handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
+                $tagName = null;
+                $tradeType = self::handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, $safeModeEnableTimestamps, $safeModeDisabledTimestamps, $tagName);
 
 
 
@@ -471,6 +458,7 @@ class ReportServiceSafeModeMacdSwing
 
                     $candle['trendDetails'] = json_encode(CommonHelpers::detectTrend($data, $index, 50, 50));
                     $currentTrade['buyingCandle'] = json_encode($candle);
+                    $currentTrade['tagName'] = $tagName;
                     $currentTrade['previousCandle'] = json_encode($data[$index - 1]);
                     $extremePrice = $open_price;
                     // Placeholder object for testing
@@ -549,18 +537,18 @@ class ReportServiceSafeModeMacdSwing
 
     // Function to check opening Conditions
 
-    public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps)
+    public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps, &$tagName)
     {
 
 
 
-        // dd(self::$progressionDetailsLONGMACD,self::$progressionDetailsLONGSR,self::$progressionDetailsSHORTMACD);
+
         // LONG Entry
         if (self::checkConditionSetLongMACD($symbol, $data, $index) === 'LONG') {
-            self::$formula =  self::$formulaMACD;
+            $tagName = 'MACD';
             return 'LONG';
         } else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
-            self::$formula =  self::$formulaSR;
+            $tagName = 'SR';
             return 'LONG';
         }
 
@@ -568,16 +556,15 @@ class ReportServiceSafeModeMacdSwing
 
         // SHORT Entry
         if (self::checkConditionSetShortMACD($symbol, $data, $index) === 'SHORT') {
-            self::$formula =  self::$formulaMACD;
+            $tagName = 'MACD';
             return 'SHORT';
         } else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
-            self::$formula =  self::$formulaSR;
+            $tagName = 'SR';
             return 'SHORT';
         }
 
         return null;
     }
-
     public static function getTradeStatsFromReport($formula, $binance_timestamp, $filterHours = 4, $lengthThresholdMins = 30)
     {
 
@@ -650,10 +637,11 @@ class ReportServiceSafeModeMacdSwing
 
 
 
-    public static function getProgressionDetails($formula, $position, $binance_timestamp)
+    public static function getProgressionDetails($formula, $position, $binance_timestamp, $tagName = null)
     {
 
-        $rawData = DB::table('coin_reports_safe_mode')
+
+        $rawData = DB::table('coin_reports')
             ->selectRaw("
                     JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
                     symbol,
@@ -662,8 +650,14 @@ class ReportServiceSafeModeMacdSwing
                     SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as loss_trades,
                     ROUND((SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as accuracy
                 ")
-            ->where('formula', $formula)
-            ->where('position', $position)
+            ->where('formula', $formula);
+
+
+        if ($tagName) {
+            $rawData->where('tagName', $tagName);
+        }
+
+        $rawData = $rawData->where('position', $position)
             ->whereNotNull('sellingCandle')
             ->whereRaw("JSON_EXTRACT(sellingCandle, '$.binance_timestamp') <= ?", [$binance_timestamp])
             ->groupBy(
@@ -702,6 +696,8 @@ class ReportServiceSafeModeMacdSwing
                 ? round(($item['total_profit'] / $totalTrades) * 100, 2)
                 : 0;
         }
+
+
         return $grouped;
     }
 

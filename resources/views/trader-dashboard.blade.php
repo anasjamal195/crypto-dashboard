@@ -308,13 +308,15 @@
     </div>
 
     @include('accuracy-distribution-card', [
-        'safeModeAccuracyFormula' => 'SR Base Report',
+        'safeModeAccuracyFormula' => 'Base Report',
+        'tagName' => 'MACD',
         'shortThreshold' => 75,
         'longThreshold' => 75,
     ])
 
     @include('accuracy-distribution-card', [
-        'safeModeAccuracyFormula' => 'MACD Base Report',
+        'safeModeAccuracyFormula' => 'Base Report',
+        'tagName' => 'SR',
         'shortThreshold' => 73,
         'longThreshold' => 73,
     ])

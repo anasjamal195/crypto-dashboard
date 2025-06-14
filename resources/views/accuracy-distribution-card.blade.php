@@ -1,10 +1,18 @@
 @php
 
-    $longAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('LONG', $safeModeAccuracyFormula);
+    $longAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy(
+        'LONG',
+        $safeModeAccuracyFormula,
+        $tagName,
+    );
     if ($longAccuracyDetails['accuracy'] < 0) {
         $longAccuracyDetails['accuracy'] = 100;
     }
-    $shortAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy('SHORT', $safeModeAccuracyFormula);
+    $shortAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy(
+        'SHORT',
+        $safeModeAccuracyFormula,
+        $tagName,
+    );
     if ($shortAccuracyDetails['accuracy'] < 0) {
         $shortAccuracyDetails['accuracy'] = 100;
     }
@@ -21,7 +29,7 @@
                     <div class="col">
                         <h5 class="card-title text-uppercase text-muted mb-0">
                             <i class="tim-icons icon-trend-up text-success mr-2"></i>
-                            Long Positions ({{ $safeModeAccuracyFormula }})
+                            Long Positions ({{ $safeModeAccuracyFormula }}) - {{ $tagName }}
                         </h5>
                         <div class="row mt-3">
                             <div class="col-6">
@@ -105,7 +113,7 @@
                     <div class="col">
                         <h5 class="card-title text-uppercase text-muted mb-0">
                             <i class="tim-icons icon-trend-down text-danger mr-2"></i>
-                            Short Positions ({{ $safeModeAccuracyFormula }})
+                            Short Positions ({{ $safeModeAccuracyFormula }}) - {{ $tagName }}
                         </h5>
                         <div class="row mt-3">
                             <div class="col-6">

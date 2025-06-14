@@ -10,6 +10,7 @@ use App\Services\HyperLiquidApiService;
 use App\Services\IdealTradeService;
 use App\Services\InternalTrader\ReportService;
 use App\Services\InternalTrader\ReportServiceSafeMode;
+use App\Services\InternalTrader\ReportServiceSafeModeMacdSwing;
 use App\Services\MarketTrendService;
 use App\Services\OrderBookStrategy;
 use App\Services\ReportService\LongReportService;
@@ -78,6 +79,23 @@ class BinanceController extends Controller
 
         $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
 
+        $colors = [
+                'MACD' => [
+                    'LONG'  => '#2ecc71',  // Green
+                    'SHORT' => '#e74c3c',  // Red
+                    'LOSS'  => '#f1c40f',  // Yellow
+                ],
+                'SR' => [
+                    'LONG'  => '#17a2b8',  // Teal Blue
+                    'SHORT' => '#6610f2',  // Indigo
+                    'LOSS'  => '#6c757d',  // Steel Gray
+                ],
+                'default' => [
+                   'LONG'  => '#2ecc71',  // Green
+                    'SHORT' => '#e74c3c',  // Red
+                    'LOSS'  => '#f1c40f',  // Yellow
+                ]
+            ];
         // Return early with default values if no formula provided
         if (!$request->has('formula') || !$formulaDetails) {
             return view('CoinReports.coin-report', [
@@ -182,6 +200,7 @@ class BinanceController extends Controller
                 'trendReferenceIntervalActual' => '',
                 'baseAccuracy' => 0,
                 'baseFrequency' => 0,
+                'timelineColors' => $colors,
             ]);
         }
 
@@ -494,36 +513,22 @@ class BinanceController extends Controller
         }
         // dd($profitableChangeSum / $profitableTotal, $lossChangeSum / $lossTotal, $profitableTotal, $lossTotal);
         // dd("Total:", $bbUpTrades, "Profits:", $bbUpProfit, "Losses:", $bbUpLoss, "Accuracy: ", ($bbUpProfit / $bbUpTrades) * 100);
-
+   
 
         // Prepare timeline data
-        $timelineData = array_map(function ($trade) use ($stopLoss) {
+        $timelineData = array_map(function ($trade) use ($stopLoss,$colors) {
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
             $color = '';
             // Color mapping
-            $colors = [
-                'MACD' => [
-                    'LONG'  => '#00FF7F',  // Spring Green
-                    'SHORT' => '#FF69B4',  // Hot Pink
-                    'LOSS'  => '#8B0000',  // Dark Red
-                ],
-                'SR' => [
-                    'LONG'  => '#00BFFF',  // Deep Sky Blue
-                    'SHORT' => '#FFA500',  // Orange
-                    'LOSS'  => '#B22222',  // Firebrick
-                ],
-                'default' => [
-                    'LONG'  => '#32CD32',  // Lime Green
-                    'SHORT' => '#FF8C00',  // Dark Orange
-                    'LOSS'  => '#DC143C',  // Crimson
-                ]
-            ];
+            
+
+
 
             $tag = $trade['tagName'];
             $position = $trade['position'];
             $profit = $trade['profit'];
-            
+
             // Use specific tag if exists, else fallback
             $tagKey = array_key_exists($tag, $colors) ? $tag : 'default';
 
@@ -788,6 +793,7 @@ class BinanceController extends Controller
             'trendReferenceIntervalActual' => $interval,
             'baseAccuracy' => $baseAccuracy,
             'baseFrequency' => $baseFrequency,
+            'timelineColors' => $colors
         ]);
     }
     public function getCoinReportDetails($market, Request $request)
@@ -1215,12 +1221,12 @@ class BinanceController extends Controller
         ]);
     }
 
-    public function getSafeModeAccuracy($position, $formula)
+    public function getSafeModeAccuracy($position, $formula, $tagName = null)
     {
 
         $timestampMillis = round(microtime(true) * 1000);
-        $progressionDetails = ReportServiceSafeMode::getProgressionDetails($formula, $position, $timestampMillis);
-        $stats = ReportServiceSafeMode::parseStats($progressionDetails, $timestampMillis, 6);
+        $progressionDetails = ReportServiceSafeModeMacdSwing::getProgressionDetails($formula, $position, $timestampMillis, $tagName);
+        $stats = ReportServiceSafeModeMacdSwing::parseStats($progressionDetails, $timestampMillis, 6);
         $lastUpdateTime = DB::table('coin_reports_safe_mode')->where('formula', $formula)->orderBy('created_at', 'DESC')->first();
 
         return  response()->json([

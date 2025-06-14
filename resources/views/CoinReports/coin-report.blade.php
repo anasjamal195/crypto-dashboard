@@ -809,12 +809,18 @@
                                 <div class="card-header card-header-primary">
                                     <h4 class="card-title">Trade Timeline</h4>
                                     <p class="card-category">Visual representation of trade timelines</p>
-                                    <div>
-                                        <span class="badge badge-rounded "
-                                            style="background-color:green;color:white">LONG</span>
-
-                                        <span class="badge badge-rounded "
-                                            style="background-color:red;color:white">SHORT</span>
+                                    <div class="row">
+                                        @foreach ($timelineColors as $tag => $directions)
+                                            <div class="col-md-4">
+                                                <h6 class="text-white mt-2">{{ strtoupper($tag) }}</h6>
+                                                @foreach ($directions as $direction => $color)
+                                                    <span class="badge badge-pill mb-1"
+                                                        style="background-color: {{ $color }}; color: white;">
+                                                        {{ strtoupper($direction) }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endforeach
                                     </div>
                                 </div>
 
