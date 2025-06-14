@@ -493,7 +493,7 @@ class TriggersThread implements ShouldQueue
         // }
 
 
-        
+
         if ($currentProfit < 0.5) {
             $profitIncrementPercentage = 0.05;
         } else {
@@ -1432,7 +1432,7 @@ class TriggersThread implements ShouldQueue
 
         $accuracyStatsSR = self::getAccuracy('LONG', 'Base Report', 'SR');
         if ($accuracyStatsSR['accuracy'] < 75) {
-            Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
+            Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsSR['accuracy']  . 'SR LONG: ' . $symbol);
             return null;
         }
 
@@ -1455,7 +1455,7 @@ class TriggersThread implements ShouldQueue
 
         $accuracyStatsMACD = self::getAccuracy('LONG', 'Base Report', 'MACD');;
         if ($accuracyStatsMACD['accuracy'] < 73) {
-            Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
+            Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy ' . $accuracyStatsMACD['accuracy']  . 'MACD LONG: ' . $symbol);
             return null;
         }
 
@@ -1504,7 +1504,7 @@ class TriggersThread implements ShouldQueue
 
         $accuracyStatsSR = self::getAccuracy('SHORT', 'Base Report', 'SR');
         if ($accuracyStatsSR['accuracy'] < 75) {
-            Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
+            Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsSR['accuracy']  . 'SR SHORT: ' . $symbol);
             return null;
         }
 
@@ -1526,7 +1526,7 @@ class TriggersThread implements ShouldQueue
 
         $accuracyStatsMACD = self::getAccuracy('SHORT', 'Base Report', 'MACD');
         if ($accuracyStatsMACD['accuracy'] < 73) {
-            Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
+            Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsMACD['accuracy']  . 'MACD SHORT: ' . $symbol);
             return null;
         }
 
