@@ -782,15 +782,15 @@ class BinanceController extends Controller
             }
         }
 
-        $totalTradesMACD = $totalProfitsMACD + $totalLossesMACD;
-        $totalTradesSR = $totalProfitsSR + $totalLossesSR;
+        $totalTradesMACD = $totalProfitsTradesMACD + $totalLossesTradesMACD;
+        $totalTradesSR = $totalProfitsTradesSR + $totalLossesTradesSR;
 
         $totalFeeSR = $totalTradesSR * 0.15;
         $totalFeeMACD = $totalTradesMACD * 0.15;
 
 
-        $accuracySR = $totalTradesSR ? round(($totalProfitsSR / $totalTradesSR) * 100, 2) : 0;
-        $accuracyMACD = $totalTradesMACD ? round(($totalProfitsMACD / $totalTradesMACD) * 100, 2) : 0;
+        $accuracySR = $totalTradesSR ? round(($totalProfitsTradesSR / $totalTradesSR) * 100, 2) : 0;
+        $accuracyMACD = $totalTradesMACD ? round(($totalProfitsTradesMACD / $totalTradesMACD) * 100, 2) : 0;
 
 
 
@@ -888,7 +888,7 @@ class BinanceController extends Controller
 
 
             'totalProfitsSR'   => $totalProfitsSR,
-            'totalLossesSR'    => $totalLossesSR,
+            'totalLossesSR'    => abs($totalLossesSR),
             'totalTradesSR'    => $totalTradesSR,
             'grandTotalSR'     => $grandTotalSR,
             'totalFeeSR'       => $totalFeeSR,
@@ -899,7 +899,7 @@ class BinanceController extends Controller
             'totalLossesTradesMACD'   => $totalLossesTradesMACD,
 
             'totalProfitsMACD' => $totalProfitsMACD,
-            'totalLossesMACD'  => $totalLossesMACD,
+            'totalLossesMACD'  => abs($totalLossesMACD),
             'totalTradesMACD'  => $totalTradesMACD,
             'grandTotalMACD'   => $grandTotalMACD,
             'totalFeeMACD'     => $totalFeeMACD,
