@@ -407,20 +407,122 @@
                                                 </tr>
 
 
+
+
+
+
+
+
+
                                                 <tr>
-                                                    <td class="font-weight-bold">Base Accuracy</td>
-                                                    <td>{{ round($baseAccuracy, 2) }}
-                                                        %</td>
-                                                    <td>Success rate of Base Report from {{ round($baseFrequency, 2) }}
-                                                        trades </td>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">SR Stats</td>
                                                 </tr>
 
-                                                {{-- <tr>
-                                                    <td class="font-weight-bold">Average First Opening Delay</td>
-                                                    <td>{{ $totalTrades ? round($firstTradeAverageTime, 2) : 0 }}
+                                                <tr>
+                                                    <td class="font-weight-bold">Total Profit</td>
+                                                    <td>{{ $totalProfitsSR }} %</td>
+                                                    <td>From {{ $totalProfitsTradesSR }} profitable trades</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Total Stop Losses</td>
+                                                    <td>{{ $totalLossesSR }} %</td>
+                                                    <td>From {{ $totalLossesTradesSR }} stop loss trades</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Grand Total</td>
+                                                    <td>{{ $totalProfitsSR - $totalLossesSR }} %</td>
+                                                    <td>From {{ $totalTradesSR }} total trades</td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td class="font-weight-bold">Fee Estimate</td>
+                                                    <td>{{ $totalTradesSR ? round($totalTradesSR * 0.15, 2) : 0 }}
+                                                        %</td>
+                                                    <td>Average Estimated fee </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Grand Total (after fee deduction)</td>
+                                                    <td>{{ $totalProfitsSR - $totalLossesSR - $totalTradesSR * 0.15 }} %
                                                     </td>
-                                                    <td>Average time of first trade after very first candle in mins </td>
-                                                </tr> --}}
+                                                    <td>From {{ $totalTradesSR }} total trades after fee deduction</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Formula Accuracy</td>
+                                                    <td>{{ $totalTrades ? round(100 - ($totalLossesTradesSR / $totalTradesSR) * 100, 2) : 0 }}
+                                                        %</td>
+                                                    <td>Success rate of profitable trades </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
+
+
+
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">MACD Stats
+                                                    </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td class="font-weight-bold">Total Profit</td>
+                                                    <td>{{ $totalProfitsMACD }} %</td>
+                                                    <td>From {{ $totalProfitsTradesMACD }} profitable trades</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Total Stop Losses</td>
+                                                    <td>{{ $totalLossesMACD }} %</td>
+                                                    <td>From {{ $totalLossesTradesMACD }} stop loss trades</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Grand Total</td>
+                                                    <td>{{ $totalProfitsMACD - $totalLossesMACD }} %</td>
+                                                    <td>From {{ $totalTradesMACD }} total trades</td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td class="font-weight-bold">Fee Estimate</td>
+                                                    <td>{{ $totalTradesMACD ? round($totalTradesMACD * 0.15, 2) : 0 }}
+                                                        %</td>
+                                                    <td>Average Estimated fee </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Grand Total (after fee deduction)</td>
+                                                    <td>{{ $totalProfitsMACD - $totalLossesMACD - $totalTradesMACD * 0.15 }}
+                                                        %
+                                                    </td>
+                                                    <td>From {{ $totalTradesMACD }} total trades after fee deduction</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-weight-bold">Formula Accuracy</td>
+                                                    <td>{{ $totalTrades ? round(100 - ($totalLossesTradesMACD / $totalTradesMACD) * 100, 2) : 0 }}
+                                                        %</td>
+                                                    <td>Success rate of profitable trades </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td colspan="3" class="font-weight-bold text-center">&nbsp;</td>
+                                                </tr>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
                                                 <tr>

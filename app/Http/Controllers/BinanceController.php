@@ -78,7 +78,7 @@ class BinanceController extends Controller
 
 
         $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
-
+        $basicStats = [];
         $colors = [
             'MACD' => [
                 'LONG'  => '#2ecc71',  // Green
@@ -713,6 +713,92 @@ class BinanceController extends Controller
 
 
 
+        // $basicStats = [
+
+        //     [
+        //         'heading' => 'Basic Stats',
+        //         'rows' => [
+        //             [
+        //                 'name' => 'Below TP',
+        //                 'value' => $tradesBelowTP,
+        //                 'description' => "Trades that closed early below $tpLimit %",
+        //             ],
+        //             [
+        //                 'name' => '1h+ Duration',
+        //                 'value' => $tradesBelowTP,
+        //                 'description' => "Trades that closed early below $tpLimit %",
+        //             ],
+        //         ]
+        //     ]
+
+
+        // ];
+
+
+
+
+
+        // SR Formula Stat
+
+        $totalProfitsTradesSR = $totalLossesTradesSR = $totalProfitsSR = $totalLossesSR = $totalTradesSR = $grandTotalSR = $totalFeeSR = $accuracySR = 0;
+
+        $totalProfitsTradesMACD  =  $totalLossesTradesMACD  = $totalProfitsMACD = $totalLossesMACD =  $totalTradesMACD = $grandTotalMACD = $totalFeeMACD = $accuracyMACD = 0;
+
+
+        foreach ($tradeArr as $trade) {
+
+            $isProfit = $trade['profit'] > 0;
+            // SR Stats
+
+            if ($trade['tagName'] === 'SR') {
+                $isProfit ?
+                    $totalProfitsTradesSR++ :
+                    $totalLossesTradesSR;
+
+
+
+                $isProfit ?
+                    $totalProfitsSR += $trade['profit'] :
+                    $totalLossesSR += $trade['profit'];
+
+                $grandTotalSR += $trade['profit'];
+            }
+
+
+
+
+            if ($trade['tagName'] === 'MACD') {
+
+                $isProfit ?
+                    $totalProfitsTradesMACD++ :
+                    $totalLossesTradesMACD;
+
+
+                $isProfit ?
+                    $totalProfitsMACD += $trade['profit'] :
+                    $totalLossesMACD += $trade['profit'];
+
+                $grandTotalMACD += $trade['profit'];
+            }
+        }
+
+        $totalTradesMACD = $totalProfitsMACD + $totalLossesMACD;
+        $totalTradesSR = $totalProfitsSR + $totalLossesSR;
+
+        $totalFeeSR = $totalTradesSR * 0.15;
+        $totalFeeMACD = $totalTradesMACD * 0.15;
+
+
+        $accuracySR = $totalTradesSR ? round(($totalProfitsSR / $totalTradesSR) * 100, 2) : 0;
+        $accuracyMACD = $totalTradesMACD ? round(($totalProfitsMACD / $totalTradesMACD) * 100, 2) : 0;
+
+
+
+
+
+
+
+
 
         // Return the view with consolidated data
         return view('CoinReports.coin-report', [
@@ -793,7 +879,32 @@ class BinanceController extends Controller
             'trendReferenceIntervalActual' => $interval,
             'baseAccuracy' => $baseAccuracy,
             'baseFrequency' => $baseFrequency,
-            'timelineColors' => $colors
+            'timelineColors' => $colors,
+
+
+            // SR Stats
+            'totalProfitsTradesSR'   => $totalProfitsTradesSR,
+            'totalLossesTradesSR'   => $totalLossesTradesSR,
+
+
+            'totalProfitsSR'   => $totalProfitsSR,
+            'totalLossesSR'    => $totalLossesSR,
+            'totalTradesSR'    => $totalTradesSR,
+            'grandTotalSR'     => $grandTotalSR,
+            'totalFeeSR'       => $totalFeeSR,
+            'accuracySR'       => $accuracySR,
+
+            // MACD Stats
+            'totalProfitsTradesMACD'   => $totalProfitsTradesMACD,
+            'totalLossesTradesMACD'   => $totalLossesTradesMACD,
+
+            'totalProfitsMACD' => $totalProfitsMACD,
+            'totalLossesMACD'  => $totalLossesMACD,
+            'totalTradesMACD'  => $totalTradesMACD,
+            'grandTotalMACD'   => $grandTotalMACD,
+            'totalFeeMACD'     => $totalFeeMACD,
+            'accuracyMACD'     => $accuracyMACD,
+
         ]);
     }
     public function getCoinReportDetails($market, Request $request)

@@ -195,6 +195,12 @@ class TriggersThread implements ShouldQueue
 
                 // Condition to limit open orders for a symbol in long or short
                 if ($currentOpenOrders >= 1) {
+
+                    $openOrder = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->first();
+
+                    $this->manageRestartedWorker($openOrder->orderId);
+
+
                     $openTrade = false;
                 }
 
