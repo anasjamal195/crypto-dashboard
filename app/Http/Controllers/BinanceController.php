@@ -501,31 +501,30 @@ class BinanceController extends Controller
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
 
-            $color = 'gray'; // fallback
-
-            if (isset($trade['tagName'], $trade['position'], $trade['profit'])) {
+            // Color mapping
+            $colors = [
+                'MACD' => [
+                    'LONG'  => '#00FF7F',  // Spring Green
+                    'SHORT' => '#FF69B4',  // Hot Pink
+                    'LOSS'  => '#8B0000',  // Dark Red
+                ],
+                'SR' => [
+                    'LONG'  => '#00BFFF',  // Deep Sky Blue
+                    'SHORT' => '#FFA500',  // Orange
+                    'LOSS'  => '#B22222',  // Firebrick
+                ],
+                'default' => [
+                    'LONG'  => '#32CD32',  // Lime Green
+                    'SHORT' => '#FF8C00',  // Dark Orange
+                    'LOSS'  => '#DC143C',  // Crimson
+                ]
+            ];
+            if ($trade['tagName']) {
                 $tag = $trade['tagName'];
                 $position = $trade['position'];
                 $profit = $trade['profit'];
 
-                // Color mapping
-                $colors = [
-                    'MACD' => [
-                        'LONG'  => '#00FF7F',  // Spring Green
-                        'SHORT' => '#FF69B4',  // Hot Pink
-                        'LOSS'  => '#8B0000',  // Dark Red
-                    ],
-                    'SR' => [
-                        'LONG'  => '#00BFFF',  // Deep Sky Blue
-                        'SHORT' => '#FFA500',  // Orange
-                        'LOSS'  => '#B22222',  // Firebrick
-                    ],
-                    'default' => [
-                        'LONG'  => '#32CD32',  // Lime Green
-                        'SHORT' => '#FF8C00',  // Dark Orange
-                        'LOSS'  => '#DC143C',  // Crimson
-                    ]
-                ];
+
 
                 // Use specific tag if exists, else fallback
                 $tagKey = array_key_exists($tag, $colors) ? $tag : 'default';
