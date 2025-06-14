@@ -500,7 +500,7 @@ class BinanceController extends Controller
         $timelineData = array_map(function ($trade) use ($stopLoss) {
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
-
+            $color = '';
             // Color mapping
             $colors = [
                 'MACD' => [
@@ -519,24 +519,22 @@ class BinanceController extends Controller
                     'LOSS'  => '#DC143C',  // Crimson
                 ]
             ];
-            if ($trade['tagName']) {
-                $tag = $trade['tagName'];
-                $position = $trade['position'];
-                $profit = $trade['profit'];
 
+            $tag = $trade['tagName'];
+            $position = $trade['position'];
+            $profit = $trade['profit'];
+            
+            // Use specific tag if exists, else fallback
+            $tagKey = array_key_exists($tag, $colors) ? $tag : 'default';
 
-
-                // Use specific tag if exists, else fallback
-                $tagKey = array_key_exists($tag, $colors) ? $tag : 'default';
-
-                if ($profit < 0) {
-                    $color = $colors[$tagKey]['LOSS'];
-                } elseif ($position === 'LONG') {
-                    $color = $colors[$tagKey]['LONG'];
-                } elseif ($position === 'SHORT') {
-                    $color = $colors[$tagKey]['SHORT'];
-                }
+            if ($profit < 0) {
+                $color = $colors[$tagKey]['LOSS'];
+            } elseif ($position === 'LONG') {
+                $color = $colors[$tagKey]['LONG'];
+            } elseif ($position === 'SHORT') {
+                $color = $colors[$tagKey]['SHORT'];
             }
+
 
 
             return [
