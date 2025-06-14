@@ -501,16 +501,50 @@ class BinanceController extends Controller
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
 
-            $color = '';
-            if ($trade['profit'] < 0) {
-                $color = 'yellow';
+            $color = 'gray'; // fallback
+
+            if (isset($trade['tagName'], $trade['position'], $trade['profit'])) {
+                $tag = $trade['tagName'];
+                $position = $trade['position'];
+                $profit = $trade['profit'];
+
+                // Color mapping
+                $colors = [
+                    'MACD' => [
+                        'LONG'  => '#00FF7F',  // Spring Green
+                        'SHORT' => '#FF69B4',  // Hot Pink
+                        'LOSS'  => '#8B0000',  // Dark Red
+                    ],
+                    'SR' => [
+                        'LONG'  => '#00BFFF',  // Deep Sky Blue
+                        'SHORT' => '#FFA500',  // Orange
+                        'LOSS'  => '#B22222',  // Firebrick
+                    ],
+                    'default' => [
+                        'LONG'  => '#32CD32',  // Lime Green
+                        'SHORT' => '#FF8C00',  // Dark Orange
+                        'LOSS'  => '#DC143C',  // Crimson
+                    ]
+                ];
+
+                // Use specific tag if exists, else fallback
+                $tagKey = array_key_exists($tag, $colors) ? $tag : 'default';
+
+                if ($profit < 0) {
+                    $color = $colors[$tagKey]['LOSS'];
+                } elseif ($position === 'LONG') {
+                    $color = $colors[$tagKey]['LONG'];
+                } elseif ($position === 'SHORT') {
+                    $color = $colors[$tagKey]['SHORT'];
+                }
             }
+
 
             return [
                 'symbol' => $trade['symbol'] . '( ' . $trade['position'] . ' )',
                 'startTime' => $trade['buyingCandle']['timestampReadable'],
                 'endTime' => $trade['sellingCandle']['timestampReadable'],
-                'color' => $color ? $color : ($trade['position'] === 'SHORT' ? 'red' : 'green'),
+                'color' => $color,
                 'id' => $trade['id'],
                 'buyingCandle' => $trade['buyingCandle'],
             ];
