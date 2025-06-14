@@ -28,11 +28,11 @@ class GenerateInternalReport extends Command
     {
 
         $reportDetails = [
-            // [
-            //     'formula' => 'Macd Swings Hyperliquid - Current',
-            //     'timestamp' => null,
-            //     'includeFiltered' => true,
-            // ],
+            [
+                'formula' => 'Current',
+                'timestamp' => null,
+                'includeFiltered' => true,
+            ],
 
             [
                 'formula' => 'Testing - Bullish',

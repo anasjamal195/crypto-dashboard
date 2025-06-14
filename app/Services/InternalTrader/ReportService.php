@@ -609,9 +609,6 @@ class ReportService
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps, &$tagName)
     {
 
-
-
-        // dd(self::$progressionDetailsLONGMACD,self::$progressionDetailsLONGSR,self::$progressionDetailsSHORTMACD);
         // LONG Entry
         if (self::checkConditionSetLongMACD($symbol, $data, $index) === 'LONG') {
             $tagName = 'MACD';
@@ -625,8 +622,8 @@ class ReportService
 
         // SHORT Entry
         if (self::checkConditionSetShortMACD($symbol, $data, $index) === 'SHORT') {
-            self::$formula =  self::$formulaMACD;
             $tagName = 'MACD';
+            return 'SHORT';
         } else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
             $tagName = 'SR';
             return 'SHORT';
