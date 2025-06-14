@@ -1556,7 +1556,7 @@ class TriggersThread implements ShouldQueue
     }
 
 
-    public static function getAccuracy($position, $formula = 'Safe Mode Base Report', $tagName = null)
+    public static function getAccuracy($position, $formula = 'Base Report', $tagName = null)
     {
         // Encode parameters to avoid URL issues
         $positionEncoded = urlencode($position);
