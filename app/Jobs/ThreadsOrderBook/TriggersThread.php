@@ -1422,7 +1422,7 @@ class TriggersThread implements ShouldQueue
     public static function checkConditionSetLongSR($symbol, $data, $index)
     {
 
-        $accuracyStatsSR = self::getAccuracy('LONG', 'Base Report','SR');
+        $accuracyStatsSR = self::getAccuracy('LONG', 'Base Report', 'SR');
         if ($accuracyStatsSR['accuracy'] < 75) {
             Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
             return null;
@@ -1445,7 +1445,7 @@ class TriggersThread implements ShouldQueue
     public static function checkConditionSetLongMACD($symbol, $data, $index)
     {
 
-        $accuracyStatsMACD = self::getAccuracy('LONG', 'Base Report','MACD');;
+        $accuracyStatsMACD = self::getAccuracy('LONG', 'Base Report', 'MACD');;
         if ($accuracyStatsMACD['accuracy'] < 73) {
             Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
             return null;
@@ -1493,8 +1493,8 @@ class TriggersThread implements ShouldQueue
     public static function checkConditionSetShortSR($symbol, $data, $index)
     {
 
-       
-        $accuracyStatsSR = self::getAccuracy('SHORT', 'Base Report','SR');
+
+        $accuracyStatsSR = self::getAccuracy('SHORT', 'Base Report', 'SR');
         if ($accuracyStatsSR['accuracy'] < 75) {
             Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
             return null;
@@ -1516,7 +1516,7 @@ class TriggersThread implements ShouldQueue
     {
 
 
-        $accuracyStatsMACD = self::getAccuracy('SHORT', 'Base Report','MACD');
+        $accuracyStatsMACD = self::getAccuracy('SHORT', 'Base Report', 'MACD');
         if ($accuracyStatsMACD['accuracy'] < 73) {
             Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $symbol);
             return null;
@@ -1558,14 +1558,13 @@ class TriggersThread implements ShouldQueue
 
     public static function getAccuracy($position, $formula = 'Base Report', $tagName = null)
     {
-        
+
         // Build URL
         $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$position}/{$formula}";
 
         if ($tagName) {
             $url .= '/' . $tagName;
         }
-
         // Make HTTP GET request
         $response = Http::get($url);
 
