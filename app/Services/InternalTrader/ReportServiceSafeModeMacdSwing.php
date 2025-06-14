@@ -362,13 +362,17 @@ class ReportServiceSafeModeMacdSwing
         ];
 
 
-        DB::table('formula_details')->insert([
-            'formula' => self::$formula,
-            'details' => $html,
-            'report_config' => json_encode($reportConfig),
-            'created_at' => Carbon::now()->toDateTimeString(),
-            'updated_at' => Carbon::now()->toDateTimeString(),
-        ]);
+        DB::table('formula_details')->updateOrInsert(
+            [
+                'formula' => self::$formula,
+            ],
+            [
+                'details' => $html,
+                'report_config' => json_encode($reportConfig),
+                'created_at' => Carbon::now()->toDateTimeString(),
+                'updated_at' => Carbon::now()->toDateTimeString(),
+            ]
+        );
     }
 
 

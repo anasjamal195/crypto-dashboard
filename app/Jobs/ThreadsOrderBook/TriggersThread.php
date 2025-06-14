@@ -363,10 +363,10 @@ class TriggersThread implements ShouldQueue
         Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
 
         // Change take profit levels when order is stuck for more than 80 mins
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 40 && $targetProfit <= 0.4) {
-            $targetProfit = 0.2;
-            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
-        }
+        // if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 40 && $targetProfit <= 0.4) {
+        //     $targetProfit = 0.2;
+        //     Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
+        // }
 
         if ($currentProfit < 0.5) {
             $profitIncrementPercentage = 0.05;
@@ -487,11 +487,13 @@ class TriggersThread implements ShouldQueue
 
 
         // Change take profit levels when order is stuck for more than 80 mins
-        if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 40 && $targetProfit <= 0.4) {
-            $targetProfit = 0.2;
-            Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
-        }
+        // if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 40 && $targetProfit <= 0.4) {
+        //     $targetProfit = 0.2;
+        //     Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
+        // }
 
+
+        
         if ($currentProfit < 0.5) {
             $profitIncrementPercentage = 0.05;
         } else {
