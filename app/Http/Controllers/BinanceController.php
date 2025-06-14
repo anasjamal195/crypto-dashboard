@@ -753,7 +753,7 @@ class BinanceController extends Controller
             if ($trade['tagName'] === 'SR') {
                 $isProfit ?
                     $totalProfitsTradesSR++ :
-                    $totalLossesTradesSR;
+                    $totalLossesTradesSR++;
 
 
 
@@ -771,7 +771,7 @@ class BinanceController extends Controller
 
                 $isProfit ?
                     $totalProfitsTradesMACD++ :
-                    $totalLossesTradesMACD;
+                    $totalLossesTradesMACD++;
 
 
                 $isProfit ?
