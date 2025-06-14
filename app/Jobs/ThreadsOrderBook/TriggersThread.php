@@ -1558,15 +1558,12 @@ class TriggersThread implements ShouldQueue
 
     public static function getAccuracy($position, $formula = 'Base Report', $tagName = null)
     {
-        // Encode parameters to avoid URL issues
-        $positionEncoded = urlencode($position);
-        $formulaEncoded = urlencode($formula);
-
+        
         // Build URL
-        $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$positionEncoded}/{$formulaEncoded}";
+        $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$position}/{$formula}";
 
-        if ($tagName !== null) {
-            $url .= '/' . urlencode($tagName);
+        if ($tagName) {
+            $url .= '/' . $tagName;
         }
 
         // Make HTTP GET request

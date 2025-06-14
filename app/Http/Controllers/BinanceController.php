@@ -80,22 +80,22 @@ class BinanceController extends Controller
         $formulaDetails = DB::table('formula_details')->where('formula', $formula)->first();
 
         $colors = [
-                'MACD' => [
-                    'LONG'  => '#2ecc71',  // Green
-                    'SHORT' => '#e74c3c',  // Red
-                    'LOSS'  => '#f1c40f',  // Yellow
-                ],
-                'SR' => [
-                    'LONG'  => '#17a2b8',  // Teal Blue
-                    'SHORT' => '#6610f2',  // Indigo
-                    'LOSS'  => '#6c757d',  // Steel Gray
-                ],
-                'default' => [
-                   'LONG'  => '#2ecc71',  // Green
-                    'SHORT' => '#e74c3c',  // Red
-                    'LOSS'  => '#f1c40f',  // Yellow
-                ]
-            ];
+            'MACD' => [
+                'LONG'  => '#2ecc71',  // Green
+                'SHORT' => '#e74c3c',  // Red
+                'LOSS'  => '#f1c40f',  // Yellow
+            ],
+            'SR' => [
+                'LONG'  => '#17a2b8',  // Teal Blue
+                'SHORT' => '#6610f2',  // Indigo
+                'LOSS'  => '#6c757d',  // Steel Gray
+            ],
+            'default' => [
+                'LONG'  => '#2ecc71',  // Green
+                'SHORT' => '#e74c3c',  // Red
+                'LOSS'  => '#f1c40f',  // Yellow
+            ]
+        ];
         // Return early with default values if no formula provided
         if (!$request->has('formula') || !$formulaDetails) {
             return view('CoinReports.coin-report', [
@@ -513,15 +513,15 @@ class BinanceController extends Controller
         }
         // dd($profitableChangeSum / $profitableTotal, $lossChangeSum / $lossTotal, $profitableTotal, $lossTotal);
         // dd("Total:", $bbUpTrades, "Profits:", $bbUpProfit, "Losses:", $bbUpLoss, "Accuracy: ", ($bbUpProfit / $bbUpTrades) * 100);
-   
+
 
         // Prepare timeline data
-        $timelineData = array_map(function ($trade) use ($stopLoss,$colors) {
+        $timelineData = array_map(function ($trade) use ($stopLoss, $colors) {
             $trade['buyingCandle'] = json_decode($trade['buyingCandle'], true);
             $trade['sellingCandle'] = json_decode($trade['sellingCandle'], true);
             $color = '';
             // Color mapping
-            
+
 
 
 
