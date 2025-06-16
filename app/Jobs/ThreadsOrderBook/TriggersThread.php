@@ -105,6 +105,10 @@ class TriggersThread implements ShouldQueue
                                 : HyperLiquidApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
 
                             $index = count($data) - 1;
+
+                            Log::info("Last Candle Timestamp: " . $data[$index]['timestampReadable']);
+
+
                             // Decrement index to get last completed candle
                             $index--;
 
