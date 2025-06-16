@@ -1570,45 +1570,46 @@ class TriggersThread implements ShouldQueue
 
     public static function getAccuracy($position, $formula = 'Base Report', $tagName = null)
     {
-        try {
-            // Build URL
-            $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$position}/{$formula}";
+        // Generate a unique cache key
+        $cacheKey = "accuracy_{$position}_" . md5($formula . '_' . ($tagName ?? ''));
 
-            if ($tagName) {
-                $url .= '/' . $tagName;
+        // Attempt to get from cache first
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($position, $formula, $tagName) {
+            try {
+                // Build URL
+                $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$position}/{$formula}";
+
+                if ($tagName) {
+                    $url .= '/' . $tagName;
+                }
+
+                // Make HTTP GET request with timeout
+                $response = Http::timeout(10)->get($url);
+
+                if ($response->successful() && isset($response->json()['data'])) {
+                    return $response->json()['data'];
+                }
+
+                // Log unexpected response
+                Log::warning("getAccuracy: Unexpected response format", [
+                    'url' => $url,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            } catch (RequestException $e) {
+                Log::error("getAccuracy: HTTP request failed", [
+                    'url' => $url,
+                    'error' => $e->getMessage(),
+                ]);
+            } catch (Throwable $e) {
+                Log::error("getAccuracy: Unexpected error", [
+                    'url' => $url,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
-            // Make HTTP GET request
-            $response = Http::timeout(10)->get($url); // Optional: reduce timeout from default 30s to 10s
-
-            // Extract data or fail gracefully
-            if ($response->successful() && isset($response->json()['data'])) {
-                return $response->json()['data'];
-            }
-
-            // Log failure detail
-            Log::warning("getAccuracy: Unexpected response format", [
-                'url' => $url,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
+            // Fallback if request fails or returns no valid data
             return ['accuracy' => 0];
-        } catch (RequestException $e) {
-            Log::error("getAccuracy: HTTP request failed", [
-                'url' => $url,
-                'error' => $e->getMessage(),
-            ]);
-            return ['accuracy' => 0];
-        } catch (Throwable $e) {
-            Log::error("getAccuracy: Unexpected error", [
-                'url' => $url,
-                'error' => $e->getMessage(),
-            ]);
-            return ['accuracy' => 0];
-        }
-
-        // Return null if request failed or data is not present
-        return ['accuracy' => 0];
+        });
     }
 }
