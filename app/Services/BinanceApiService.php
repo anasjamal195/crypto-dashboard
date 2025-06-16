@@ -245,8 +245,10 @@ class BinanceApiService
 
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
+
             'https://egeniuscare.com/load_balancer/index.php',
             'https://digitalfitnesshub.shop/wp-includes/restful-api/',
+
         ];
         static $serverUrlKey = 0;
 
@@ -2416,8 +2418,6 @@ class BinanceApiService
             }
             $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
             MailerService::sendFutureTradeDynamicEmail($data);
-
-
 
             return $data;
         }

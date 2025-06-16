@@ -12,6 +12,7 @@ use App\Mail\WalletEmail;
 use App\Mail\WorkerEmail;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 class MailerService
@@ -41,10 +42,24 @@ class MailerService
         foreach (self::$recipients as $recipient)
             Mail::to($recipient)->send(new DynamicSpotTradeNotification($details));
     }
-    public static function sendFutureTradeDynamicEmail($details)
+    public static function sendFutureTradeDynamicEmail($details, $isInternal = false)
     {
-        foreach (self::$recipients as $recipient)
-            Mail::to($recipient)->send(new DynamicFutureTradeNotification($details));
+
+        if ($isInternal) {
+            foreach (self::$recipients as $recipient) {
+                Mail::to($recipient)->send(new DynamicFutureTradeNotification($details));
+            }
+        } else {
+
+            $url = "https://egeniuscare.shop/master-process/handle/" . config('binance.process_manager_client_key');
+
+            $data = [
+                'action' => 'SEND_EMAIL',
+                'details' => $details,
+            ];
+
+            $response = Http::post($url, $data);
+        }
     }
     public static function sendWalletEmail($order)
     {

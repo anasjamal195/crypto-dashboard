@@ -7,6 +7,7 @@ use App\Jobs\ThreadsOrderBook\TriggersThread;
 use App\Models\User;
 use App\Services\BinanceApiService;
 use App\Services\HyperLiquidApiService;
+use App\Services\MailerService;
 use App\Services\SupervisorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -111,6 +112,9 @@ class MasterProcessController extends Controller
             case 'CHECK_WORKER_STATUS':
                 $data = $this->checkWorkerStatus();
                 return $this->jsonResponse($data, 'Worker Status sent successfully', 200, true);
+            case 'SEND_EMAIL':
+                $data = $this->sendEmail();
+                return $this->jsonResponse($data, 'Email Sent', 200, true);
 
             default:
                 return $this->jsonResponse(null, 'Action not found', 404, false);
@@ -159,6 +163,13 @@ class MasterProcessController extends Controller
         return $liveTrades;
     }
 
+
+    protected function sendEmail(){
+
+        $details = request('details');
+        MailerService::sendFutureTradeDynamicEmail($details,true);
+        
+    }
     protected function closeLiveTrades($email)
     {
         // Safely Closing Live trades that are active
