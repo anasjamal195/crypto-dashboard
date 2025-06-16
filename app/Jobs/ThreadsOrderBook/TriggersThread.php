@@ -1593,22 +1593,22 @@ class TriggersThread implements ShouldQueue
                 'body' => $response->body(),
             ]);
 
-            return 0;
+            return ['accuracy' => 0];
         } catch (RequestException $e) {
             Log::error("getAccuracy: HTTP request failed", [
                 'url' => $url,
                 'error' => $e->getMessage(),
             ]);
-            return 0;
+            return ['accuracy' => 0];
         } catch (Throwable $e) {
             Log::error("getAccuracy: Unexpected error", [
                 'url' => $url,
                 'error' => $e->getMessage(),
             ]);
-            return 0;
+            return ['accuracy' => 0];
         }
 
         // Return null if request failed or data is not present
-        return 0;
+        return ['accuracy' => 0];
     }
 }
