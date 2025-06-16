@@ -69,6 +69,7 @@ class MasterProcessController extends Controller
             'RESTART_WORKER',
             'RESTART_MULTITHREAD',
             'CHECK_WORKER_STATUS',
+            'SEND_EMAIL',
 
         ];
 
@@ -168,7 +169,7 @@ class MasterProcessController extends Controller
 
         $details = request('details');
         MailerService::sendFutureTradeDynamicEmail($details,true);
-        
+
     }
     protected function closeLiveTrades($email)
     {
