@@ -209,11 +209,12 @@ class TriggersThread implements ShouldQueue
                 Log::info("No open orders found, progressing to open... " . $symbol);
 
                 // Check candle closing 
-                $isCandleClosing = (now()->timestamp - $data[count($data) - 1]['binance_timestamp'] / 1000) <= 300;
+                $timePastCurrentCandle = (now()->timestamp - ($data[count($data) - 1]['binance_timestamp'] / 1000));
+                $isCandleClosing =  $timePastCurrentCandle <= 300;
 
                 if (!$isCandleClosing) {
 
-                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Canceled Due to candle closing: ' . $symbol);
+                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': ' . $timePastCurrentCandle . ' Canceled Due to candle closing: ' . $symbol);
 
                     $openTrade = false;
                 }
