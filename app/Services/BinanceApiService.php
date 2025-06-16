@@ -295,8 +295,6 @@ class BinanceApiService
 
 
                 // Save cache to next rounded time
-
-
                 Cache::put($responseCacheKey, $result, $nextRoundedTime);
 
 
