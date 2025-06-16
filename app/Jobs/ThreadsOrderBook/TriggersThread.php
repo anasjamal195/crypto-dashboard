@@ -106,8 +106,7 @@ class TriggersThread implements ShouldQueue
 
                             $index = count($data) - 1;
 
-                            Log::info("Last Candle Timestamp: " . $data[$index]['timestampReadable']);
-
+                            // Log::info("Last Candle Timestamp: " . $data[$index]['timestampReadable']);
 
                             // Decrement index to get last completed candle
                             $index--;
@@ -213,15 +212,15 @@ class TriggersThread implements ShouldQueue
                 Log::info("No open orders found, progressing to open... " . $symbol);
 
                 // // Check candle closing 
-                // $timePastCurrentCandle = (now()->timestamp - ($data[count($data) - 1]['binance_timestamp'] / 1000));
-                // $isCandleClosing =  $timePastCurrentCandle <= 300;
+                $timePastCurrentCandle = (now()->timestamp - ($data[count($data) - 1]['binance_timestamp'] / 1000));
+                $isCandleClosing =  $timePastCurrentCandle <= 300;
 
-                // if (!$isCandleClosing) {
+                if (!$isCandleClosing) {
 
-                //     Log::info('TriggersThreadOrderBook ' . $this->workerId . ': ' . $timePastCurrentCandle . ' Canceled Due to candle closing: ' . $symbol);
+                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': ' . $timePastCurrentCandle . ' Canceled Due to candle closing: ' . $symbol);
 
-                //     $openTrade = false;
-                // }
+                    $openTrade = false;
+                }
 
                 self::$isSpot = CommonHelpers::getMetaValue($this->account, 'enable_spot', 0);
                 if (!self::$isSpot) {
