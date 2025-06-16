@@ -11,6 +11,7 @@ use App\Services\MailerService;
 use App\Services\MarketTrendService;
 use App\Services\SupportResistanceAnalyzer;
 use Carbon\Carbon;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use stdClass;
+use Throwable;
 
 class TriggersThread implements ShouldQueue
 {
@@ -1564,24 +1566,49 @@ class TriggersThread implements ShouldQueue
     }
 
 
+
+
     public static function getAccuracy($position, $formula = 'Base Report', $tagName = null)
     {
+        try {
+            // Build URL
+            $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$position}/{$formula}";
 
-        // Build URL
-        $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$position}/{$formula}";
+            if ($tagName) {
+                $url .= '/' . $tagName;
+            }
 
-        if ($tagName) {
-            $url .= '/' . $tagName;
+            // Make HTTP GET request
+            $response = Http::timeout(10)->get($url); // Optional: reduce timeout from default 30s to 10s
+
+            // Extract data or fail gracefully
+            if ($response->successful() && isset($response->json()['data'])) {
+                return $response->json()['data'];
+            }
+
+            // Log failure detail
+            Log::warning("getAccuracy: Unexpected response format", [
+                'url' => $url,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return 0;
+        } catch (RequestException $e) {
+            Log::error("getAccuracy: HTTP request failed", [
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+            return 0;
+        } catch (Throwable $e) {
+            Log::error("getAccuracy: Unexpected error", [
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+            return 0;
         }
-        // Make HTTP GET request
-        $response = Http::get($url);
 
-        // Extract data or fail gracefully
-        if ($response->successful() && isset($response->json()['data'])) {
-            return $response->json()['data'];
-        }
-
-        // Optional: return fallback value or throw exception
-        return null; // or throw new \Exception("Failed to get accuracy");
+        // Return null if request failed or data is not present
+        return 0;
     }
 }
