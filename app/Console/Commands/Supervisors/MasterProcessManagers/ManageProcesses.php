@@ -5,6 +5,7 @@ namespace App\Console\Commands\Supervisors\MasterProcessManagers;
 use App\CommonHelpers;
 use App\Services\PerformanceMonitoringService;
 use App\Services\SupervisorService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -87,6 +88,30 @@ class ManageProcesses extends Command
                 continue;
             }
 
+
+
+            // Check Worker Status
+            $url = "https://rocket.cryptoapis.store/master-process/handle/" . config('binance.process_manager_client_key');
+            $data = [
+                'action' => 'CHECK_WORKER_STATUS',
+            ];
+            $response = Http::post($url, $data);
+
+            foreach ($response['data'] as $worker) {
+
+
+                $updatedAt = Carbon::parse($worker['updated_at'], 'Asia/Karachi');
+
+                // Get the current time in the same timezone
+                $currentTime = Carbon::now('Asia/Karachi');
+
+                // Calculate the difference in seconds
+                $diffInSeconds = abs($currentTime->diffInSeconds($updatedAt));
+                if ($diffInSeconds >= 60) {
+                    CommonHelpers::addSafetyLog('WORKER_STOPPED', 'A worker has stopped');
+                    
+                }
+            }
 
 
 

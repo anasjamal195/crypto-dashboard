@@ -66,7 +66,9 @@ class MasterProcessController extends Controller
             'CLOSE_LIVE_TRADE',
             'SYNC_USERS',
             'RESTART_WORKER',
-            'RESTART_MULTITHREAD'
+            'RESTART_MULTITHREAD',
+            'CHECK_WORKER_STATUS',
+
         ];
 
         // Prepare errors array
@@ -106,6 +108,9 @@ class MasterProcessController extends Controller
             case 'RESTART_MULTITHREAD':
                 $data = $this->restartMultithread();
                 return $this->jsonResponse($data, 'Multithread Restarted successfully', 200, true);
+            case 'CHECK_WORKER_STATUS':
+                $data = $this->checkWorkerStatus();
+                return $this->jsonResponse($data, 'Worker Status sent successfully', 200, true);
 
             default:
                 return $this->jsonResponse(null, 'Action not found', 404, false);
@@ -177,6 +182,15 @@ class MasterProcessController extends Controller
         $userId = User::where('email', $email)->first()->id;
         TriggersThread::dispatch($workerId, $userId, $openOrderId);
         return true;
+    }
+
+
+
+    protected function checkWorkerStatus()
+    {
+        // Safely Closing Live trades that are active
+        $activeWorkers = DB::table('workers')->where('active_status')->get();
+        return $activeWorkers;
     }
     protected function restartMultithread()
     {
