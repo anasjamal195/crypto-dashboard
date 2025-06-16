@@ -13,6 +13,7 @@ use App\Mail\WorkerEmail;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class MailerService
@@ -59,6 +60,7 @@ class MailerService
             ];
 
             $response = Http::post($url, $data);
+            Log::info("Mailer Response: " . $response->body());
         }
     }
     public static function sendWalletEmail($order)
