@@ -14,7 +14,7 @@ class GenerateBaseReport extends Command
      */
     protected $signature = 'app:generate-base-report {interval?}';
 
-    
+
 
     /**
      * The console command description.
