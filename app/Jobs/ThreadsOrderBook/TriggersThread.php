@@ -95,7 +95,6 @@ class TriggersThread implements ShouldQueue
 
                     foreach ($worker_symbols as $worker_symbol) {
                         CommonHelpers::updateWorkerTicker($this->workerId);
-
                         try {
                             $symbol = $worker_symbol->symbol;
                             $tradeInstance = new stdClass;
@@ -103,7 +102,7 @@ class TriggersThread implements ShouldQueue
 
 
                             // =========================== DECISION BLOCK ===============================
-
+                            
                             $openingResults = new OpeningConditionServiceLive($this->workerId, $this->account, self::$activeExchange);
 
                             $opening15m = $openingResults->getOpeningOn15m($symbol);
