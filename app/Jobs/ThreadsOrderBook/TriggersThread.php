@@ -9,6 +9,7 @@ use App\Services\HyperLiquidApiService;
 use App\Services\IdealTradeService;
 use App\Services\MailerService;
 use App\Services\MarketTrendService;
+use App\Services\OpeningConditionServiceLive;
 use App\Services\SupportResistanceAnalyzer;
 use Carbon\Carbon;
 use GuzzleHttp\Exception\RequestException;
@@ -49,7 +50,7 @@ class TriggersThread implements ShouldQueue
     public $targetProfit = 1;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
-    public $formula = 'MACD Swings with accuracy filteration (15m)';
+    public $formula = 'MACD Swings with accuracy filteration ()';
 
     // Confirmed Trades Entries
 
@@ -83,7 +84,7 @@ class TriggersThread implements ShouldQueue
             // Check if any trade is open while worker was restarted
             try {
 
-                
+
                 $tradeToOpen = null;
                 $tradeType = null;
                 // Main Loop to process coins list
@@ -99,42 +100,34 @@ class TriggersThread implements ShouldQueue
                             $symbol = $worker_symbol->symbol;
                             $tradeInstance = new stdClass;
                             $trade_acc = $this->account;
-                            // Log::info("Test Request Params" . self::$interval);
 
 
-                            $data = self::$activeExchange === 'binance' ?
-                                BinanceApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE')
-                                : HyperLiquidApiService::getCandleStickDataExternal($symbol, self::$interval, 500, null, self::$isSpot ? 'SPOT' : 'FUTURE');
+                            // =========================== DECISION BLOCK ===============================
 
-                            $index = count($data) - 1;
+                            $openingResults = new OpeningConditionServiceLive($this->workerId, $this->account, self::$activeExchange);
 
-                            // Log::info("Last Candle Timestamp: " . $data[$index]['timestampReadable']);
+                            $opening15m = $openingResults->getOpeningOn15m($symbol);
+                            $opening5m = $openingResults->getOpeningOn5m($symbol);
 
-                            // Decrement index to get last completed candle
-                            $index--;
 
-                            // ==================Decision Block==================
-
-                            $buyLongCondition = self::handleOpeningConditionsLong($symbol, $data, $index);
-                            $sellShortCondition = self::handleOpeningConditionsShort($symbol, $data, $index);
-
-                            // This block checks which weather to open trades or not
-                            if (
-                                ($buyLongCondition && $sellShortCondition)
-                                ||
-                                (!$buyLongCondition && !$sellShortCondition)
-                            ) {
+                            if ($opening5m) {
+                                $tradeType = $opening5m;
+                            } else if ($opening15m) {
+                                $tradeType = $opening15m;
+                            } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 continue;
-                            } else if ($buyLongCondition) {
-                                $tradeType = 'LONG';
-                            } else if ($sellShortCondition) {
-                                $tradeType = 'SHORT';
                             }
 
                             Log::info("Conditions Met " . $symbol);
 
                             // ========================================================================
+
+
+
+
+
+
 
 
                             // ===========Initiate Open Trade Process==================================
@@ -213,16 +206,7 @@ class TriggersThread implements ShouldQueue
 
                 Log::info("No open orders found, progressing to open... " . $symbol);
 
-                // // Check candle closing 
-                $timePastCurrentCandle = (now()->timestamp - ($data[count($data) - 1]['binance_timestamp'] / 1000));
-                $isCandleClosing =  $timePastCurrentCandle <= 300;
 
-                if (!$isCandleClosing) {
-
-                    Log::info('TriggersThreadOrderBook ' . $this->workerId . ': ' . $timePastCurrentCandle . ' Canceled Due to candle closing: ' . $symbol);
-
-                    $openTrade = false;
-                }
 
                 self::$isSpot = CommonHelpers::getMetaValue($this->account, 'enable_spot', 0);
                 if (!self::$isSpot) {
