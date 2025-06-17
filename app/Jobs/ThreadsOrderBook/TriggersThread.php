@@ -82,6 +82,8 @@ class TriggersThread implements ShouldQueue
             self::$activeExchange = CommonHelpers::getMetaValue($this->account, 'active_exchange', 'binance');
             // Check if any trade is open while worker was restarted
             try {
+
+                
                 $tradeToOpen = null;
                 $tradeType = null;
                 // Main Loop to process coins list
