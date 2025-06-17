@@ -13,7 +13,7 @@ use Throwable;
 
 class OpeningConditionServiceLive
 {
-    public $activeExchange;
+    public self $activeExchange;
     public $account;
     public $workerId;
 
@@ -26,7 +26,7 @@ class OpeningConditionServiceLive
     {
         $this->workerId = $workerId;
         $this->account = $account;
-        $this->activeExchange = $activeExchange;
+        self::$activeExchange = $activeExchange;
     }
     public static function getOpeningOn15m($symbol)
     {
@@ -1197,6 +1197,7 @@ class OpeningConditionServiceLive
     {
 
 
+
         $accuracyStatsSR = self::getAccuracy('SHORT', 'Base Report - 5m', 'SR');
         if ($accuracyStatsSR['accuracy'] < 77) {
             return null;
@@ -1206,7 +1207,7 @@ class OpeningConditionServiceLive
         $srAnalysis = $srAnalyzer->analyze();
 
 
-        
+
         $entry = self::detectShortEntryWithSR5m($data, $index, $srAnalysis);
 
         if ($entry === 'SHORT')
