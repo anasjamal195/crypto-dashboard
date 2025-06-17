@@ -1205,6 +1205,8 @@ class OpeningConditionServiceLive
         $srAnalyzer = new SupportResistanceAnalyzer($data, $index);
         $srAnalysis = $srAnalyzer->analyze();
 
+
+        
         $entry = self::detectShortEntryWithSR5m($data, $index, $srAnalysis);
 
         if ($entry === 'SHORT')
