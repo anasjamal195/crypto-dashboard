@@ -29,7 +29,7 @@ class GenerateBaseReport extends Command
     {
 
 
-        $interval = $this->argument('interval'); 
+        $interval = $this->argument('interval');
 
 
         while (true) {
