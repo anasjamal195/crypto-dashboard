@@ -13,7 +13,7 @@ use Throwable;
 
 class OpeningConditionServiceLive
 {
-    public self $activeExchange;
+    public static $activeExchange;
     public $account;
     public $workerId;
 
