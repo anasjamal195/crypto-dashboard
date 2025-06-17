@@ -37,7 +37,7 @@ class GenerateBaseReport extends Command
             try {
                 $formula = 'Base Report';
                 $timestamp = null;
-                $formula = $formula . " $interval";
+                $formula = $formula . " - $interval";
 
                 switch ($interval) {
                     case '5m':

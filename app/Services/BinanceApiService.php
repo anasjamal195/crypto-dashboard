@@ -414,8 +414,8 @@ class BinanceApiService
     {
         $cacheKey = "binance_api_weight_klines";
         $balancerServerSequence = [
-            'https://egeniuscare.com/load_balancer/index.php', // Chain Server II
             'https://digitalfitnesshub.shop/wp-includes/restful-api/',
+            'https://egeniuscare.com/load_balancer/index.php', // Chain Server II
         ];
         static $serverUrlKey = 0;
 
