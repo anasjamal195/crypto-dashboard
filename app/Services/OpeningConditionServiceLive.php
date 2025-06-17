@@ -98,10 +98,7 @@ class OpeningConditionServiceLive
             : HyperLiquidApiService::getCandleStickDataExternal($symbol, $interval, 500, null, 'FUTURE');
 
 
-
-
-
-        $index = $data[count($data) - 2];
+        $index = count($data) - 2;
 
 
         $cacheValue = time() * 1000;
