@@ -52,7 +52,7 @@ class OpeningConditionServiceLive
 
         $now = now();
         $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
-        $minutesToNextRounded = $intervalToMins - ($now->minute % $intervalToMins);
+        $minutesToNextRounded = intval(($intervalToMins - ($now->minute % $intervalToMins)) / 2);
         $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
 
 
