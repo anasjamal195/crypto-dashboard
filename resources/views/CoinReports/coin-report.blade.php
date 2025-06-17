@@ -451,7 +451,7 @@
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Formula Accuracy</td>
-                                                    <td>{{ $totalTrades ? round(100 - ($totalLossesTradesSR / $totalTradesSR) * 100, 2) : 0 }}
+                                                    <td>{{ $totalTradesSR ? round(100 - ($totalLossesTradesSR / $totalTradesSR) * 100, 2) : 0 }}
                                                         %</td>
                                                     <td>Success rate of profitable trades </td>
                                                 </tr>
@@ -501,7 +501,7 @@
                                                 </tr>
                                                 <tr>
                                                     <td class="font-weight-bold">Formula Accuracy</td>
-                                                    <td>{{ $totalTrades ? round(100 - ($totalLossesTradesMACD / $totalTradesMACD) * 100, 2) : 0 }}
+                                                    <td>{{ $totalTradesMACD ? round(100 - ($totalLossesTradesMACD / $totalTradesMACD) * 100, 2) : 0 }}
                                                         %</td>
                                                     <td>Success rate of profitable trades </td>
                                                 </tr>
