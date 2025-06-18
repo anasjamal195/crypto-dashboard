@@ -60,7 +60,10 @@ class OpeningConditionServiceLive
 
         // Check candle closing
         if (!self::checkCandleClosing($data, 300)) {
-            return null;
+            return [
+                'direction' => null,
+                'formula' => 'MACD & SR - 15m'
+            ];
         }
 
         // LONG ENTRY
@@ -114,7 +117,10 @@ class OpeningConditionServiceLive
         $cacheKey = "last_checked_for_opening_{$symbol}_{$interval}";
 
         if (Cache::get($cacheKey, 0)) {
-            return null;
+            return [
+                'direction' => null,
+                'formula' => 'MACD & SR - 5m'
+            ];
         }
 
         $data = self::$activeExchange === 'binance' ?
