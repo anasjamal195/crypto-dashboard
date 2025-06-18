@@ -214,6 +214,7 @@ class OpeningConditionServiceLive
 
     public static function detectLongEntryWithSR15m($data, $index, $srAnalysis = null)
     {
+
         // Safety check
         if ($index < 3 || !isset($data[$index]) || !isset($data[$index - 1])) {
             return null;
@@ -292,6 +293,8 @@ class OpeningConditionServiceLive
         $bbPosition = ($current['close'] - $current['bb_lower']) / ($current['bb_upper'] - $current['bb_lower']);
         if ($bbPosition < 0.2) $trendScore += 15; // Near lower band
         if ($bbPosition < 0.1) $trendScore += 10; // Very close to lower band
+
+        
 
         // 2. Momentum Analysis
         $momentumScore = 0;
