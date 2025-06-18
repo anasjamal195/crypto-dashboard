@@ -655,7 +655,7 @@ class OpeningConditionServiceLive
     {
 
         $accuracyStatsSR = CommonHelpers::getAccuracy('LONG', 'Base Report - 15m', 'SR');
-        if ($accuracyStatsSR['accuracy'] < 75) {
+        if ($accuracyStatsSR['accuracy'] < 75 && $accuracyStatsSR['accuracy'] != -1) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsSR['accuracy']  . 'SR LONG: ' . $symbol);
             return null;
         }
@@ -678,7 +678,7 @@ class OpeningConditionServiceLive
 
         $interval = '15m';
         $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 15m', 'MACD');;
-        if ($accuracyStatsMACD['accuracy'] < 73) {
+        if ($accuracyStatsMACD['accuracy'] < 73 && $accuracyStatsMACD['accuracy'] != -1) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy ' . $accuracyStatsMACD['accuracy']  . 'MACD LONG: ' . $symbol);
             return null;
         }
@@ -719,7 +719,7 @@ class OpeningConditionServiceLive
 
 
         $accuracyStatsSR = CommonHelpers::getAccuracy('SHORT', 'Base Report - 15m', 'SR');
-        if ($accuracyStatsSR['accuracy'] < 75) {
+        if ($accuracyStatsSR['accuracy'] < 75 && $accuracyStatsSR['accuracy'] != -1) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsSR['accuracy']  . ' SR SHORT: ' . $symbol);
             return null;
         }
@@ -742,7 +742,7 @@ class OpeningConditionServiceLive
 
         $interval = '15m';
         $accuracyStatsMACD = CommonHelpers::getAccuracy('SHORT', 'Base Report - 15m', 'MACD');
-        if ($accuracyStatsMACD['accuracy'] < 73) {
+        if ($accuracyStatsMACD['accuracy'] < 73 && $accuracyStatsMACD['accuracy'] != -1) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsMACD['accuracy']  . 'MACD SHORT: ' . $symbol);
             return null;
         }
@@ -1189,7 +1189,7 @@ class OpeningConditionServiceLive
     {
 
         $accuracyStatsSR = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'SR');
-        if ($accuracyStatsSR['accuracy'] < 77) {
+        if ($accuracyStatsSR['accuracy'] < 77 && $accuracyStatsSR['accuracy'] != -1) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsSR['accuracy']  . 'SR LONG: ' . $symbol);
             return null;
         }
@@ -1212,7 +1212,7 @@ class OpeningConditionServiceLive
 
         $interval = '5m';
         $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'MACD');;
-        if ($accuracyStatsMACD['accuracy'] < 75) {
+        if ($accuracyStatsMACD['accuracy'] < 75 && $accuracyStatsMACD['accuracy'] != -1) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy ' . $accuracyStatsMACD['accuracy']  . 'MACD LONG: ' . $symbol);
             return null;
         }
@@ -1256,7 +1256,7 @@ class OpeningConditionServiceLive
 
 
         $accuracyStatsSR = CommonHelpers::getAccuracy('SHORT', 'Base Report - 5m', 'SR');
-        if ($accuracyStatsSR['accuracy'] < 77) {
+        if ($accuracyStatsSR['accuracy'] < 77 && $accuracyStatsSR['accuracy'] != -1) {
             return null;
         }
 
@@ -1280,7 +1280,7 @@ class OpeningConditionServiceLive
 
         $interval = '5m';
         $accuracyStatsMACD = CommonHelpers::getAccuracy('SHORT', 'Base Report - 5m', 'MACD');
-        if ($accuracyStatsMACD['accuracy'] < 75) {
+        if ($accuracyStatsMACD['accuracy'] < 75 && $accuracyStatsMACD['accuracy'] != -1) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsMACD['accuracy']  . 'MACD SHORT: ' . $symbol);
             return null;
         }
