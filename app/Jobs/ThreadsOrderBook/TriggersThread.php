@@ -111,10 +111,15 @@ class TriggersThread implements ShouldQueue
 
                             if ($opening5m) {
                                 $tradeType = $opening5m;
+                                $this->formula  = 'MACD Swings with accuracy filteration - 5m';
                             } else if ($opening15m) {
                                 $tradeType = $opening15m;
+                                $this->formula  = 'MACD Swings with accuracy filteration - 15m';
+
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                                $this->formula  = 'MACD Swings with accuracy filteration';
+
                                 continue;
                             }
 
