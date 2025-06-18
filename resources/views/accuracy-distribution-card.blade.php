@@ -1,18 +1,10 @@
 @php
 
-    $longAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy(
-        'LONG',
-        $safeModeAccuracyFormula,
-        $tagName,
-    );
+    $longAccuracyDetails = App\CommonHelpers::getAccuracy('LONG', $safeModeAccuracyFormula, $tagName);
     if ($longAccuracyDetails['accuracy'] < 0) {
         $longAccuracyDetails['accuracy'] = 100;
     }
-    $shortAccuracyDetails = App\Jobs\ThreadsOrderBook\TriggersThread::getAccuracy(
-        'SHORT',
-        $safeModeAccuracyFormula,
-        $tagName,
-    );
+    $shortAccuracyDetails = App\CommonHelpers::getAccuracy('SHORT', $safeModeAccuracyFormula, $tagName);
     if ($shortAccuracyDetails['accuracy'] < 0) {
         $shortAccuracyDetails['accuracy'] = 100;
     }
@@ -54,7 +46,7 @@
                             </div>
                             <div class="col-6">
                                 <div class="text-right">
-                                    @if ($longAccuracyDetails['accuracy'] >= 75)
+                                    @if ($longAccuracyDetails['accuracy'] >= $longThreshold)
                                         <span class="badge badge-success badge-pill px-3 py-2">
                                             <i class="tim-icons icon-check-2 mr-1"></i>
                                             ACTIVE
@@ -138,7 +130,7 @@
                             </div>
                             <div class="col-6">
                                 <div class="text-right">
-                                    @if ($shortAccuracyDetails['accuracy'] >= 77)
+                                    @if ($shortAccuracyDetails['accuracy'] >= $shortThreshold)
                                         <span class="badge badge-success badge-pill px-3 py-2">
                                             <i class="tim-icons icon-check-2 mr-1"></i>
                                             ACTIVE

@@ -9,10 +9,12 @@ use App\Services\HyperLiquidApiService;
 use App\Services\MailerService;
 use App\Services\SupervisorService;
 use Carbon\Carbon;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class CommonHelpers
 {
@@ -2742,5 +2744,61 @@ class CommonHelpers
                 'updated_at' => now()
             ]
         );
+    }
+
+
+
+    // Accuracy Calculation Live
+    
+    public static function getAccuracy($position, $formula = 'Base Report', $tagName = null)
+    {
+        // Generate a unique cache key
+        $cacheKey = "accuracy_{$position}_" . md5($formula . '_' . ($tagName ?? ''));
+
+        // Attempt to get from cache first
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($position, $formula, $tagName) {
+            try {
+                // Build URL
+                $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$position}/{$formula}";
+
+                if ($tagName) {
+                    $url .= '/' . $tagName;
+                }
+
+                // Make HTTP GET request with timeout
+                $response = Http::timeout(10)->get($url);
+
+                if ($response->successful() && isset($response->json()['data'])) {
+                    return $response->json()['data'];
+                }
+
+                // Log unexpected response
+                Log::warning("getAccuracy: Unexpected response format", [
+                    'url' => $url,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            } catch (RequestException $e) {
+                Log::error("getAccuracy: HTTP request failed", [
+                    'url' => $url,
+                    'error' => $e->getMessage(),
+                ]);
+            } catch (Throwable $e) {
+                Log::error("getAccuracy: Unexpected error", [
+                    'url' => $url,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // Fallback if request fails or returns no valid data
+            return ['accuracy' => 0];
+        });
+    }
+
+     public static function checkCandleClosing($data, $allowedTimeSec)
+    {
+        $timePastCurrentCandle = (now()->timestamp - ($data[count($data) - 1]['binance_timestamp'] / 1000));
+        $isCandleClosing =  $timePastCurrentCandle <= $allowedTimeSec;
+        return $isCandleClosing;
     }
 }

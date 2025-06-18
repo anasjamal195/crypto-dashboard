@@ -35,7 +35,10 @@ class OpeningConditionServiceLive
         $cacheKey = "last_checked_for_opening_{$symbol}_{$interval}";
 
         if (Cache::get($cacheKey, 0)) {
-            return null;
+            return [
+                'direction' => null,
+                'formula' => 'MACD & SR - 15m'
+            ];
         }
 
 
@@ -59,7 +62,7 @@ class OpeningConditionServiceLive
         Cache::put($cacheKey, $cacheValue, $nextRoundedTime);
 
         // Check candle closing
-        if (!self::checkCandleClosing($data, 300)) {
+        if (!CommonHelpers::checkCandleClosing($data, 300)) {
             return [
                 'direction' => null,
                 'formula' => 'MACD & SR - 15m'
@@ -142,8 +145,11 @@ class OpeningConditionServiceLive
         Cache::put($cacheKey, $cacheValue, $nextRoundedTime);
 
         // Check candle closing
-        if (!self::checkCandleClosing($data, 300)) {
-            return null;
+        if (!CommonHelpers::checkCandleClosing($data, 300)) {
+            return [
+                'direction' => null,
+                'formula' => 'MACD & SR - 5m'
+            ];
         }
 
         // LONG ENTRY
@@ -648,7 +654,7 @@ class OpeningConditionServiceLive
     public static function checkConditionSetLongSR15m($symbol, $data, $index)
     {
 
-        $accuracyStatsSR = self::getAccuracy('LONG', 'Base Report - 15m', 'SR');
+        $accuracyStatsSR = CommonHelpers::getAccuracy('LONG', 'Base Report - 15m', 'SR');
         if ($accuracyStatsSR['accuracy'] < 75) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsSR['accuracy']  . 'SR LONG: ' . $symbol);
             return null;
@@ -671,7 +677,7 @@ class OpeningConditionServiceLive
     {
 
         $interval = '15m';
-        $accuracyStatsMACD = self::getAccuracy('LONG', 'Base Report - 15m', 'MACD');;
+        $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 15m', 'MACD');;
         if ($accuracyStatsMACD['accuracy'] < 73) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy ' . $accuracyStatsMACD['accuracy']  . 'MACD LONG: ' . $symbol);
             return null;
@@ -712,7 +718,7 @@ class OpeningConditionServiceLive
     {
 
 
-        $accuracyStatsSR = self::getAccuracy('SHORT', 'Base Report - 15m', 'SR');
+        $accuracyStatsSR = CommonHelpers::getAccuracy('SHORT', 'Base Report - 15m', 'SR');
         if ($accuracyStatsSR['accuracy'] < 75) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsSR['accuracy']  . ' SR SHORT: ' . $symbol);
             return null;
@@ -735,7 +741,7 @@ class OpeningConditionServiceLive
 
 
         $interval = '15m';
-        $accuracyStatsMACD = self::getAccuracy('SHORT', 'Base Report - 15m', 'MACD');
+        $accuracyStatsMACD = CommonHelpers::getAccuracy('SHORT', 'Base Report - 15m', 'MACD');
         if ($accuracyStatsMACD['accuracy'] < 73) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsMACD['accuracy']  . 'MACD SHORT: ' . $symbol);
             return null;
@@ -1182,7 +1188,7 @@ class OpeningConditionServiceLive
     public static function checkConditionSetLongSR5m($symbol, $data, $index)
     {
 
-        $accuracyStatsSR = self::getAccuracy('LONG', 'Base Report - 5m', 'SR');
+        $accuracyStatsSR = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'SR');
         if ($accuracyStatsSR['accuracy'] < 77) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsSR['accuracy']  . 'SR LONG: ' . $symbol);
             return null;
@@ -1205,7 +1211,7 @@ class OpeningConditionServiceLive
     {
 
         $interval = '5m';
-        $accuracyStatsMACD = self::getAccuracy('LONG', 'Base Report - 5m', 'MACD');;
+        $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'MACD');;
         if ($accuracyStatsMACD['accuracy'] < 75) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy ' . $accuracyStatsMACD['accuracy']  . 'MACD LONG: ' . $symbol);
             return null;
@@ -1249,7 +1255,7 @@ class OpeningConditionServiceLive
 
 
 
-        $accuracyStatsSR = self::getAccuracy('SHORT', 'Base Report - 5m', 'SR');
+        $accuracyStatsSR = CommonHelpers::getAccuracy('SHORT', 'Base Report - 5m', 'SR');
         if ($accuracyStatsSR['accuracy'] < 77) {
             return null;
         }
@@ -1273,7 +1279,7 @@ class OpeningConditionServiceLive
 
 
         $interval = '5m';
-        $accuracyStatsMACD = self::getAccuracy('SHORT', 'Base Report - 5m', 'MACD');
+        $accuracyStatsMACD = CommonHelpers::getAccuracy('SHORT', 'Base Report - 5m', 'MACD');
         if ($accuracyStatsMACD['accuracy'] < 75) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsMACD['accuracy']  . 'MACD SHORT: ' . $symbol);
             return null;
@@ -1465,58 +1471,5 @@ class OpeningConditionServiceLive
         }
 
         return $tightestIndex;
-    }
-
-
-    public static function getAccuracy($position, $formula = 'Base Report', $tagName = null)
-    {
-        // Generate a unique cache key
-        $cacheKey = "accuracy_{$position}_" . md5($formula . '_' . ($tagName ?? ''));
-
-        // Attempt to get from cache first
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($position, $formula, $tagName) {
-            try {
-                // Build URL
-                $url = "https://reachoutfans.com/csrf-free/safe-mode-accuracy/{$position}/{$formula}";
-
-                if ($tagName) {
-                    $url .= '/' . $tagName;
-                }
-
-                // Make HTTP GET request with timeout
-                $response = Http::timeout(10)->get($url);
-
-                if ($response->successful() && isset($response->json()['data'])) {
-                    return $response->json()['data'];
-                }
-
-                // Log unexpected response
-                Log::warning("getAccuracy: Unexpected response format", [
-                    'url' => $url,
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-            } catch (RequestException $e) {
-                Log::error("getAccuracy: HTTP request failed", [
-                    'url' => $url,
-                    'error' => $e->getMessage(),
-                ]);
-            } catch (Throwable $e) {
-                Log::error("getAccuracy: Unexpected error", [
-                    'url' => $url,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            // Fallback if request fails or returns no valid data
-            return ['accuracy' => 0];
-        });
-    }
-
-    public static function checkCandleClosing($data, $allowedTimeSec)
-    {
-        $timePastCurrentCandle = (now()->timestamp - ($data[count($data) - 1]['binance_timestamp'] / 1000));
-        $isCandleClosing =  $timePastCurrentCandle <= $allowedTimeSec;
-        return $isCandleClosing;
     }
 }
