@@ -66,21 +66,45 @@ class OpeningConditionServiceLive
         // LONG ENTRY
         if (
             self::checkConditionSetLongMACD15m($symbol, $data, $index) === 'LONG'
-            || self::checkConditionSetLongSR15m($symbol, $data, $index) === 'LONG'
         ) {
-            return 'LONG';
+            return [
+                'direction' => 'LONG',
+                'formula' => 'MACD - 15m'
+            ];
+        }
+
+        if (
+            self::checkConditionSetLongSR15m($symbol, $data, $index) === 'LONG'
+        ) {
+            return [
+                'direction' => 'LONG',
+                'formula' => 'SR - 15m'
+            ];
         }
 
         // SHORT ENTRY
         if (
             self::checkConditionSetShortMACD15m($symbol, $data, $index) === 'SHORT'
-            || self::checkConditionSetShortSR15m($symbol, $data, $index) === 'SHORT'
+
         ) {
-            return 'SHORT';
+            return [
+                'direction' => 'SHORT',
+                'formula' => 'MACD - 15m'
+            ];
+        }
+        if (
+            self::checkConditionSetShortSR15m($symbol, $data, $index) === 'SHORT'
+        ) {
+            return [
+                'direction' => 'SHORT',
+                'formula' => 'SR - 15m'
+            ];
         }
 
-
-        return null;
+        return [
+            'direction' => null,
+            'formula' => 'MACD & SR - 15m'
+        ];
     }
 
     public static function getOpeningOn5m($symbol)
@@ -119,21 +143,45 @@ class OpeningConditionServiceLive
         // LONG ENTRY
         if (
             self::checkConditionSetLongMACD5m($symbol, $data, $index) === 'LONG'
-            || self::checkConditionSetLongSR5m($symbol, $data, $index) === 'LONG'
+
         ) {
-            return 'LONG';
+            return [
+                'direction' => 'LONG',
+                'formula' => 'MACD - 5m'
+            ];
+        }
+        if (
+            self::checkConditionSetLongSR5m($symbol, $data, $index) === 'LONG'
+        ) {
+            return [
+                'direction' => 'LONG',
+                'formula' => 'SR - 5m'
+            ];
         }
 
         // SHORT ENTRY
         if (
             self::checkConditionSetShortMACD5m($symbol, $data, $index) === 'SHORT'
-            || self::checkConditionSetShortSR5m($symbol, $data, $index) === 'SHORT'
         ) {
-            return 'SHORT';
+            return [
+                'direction' => 'SHORT',
+                'formula' => 'MACD - 5m'
+            ];
+        }
+        if (
+            self::checkConditionSetShortSR5m($symbol, $data, $index) === 'SHORT'
+        ) {
+            return [
+                'direction' => 'SHORT',
+                'formula' => 'SR - 5m'
+            ];
         }
 
 
-        return null;
+        return [
+            'direction' => null,
+            'formula' => 'MACD & SR - 5m'
+        ];
     }
 
 
