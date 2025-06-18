@@ -46,7 +46,7 @@
                             </div>
                             <div class="col-6">
                                 <div class="text-right">
-                                    @if ($longAccuracyDetails['accuracy'] >= $longThreshold)
+                                    @if ($longAccuracyDetails['accuracy'] >= $longThreshold && $longAccuracyDetails['accuracy'] > 0)
                                         <span class="badge badge-success badge-pill px-3 py-2">
                                             <i class="tim-icons icon-check-2 mr-1"></i>
                                             ACTIVE
@@ -130,7 +130,7 @@
                             </div>
                             <div class="col-6">
                                 <div class="text-right">
-                                    @if ($shortAccuracyDetails['accuracy'] >= $shortThreshold)
+                                    @if ($shortAccuracyDetails['accuracy'] >= $shortThreshold && $shortAccuracyDetails['accuracy'] > 0)
                                         <span class="badge badge-success badge-pill px-3 py-2">
                                             <i class="tim-icons icon-check-2 mr-1"></i>
                                             ACTIVE
