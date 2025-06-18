@@ -47,9 +47,10 @@ class TriggersThread implements ShouldQueue
     public $stopLoss = 0.8;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 1;
-    public $profitIncrementPercentage = 0.05;
+    public $targetProfit = 0.5;
+    public $profitIncrementPercentage = 0.2;
     public $profitIncrementPercentageNext = 0.1;
+    public $stopLossMarginPercentage = 0.1;
     public $formula = 'MACD & SR';
 
     // Confirmed Trades Entries
@@ -164,29 +165,10 @@ class TriggersThread implements ShouldQueue
                 }
 
 
-
-
-
-                // Here we can add functionality to process trade that meets triggers
-
                 $openTrade = true;
                 $trade_acc = $tradeToOpen->tradeAccount;
                 $symbol = $tradeToOpen->symbol;
                 $tradeInstance = $tradeToOpen;
-
-
-                // Fixed wait after each trade (Skipped for now)
-                // $lastOrderClose = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'close')->orderBy('created_at', 'desc')->first();
-                // if ($lastOrderClose) {
-                //     $lastOrderClose = $lastOrderClose->created_at;
-                //     $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($lastOrderClose));
-                //     if ($timeDiff < 20) {
-                //         $openTrade = false;
-                //         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Skipped due to last order close time: ' . $symbol);
-                //     }
-                // }
-
-
 
 
                 $currentOpenOrders = 0;
@@ -330,8 +312,6 @@ class TriggersThread implements ShouldQueue
 
 
                 // Recall this loop after every successful trade
-
-
                 sleep(5);
             } catch (\Exception $e) {
                 Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
@@ -343,7 +323,6 @@ class TriggersThread implements ShouldQueue
     private  function manageOpenOrderLong($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
     {
 
-        Log::info('TriggersThreadOrderBook ' . $workerId . ': Open order found for ' . $open_order['symbol']);
         $targetProfit = $open_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
@@ -352,39 +331,16 @@ class TriggersThread implements ShouldQueue
         $stopLoss = $open_order['stopLoss'];
         $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
-
         // Scenerio 1: If Current profit is less than 1%
         $currentProfit = (($currentCandle['close'] - $open_order['price']) / $open_order['price']) * 100;
-        Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
+        Log::info('TriggersThreadOrderBook ' . $workerId . ': ' . $open_order['symbol'] . ' ' . $open_order['position'] . ' Current profit ' . $currentProfit);
 
-        // Change take profit levels when order is stuck for more than 80 mins
-        // if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 40 && $targetProfit <= 0.4) {
-        //     $targetProfit = 0.2;
-        //     Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
-        // }
 
-        if ($currentProfit < 0.5) {
-            $profitIncrementPercentage = 0.05;
-        } else {
-            $profitIncrementPercentage = 0.1;
-        }
 
         // Handle Early Closing on Order Books
 
         $closeEarly = false;
 
-        // Reduce Stop loss by half every 30 min
-        // $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
-
-        // $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
-
-        // if ($stopLoss < $open_order['price'] && $currentCandle['per'] < 0)
-        //     $stopLoss = $open_order['price'] * (1 - $stopLossPercentage / 100);
-
-        // Gradually Narrow Stop Loss if profit is between volatility zone
-        // if ($currentProfit > $open_order['currentProfit'] && $currentProfit > 0.2 && $currentProfit < 0.5) {
-        //     $stopLoss = $currentCandle['close'] * (1 - 0.2 / 100);
-        // }
 
         // Check if SPOT enabled
         $tableName = $open_order['market'] === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
@@ -423,9 +379,16 @@ class TriggersThread implements ShouldQueue
 
             if (!self::$isSpot) {
 
-                $takeProfitPercentage = $targetProfit + $profitIncrementPercentage;
-                $takeProfitPrice = $currentCandle['close'] * (1 + $takeProfitPercentage / 100);
-                $stopLossPrice = $currentCandle['close'];
+                // Extract Meta values
+                $currentPrice = $currentCandle['close'];
+                $openingPrice = $open_order['price'];
+
+
+                $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
+
+                $takeProfitPrice = $openingPrice * (1 + $newTakeProfitPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 - self::$stopLossMarginPercentage / 100);
+
 
                 $tpSlOrders = self::$activeExchange === 'binance' ?
                     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
@@ -438,12 +401,13 @@ class TriggersThread implements ShouldQueue
                     : HyperLiquidApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
             }
 
+
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
-                'stopLoss' =>  $currentCandle['close'],
-                'previousPrice' => $currentCandle['close'],
-                'currentPrice' => $currentCandle['close'],
+                'stopLoss' =>  $stopLossPrice,
+                'previousPrice' => $currentPrice,
+                'currentPrice' => $currentPrice,
                 'currentProfit' => $currentProfit,
-                'targetProfit' => $targetProfit + $profitIncrementPercentage,
+                'targetProfit' => $newTakeProfitPercentage,
                 'updated_at' => Carbon::now()->toDateTimeString(),
 
             ]);
@@ -466,8 +430,6 @@ class TriggersThread implements ShouldQueue
 
     private function manageOpenOrderShort($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
     {
-        Log::info('ShortThreadOrderBook: Open order found for ' . $open_order['symbol']);
-
         $targetProfit = $open_order['targetProfit'];
         $candleData = $supportResistance['candleData'];
         $currentCandle = $candleData[count($candleData) - 1];
@@ -478,42 +440,12 @@ class TriggersThread implements ShouldQueue
 
 
         $currentProfit = (($currentCandle['close'] - $open_order['price']) / $open_order['price']) * 100 * -1;
-        Log::info('TriggersThreadOrderBook ' . $workerId . ': Current profit ' . $currentProfit);
+        Log::info('TriggersThreadOrderBook ' . $workerId . ': ' . $open_order['symbol'] . ' ' . $open_order['position'] . ' Current profit ' . $currentProfit);
 
 
-        // Change take profit levels when order is stuck for more than 80 mins
-        // if (abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at'])) > 40 && $targetProfit <= 0.4) {
-        //     $targetProfit = 0.2;
-        //     Log::info('TriggersThreadOrderBook ' . $workerId . ': Profit Ratio changed due to trade getting stuck: ' . $open_order['symbol']);
-        // }
-
-
-
-        if ($currentProfit < 0.5) {
-            $profitIncrementPercentage = 0.05;
-        } else {
-            $profitIncrementPercentage = 0.1;
-        }
-
-
-        // Handle Early Closing on Order Books
 
         $closeEarly = false;
 
-
-        // Reduce Stop loss by half every 30 min
-        // $timeDiff = abs(Carbon::now('Asia/Karachi')->diffInMinutes($open_order['created_at']));
-
-
-        // $stopLossPercentage = 1 - (max(0, min(30, intval($timeDiff))) / 30);
-        // if ($stopLoss > $open_order['price'] && $currentCandle['per'] > 0)
-        //     $stopLoss = $open_order['price'] * (1 + $stopLossPercentage / 100);
-
-
-        // Gradually Narrow Stop Loss if profit is between volatility zone
-        // if ($currentProfit > $open_order['currentProfit'] && $currentProfit > 0.2 && $currentProfit < 0.5) {
-        //     $stopLoss = $currentCandle['close'] * (1 + 0.2 / 100);
-        // }
 
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
 
@@ -539,9 +471,15 @@ class TriggersThread implements ShouldQueue
 
             if (!self::$isSpot) {
 
-                $takeProfitPercentage = $targetProfit + $profitIncrementPercentage;
-                $takeProfitPrice = $currentCandle['close'] * (1 - $takeProfitPercentage / 100);
-                $stopLossPrice = $currentCandle['close'];
+                // Extract Meta values
+                $currentPrice = $currentCandle['close'];
+                $openingPrice = $open_order['price'];
+
+
+                $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
+                $takeProfitPrice = $openingPrice * (1 - $newTakeProfitPercentage / 100);
+
+                $stopLossPrice = $currentPrice * (1 + self::$stopLossMarginPercentage / 100);
 
                 $tpSlOrders =  self::$activeExchange === 'binance' ?
                     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
@@ -557,11 +495,11 @@ class TriggersThread implements ShouldQueue
             }
 
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([
-                'stopLoss' =>  $currentCandle['close'],
-                'previousPrice' => $currentCandle['close'],
-                'currentPrice' => $currentCandle['close'],
+                'stopLoss' =>  $stopLossPrice,
+                'previousPrice' => $currentPrice,
+                'currentPrice' => $currentPrice,
                 'currentProfit' => $currentProfit,
-                'targetProfit' => $targetProfit + $profitIncrementPercentage,
+                'targetProfit' => $newTakeProfitPercentage,
                 'updated_at' => Carbon::now()->toDateTimeString(),
 
             ]);
