@@ -2523,6 +2523,7 @@ class BinanceApiService
                 'currentProfit' => $currentProfit,
                 'isDummy' => $openOrder->isDummy,
                 'trade_acc' => $trader,
+                'formula' => $openOrder->formula,
                 'liqPrice' => 0,
                 'created_at' => Carbon::now('Asia/Karachi'),
             ];
@@ -2535,7 +2536,7 @@ class BinanceApiService
                 'pairId' => $orderId,
 
             ]);
-            $data['subject'] = 'Type: ' . $data['formula'] .' '. $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+            $data['subject'] = 'Type: ' . $data['formula'] . ' ' . $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
             MailerService::sendFutureTradeDynamicEmail($data);
             return $data;
@@ -2614,6 +2615,8 @@ class BinanceApiService
             'trade_status' => 'close',
             'leverage' => 0,
             'price' => $current_price,
+            'formula' => $openOrder->formula,
+
             'currentProfit' => $currentProfit,
             'trade_acc' => $trader,
             'liqPrice' => 0,
@@ -2661,7 +2664,7 @@ class BinanceApiService
             'realizedPnl' => $realizedPnl,
 
         ]);
-        $data['subject'] = 'FUTURE: ' . $data['formula'] .' '. $data['type'] . ' ' . $data['position']  . ' '  . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = 'FUTURE: ' . $data['formula'] . ' ' . $data['type'] . ' ' . $data['position']  . ' '  . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
 
