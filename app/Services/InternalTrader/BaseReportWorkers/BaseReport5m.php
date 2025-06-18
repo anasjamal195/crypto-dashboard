@@ -385,17 +385,14 @@ class BaseReport5m
         $extremePrice = 0;
 
 
-        $intervalToMins = CommonHelpers::$binanceIntervals[self::$interval];
-        $timestamp = $data[0]['binance_timestamp'] - (60 * $intervalToMins * 1000 * 1000);
-        $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, $timestamp, 'FUTURE');
-
+       
         $data = array_map(function ($candle) {
             $candle['timestamp'] = $candle['timestamp'] / 1000;
             $date = new \DateTime("@{$candle['timestamp']}");
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
             return $candle;
-        }, array_merge($averageAdjustmetCandles, $data));
+        },  $data);
 
         $waitingCandles = 0;
         $openingIndex = 0;
@@ -430,7 +427,7 @@ class BaseReport5m
             ];
 
             // Skip Adjustment Candles and Volume Adjustment
-            if ($index < 1200) {
+            if ($index < 200) {
                 continue;
             }
 

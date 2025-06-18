@@ -211,7 +211,7 @@ class BaseReport15m
         $outputPath = storage_path('app/public/formula_bkp_service_' . self::$formula . '.txt');
 
         $contents = File::get($classPath);
-        File::put($outputPath, $contents);
+        // File::put($outputPath, $contents);
         $html = '
         <div class="card card-chart">
             <div class="card-header">
@@ -428,7 +428,7 @@ class BaseReport15m
             ];
 
             // Skip Adjustment Candles and Volume Adjustment
-            if ($index < 1200) {
+            if ($index < 200) {
                 continue;
             }
 
@@ -565,6 +565,8 @@ class BaseReport15m
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps, &$tagName)
     {
 
+        
+        
         // LONG Entry
         if (self::checkConditionSetLongMACD($symbol, $data, $index) === 'LONG') {
             $tagName = 'MACD';
@@ -573,6 +575,9 @@ class BaseReport15m
             $tagName = 'SR';
             return 'LONG';
         }
+
+
+
 
 
 
