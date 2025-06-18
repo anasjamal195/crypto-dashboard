@@ -50,7 +50,7 @@ class TriggersThread implements ShouldQueue
     public $targetProfit = 1;
     public $profitIncrementPercentage = 0.05;
     public $profitIncrementPercentageNext = 0.1;
-    public $formula = 'MACD Swings with accuracy filteration';
+    public $formula = 'MACD & SR';
 
     // Confirmed Trades Entries
 
@@ -102,19 +102,20 @@ class TriggersThread implements ShouldQueue
 
 
                             // =========================== DECISION BLOCK ===============================
-                            
+
                             $openingResults = new OpeningConditionServiceLive($this->workerId, $this->account, self::$activeExchange);
 
                             $opening15m = $openingResults->getOpeningOn15m($symbol);
                             $opening5m = $openingResults->getOpeningOn5m($symbol);
 
 
+
                             if ($opening5m) {
                                 $tradeType = $opening5m;
-                                $this->formula  = 'MACD Swings with accuracy filteration - 5m';
+                                $this->formula  = 'MACD & SR - 5m';
                             } else if ($opening15m) {
                                 $tradeType = $opening15m;
-                                $this->formula  = 'MACD Swings with accuracy filteration - 15m';
+                                $this->formula  = 'MACD & SR - 15m';
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 $this->formula  = 'MACD Swings with accuracy filteration';

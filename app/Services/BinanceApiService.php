@@ -2360,65 +2360,7 @@ class BinanceApiService
         $queryString .= '&signature=' . $signature;
 
 
-        // For Dummy Trades
-        if ($isDummy) {
 
-            $orderId = random_int(100000, 999999);
-            $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
-            // Calculate liquidation price
-            $entryPrice = $current_price; // Assuming trade executed at provided price
-            $accountMargin = $tradeAmount; // User's margin
-            $liquidationPrice = 0;
-            $stopLoss = 0;
-
-            if ($position === 'BUY') {
-                $stopLoss = $current_price * (1 - 0.5 / 100);
-            } else if ($position === 'SELL') {
-                $stopLoss = $current_price * (1 + 0.5 / 100);
-            }
-
-
-            while ($exists) {
-                $orderId = random_int(100000, 999999);
-                $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
-            }
-            $data =  [
-                'orderId' => $orderId,
-                'symbol' => $symbol,
-                'side' => $position,
-                'amount' => $tradeAmount,
-                'market' => $market,
-                'type' => 'open',
-                'position' => $position === 'BUY' ? 'LONG' : 'SHORT',
-                'qty' => $quantity,
-                'leverage' => $leverage,
-                'stopLoss' => $stopLoss,
-                'stopLossReductionPrecentage' => 0.1,
-                'price' => $current_price,
-                'trade_status' => 'open',
-                'trade_acc' => $trader,
-                'targetProfit' => 0.4,
-                'formula' => 'Dummy: ' . $formula,
-                'isDummy' => true,
-                'liqPrice' => $liquidationPrice,
-                'created_at' => Carbon::now('Asia/Karachi'),
-            ];
-
-            DB::table('live_trades_future_results')->insert(
-                $data
-            );
-            $data['support'] = $supportResistance['support'];
-            $data['resistance'] = $supportResistance['resistance'];
-            if ($position === 'BUY') {
-                $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
-            } else if ($position === 'SELL') {
-                $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
-            }
-            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $formula . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
-            MailerService::sendFutureTradeDynamicEmail($data);
-
-            return $data;
-        }
 
         $response = self::getHttpClient()->withHeaders([
             'X-MBX-APIKEY' => $apiKey,
@@ -2496,7 +2438,7 @@ class BinanceApiService
         } else if ($position === 'SELL') {
             $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
         }
-        $data['subject'] = 'FUTURE:' . $data['type'] . ' ' . $data['position'] . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = 'FUTURE: ' . $data['formula'] . ' ' . $data['type'] . ' ' . $data['position'] . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
 
 
@@ -2593,7 +2535,7 @@ class BinanceApiService
                 'pairId' => $orderId,
 
             ]);
-            $data['subject'] = 'Type:' . $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+            $data['subject'] = 'Type: ' . $data['formula'] .' '. $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
             MailerService::sendFutureTradeDynamicEmail($data);
             return $data;
@@ -2719,7 +2661,7 @@ class BinanceApiService
             'realizedPnl' => $realizedPnl,
 
         ]);
-        $data['subject'] = 'FUTURE:' . $data['type'] . ' ' . $data['position']  . ' '  . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
+        $data['subject'] = 'FUTURE: ' . $data['formula'] .' '. $data['type'] . ' ' . $data['position']  . ' '  . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
 
         MailerService::sendFutureTradeDynamicEmail($data);
 
