@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\BaseReportWorkers;
 
+use App\Services\InternalTrader\BaseReportWorkers\BaseReport15m;
 use App\Services\InternalTrader\BaseReportWorkers\BaseReport5m;
 use Illuminate\Console\Command;
 
@@ -44,7 +45,7 @@ class GenerateBaseReport extends Command
                         BaseReport5m::generateCoinReport($this, $formula, $timestamp, '', true);
                         break;
                     case '15m':
-                        BaseReport5m::generateCoinReport($this, $formula, $timestamp, '', true);
+                        BaseReport15m::generateCoinReport($this, $formula, $timestamp, '', true);
                         break;
                     default:
                         $this->info('No interval specified');
