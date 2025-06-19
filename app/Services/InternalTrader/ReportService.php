@@ -1064,6 +1064,7 @@ class ReportService
             'coin_name' => $symbol,
             'type' => $type,
             'intention' => $intention,
+            'formula' => self::$formula,
             'confirm_candle_timestamp' => $data[$index]['binance_timestamp'],
             'candles_to_check' => self::$candlesToCheck,
             'trade_confirmed' => 0,
