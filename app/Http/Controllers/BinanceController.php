@@ -552,6 +552,31 @@ class BinanceController extends Controller
             ];
         }, $tradeArr);
 
+        $confirmedTrades = DB::table('confirmed_trades')->where('formula', $formula)->get();
+
+
+        foreach ($confirmedTrades as $confirmTrade) {
+
+            $timestampMillis = $confirmTrade->confirm_candle_timestamp;
+
+
+            // Convert to Carbon instance in Asia/Karachi timezone
+            $timestamp = Carbon::createFromTimestampMs($timestampMillis)->setTimezone('Asia/Karachi');
+
+            // Format as SQL timestamp (Y-m-d H:i:s)
+            $sqlTimestamp = $timestamp->toDateTimeString();
+
+            // Add 5 minutes
+            $sqlTimestampPlus5Min = $timestamp->copy()->addMinutes(5)->toDateTimeString();
+            $timelineData[] = [
+                'symbol' => $confirmTrade->coin_name . '( ' . $confirmTrade->type . ' )',
+                'startTime' => $sqlTimestamp,
+                'endTime' => $sqlTimestampPlus5Min,
+                'color' => '#ffffff',
+                'id' => $trade['id'],
+                'buyingCandle' => null,
+            ];
+        }
 
 
 
@@ -907,23 +932,31 @@ class BinanceController extends Controller
 
         ]);
     }
-    public function getCoinReportConfirmedTrades($formula, Request $request){
-        $confirmedTrades = DB::table('confirmed_trades')->select(
-            [
-                'exchange',
-                'coin_name',
-                'type',
-                'intention'
-            ]
-        )->get();
+    public function getCoinReportConfirmedTrades($formula, Request $request)
+    {
+        $confirmedTrades = DB::table('confirmed_trades')
+            ->select([
+                'confirmed_trades.exchange',
+                'confirmed_trades.coin_name',
+                'confirmed_trades.type',
+                'confirmed_trades.intention',
+                'coin_reports.id as coin_report_id',
+                'coin_reports.openingTimestamp'
+            ])
+            ->where('confirmed_trades.formula', $formula)
+            ->leftJoin('coin_reports', function ($join) {
+                $join->on('confirmed_trades.formula', '=', 'coin_reports.formula')
+                    ->on('confirmed_trades.openingTimestamp', '=', 'coin_reports.openingTimestamp')
+                    ->on('confirmed_trades.coin_name', '=', 'coin_reports.symbol')
+                    ->on('confirmed_trades.type', '=', 'coin_reports.position');
+            })
+            ->get();
 
 
-        
-         return view('CoinReports.confirmed-trades', [
+        return view('CoinReports.confirmed-trades', [
             'confirmedTrades' => $confirmedTrades,
             'pageSlug' => 'ConfirmedTrades',
-         ]);
-
+        ]);
     }
     public function getCoinReportDetails($market, Request $request)
     {
