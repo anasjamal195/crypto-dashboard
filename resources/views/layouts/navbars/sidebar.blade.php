@@ -168,10 +168,16 @@
                                                 <p>{{ __('Live Trades') }}</p>
                                             </a>
                                         </li>
-                                        <li @if ($pageSlug == 'coinsFUTURE') class="active" @endif>
-                                            <a href="{{ route('live.trades.coins', 'FUTURE') . '?interval=5m' }}">
+                                        <li @if ($pageSlug == 'ConfirmedTrades') class="active" @endif>
+                                            <a href="{{ route('live.trades.result', 'FUTURE') . '?interval=5m' }}">
                                                 <i class="tim-icons icon-bell-55"></i>
-                                                <p>{{ __('Coins') }}</p>
+                                                <p>{{ __('Live Trades') }}</p>
+                                            </a>
+                                        </li>
+                                        <li @if ($pageSlug == 'coinsFUTURE') class="active" @endif>
+                                            <a href="{{ route('coinReport.confirmed_trades', 'Live Trades') }}">
+                                                <i class="tim-icons icon-bell-55"></i>
+                                                <p>{{ __('Confirmed Trades') }}</p>
                                             </a>
                                         </li>
 
