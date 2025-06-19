@@ -631,7 +631,7 @@ class ReportService
     {
 
         // LONG Entry
-        if (self::checkConditionSetLongMACD($symbol, $data, $index) === 'LONG') {
+        if (self::checkConditionSetLongMACD($symbol, $data, $index)) {
             $tagName = 'MACD';
             return self::checkConditionSetLongMACD($symbol, $data, $index);
         }
@@ -1097,13 +1097,13 @@ class ReportService
 
         $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
         $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->confirm_candle_timestamp, self::$interval);
-        if ($indexDiff > $lastEntry->candles_to_check) {
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
-                'trade_confirmed' => 1,
-                'update_time' => Carbon::now()->toDateTimeString(),
-            ]);
-            return null;
-        }
+        // if ($indexDiff > $lastEntry->candles_to_check) {
+        //     DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+        //         'trade_confirmed' => 1,
+        //         'update_time' => Carbon::now()->toDateTimeString(),
+        //     ]);
+        //     return null;
+        // }
         return $lastEntry;
     }
 
@@ -1114,10 +1114,7 @@ class ReportService
     {
 
 
-        $entry = DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $type);
-
-
-        $entry->orderBy('update_time', 'DESC')->update(
+        $entry = DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $type)->orderBy('update_time', 'DESC')->update(
             [
                 'trade_confirmed' => 1,
                 'type' => $newType,

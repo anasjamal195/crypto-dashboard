@@ -327,7 +327,6 @@
                                                 </td>
                                             </tr>
                                         @endforeach
-
                                     </tbody>
                                 </table>
                                 <!-- Stats Summary Table -->
