@@ -1430,9 +1430,14 @@ class OpeningConditionServiceLive
         return DB::table('confirmed_trades')->where('ict_id', $id)->first();
     }
 
-    public static function getIctId($symbol, $position)
+    public static function getIctId($symbol, $position, $intention = null)
     {
-        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('position', $position)->orderBy('update_time', 'DESC')->first();
+        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $position);
+
+        if ($intention) {
+            $lastEntry->where('intention', $intention);
+        }
+        $lastEntry = $lastEntry->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
         return $lastEntry ? $lastEntry->ict_id : null;
     }
 
