@@ -33,7 +33,7 @@ class TriggersThread implements ShouldQueue
     public $timeout = 360000000;
     public $tradeInstance;
     public $supportResistanceCandleSpan = 3;
-    public static $interval = '15m';
+    public static $interval = '5m';
     public static $isSpot;
     public $supportResistance;
     public $triggerPrice = 0;
