@@ -54,7 +54,7 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 Route::get('/home', 'App\Http\Controllers\HomeController@index')->name('home')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/coin-report/delete', 'App\Http\Controllers\BinanceController@deleteCoinReport')->name('coinReport.delete')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/coin-report/{market}', 'App\Http\Controllers\BinanceController@getCoinReport')->name('coinReport')->middleware(['auth', AnalystRoleRedirect::class]);
-Route::get('/coin-report-confirmed-trades/{formula}', 'App\Http\Controllers\BinanceController@getCoinReportConfirmedTrades')->name('coinReport.confirmed_trades')->middleware(['auth', AnalystRoleRedirect::class]);
+Route::get('/coin-report-confirmed-trades/{formula}', 'App\Http\Controllers\BinanceController@getCoinReportConfirmedTrades')->name('coinReport.confirmed_trades')->middleware([ AnalystRoleRedirect::class]);
 Route::get('/coin-report-details/{market}', 'App\Http\Controllers\BinanceController@getCoinReportDetails')->name('coinReportDetails')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/market-trends/{market}', 'App\Http\Controllers\BinanceController@showTrends')->name('marketTrends')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/candle-averages/{market}', 'App\Http\Controllers\BinanceController@showAverages')->name('candle.averages')->middleware(['auth', AnalystRoleRedirect::class]);
