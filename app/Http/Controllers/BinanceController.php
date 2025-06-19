@@ -940,6 +940,7 @@ class BinanceController extends Controller
                 'confirmed_trades.coin_name',
                 'confirmed_trades.type',
                 'confirmed_trades.intention',
+                'confirmed_trades.confirm_candle_timestamp',
                 'coin_reports.id as coin_report_id',
                 'coin_reports.openingTimestamp'
             ])

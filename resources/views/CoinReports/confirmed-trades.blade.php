@@ -23,10 +23,11 @@
                                             <th scope="col" class="text-primary">Coin Name</th>
                                             <th scope="col" class="text-primary">Type</th>
                                             <th scope="col" class="text-primary">Intention</th>
+                                            <th scope="col" class="text-primary">Entry Time</th>
                                             <th scope="col" class="text-primary">Action</th>
                                         </tr>
                                     </thead>
-                                    
+
                                     <tbody>
                                         @forelse($confirmedTrades as $index => $trade)
                                             <tr>
@@ -45,6 +46,19 @@
                                                     @endif
                                                 </td>
                                                 <td class="text-white">{{ ucfirst($trade->intention) }}</td>
+                                                @php
+                                                    $timestampMillis = $trade->confirm_candle_timestamp;
+
+                                                    // Convert to Carbon instance in Asia/Karachi timezone
+                                                    $timestamp = Carbon::createFromTimestampMs(
+                                                        $timestampMillis,
+                                                    )->setTimezone('Asia/Karachi');
+
+                                                    // Format as SQL timestamp (Y-m-d H:i:s)
+                                                    $sqlTimestamp = $timestamp->toDateTimeString();
+                                                @endphp
+                                                <td class="text-white">{{ $sqlTimestamp}}</td>
+
                                                 <td class="text-white ">
                                                     @if ($trade->coin_report_id)
                                                         @php
