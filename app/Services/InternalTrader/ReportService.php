@@ -175,7 +175,6 @@ class ReportService
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formula)->where('market', 'FUTURE')->delete();
                 DB::table('coin_reports')->insert($trades);
 
-
                 $tradesTotal[$symbol] = $trades;
 
 
@@ -494,10 +493,10 @@ class ReportService
 
 
 
-
                 if (
                     $tradeType
                 ) {
+
 
 
                     $candle['should_buy'] = true;
@@ -534,12 +533,12 @@ class ReportService
 
 
 
-
                     $candle['trendDetails'] = json_encode(CommonHelpers::detectTrend($data, $index, 50, 50));
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $currentTrade['previousCandle'] = json_encode($data[$index - 1]);
                     $currentTrade['tagName'] = $tagName;
                     $currentTrade['openingTimestamp'] = $data[$index]['binance_timestamp'];
+
 
                     $extremePrice = $open_price;
                     // Placeholder object for testing
@@ -631,9 +630,10 @@ class ReportService
     {
 
         // LONG Entry
-        if (self::checkConditionSetLongMACD($symbol, $data, $index)) {
+        $macdLong = self::checkConditionSetLongMACD($symbol, $data, $index);
+        if ($macdLong) {
             $tagName = 'MACD';
-            return self::checkConditionSetLongMACD($symbol, $data, $index);
+            return $macdLong;
         }
 
         // else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
@@ -644,10 +644,11 @@ class ReportService
 
 
         // SHORT Entry
-        if (self::checkConditionSetShortMACD($symbol, $data, $index)) {
-            $tagName = 'MACD';
-            return self::checkConditionSetShortMACD($symbol, $data, $index);
-        }
+        // $macdShort = self::checkConditionSetShortMACD($symbol, $data, $index);
+        // if ($macdShort) {
+        //     $tagName = 'MACD';
+        //     return $macdShort;
+        // }
 
         // else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
         //     $tagName = 'SR';
@@ -1073,6 +1074,10 @@ class ReportService
             'update_time' => Carbon::now()->toDateTimeString(),
 
         ]);
+
+
+
+
         return DB::table('confirmed_trades')->where('ict_id', $id)->first();
     }
 
@@ -1668,6 +1673,7 @@ class ReportService
 
             if ($confirmedTrade) {
 
+
                 $candleBelowMiddleLine = 0;
                 $loopIndex = $index;
                 while ($loopIndex >= ($index - 10)) {
@@ -1676,13 +1682,11 @@ class ReportService
                     }
                     $loopIndex--;
                 }
-
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
                 $buyCondition =
                     (
                         // $data[$index]['rsi6'] < 35
                         //  $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-
                         $data[$index]['dif'] > $data[$index - 1]['dif']
                         && $data[$index]['per'] > 0
                         && $bbAnalysis['price_action']['is_near_lower_band']
@@ -1694,6 +1698,8 @@ class ReportService
                 if ($buyCondition) {
 
                     self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+
+                    // dd($data[$index]);
                     // if ($candleBelowMiddleLine >= 5 && $bbAnalysis['bb_middle_percent_change'] < 0) {
                     //     return 'SHORT';
                     // }
@@ -1775,13 +1781,11 @@ class ReportService
 
                         $data[$index]['per'] < 0
                         && $data[$index]['dif'] < $data[$index - 1]['dif']
-
                         && $bbAnalysis['price_action']['is_near_upper_band']
-                        && $data[$index]['close'] < $data[$index]['bb_upper']
-                        && $data[$index]['open'] > $data[$index]['bb_upper']
-                        && abs($data[$index]['per']) < abs($data[$index - 1]['per'])
-
-                    );
+                        && $data[$index]['close'] < ($data[$index]['bb_upper'] * (1 - 0.4 / 100))
+                        && $data[$index]['open'] > ($data[$index]['bb_upper'] * (1 - 0.4 / 100))
+                        && abs($data[$index]['per']) > abs($data[$index - 1]['per'])
+                    );                                                                          
 
                 if ($buyCondition) {
                     self::confirmOpening($symbol, 'TBD', $data, $index, 'SHORT');

@@ -107,7 +107,7 @@ class TriggersThread implements ShouldQueue
 
                             $openingResults = new OpeningConditionServiceLive($this->workerId, $this->account, self::$activeExchange);
 
-                            $opening15m = $openingResults->getOpeningOn15m($symbol);
+                            // $opening15m = $openingResults->getOpeningOn15m($symbol);
                             $opening5m = $openingResults->getOpeningOn5m($symbol);
 
 
@@ -115,10 +115,13 @@ class TriggersThread implements ShouldQueue
                             if ($opening5m['direction']) {
                                 $tradeType = $opening5m['direction'];
                                 $this->formula  = $opening5m['formula'];
-                            } else if ($opening15m['direction']) {
-                                $tradeType = $opening15m['direction'];
-                                $this->formula  = $opening15m['formula'];
-                            } else {
+                            } 
+                            
+                            // else if ($opening15m['direction']) {
+                            //     $tradeType = $opening15m['direction'];
+                            //     $this->formula  = $opening15m['formula'];
+                            // } 
+                            else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 $this->formula  = 'MACD & SR';
                                 continue;

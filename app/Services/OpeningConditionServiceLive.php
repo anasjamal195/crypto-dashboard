@@ -162,32 +162,32 @@ class OpeningConditionServiceLive
                 'formula' => 'MACD - 5m'
             ];
         }
-        if (
-            self::checkConditionSetLongSR5m($symbol, $data, $index) === 'LONG'
-        ) {
-            return [
-                'direction' => 'LONG',
-                'formula' => 'SR - 5m'
-            ];
-        }
+        // if (
+        //     self::checkConditionSetLongSR5m($symbol, $data, $index) === 'LONG'
+        // ) {
+        //     return [
+        //         'direction' => 'LONG',
+        //         'formula' => 'SR - 5m'
+        //     ];
+        // }
 
         // SHORT ENTRY
-        if (
-            self::checkConditionSetShortMACD5m($symbol, $data, $index) === 'SHORT'
-        ) {
-            return [
-                'direction' => 'SHORT',
-                'formula' => 'MACD - 5m'
-            ];
-        }
-        if (
-            self::checkConditionSetShortSR5m($symbol, $data, $index) === 'SHORT'
-        ) {
-            return [
-                'direction' => 'SHORT',
-                'formula' => 'SR - 5m'
-            ];
-        }
+        // if (
+        //     self::checkConditionSetShortMACD5m($symbol, $data, $index) === 'SHORT'
+        // ) {
+        //     return [
+        //         'direction' => 'SHORT',
+        //         'formula' => 'MACD - 5m'
+        //     ];
+        // }
+        // if (
+        //     self::checkConditionSetShortSR5m($symbol, $data, $index) === 'SHORT'
+        // ) {
+        //     return [
+        //         'direction' => 'SHORT',
+        //         'formula' => 'SR - 5m'
+        //     ];
+        // }
 
 
         return [
@@ -294,7 +294,7 @@ class OpeningConditionServiceLive
         if ($bbPosition < 0.2) $trendScore += 15; // Near lower band
         if ($bbPosition < 0.1) $trendScore += 10; // Very close to lower band
 
-        
+
 
         // 2. Momentum Analysis
         $momentumScore = 0;
@@ -1214,11 +1214,12 @@ class OpeningConditionServiceLive
     {
 
         $interval = '5m';
-        $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'MACD');;
-        if ($accuracyStatsMACD['accuracy'] < 75 && $accuracyStatsMACD['accuracy'] != -1) {
-            // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy ' . $accuracyStatsMACD['accuracy']  . 'MACD LONG: ' . $symbol);
-            return null;
-        }
+        // $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'MACD');;
+        // if ($accuracyStatsMACD['accuracy'] < 75 && $accuracyStatsMACD['accuracy'] != -1) {
+        //     // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy ' . $accuracyStatsMACD['accuracy']  . 'MACD LONG: ' . $symbol);
+        //     return null;
+        // }
+
 
         if (
             $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0
@@ -1227,25 +1228,42 @@ class OpeningConditionServiceLive
             && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0
             && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0
             && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
+            // && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
+            // && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0
 
-            && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index, $interval)
+            && !self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval)
         ) {
-            self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
+            self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG');
         }
+        $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval);
 
-        if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index, $interval)) {
+        if ($confirmedTrade) {
+
+
+            $candleBelowMiddleLine = 0;
+            $loopIndex = $index;
+            while ($loopIndex >= ($index - 10)) {
+                if (max($data[$loopIndex]['open'], $data[$loopIndex]['close']) < $data[$loopIndex]['bb_middle']) {
+                    $candleBelowMiddleLine++;
+                }
+                $loopIndex--;
+            }
             $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
             $buyCondition =
                 (
-                    $data[$index]['rsi6'] < 25
-                    && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+                    // $data[$index]['rsi6'] < 35
+                    //  $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+                    $data[$index]['dif'] > $data[$index - 1]['dif']
+                    && $data[$index]['per'] > 0
                     && $bbAnalysis['price_action']['is_near_lower_band']
                     && $data[$index]['close'] > $data[$index]['bb_lower']
                     && $data[$index]['open'] < $data[$index]['bb_lower']
+                    && abs($data[$index]['per']) > abs($data[$index - 1]['per'])
                 );
 
             if ($buyCondition) {
-                self::confirmOpening($symbol, 'LONG', $data, $index);
+
+                self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
                 return 'LONG';
             }
         }
@@ -1346,10 +1364,8 @@ class OpeningConditionServiceLive
     }
 
 
-    public static function insertConfirmBasicTradeEntry($symbol, $position, $data, $index)
+    public static function insertConfirmBasicTradeEntry($symbol, $type, $data, $index, $intention = null)
     {
-
-
 
         // BB Calculations for highest point squeez
         $highestPointIndex = self::getTightestSqueezIndex($data, $index);
@@ -1358,8 +1374,10 @@ class OpeningConditionServiceLive
 
 
         $id =  DB::table('confirmed_trades')->insertGetId([
-            'position' => $position,
             'coin_name' => $symbol,
+            'type' => $type,
+            'intention' => $intention,
+            'formula' => 'Live Trades',
             'confirm_candle_timestamp' => $data[$index]['binance_timestamp'],
             'candles_to_check' => self::$candlesToCheck,
             'trade_confirmed' => 0,
@@ -1368,6 +1386,10 @@ class OpeningConditionServiceLive
             'update_time' => Carbon::now()->toDateTimeString(),
 
         ]);
+
+
+
+
         return DB::table('confirmed_trades')->where('ict_id', $id)->first();
     }
 
@@ -1378,40 +1400,42 @@ class OpeningConditionServiceLive
     }
 
 
-    public static function checkConfirmTradeValidity($symbol, $position, $data, $index, $interval)
+    public static function checkConfirmTradeValidity($symbol, $type, $data, $index, $interval, $intention = null)
     {
-        $ictId = self::getIctId($symbol, $position);
+        $ictId = self::getIctId($symbol, $type, $intention);
         if (
             !$ictId
         ) {
             return null;
         }
 
-        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->where('position', $position)->first();
-
-        if (!$lastEntry) {
-            return null;
-        }
+        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
         $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->confirm_candle_timestamp, $interval);
-        if ($indexDiff > $lastEntry->candles_to_check) {
-            DB::table('confirmed_trades')->where('ict_id', $ictId)->delete();
-            return null;
-        }
+        // if ($indexDiff > $lastEntry->candles_to_check) {
+        //     DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+        //         'trade_confirmed' => 1,
+        //         'update_time' => Carbon::now()->toDateTimeString(),
+        //     ]);
+        //     return null;
+        // }
         return $lastEntry;
     }
 
 
-    public static function confirmOpening($symbol, $position, $data, $index)
+    public static function confirmOpening($symbol, $type, $data, $index, $newType = null)
     {
-        $ictId = self::getIctId($symbol, $position);
-        if (
-            !$ictId
-        ) {
-            return null;
-        }
-        DB::table('confirmed_trades')->where('ict_id', $ictId)->delete();
+
+
+        $entry = DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $type)->orderBy('update_time', 'DESC')->update(
+            [
+                'trade_confirmed' => 1,
+                'type' => $newType,
+                'openingTimestamp' => $newType != 'TBD' ? $data[$index]['binance_timestamp'] : null,
+            ]
+        );
         return true;
     }
+
 
     public static function getTightestSqueezIndex($data, $startIndex)
     {
