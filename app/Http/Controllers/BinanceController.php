@@ -573,7 +573,7 @@ class BinanceController extends Controller
                 'startTime' => $sqlTimestamp,
                 'endTime' => $sqlTimestampPlus5Min,
                 'color' => '#ffffff',
-                'id' => $confirmTrade->id,
+                'id' => $confirmTrade->ict_id,
                 'buyingCandle' => null,
             ];
         }
