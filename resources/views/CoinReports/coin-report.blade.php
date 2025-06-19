@@ -54,6 +54,8 @@
                                     class="btn btn-warning my-2 mx-1">Delete Incomplete</a>
                                 <a href="{{ route('coinReport.delete', ['delete_all' => true]) }}"
                                     class="btn btn-danger my-2 mx-1">Delete All</a>
+                                <a href="{{ route('coinReport.confirmed_trades', request('formula')) }}"
+                                    class="btn btn-danger my-2 mx-1">View Confirmed Trades</a>
 
                             </div>
 

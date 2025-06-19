@@ -907,6 +907,23 @@ class BinanceController extends Controller
 
         ]);
     }
+    public function getCoinReportConfirmedTrades($formula, Request $request){
+        $confirmedTrades = DB::table('confirmed_trades')->select(
+            [
+                'exchange',
+                'coin_name',
+                'type',
+                'intention'
+            ]
+        )->get();
+
+
+        
+         return view('CoinReports.confirmed-trades', [
+            'confirmedTrades' => $confirmedTrades,
+         ]);
+
+    }
     public function getCoinReportDetails($market, Request $request)
     {
 

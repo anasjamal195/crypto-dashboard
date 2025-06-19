@@ -23,7 +23,7 @@ class ReportService
     public static $delayMs = 10;
     public static $supportResistanceCandleSpan = 12;
 
-    public static $interval = '15m';
+    public static $interval = '5m';
     public static $targetProfit = 1;
     public static $stopLoss = 0.8;
     public static $stopLossWaitingDuration = 0;
@@ -506,7 +506,27 @@ class ReportService
                     $candle['orderBookSnapshot'] = $orderBookSnapshot ? $orderBookSnapshot->id : null;
                     $candle['openingVolumes'] = json_encode($volumeSignal);
 
+
+                    if (!self::$isBaseReport) {
+                        $candle['macd_frequency_long'] = self::parseFrequency(self::$progressionDetailsLONGMACD, $data[$index]['binance_timestamp'], 6);
+                        $candle['macd_frequency_short'] = self::parseFrequency(self::$progressionDetailsSHORTMACD, $data[$index]['binance_timestamp'], 6);
+
+                        $candle['sr_frequency_long'] = self::parseFrequency(self::$progressionDetailsLONGSR, $data[$index]['binance_timestamp'], 6);
+                        $candle['sr_frequency_short'] = self::parseFrequency(self::$progressionDetailsSHORTSR, $data[$index]['binance_timestamp'], 6);
+
+
+                        $candle['macd_accuracy_long'] = self::parseAccuracy(self::$progressionDetailsLONGMACD, $data[$index]['binance_timestamp'], 6);
+                        $candle['macd_accuracy_short'] = self::parseAccuracy(self::$progressionDetailsSHORTMACD, $data[$index]['binance_timestamp'], 6);
+
+                        $candle['sr_accuracy_long'] = self::parseAccuracy(self::$progressionDetailsLONGSR, $data[$index]['binance_timestamp'], 6);
+                        $candle['sr_accuracy_short'] = self::parseAccuracy(self::$progressionDetailsSHORTSR, $data[$index]['binance_timestamp'], 6);
+                    }
+
+
+
                     $open_price = $candle['close'];
+
+
 
 
 
@@ -586,8 +606,8 @@ class ReportService
         }
 
 
-        self::confirmOpening($symbol, 'LONG', $data, $index);
-        self::confirmOpening($symbol, 'SHORT', $data, $index);
+        self::confirmOpening($symbol, 'TBD', $data, $index, 'TBD');
+
 
         self::logSafeModeEntry(self::$formula, $symbol, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
         // For shifting indexes
@@ -612,22 +632,26 @@ class ReportService
         // LONG Entry
         if (self::checkConditionSetLongMACD($symbol, $data, $index) === 'LONG') {
             $tagName = 'MACD';
-            return 'LONG';
-        } else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
-            $tagName = 'SR';
-            return 'LONG';
+            return self::checkConditionSetLongMACD($symbol, $data, $index);
         }
+
+        // else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
+        //     $tagName = 'SR';
+        //     return 'LONG';
+        // }
 
 
 
         // SHORT Entry
-        if (self::checkConditionSetShortMACD($symbol, $data, $index) === 'SHORT') {
+        if (self::checkConditionSetShortMACD($symbol, $data, $index)) {
             $tagName = 'MACD';
-            return 'SHORT';
-        } else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
-            $tagName = 'SR';
-            return 'SHORT';
+            return self::checkConditionSetShortMACD($symbol, $data, $index);
         }
+
+        // else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
+        //     $tagName = 'SR';
+        //     return 'SHORT';
+        // }
 
         return null;
     }
@@ -809,7 +833,32 @@ class ReportService
 
 
 
+    public static function parseFrequency($grouped, $endTime, $hours = null)
+    {
 
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+            }
+        }
+
+
+
+        $totalTrades = $totalProfits + $totalLosses;
+        return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
+    }
 
 
 
@@ -999,7 +1048,7 @@ class ReportService
     }
 
 
-    public static function insertConfirmBasicTradeEntry($symbol, $position, $data, $index)
+    public static function insertConfirmBasicTradeEntry($symbol, $type, $data, $index, $intention = null)
     {
 
 
@@ -1012,7 +1061,8 @@ class ReportService
 
         $id =  DB::table('confirmed_trades')->insertGetId([
             'coin_name' => $symbol,
-            'position' => $position,
+            'type' => $type,
+            'intention' => $intention,
             'confirm_candle_timestamp' => $data[$index]['binance_timestamp'],
             'candles_to_check' => self::$candlesToCheck,
             'trade_confirmed' => 0,
@@ -1024,14 +1074,19 @@ class ReportService
         return DB::table('confirmed_trades')->where('ict_id', $id)->first();
     }
 
-    public static function getIctId($symbol, $position)
+    public static function getIctId($symbol, $position, $intention = null)
     {
-        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('position', $position)->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
+        $lastEntry =  DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $position);
+
+        if ($intention) {
+            $lastEntry->where('intention', $intention);
+        }
+        $lastEntry = $lastEntry->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
         return $lastEntry ? $lastEntry->ict_id : null;
     }
-    public static function checkConfirmTradeValidity($symbol, $position, $data, $index)
+    public static function checkConfirmTradeValidity($symbol, $type, $data, $index, $intention = null)
     {
-        $ictId = self::getIctId($symbol, $position);
+        $ictId = self::getIctId($symbol, $type, $intention);
         if (
             !$ictId
         ) {
@@ -1053,10 +1108,18 @@ class ReportService
 
 
 
-    public static function confirmOpening($symbol, $position, $data, $index)
+    public static function confirmOpening($symbol, $type, $data, $index, $newType = null)
     {
 
-        DB::table('confirmed_trades')->where('coin_name', $symbol)->where('position', $position)->orderBy('update_time', 'DESC')->delete();
+
+        $entry = DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $type);
+
+        $entry->orderBy('update_time', 'DESC')->update(
+            [
+                'trade_confirmed' => 1,
+                'type' => $newType,
+            ]
+        );
         return true;
     }
 
@@ -1549,7 +1612,7 @@ class ReportService
             if (!self::$isBaseReport) {
                 $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONGSR, $data[$index]['binance_timestamp'], 6);
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 75) {
+                    if ($currentAccuracy < 77) {
                         return null;
                     }
                 }
@@ -1578,7 +1641,8 @@ class ReportService
                 $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONGMACD, $data[$index]['binance_timestamp'], 6);
 
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 73) {
+                    if ($currentAccuracy < 75) {
+
                         return null;
                     }
                 }
@@ -1590,24 +1654,48 @@ class ReportService
                 && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0
                 && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0
                 && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0
-                && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)
+                && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
+                // && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
+                // && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0
+
+                && !self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index)
             ) {
-                self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
+                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG');
             }
 
-            if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+
+            if ($confirmedTrade) {
+
+                $candleBelowMiddleLine = 0;
+                $loopIndex = $index;
+                while ($loopIndex >= ($index - 10)) {
+                    if (max($data[$loopIndex]['open'], $data[$loopIndex]['close']) < $data[$loopIndex]['bb_middle']) {
+                        $candleBelowMiddleLine++;
+                    }
+                    $loopIndex--;
+                }
+
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
                 $buyCondition =
                     (
-                        $data[$index]['rsi6'] < 30
-                        && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+                        // $data[$index]['rsi6'] < 35
+                        //  $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+
+                        $data[$index]['dif'] > $data[$index - 1]['dif']
+                        && $data[$index]['per'] > 0
                         && $bbAnalysis['price_action']['is_near_lower_band']
                         && $data[$index]['close'] > $data[$index]['bb_lower']
                         && $data[$index]['open'] < $data[$index]['bb_lower']
+                        && abs($data[$index]['per']) > abs($data[$index - 1]['per'])
                     );
 
                 if ($buyCondition) {
-                    self::confirmOpening($symbol, 'LONG', $data, $index);
+
+                    self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+                    // if ($candleBelowMiddleLine >= 5 && $bbAnalysis['bb_middle_percent_change'] < 0) {
+                    //     return 'SHORT';
+                    // }
                     return 'LONG';
                 }
             }
@@ -1631,7 +1719,7 @@ class ReportService
             if (!self::$isBaseReport) {
                 $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORTSR, $data[$index]['binance_timestamp'], 6);
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 75) {
+                    if ($currentAccuracy < 77) {
                         return null;
                     }
                 }
@@ -1655,7 +1743,7 @@ class ReportService
             if (!self::$isBaseReport) {
                 $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORTMACD, $data[$index]['binance_timestamp'], 6);
                 if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 73) {
+                    if ($currentAccuracy < 75) {
                         return null;
                     }
                 }
@@ -1665,27 +1753,37 @@ class ReportService
                 && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0
                 && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0
                 && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0
+                && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0
+                // && $data[$index - 4]['histogram'] > $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] > 0
+                // && $data[$index - 5]['histogram'] > $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] > 0
 
-                && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)
+                && !self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index)
 
             ) {
-                self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
+                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'SHORT');
             }
 
-            if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+
+            if ($confirmedTrade) {
                 $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
                 $buyCondition =
                     (
-                        $data[$index]['rsi6'] > 70
-                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6']
+                        // $data[$index]['rsi6'] > 65
+                        // && $data[$index]['rsi6'] < $data[$index - 1]['rsi6']
+
+                        $data[$index]['per'] < 0
+                        && $data[$index]['dif'] < $data[$index - 1]['dif']
+
                         && $bbAnalysis['price_action']['is_near_upper_band']
                         && $data[$index]['close'] < $data[$index]['bb_upper']
                         && $data[$index]['open'] > $data[$index]['bb_upper']
+                        && abs($data[$index]['per']) < abs($data[$index - 1]['per'])
+
                     );
 
                 if ($buyCondition) {
-                    self::confirmOpening($symbol, 'SHORT', $data, $index);
-
+                    self::confirmOpening($symbol, 'TBD', $data, $index, 'SHORT');
                     return 'SHORT';
                 }
             }
