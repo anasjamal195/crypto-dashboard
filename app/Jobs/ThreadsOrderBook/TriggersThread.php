@@ -44,7 +44,7 @@ class TriggersThread implements ShouldQueue
     public static $activeExchange;
 
     // Meta data
-    public $stopLoss = 0.8;
+    public $stopLoss = 1;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
     public $targetProfit = 0.5;
