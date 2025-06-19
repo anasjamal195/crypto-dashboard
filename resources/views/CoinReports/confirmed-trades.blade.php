@@ -50,7 +50,7 @@
                                                     $timestampMillis = $trade->confirm_candle_timestamp;
 
                                                     // Convert to Carbon instance in Asia/Karachi timezone
-                                                    $timestamp = Carbon::createFromTimestampMs(
+                                                    $timestamp = Carbon\Carbon::createFromTimestampMs(
                                                         $timestampMillis,
                                                     )->setTimezone('Asia/Karachi');
 
