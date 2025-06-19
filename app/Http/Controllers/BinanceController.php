@@ -921,6 +921,7 @@ class BinanceController extends Controller
         
          return view('CoinReports.confirmed-trades', [
             'confirmedTrades' => $confirmedTrades,
+            'pageSlug' => 'ConfirmedTrades',
          ]);
 
     }

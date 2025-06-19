@@ -1,5 +1,4 @@
 @extends('layouts.app')
-
 @section('content')
 <div class="content">
     <div class="container-fluid">
@@ -60,7 +59,7 @@
                         @if($confirmedTrades->count() > 0)
                             <div class="row mt-4">
                                 <div class="col-12">
-                                    <div class="card bg-gradient-primary">
+                                    <div class="card bg-primary">
                                         <div class="card-body p-3">
                                             <div class="row">
                                                 <div class="col-md-3 col-sm-6">
@@ -69,7 +68,7 @@
                                                         <span class="text-white-50">Total Trades</span>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-3 col-sm-6">
+                                                {{-- <div class="col-md-3 col-sm-6">
                                                     <div class="text-center">
                                                         <h4 class="text-white mb-0">{{ $confirmedTrades->unique('exchange')->count() }}</h4>
                                                         <span class="text-white-50">Exchanges</span>
@@ -86,7 +85,7 @@
                                                         <h4 class="text-white mb-0">{{ $confirmedTrades->where('type', 'buy')->count() }}/{{ $confirmedTrades->where('type', 'sell')->count() }}</h4>
                                                         <span class="text-white-50">Buy/Sell Ratio</span>
                                                     </div>
-                                                </div>
+                                                </div> --}}
                                             </div>
                                         </div>
                                     </div>
@@ -131,4 +130,4 @@
         color: #1d8cf8 !important;
     }
 </style>
-@endsect
+@endsection

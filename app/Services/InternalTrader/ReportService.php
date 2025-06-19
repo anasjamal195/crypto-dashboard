@@ -539,6 +539,7 @@ class ReportService
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $currentTrade['previousCandle'] = json_encode($data[$index - 1]);
                     $currentTrade['tagName'] = $tagName;
+                    $currentTrade['openingTimestamp'] = $data[$index]['binance_timestamp'];
 
                     $extremePrice = $open_price;
                     // Placeholder object for testing
@@ -1114,10 +1115,12 @@ class ReportService
 
         $entry = DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $type);
 
+
         $entry->orderBy('update_time', 'DESC')->update(
             [
                 'trade_confirmed' => 1,
                 'type' => $newType,
+                'openingTimestamp' => $newType != 'TBD' ? $data[$index]['binance_timestamp'] : null,
             ]
         );
         return true;
