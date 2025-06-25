@@ -582,8 +582,8 @@ class BaseReport5m
         }
 
 
-        self::confirmOpening($symbol, 'LONG', $data, $index);
-        self::confirmOpening($symbol, 'SHORT', $data, $index);
+        self::confirmOpening($symbol, 'TBD', $data, $index);
+        self::confirmOpening($symbol, 'TBD', $data, $index);
 
         self::logSafeModeEntry(self::$formula, $symbol, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
         // For shifting indexes
