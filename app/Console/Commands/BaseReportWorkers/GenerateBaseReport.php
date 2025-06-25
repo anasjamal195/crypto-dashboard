@@ -1,25 +1,28 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\BaseReportWorkers;
 
-use App\Services\InternalTrader\ReportService;
+use App\Services\InternalTrader\BaseReportWorkers\BaseReport15m;
+use App\Services\InternalTrader\BaseReportWorkers\BaseReport5m;
 use Illuminate\Console\Command;
 
-class GenerateInternalReport extends Command
+class GenerateBaseReport extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'app:generate-internal-report';
+    protected $signature = 'app:generate-base-report {interval?}';
+
+
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'This command is used to run intnernal trader.';
+    protected $description = 'This Command is used to generate base reports on multiple intervals';
 
     /**
      * Execute the console command.
@@ -27,57 +30,30 @@ class GenerateInternalReport extends Command
     public function handle()
     {
 
-        $reportDetails = [
-            [
-                'formula' => 'Current - 5m',
-                'timestamp' => null,
-                'includeFiltered' => false,
-            ],
 
-            // [
-            //     'formula' => 'Testing - Bullish',
-            //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'All Coins Base Hyperliquid  Bearish',
-            //     'timestamp' => 1745607600000,
-            //     'includeFiltered' => false,
-            // ],
+        $interval = $this->argument('interval');
 
 
-            // [
-            //     'formula' => 'Macd Swings Hyperliquid - Slight Bullish',
-            //     'timestamp' => 1744830000000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Macd Swings Hyperliquid - Flat',
-            //     'timestamp' => 1732561200000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Macd Swings Hyperliquid - Mixed',
-            //     'timestamp' => 1744225200000,
-            //     'includeFiltered' => false,
-            // ],
+        while (true) {
+            try {
+                $formula = 'Base Report';
+                $timestamp = null;
+                $formula = $formula . " - $interval";
 
-        ];
-
-
-        foreach ($reportDetails as $details) {
-            $formula = $details['formula'] . ' - Base';
-            $timestamp = $details['timestamp'];
-            $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
-
-
-            if ($details['includeFiltered']) {
-                $formula = $details['formula'] . ' - Filtered';
-                $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
+                switch ($interval) {
+                    case '5m':
+                        BaseReport5m::generateCoinReport($this, $formula, $timestamp, '', true);
+                        break;
+                    case '15m':
+                        BaseReport15m::generateCoinReport($this, $formula, $timestamp, '', true);
+                        break;
+                    default:
+                        $this->info('No interval specified');
+                        break;
+                }
+            } catch (\Throwable $th) {
+                $this->error($th->getMessage());
             }
         }
-
-
-        dd("Done on all trends with all coins");
     }
 }
