@@ -210,7 +210,7 @@ class BaseReport5m
         $outputPath = storage_path('app/public/formula_bkp_service_' . self::$formula . '.txt');
 
         $contents = File::get($classPath);
-        File::put($outputPath, $contents);
+        // File::put($outputPath, $contents);
         $html = '
         <div class="card card-chart">
             <div class="card-header">
@@ -991,7 +991,7 @@ class BaseReport5m
 
 
 
-    
+
 
 
     public static function getIndexDiffFromTimestamps($timestamp1, $timestamp2, $interval, $rounded = true)
