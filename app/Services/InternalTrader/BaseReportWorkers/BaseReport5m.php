@@ -573,6 +573,10 @@ class BaseReport5m
                     $tradeType = null;
                     $waitingCandles = 4;
                     $openingIndex = 0;
+
+                    self::$dynamicTP = 0;
+                    self::$dynamicSL = 0;
+                    self::$candlesToCheck = 1000;
                 }
             }
         }
@@ -605,8 +609,8 @@ class BaseReport5m
         if (self::checkConditionSetLongMACD($symbol, $data, $index) === 'LONG') {
             $tagName = 'MACD';
             return 'LONG';
-        } 
-        
+        }
+
         // else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
         //     $tagName = 'SR';
         //     return 'LONG';
