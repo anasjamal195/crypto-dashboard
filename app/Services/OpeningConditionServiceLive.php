@@ -1217,7 +1217,7 @@ class OpeningConditionServiceLive
 
 
         $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'MACD');
-        
+
         if ($accuracyStatsMACD['accuracy'] < 80 && $accuracyStatsMACD['accuracy'] != -1) {
             // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsMACD['accuracy']  . 'MACD SHORT: ' . $symbol);
             return null;
@@ -1326,8 +1326,6 @@ class OpeningConditionServiceLive
                         $allowOnHigherTrend
                         && $data[$index]['obv'] > $data[$index - 1]['obv']
                         && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-                        // && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
-
                     )
                         return 'LONG';
                     else
