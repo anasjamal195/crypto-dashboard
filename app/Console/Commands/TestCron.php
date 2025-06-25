@@ -6,6 +6,7 @@ use App\CommonHelpers;
 use App\Jobs\TestJob;
 use App\Services\BinanceApiService;
 use App\Services\BlockchainTradingSignalService;
+use App\Services\InternalTrader\ReportService;
 use App\Services\MailerService;
 use App\Services\MarketTrendService;
 use App\Services\OrderBookStrategy;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+
 class TestCron extends Command
 {
     /**
@@ -37,7 +39,63 @@ class TestCron extends Command
      */
     public function handle()
     {
+        $reportDetails = [
+            // [
+            //     'formula' => 'Multistep - Current',
+            //     'timestamp' => null,
+            //     'includeFiltered' => true,
+            // ],
+            [
+                'formula' => 'Multistep - Bullish',
+                'timestamp' => 1746126000000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep Bearish',
+                'timestamp' => 1746126000000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep - Slight Bearish',
+                'timestamp' => 1745607600000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep - Slight Bullish',
+                'timestamp' => 1744830000000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep - Flat',
+                'timestamp' => 1732561200000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep - Mixed',
+                'timestamp' => 1744225200000,
+                'includeFiltered' => true,
+            ],
 
+        ];
+
+
+        foreach ($reportDetails as $details) {
+
+            $formula = $details['formula'] . ' - Base';
+            $timestamp = $details['timestamp'];
+            $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
+            // $backtestFormula = 'Multistep - Current - Base - Wednesday, June 25, 2025 07:16 PM';
+
+
+            if ($details['includeFiltered']) {
+                $formula = $details['formula'] . ' - Filtered';
+                $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
+            }
+        }
+
+
+        dd("Done on all trends with all coins");
+        dd('test');
         $analystUsers = [
             [
                 'email' => 'analyst1@egeniuscare.shop',
