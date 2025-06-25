@@ -93,6 +93,13 @@ class BaseReport5m
 
     public static $activeExchange = 'binance';
 
+      public static $dynamicTP = 0;
+    public static $dynamicSL = 0;
+
+    public static $dynamicTPSLgap = 0.2;
+
+    public static $initialTpPercent = 0.5;
+    public static $initialSlPercent = 1;
 
     public static function generateCoinReport(
         $cmd = null,
@@ -498,6 +505,16 @@ class BaseReport5m
                     $extremePrice = $open_price;
                     // Placeholder object for testing
                     $openingIndex = $index;
+
+                    
+                    if ($tradeType === 'LONG') {
+                        self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
+                        self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
+                        // dd(self::$dynamicTP, self::$dynamicSL, $data[$openingIndex], $symbol);
+                    } else {
+                        self::$dynamicTP = $data[$index]['close'] * (1 - self::$initialTpPercent / 100);
+                        self::$dynamicSL = $data[$index]['close'] * (1 + self::$initialSlPercent / 100);
+                    }
                 }
             } else {
                 $closingPrice =  self::handleClosingConditions($symbol, $data, $index,  $tradeType, $openingIndex, $open_price);
@@ -841,33 +858,52 @@ class BaseReport5m
         return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
     }
 
-    public static function handleClosingConditions($symbol, $data, $index, $tradeType, $openingIndex, $open_price)
+   public static function handleClosingConditions($symbol, $data, $index, $tradeType, $openingIndex, $open_price)
     {
         $candle = $data[$index];
         $closingPrice = 0;
         $waitingCandlesBeforeStopLoss = intval(self::$stopLossWaitingDuration / CommonHelpers::$binanceIntervals[self::$interval]);
-        if ($tradeType == 'SHORT') {
-            // Calculate Closing in profit 
-            if ($candle['low'] <= $open_price * (1 - self::$targetProfit / 100)) {
-                $closingPrice = $candle['low'];
-            } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price < $data[$index]['close']) {
-                $closingPrice = $data[$index]['close'];
-            }
-        } else if ($tradeType == 'LONG') {
 
-            // Calculate Closing in profit 
-            if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
-                $closingPrice = $candle['high'];
-            } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
-                $closingPrice = $data[$index]['close'];
+
+
+
+        // if ($tradeType == 'SHORT') {
+        //     // Calculate Closing in profit 
+        //     if ($candle['low'] <= $open_price * (1 - self::$targetProfit / 100)) {
+        //         $closingPrice = $candle['low'];
+        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price < $data[$index]['close']) {
+        //         $closingPrice = $data[$index]['close'];
+        //     }
+        // } else if ($tradeType == 'LONG') {
+
+        //     // Calculate Closing in profit 
+        //     if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
+        //         $closingPrice = $candle['high'];
+        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
+        //         $closingPrice = $data[$index]['close'];
+        //     }
+        // }
+
+
+
+        if ($tradeType === 'LONG') {
+
+            // If TP is triggered
+            if ($data[$index]['close'] >= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['close'] * (1 + self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['close'] * (1 - (self::$dynamicTPSLgap / 2) / 100);
             }
+            // If Sl is trigggerd
+            else if ($data[$index]['close'] < self::$dynamicSL) {
+                $closingPrice = self::$dynamicSL;
+            }
+        } else {
+            $currentProfit = (($data[$openingIndex]['close'] - $data[$index]['close']) / $data[$openingIndex]['close']) * 100;
         }
 
 
         return $closingPrice;
     }
-
-
 
     public static function insertSkippedTradesEntry($symbol, $data, $index, $position, $reasons = [])
     {
