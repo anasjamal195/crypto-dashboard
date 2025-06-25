@@ -1214,98 +1214,129 @@ class OpeningConditionServiceLive
     {
 
         $interval = '5m';
-        // $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'MACD');;
-        // if ($accuracyStatsMACD['accuracy'] < 75 && $accuracyStatsMACD['accuracy'] != -1) {
-        //     // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy ' . $accuracyStatsMACD['accuracy']  . 'MACD LONG: ' . $symbol);
-        //     return null;
-        // }
 
 
-
-
-        if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval)) {
-            self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG');
+        $accuracyStatsMACD = CommonHelpers::getAccuracy('LONG', 'Base Report - 5m', 'MACD');
+        
+        if ($accuracyStatsMACD['accuracy'] < 80 && $accuracyStatsMACD['accuracy'] != -1) {
+            // Log::info('TriggersThreadOrderBook: Canceled Due to SAFE Mode low accuracy: ' . $accuracyStatsMACD['accuracy']  . 'MACD SHORT: ' . $symbol);
+            return null;
         }
 
-        if (self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval)) {
 
-            $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-            $buyCondition = $data[$index]['close'] > $data[$index]['bb_lower']
-                && $data[$index]['open'] < $data[$index]['bb_lower']
-                && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
-                && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
-                && $bbAnalysis['price_action']['is_near_lower_band']
-                && !$bbAnalysis['bb_squeeze']
-                && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
 
-            if ($buyCondition) {
-                self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+        $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
 
-                $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+        // Define all steps with their conditions and scores
+        $steps = [
+            // Step 1 - Volume Confirmation
+            [
+                'condition' => (
 
-                if (!$allowOnHigherTrend) {
-                    return null;
+                    $data[$index]['volume'] >= (1.2 * CommonHelpers::getSMAAtIndex($data, $index, 20, 'volume'))
+
+                ),
+                'candlesToCheck' => 10,
+            ],
+
+            // Step 2 - Bullish Momentum
+            [
+                'condition' => (
+
+
+                    $data[$index]['close'] >= $data[$index]['bb_middle']
+                    && $data[$index]['rsi6'] > 45
+                    && $bbAnalysis['is_expanding']
+
+
+                ),
+                'candlesToCheck' => 10
+            ],
+
+            // Step 3 - Setup Formation
+            [
+                'condition' => (
+
+
+                    $bbAnalysis['price_action']['is_near_lower_band']
+                    && $data[$index]['rsi6'] >= 25
+                    && $data[$index]['rsi6'] <= 45
+                    && $data[$index]['volume'] >= $data[$index]['volumeMA5']
+
+
+                ),
+                'candlesToCheck' => 20
+            ],
+
+            // Step 4 - Bullish Candle Check
+            [
+                'condition' => (
+                    ($bbAnalysis['price_action']['is_near_lower_band'] || $bbAnalysis['price_action']['crossed_lower_band'])
+                    && $data[$index]['rsi6'] <= 20
+                    && $data[$index]['volume'] >= (1.5 * $data[$index]['volumeMA10'])
+                ),
+                'candlesToCheck' => 20
+            ],
+
+            // Final Step - Entry Execution
+            [
+                'condition' => (
+
+                    $data[$index]['per'] > 0
+                    && $data[$index]['low'] < $data[$index]['bb_lower']
+                ),
+                'candlesToCheck' => 10,
+            ],
+        ];
+
+        // Process steps sequentially
+        foreach ($steps as $stepIndex => $step) {
+
+
+            if (!$step['condition']) {
+                continue;
+            }
+
+
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval);
+
+            $isInitial = $stepIndex == 0;
+            // Handle initial step (no existing trade required)
+            if ($isInitial && !$confirmedTrade) {
+                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
+                continue;
+            }
+
+            // Handle subsequent steps (existing trade with correct checkpoint required)
+            $requiredCheckpoint = ($stepIndex == 0 ? null : ($stepIndex - 1));
+
+            if ($confirmedTrade && $confirmedTrade->checkpoints == $requiredCheckpoint) {
+                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
+
+                // Handle final step
+                $isFinal = $stepIndex === count($steps) - 1;
+
+                if ($isFinal) {
+                    self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+
+
+                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index, '1h');
+
+                    if (
+                        $allowOnHigherTrend
+                        && $data[$index]['obv'] > $data[$index - 1]['obv']
+                        && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+                        // && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
+
+                    )
+                        return 'LONG';
+                    else
+                        return null;
                 }
-
-
-                return 'LONG';
             }
         }
 
-
-
-
-
-
-
-        // if (
-        //     $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0
-
-        //     && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0
-        //     && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0
-        //     && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0
-        //     && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
-        //     // && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
-        //     // && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0
-
-        //     && !self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval)
-        // ) {
-        //     self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG');
-        // }
-        // $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval);
-
-        // if ($confirmedTrade) {
-
-
-        //     $candleBelowMiddleLine = 0;
-        //     $loopIndex = $index;
-        //     while ($loopIndex >= ($index - 10)) {
-        //         if (max($data[$loopIndex]['open'], $data[$loopIndex]['close']) < $data[$loopIndex]['bb_middle']) {
-        //             $candleBelowMiddleLine++;
-        //         }
-        //         $loopIndex--;
-        //     }
-        //     $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-        //     $buyCondition =
-        //         (
-        //             // $data[$index]['rsi6'] < 35
-        //             //  $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-        //             $data[$index]['dif'] > $data[$index - 1]['dif']
-        //             && $data[$index]['per'] > 0
-        //             && $bbAnalysis['price_action']['is_near_lower_band']
-        //             && $data[$index]['close'] > $data[$index]['bb_lower']
-        //             && $data[$index]['open'] < $data[$index]['bb_lower']
-        //             && abs($data[$index]['per']) > abs($data[$index - 1]['per'])
-        //         );
-
-        //     if ($buyCondition) {
-
-        //         self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
-        //         return 'LONG';
-        //     }
-        // }
-
-        // return null;
+        return null;
     }
 
     public static function checkConditionSetShortSR5m($symbol, $data, $index)
@@ -1390,6 +1421,7 @@ class OpeningConditionServiceLive
 
 
     // ######################### MISC Functions #################################
+
     public static function getIndexDiffFromTimestamps($timestamp1, $timestamp2, $interval, $rounded = true)
     {
         if (!($timestamp1 && $timestamp2)) {
@@ -1401,8 +1433,11 @@ class OpeningConditionServiceLive
     }
 
 
-    public static function insertConfirmBasicTradeEntry($symbol, $type, $data, $index, $intention = null)
+    public static function insertConfirmBasicTradeEntry($symbol, $type, $data, $index, $intention = null, $candlesToCheck = 1000)
     {
+
+
+
 
         // BB Calculations for highest point squeez
         $highestPointIndex = self::getTightestSqueezIndex($data, $index);
@@ -1416,7 +1451,8 @@ class OpeningConditionServiceLive
             'intention' => $intention,
             'formula' => 'Live Trades',
             'confirm_candle_timestamp' => $data[$index]['binance_timestamp'],
-            'candles_to_check' => self::$candlesToCheck,
+            'checkpoint_timestamp' => $data[$index]['binance_timestamp'],
+            'candles_to_check' => $candlesToCheck,
             'trade_confirmed' => 0,
             'bolling_last_squeez_value' => $bbDiffHighest,
             'bolling_last_squeezed_timestamp' => $data[$highestPointIndex]['binance_timestamp'],
@@ -1440,8 +1476,6 @@ class OpeningConditionServiceLive
         $lastEntry = $lastEntry->where('trade_confirmed', 0)->orderBy('update_time', 'DESC')->first();
         return $lastEntry ? $lastEntry->ict_id : null;
     }
-
-
     public static function checkConfirmTradeValidity($symbol, $type, $data, $index, $interval, $intention = null)
     {
         $ictId = self::getIctId($symbol, $type, $intention);
@@ -1451,17 +1485,43 @@ class OpeningConditionServiceLive
             return null;
         }
 
+
+
         $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
-        $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->confirm_candle_timestamp, $interval);
-        // if ($indexDiff > $lastEntry->candles_to_check) {
-        //     DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
-        //         'trade_confirmed' => 1,
-        //         'update_time' => Carbon::now()->toDateTimeString(),
-        //     ]);
-        //     return null;
-        // }
+        $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->checkpoint_timestamp, $interval);
+
+        if ($indexDiff > $lastEntry->candles_to_check) {
+            DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+                'trade_confirmed' => 1,
+                'update_time' => Carbon::now()->toDateTimeString(),
+            ]);
+            return null;
+        }
         return $lastEntry;
     }
+
+    public static function updateConfirmTradeCheckpoint($symbol, $type, $data, $index, $intention = null, $candlesToCheck = 1000)
+    {
+        $ictId = self::getIctId($symbol, $type, $intention);
+        if (
+            !$ictId
+        ) {
+            return null;
+        }
+
+        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
+        $newCheckpoint = $lastEntry->checkpoints + 1;
+        DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+            'checkpoints' => ($newCheckpoint),
+            'intention' => ($intention ?? $lastEntry->intention),
+            'checkpoint_timestamp' => $data[$index]['binance_timestamp'],
+            'candles_to_check' => $candlesToCheck,
+            'update_time' => Carbon::now()->toDateTimeString(),
+        ]);
+
+        return $newCheckpoint;
+    }
+
 
 
     public static function confirmOpening($symbol, $type, $data, $index, $newType = null)
@@ -1479,68 +1539,6 @@ class OpeningConditionServiceLive
     }
 
 
-    public static function getTightestSqueezIndex($data, $startIndex)
-    {
-        $minSqueeze = CommonHelpers::getPercentDiff(
-            $data[$startIndex]['bb_lower'],
-            $data[$startIndex]['bb_upper']
-        );
-
-        $tightestIndex = $startIndex;
-        $currentIndex = $startIndex;
-
-        // Step 1: Loop backward until histogram crosses from red to green
-        while ($currentIndex > 0) {
-            $currentSqueeze = CommonHelpers::getPercentDiff(
-                $data[$currentIndex]['bb_lower'],
-                $data[$currentIndex]['bb_upper']
-            );
-
-            if ($currentSqueeze < $minSqueeze) {
-                $minSqueeze = $currentSqueeze;
-                $tightestIndex = $currentIndex;
-            }
-
-            // Histogram crossover from red to green
-            if (
-                $data[$currentIndex]['histogram'] > 0 &&
-                $data[$currentIndex - 1]['histogram'] < 0
-            ) {
-                break;
-            }
-
-            $currentIndex--;
-        }
-
-        // Step 2: After crossover, check previous 3-entry blocks for tighter squeeze
-        while ($currentIndex > 2) {
-            $foundSmaller = false;
-
-            for ($i = 1; $i <= 3; $i++) {
-                $checkIndex = $currentIndex - $i;
-                if ($checkIndex < 0) break;
-
-                $squeeze = CommonHelpers::getPercentDiff(
-                    $data[$checkIndex]['bb_lower'],
-                    $data[$checkIndex]['bb_upper']
-                );
-
-                if ($squeeze < $minSqueeze) {
-                    $minSqueeze = $squeeze;
-                    $tightestIndex = $checkIndex;
-                    $currentIndex = $checkIndex; // Move back to this point
-                    $foundSmaller = true;
-                }
-            }
-
-            // If no tighter squeeze found in last 3, break
-            if (!$foundSmaller) {
-                break;
-            }
-        }
-
-        return $tightestIndex;
-    }
 
     public static function checkTrendOnHigherCandles($symbol, $position, $data, $index, $higherInterval = '1h')
     {
@@ -1622,5 +1620,74 @@ class OpeningConditionServiceLive
 
             return !(($crossOverCondition && $bbMiddleCondition));
         }
+    }
+
+
+
+
+
+
+
+    public static function getTightestSqueezIndex($data, $startIndex)
+    {
+        $minSqueeze = CommonHelpers::getPercentDiff(
+            $data[$startIndex]['bb_lower'],
+            $data[$startIndex]['bb_upper']
+        );
+
+        $tightestIndex = $startIndex;
+        $currentIndex = $startIndex;
+
+        // Step 1: Loop backward until histogram crosses from red to green
+        while ($currentIndex > 0) {
+            $currentSqueeze = CommonHelpers::getPercentDiff(
+                $data[$currentIndex]['bb_lower'],
+                $data[$currentIndex]['bb_upper']
+            );
+
+            if ($currentSqueeze < $minSqueeze) {
+                $minSqueeze = $currentSqueeze;
+                $tightestIndex = $currentIndex;
+            }
+
+            // Histogram crossover from red to green
+            if (
+                $data[$currentIndex]['histogram'] > 0 &&
+                $data[$currentIndex - 1]['histogram'] < 0
+            ) {
+                break;
+            }
+
+            $currentIndex--;
+        }
+
+        // Step 2: After crossover, check previous 3-entry blocks for tighter squeeze
+        while ($currentIndex > 2) {
+            $foundSmaller = false;
+
+            for ($i = 1; $i <= 3; $i++) {
+                $checkIndex = $currentIndex - $i;
+                if ($checkIndex < 0) break;
+
+                $squeeze = CommonHelpers::getPercentDiff(
+                    $data[$checkIndex]['bb_lower'],
+                    $data[$checkIndex]['bb_upper']
+                );
+
+                if ($squeeze < $minSqueeze) {
+                    $minSqueeze = $squeeze;
+                    $tightestIndex = $checkIndex;
+                    $currentIndex = $checkIndex; // Move back to this point
+                    $foundSmaller = true;
+                }
+            }
+
+            // If no tighter squeeze found in last 3, break
+            if (!$foundSmaller) {
+                break;
+            }
+        }
+
+        return $tightestIndex;
     }
 }
