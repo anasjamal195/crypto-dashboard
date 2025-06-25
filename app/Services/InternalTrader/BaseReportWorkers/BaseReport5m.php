@@ -93,7 +93,7 @@ class BaseReport5m
 
     public static $activeExchange = 'binance';
 
-      public static $dynamicTP = 0;
+    public static $dynamicTP = 0;
     public static $dynamicSL = 0;
 
     public static $dynamicTPSLgap = 0.2;
@@ -392,7 +392,7 @@ class BaseReport5m
         $extremePrice = 0;
 
 
-       
+
         $data = array_map(function ($candle) {
             $candle['timestamp'] = $candle['timestamp'] / 1000;
             $date = new \DateTime("@{$candle['timestamp']}");
@@ -506,7 +506,7 @@ class BaseReport5m
                     // Placeholder object for testing
                     $openingIndex = $index;
 
-                    
+
                     if ($tradeType === 'LONG') {
                         self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
                         self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
@@ -858,7 +858,7 @@ class BaseReport5m
         return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
     }
 
-   public static function handleClosingConditions($symbol, $data, $index, $tradeType, $openingIndex, $open_price)
+    public static function handleClosingConditions($symbol, $data, $index, $tradeType, $openingIndex, $open_price)
     {
         $candle = $data[$index];
         $closingPrice = 0;
@@ -1138,13 +1138,15 @@ class BaseReport5m
     {
 
 
-        $entry = DB::table('confirmed_trades_safe_mode')->where('coin_name', $symbol)->where('type', $type)->orderBy('update_time', 'DESC')->update(
-            [
-                'trade_confirmed' => 1,
-                'type' => $newType,
-                'openingTimestamp' => $newType != 'TBD' ? $data[$index]['binance_timestamp'] : null,
-            ]
-        );
+        // $entry = DB::table('confirmed_trades_safe_mode')->where('coin_name', $symbol)->where('type', $type)->orderBy('update_time', 'DESC')->update(
+        //     [
+        //         'trade_confirmed' => 1,
+        //         'type' => $newType,
+        //         'openingTimestamp' => $newType != 'TBD' ? $data[$index]['binance_timestamp'] : null,
+        //     ]
+        // );
+
+        DB::table('confirmed_trades_safe_mode')->where('coin_name', $symbol)->where('type', $type)->orderBy('update_time', 'DESC')->delete();
         return true;
     }
 
@@ -1687,7 +1689,7 @@ class BaseReport5m
                 if ($currentAccuracy != -1) {
                     if ($currentAccuracy < 80) {
                         return null;
-                    } 
+                    }
                 }
             }
 
