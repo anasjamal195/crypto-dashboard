@@ -605,21 +605,23 @@ class BaseReport5m
         if (self::checkConditionSetLongMACD($symbol, $data, $index) === 'LONG') {
             $tagName = 'MACD';
             return 'LONG';
-        } else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
-            $tagName = 'SR';
-            return 'LONG';
-        }
+        } 
+        
+        // else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
+        //     $tagName = 'SR';
+        //     return 'LONG';
+        // }
 
 
 
-        // SHORT Entry
-        if (self::checkConditionSetShortMACD($symbol, $data, $index) === 'SHORT') {
-            $tagName = 'MACD';
-            return 'SHORT';
-        } else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
-            $tagName = 'SR';
-            return 'SHORT';
-        }
+        // // SHORT Entry
+        // if (self::checkConditionSetShortMACD($symbol, $data, $index) === 'SHORT') {
+        //     $tagName = 'MACD';
+        //     return 'SHORT';
+        // } else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
+        //     $tagName = 'SR';
+        //     return 'SHORT';
+        // }
 
         return null;
     }
