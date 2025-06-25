@@ -292,6 +292,28 @@ class CommonHelpers
         // }
     }
 
+
+
+    public static function getSMAAtIndex(array $data, int $index, int $period, string $key = 'volume'): ?float
+    {
+        if ($index + 1 < $period) {
+            return null; // Not enough data before this index
+        }
+
+        $start = max(0, $index - $period + 1);
+        $slice = array_slice($data, $start, $period);
+
+        $sum = 0;
+        foreach ($slice as $item) {
+            if (!isset($item[$key])) {
+                return null; // Invalid data
+            }
+            $sum += $item[$key];
+        }
+
+        return $sum / $period;
+    }
+
     /**
      * Calculate the median of an array.
      *
@@ -2749,7 +2771,7 @@ class CommonHelpers
 
 
     // Accuracy Calculation Live
-    
+
     public static function getAccuracy($position, $formula = 'Base Report', $tagName = null)
     {
         // Generate a unique cache key
@@ -2795,7 +2817,7 @@ class CommonHelpers
         });
     }
 
-     public static function checkCandleClosing($data, $allowedTimeSec)
+    public static function checkCandleClosing($data, $allowedTimeSec)
     {
         $timePastCurrentCandle = (now()->timestamp - ($data[count($data) - 1]['binance_timestamp'] / 1000));
         $isCandleClosing =  $timePastCurrentCandle <= $allowedTimeSec;

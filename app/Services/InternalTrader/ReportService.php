@@ -24,8 +24,8 @@ class ReportService
     public static $supportResistanceCandleSpan = 12;
 
     public static $interval = '5m';
-    public static $targetProfit = 0.5;
-    public static $stopLoss = 1;
+    public static $targetProfit = 1;
+    public static $stopLoss = 0.8;
     public static $stopLossWaitingDuration = 0;
     public static $longEnabled = true;
     public static $shortEnabled = true;
@@ -89,6 +89,13 @@ class ReportService
     public static $baseReportFormulaMACD;
     public static $baseReportFormulaSR;
 
+    public static $dynamicTP = 0;
+    public static $dynamicSL = 0;
+
+    public static $dynamicTPSLgap = 0.2;
+
+    public static $initialTpPercent = 0.5;
+    public static $initialSlPercent = 1;
 
 
     public static function generateCoinReport(
@@ -185,7 +192,7 @@ class ReportService
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                // dd($e);
+                dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
@@ -543,6 +550,15 @@ class ReportService
                     $extremePrice = $open_price;
                     // Placeholder object for testing
                     $openingIndex = $index;
+
+                    if ($tradeType === 'LONG') {
+                        self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
+                        self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
+                        // dd(self::$dynamicTP, self::$dynamicSL, $data[$openingIndex], $symbol);
+                    } else {
+                        self::$dynamicTP = $data[$index]['close'] * (1 - self::$initialTpPercent / 100);
+                        self::$dynamicSL = $data[$index]['close'] * (1 + self::$initialSlPercent / 100);
+                    }
                 }
             } else {
                 $closingPrice =  self::handleClosingConditions($symbol, $data, $index,  $tradeType, $openingIndex, $open_price);
@@ -601,6 +617,10 @@ class ReportService
                     $tradeType = null;
                     $waitingCandles = 4;
                     $openingIndex = 0;
+
+                    self::$dynamicTP = 0;
+                    self::$dynamicSL = 0;
+                    self::$candlesToCheck = 1000;
                 }
             }
         }
@@ -897,21 +917,42 @@ class ReportService
         $candle = $data[$index];
         $closingPrice = 0;
         $waitingCandlesBeforeStopLoss = intval(self::$stopLossWaitingDuration / CommonHelpers::$binanceIntervals[self::$interval]);
-        if ($tradeType == 'SHORT') {
-            // Calculate Closing in profit 
-            if ($candle['low'] <= $open_price * (1 - self::$targetProfit / 100)) {
-                $closingPrice = $candle['low'];
-            } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price < $data[$index]['close']) {
-                $closingPrice = $data[$index]['close'];
-            }
-        } else if ($tradeType == 'LONG') {
 
-            // Calculate Closing in profit 
-            if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
-                $closingPrice = $candle['high'];
-            } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
-                $closingPrice = $data[$index]['close'];
+
+
+
+        // if ($tradeType == 'SHORT') {
+        //     // Calculate Closing in profit 
+        //     if ($candle['low'] <= $open_price * (1 - self::$targetProfit / 100)) {
+        //         $closingPrice = $candle['low'];
+        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price < $data[$index]['close']) {
+        //         $closingPrice = $data[$index]['close'];
+        //     }
+        // } else if ($tradeType == 'LONG') {
+
+        //     // Calculate Closing in profit 
+        //     if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
+        //         $closingPrice = $candle['high'];
+        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
+        //         $closingPrice = $data[$index]['close'];
+        //     }
+        // }
+
+
+
+        if ($tradeType === 'LONG') {
+
+            // If TP is triggered
+            if ($data[$index]['close'] >= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['close'] * (1 + self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['close'] * (1 - (self::$dynamicTPSLgap / 2) / 100);
             }
+            // If Sl is trigggerd
+            else if ($data[$index]['close'] < self::$dynamicSL) {
+                $closingPrice = self::$dynamicSL;
+            }
+        } else {
+            $currentProfit = (($data[$openingIndex]['close'] - $data[$index]['close']) / $data[$openingIndex]['close']) * 100;
         }
 
 
@@ -1050,8 +1091,9 @@ class ReportService
     }
 
 
-    public static function insertConfirmBasicTradeEntry($symbol, $type, $data, $index, $intention = null)
+    public static function insertConfirmBasicTradeEntry($symbol, $type, $data, $index, $intention = null, $candlesToCheck = 1000)
     {
+
 
 
 
@@ -1067,7 +1109,8 @@ class ReportService
             'intention' => $intention,
             'formula' => self::$formula,
             'confirm_candle_timestamp' => $data[$index]['binance_timestamp'],
-            'candles_to_check' => self::$candlesToCheck,
+            'checkpoint_timestamp' => $data[$index]['binance_timestamp'],
+            'candles_to_check' => $candlesToCheck,
             'trade_confirmed' => 0,
             'bolling_last_squeez_value' => $bbDiffHighest,
             'bolling_last_squeezed_timestamp' => $data[$highestPointIndex]['binance_timestamp'],
@@ -1100,18 +1143,42 @@ class ReportService
             return null;
         }
 
+
+
         $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
-        $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->confirm_candle_timestamp, self::$interval);
-        // if ($indexDiff > $lastEntry->candles_to_check) {
-        //     DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
-        //         'trade_confirmed' => 1,
-        //         'update_time' => Carbon::now()->toDateTimeString(),
-        //     ]);
-        //     return null;
-        // }
+        $indexDiff = self::getIndexDiffFromTimestamps($data[$index]['binance_timestamp'], $lastEntry->checkpoint_timestamp, self::$interval);
+
+        if ($indexDiff > $lastEntry->candles_to_check) {
+            DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+                'trade_confirmed' => 1,
+                'update_time' => Carbon::now()->toDateTimeString(),
+            ]);
+            return null;
+        }
         return $lastEntry;
     }
 
+    public static function updateConfirmTradeCheckpoint($symbol, $type, $data, $index, $intention = null, $candlesToCheck = 1000)
+    {
+        $ictId = self::getIctId($symbol, $type, $intention);
+        if (
+            !$ictId
+        ) {
+            return null;
+        }
+
+        $lastEntry = DB::table('confirmed_trades')->where('ict_id', $ictId)->first();
+        $newCheckpoint = $lastEntry->checkpoints + 1;
+        DB::table('confirmed_trades')->where('ict_id', $ictId)->update([
+            'checkpoints' => ($newCheckpoint),
+            'intention' => ($intention ?? $lastEntry->intention),
+            'checkpoint_timestamp' => $data[$index]['binance_timestamp'],
+            'candles_to_check' => $candlesToCheck,
+            'update_time' => Carbon::now()->toDateTimeString(),
+        ]);
+
+        return $newCheckpoint;
+    }
 
 
 
@@ -1647,116 +1714,246 @@ class ReportService
     {
         if (self::$longEnabled) {
 
-            if ($data[$index]['rsi6'] < 30 && !self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index)) {
-                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG');
-            }
+            // $srAnalyzer = new SupportResistanceAnalyzer($data, $index);
+            // $srAnalysis = $srAnalyzer->analyze();
 
-            if (self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index)) {
+            // $nearSupport = false;
+            // $supportStrength = 0;
+            // $supportDistance = 999;
+            // $current = $data[$index];
+            // if ($srAnalysis && isset($srAnalysis['support_resistance_levels'])) {
+            //     foreach ($srAnalysis['support_resistance_levels'] as $level) {
+            //         if ($level['type'] === 'support') {
+            //             $distance = abs($current['close'] - $level['avg_price']) / $current['close'];
+            //             $supportDistance = min($supportDistance, $distance);
 
-                $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-                $buyCondition = $data[$index]['close'] > $data[$index]['bb_lower']
-                    && $data[$index]['open'] < $data[$index]['bb_lower']
-                    && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
-                    && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
-                    && $bbAnalysis['price_action']['is_near_lower_band']
-                    && !$bbAnalysis['bb_squeeze']
-                    && $data[$index]['histogram'] > $data[$index - 1]['histogram'];
-
-                if ($buyCondition) {
-                    self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
-
-                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
-
-                    if (!$allowOnHigherTrend) {
-                        return null;
-                    }
-
-
-                    return 'LONG';
-                }
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            // if (!self::$isBaseReport) {
-            //     $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONGMACD, $data[$index]['binance_timestamp'], 6);
-
-            //     if ($currentAccuracy != -1) {
-            //         if ($currentAccuracy < 75) {
-
-            //             return null;
+            //             // Check if price is near support (within 0.5%)
+            //             if ($distance <= 0.003) {
+            //                 $nearSupport = true;
+            //                 $supportStrength = $level['confidence'];
+            //             }
             //         }
             //     }
             // }
-
             // if (
-            //     $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0
 
-            //     && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0
+            //     // $data[$index]['rsi6'] < 30 
+            //     $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0
             //     && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0
             //     && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0
             //     && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
-            //     // && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
-            //     // && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0
+            //     && $data[$index - 4]['histogram'] < $data[$index - 5]['histogram'] && $data[$index - 4]['histogram'] < 0
+            //     && $data[$index - 5]['histogram'] < $data[$index - 6]['histogram'] && $data[$index - 5]['histogram'] < 0
+            //     && $nearSupport
+            //     && $data[$index]['rsi6'] < 30
 
             //     && !self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index)
             // ) {
             //     self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG');
             // }
 
+
+            // $bbWidth = $bbAnalysis['bb_width'];
+
+            // $averageBBwidth = 0;
+
+            // $lookback = 5;
+
+            // for ($i = $index; $i >= ($index - $lookback); $i--) {
+            //     $bbAnalysisPrev = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+
+            //     $averageBBwidth += $bbAnalysisPrev['bb_width'];
+            // }
+
+            // $averageBBwidth = $averageBBwidth / $lookback;
+
+
+
+            // $watchConditions = (
+            //     $data[$index]['close'] > $data[$index]['bb_middle']
+            //     && $data[$index]['rsi6'] > 45
+            //     // && $bbWidth > $averageBBwidth
+            //     && $bbAnalysis['is_expanding']
+            // );
+
+            // // dd($bbWidth,$averageBBwidth);
+
+            // // error_log($bbWidth. ' ' . $averageBBwidth);
+
             // $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+            // if (
 
-            // if ($confirmedTrade) {
+            //     $watchConditions
+
+            //     && !$confirmedTrade
+            // ) {
+
+            //     // dd("Watch Condiions satisfied");
+            //     self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG');
+            // }
 
 
-            //     $candleBelowMiddleLine = 0;
-            //     $loopIndex = $index;
-            //     while ($loopIndex >= ($index - 10)) {
-            //         if (max($data[$loopIndex]['open'], $data[$loopIndex]['close']) < $data[$loopIndex]['bb_middle']) {
-            //             $candleBelowMiddleLine++;
-            //         }
-            //         $loopIndex--;
-            //     }
-            //     $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-            //     $buyCondition =
-            //         (
-            //             // $data[$index]['rsi6'] < 35
-            //             //  $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-            //             $data[$index]['dif'] > $data[$index - 1]['dif']
-            //             && $data[$index]['per'] > 0
-            //             && $bbAnalysis['price_action']['is_near_lower_band']
-            //             && $data[$index]['close'] > $data[$index]['bb_lower']
-            //             && $data[$index]['open'] < $data[$index]['bb_lower']
-            //             && abs($data[$index]['per']) > abs($data[$index - 1]['per'])
-            //         );
+
+
+            // Checkpoint Zero
+
+            // $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+            // if ($confirmedTrade && $confirmedTrade->checkpoints === 0) {
+
+            //     // $buyCondition =
+
+            //     //     $data[$index]['close'] > $data[$index]['bb_lower']
+            //     //     && $data[$index]['open'] < $data[$index]['bb_lower']
+
+
+            //     //     && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
+
+            //     //     && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
+            //     //     // && $data[$index - 1]['rsi6'] > 25
+            //     //     && $data[$index]['volume'] > ($data[$index]['volumeMA5'])
+
+            //     //     // && $data[$index]['stoch_k'] > $data[$index - 1]['stoch_k']
+            //     //     && $bbAnalysis['price_action']['is_near_lower_band']
+            //     //     // && !$bbAnalysis['bb_squeeze']
+
+
+
+            //     //     && ($data[$index]['obv'] - $data[$index - 1]['obv']) > ($data[$index - 1]['obv'] - $data[$index - 2]['obv'])
+            //     //     // && $data[$index]['histogram'] > $data[$index - 1]['histogram']
+            //     // ;
+
+
+            //     $buyCondition = (
+
+            //         $data[$index]['low'] <= $data[$index]['bb_lower']
+            //         && $data[$index]['rsi6'] <= 30
+            //         && $data[$index - 1]['close'] <= $data[$index]['bb_lower']
+            //         && (
+            //             // $data[$index]['low'] > $data[$index - 1]['low']
+            //             $data[$index]['per'] > 0
+            //         )
+
+            //         // && !$bbAnalysis['bb_squeeze']
+
+            //     );
 
             //     if ($buyCondition) {
-
-            //         self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
-
-            //         // dd($data[$index]);
-            //         // if ($candleBelowMiddleLine >= 5 && $bbAnalysis['bb_middle_percent_change'] < 0) {
-            //         //     return 'SHORT';
+            //         // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index);
+            //         // if (!$allowOnHigherTrend) {
+            //         //     return null;
             //         // }
+
+            //         self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index);
+            //         // return 'LONG';
+            //     }
+            // }
+
+
+
+            // $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+            // if ($confirmedTrade && $confirmedTrade->checkpoints === 1) {
+
+
+
+            //     if ($data[$index]['rsi6'] > 30) {
+            //         self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
             //         return 'LONG';
             //     }
             // }
+
+
+
+
+
+
+
+
+
+
+            // ======================================= MULTI STEP Setup for LONG entry =======================================
+
+
+            $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
+
+            // =============== Step 1 - Volume Confirmation =============== 
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+
+
+
+
+            $stepOne = (
+                $data[$index]['volume'] >= (1.2 * CommonHelpers::getSMAAtIndex($data, $index, 20, 'volume'))
+            );
+            if (!$confirmedTrade && $stepOne) {
+                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG', 10);
+            }
+
+
+
+
+            // =============== Step 2 - Bullish Momentum =============== 
+
+            $stepTwo = (
+
+                $data[$index]['close'] >= $data[$index]['bb_middle']
+                && $data[$index]['rsi6'] > 45
+                && $bbAnalysis['is_expanding']
+
+            );
+
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+            if ($confirmedTrade && $confirmedTrade->checkpoints == 0 && $stepTwo) {
+                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', 10);
+            }
+
+
+
+            // =============== Step 3 - Setup Formation =============== 
+
+            $stepThree = (
+                $bbAnalysis['price_action']['is_near_lower_band']
+                && $data[$index]['rsi6'] >= 25
+                && $data[$index]['rsi6'] <= 45
+                && $data[$index]['volume'] >= $data[$index]['volumeMA5']
+
+            );
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+            if ($confirmedTrade && $confirmedTrade->checkpoints == 1 && $stepThree) {
+                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', 20);
+            }
+
+
+            // =============== Step 4 - Bullish Candle Check =============== 
+
+            $stepFour = (
+                ($bbAnalysis['price_action']['is_near_lower_band'] || $bbAnalysis['price_action']['crossed_lower_band'])
+                && $data[$index]['rsi6'] <= 25
+                && $data[$index]['volume'] >= (1.3 * $data[$index]['volumeMA10'])
+
+            );
+
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+            if ($confirmedTrade && $confirmedTrade->checkpoints == 2 && $stepFour) {
+                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', 10);
+            }
+
+
+            // =============== Final - Entry Execution =============== 
+
+
+            $finalStep = (
+                $data[$index]['per'] > 0
+                && $bbAnalysis['bb_lower_percent_change'] > 0
+            );
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+            if ($confirmedTrade && $confirmedTrade->checkpoints == 3 && $finalStep) {
+                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', 10);
+                self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+                return 'LONG';
+            }
         }
         return null;
     }
-
 
 
 

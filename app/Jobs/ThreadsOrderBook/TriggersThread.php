@@ -51,7 +51,7 @@ class TriggersThread implements ShouldQueue
     public $tpTriggerPoint = 0.5;
     public $profitIncrementPercentage = 0.2;
     public $profitIncrementPercentageNext = 0.1;
-    public $stopLossMarginPercentage = 0.1;
+    public static $stopLossMarginPercentage = 0.1;
     public $formula = 'MACD & SR';
 
     // Confirmed Trades Entries
