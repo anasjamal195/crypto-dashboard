@@ -45,36 +45,36 @@ class TestCron extends Command
             //     'timestamp' => null,
             //     'includeFiltered' => true,
             // ],
-            // [
-            //     'formula' => 'Multistep - Bullish',
-            //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => true,
-            // ],
-            // [
-            //     'formula' => 'Multistep Bearish',
-            //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => true,
-            // ],
-            // [
-            //     'formula' => 'Multistep - Slight Bearish',
-            //     'timestamp' => 1745607600000,
-            //     'includeFiltered' => true,
-            // ],
-            // [
-            //     'formula' => 'Multistep - Slight Bullish',
-            //     'timestamp' => 1744830000000,
-            //     'includeFiltered' => true,
-            // ],
-            // [
-            //     'formula' => 'Multistep - Flat',
-            //     'timestamp' => 1732561200000,
-            //     'includeFiltered' => true,
-            // ],
-            // [
-            //     'formula' => 'Multistep - Mixed',
-            //     'timestamp' => 1744225200000,
-            //     'includeFiltered' => true,
-            // ],
+            [
+                'formula' => 'Multistep - Bullish',
+                'timestamp' => 1746126000000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep Bearish',
+                'timestamp' => 1746126000000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep - Slight Bearish',
+                'timestamp' => 1745607600000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep - Slight Bullish',
+                'timestamp' => 1744830000000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep - Flat',
+                'timestamp' => 1732561200000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Multistep - Mixed',
+                'timestamp' => 1744225200000,
+                'includeFiltered' => true,
+            ],
 
         ];
 
