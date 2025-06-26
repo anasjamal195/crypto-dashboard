@@ -955,6 +955,10 @@ class BinanceController extends Controller
 
 
 
+        $startTime = '2025-06-26 07:50:46';
+
+
+
         $userId = auth()->user() ? auth()->user()->id : 2;
 
         $confirmedTrades = DB::table('confirmed_trades')
@@ -994,7 +998,7 @@ class BinanceController extends Controller
                     'updated_at',
                 ]
             )
-            ->where('trade_acc',$userId)->where('trade_status', 'open')->where('type', 'open')->latest()->get();
+            ->where('trade_acc', $userId)->where('trade_status', 'open')->where('created_at','>=',$startTime)->where('type', 'open')->latest()->get();
         $closedTrades = DB::table('live_trades_future_results')
             ->select(
                 [
@@ -1018,7 +1022,7 @@ class BinanceController extends Controller
                     'created_at',
                     'updated_at',
                 ]
-            )->where('trade_acc', $userId)->where('trade_status', 'close')->where('type', 'open')->latest()->get();
+            )->where('trade_acc', $userId)->where('trade_status', 'close')->where('created_at','>=',$startTime)->where('type', 'open')->latest()->get();
 
         $tradeDetails = [
             'pendingOpening' => $confirmedTrades,
