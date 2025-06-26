@@ -1082,7 +1082,7 @@ class ReportService
 
 
 
-    
+
 
     public static function getIndexDiffFromTimestamps($timestamp1, $timestamp2, $interval, $rounded = true)
     {
@@ -1725,7 +1725,7 @@ class ReportService
                 if ($currentAccuracy != -1) {
                     if ($currentAccuracy < 80) {
                         return null;
-                    } 
+                    }
                 }
             }
 
@@ -1786,29 +1786,24 @@ class ReportService
                     ),
                     'candlesToCheck' => 20
                 ],
-
-                // Final Step - Entry Execution
                 [
                     'condition' => (
 
                         $data[$index]['per'] > 0
                         && $data[$index]['low'] < $data[$index]['bb_lower']
 
-                        // && $data[$index]['close'] >  $supportResistance['support']
-                        // && $bbAnalysis['bb_lower_percent_change'] > 0
-                        // && $bbAnalysis['bb_middle_percent_change'] > 0
-
-
                     ),
                     'candlesToCheck' => 10,
                 ],
-                // [
-                //     'condition' => (
-                //         $data[$index]['volume'] >= (2 * $data[$index]['volumeMA5'])
 
-                //     ),
-                //     'candlesToCheck' => 10,
-                // ]
+                [
+                    'condition' => (
+                        $bbAnalysis['bb_lower_percent_change'] > 0
+                        && $data[$index]['histogram'] > 0
+                        && $data[$index]['histogram'] > $data[$index - 1]['histogram']
+                    ),
+                    'candlesToCheck' => 10,
+                ],
             ];
 
             // Process steps sequentially
