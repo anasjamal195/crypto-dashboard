@@ -11,7 +11,7 @@
                             <div class="row">
                                 <div class="col-sm-6 text-left">
                                     <h2 class="card-title text-white">eGeniusCare Live Crypto Trading</h2>
-                                    <p class="card-category text-white-50">Real-time trading overview</p>
+                                    <p class="card-category text-white-50">Real-time trading overview (5m-candlesticks)</p>
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="btn-group btn-group-toggle float-right" data-toggle="buttons">
@@ -109,9 +109,9 @@
                                             <th>Exchange</th>
                                             <th>Coin</th>
                                             <th>Long/Short</th>
-                                            <th>Intention</th>
+                                            <th>Our Intention</th>
                                             <th>Candles to Check</th>
-                                            <th class="text-center">Probability</th>
+                                            <th class="text-center">Opening Probability</th>
                                             <th>Last Updated (UTC+5)</th>
                                         </tr>
                                     </thead>
