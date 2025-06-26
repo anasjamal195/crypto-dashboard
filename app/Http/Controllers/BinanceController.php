@@ -934,28 +934,109 @@ class BinanceController extends Controller
     }
     public function getCoinReportConfirmedTrades($formula, Request $request)
     {
+        // $confirmedTrades = DB::table('confirmed_trades')
+        //     ->select([
+        //         'confirmed_trades.exchange',
+        //         'confirmed_trades.coin_name',
+        //         'confirmed_trades.type',
+        //         'confirmed_trades.intention',
+        //         'confirmed_trades.confirm_candle_timestamp',
+        //         'coin_reports.id as coin_report_id',
+        //         'coin_reports.openingTimestamp'
+        //     ])
+        //     ->where('confirmed_trades.formula', $formula)
+        //     ->leftJoin('coin_reports', function ($join) {
+        //         $join->on('confirmed_trades.formula', '=', 'coin_reports.formula')
+        //             ->on('confirmed_trades.openingTimestamp', '=', 'coin_reports.openingTimestamp')
+        //             ->on('confirmed_trades.coin_name', '=', 'coin_reports.symbol')
+        //             ->on('confirmed_trades.type', '=', 'coin_reports.position');
+        //     })
+        //     ->get();
+
+
+
+        $userId = auth()->user() ? auth()->user()->id : 2;
+
         $confirmedTrades = DB::table('confirmed_trades')
-            ->select([
-                'confirmed_trades.exchange',
-                'confirmed_trades.coin_name',
-                'confirmed_trades.type',
-                'confirmed_trades.intention',
-                'confirmed_trades.confirm_candle_timestamp',
-                'coin_reports.id as coin_report_id',
-                'coin_reports.openingTimestamp'
-            ])
-            ->where('confirmed_trades.formula', $formula)
-            ->leftJoin('coin_reports', function ($join) {
-                $join->on('confirmed_trades.formula', '=', 'coin_reports.formula')
-                    ->on('confirmed_trades.openingTimestamp', '=', 'coin_reports.openingTimestamp')
-                    ->on('confirmed_trades.coin_name', '=', 'coin_reports.symbol')
-                    ->on('confirmed_trades.type', '=', 'coin_reports.position');
-            })
-            ->get();
+            ->select(
+                [
+                    'exchange',
+                    'coin_name',
+                    'type',
+                    'intention',
+                    'candles_to_check',
+                    'checkpoints',
+                    'checkpoint_timestamp',
+                ]
+            )
+            ->where('trade_confirmed', 0)->orderBy('checkpoints', 'DESC')->orderBy('checkpoint_timestamp', 'DESC')->get();
+        $openedTrades = DB::table('live_trades_future_results')
+            ->select(
+                [
+                    'exchange',
+                    'orderId',
+                    'symbol',
+                    'side',
+                    'position',
+                    'type',
+                    'amount',
+                    'trade_status',
+                    'qty',
+                    'leverage',
+                    'price',
+                    'currentPrice',
+                    'currentProfit',
+                    'targetProfit',
+                    'realizedPnl',
+                    'formula',
+                    'trade_acc',
+                    'created_at',
+                    'updated_at',
+                ]
+            )
+            ->where('trade_acc',$userId)->where('trade_status', 'open')->where('type', 'open')->latest()->get();
+        $closedTrades = DB::table('live_trades_future_results')
+            ->select(
+                [
+                    'exchange',
+                    'orderId',
+                    'symbol',
+                    'side',
+                    'position',
+                    'type',
+                    'amount',
+                    'trade_status',
+                    'qty',
+                    'leverage',
+                    'price',
+                    'currentPrice',
+                    'currentProfit',
+                    'targetProfit',
+                    'realizedPnl',
+                    'formula',
+                    'trade_acc',
+                    'created_at',
+                    'updated_at',
+                ]
+            )->where('trade_acc', $userId)->where('trade_status', 'close')->where('type', 'open')->latest()->get();
+
+        $tradeDetails = [
+            'pendingOpening' => $confirmedTrades,
+            'openedTrades' => $openedTrades,
+            'closedTrades' => $closedTrades,
+        ];
+
+        $tradeDetails = json_decode(json_encode($tradeDetails), true);
+
+
+
+
+
+
 
 
         return view('CoinReports.confirmed-trades', [
-            'confirmedTrades' => $confirmedTrades,
+            'tradeDetails' => $tradeDetails,
             'pageSlug' => 'ConfirmedTrades',
         ]);
     }

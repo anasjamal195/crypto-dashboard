@@ -134,7 +134,7 @@
                             </li>
                             {{-- FUTURE Child Tab --}}
                             <li
-                                class="{{ $pageSlug == 'CoinReportFUTURE' || $pageSlug == 'MarketTrendsFUTURE' || $pageSlug == 'averageCandlesticksFUTURE' ? 'active' : '' }}">
+                                class="{{ $pageSlug == 'CoinReportFUTURE' || $pageSlug == 'MarketTrendsFUTURE' || $pageSlug == 'averageCandlesticksFUTURE'  || $pageSlug == 'ConfirmedTrades' ? 'active' : '' }}">
                                 <a data-toggle="collapse" href="#futureMenu">
                                     <i class="tim-icons icon-spaceship"></i>
                                     <p>{{ __('FUTURE') }}
@@ -168,13 +168,8 @@
                                                 <p>{{ __('Live Trades') }}</p>
                                             </a>
                                         </li>
+                                      
                                         <li @if ($pageSlug == 'ConfirmedTrades') class="active" @endif>
-                                            <a href="{{ route('live.trades.result', 'FUTURE') . '?interval=5m' }}">
-                                                <i class="tim-icons icon-bell-55"></i>
-                                                <p>{{ __('Live Trades') }}</p>
-                                            </a>
-                                        </li>
-                                        <li @if ($pageSlug == 'coinsFUTURE') class="active" @endif>
                                             <a href="{{ route('coinReport.confirmed_trades', 'Live Trades') }}">
                                                 <i class="tim-icons icon-bell-55"></i>
                                                 <p>{{ __('Confirmed Trades') }}</p>

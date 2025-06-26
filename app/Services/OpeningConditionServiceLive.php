@@ -1525,14 +1525,14 @@ class OpeningConditionServiceLive
     public static function confirmOpening($symbol, $type, $data, $index, $newType = null)
     {
 
-
-        $entry = DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $type)->orderBy('update_time', 'DESC')->update(
-            [
-                'trade_confirmed' => 1,
-                'type' => $newType,
-                'openingTimestamp' => $newType != 'TBD' ? $data[$index]['binance_timestamp'] : null,
-            ]
-        );
+        DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $type)->orderBy('update_time', 'DESC')->delete();
+        // $entry = DB::table('confirmed_trades')->where('coin_name', $symbol)->where('type', $type)->orderBy('update_time', 'DESC')->update(
+        //     [
+        //         'trade_confirmed' => 1,
+        //         'type' => $newType,
+        //         'openingTimestamp' => $newType != 'TBD' ? $data[$index]['binance_timestamp'] : null,
+        //     ]
+        // );
         return true;
     }
 
@@ -1540,8 +1540,6 @@ class OpeningConditionServiceLive
 
     public static function checkTrendOnHigherCandles($symbol, $position, $data, $index, $higherInterval = '1h')
     {
-
-
 
         $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
         $indexHigher = count($dataHigher) - 2;
