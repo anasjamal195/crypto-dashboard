@@ -112,7 +112,7 @@
                                             <th>Intention</th>
                                             <th>Candles to Check</th>
                                             <th class="text-center">Probability</th>
-                                            <th>Last Updated</th>
+                                            <th>Last Updated (UTC+5)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -253,8 +253,8 @@
                                             <th>Exit Price</th>
                                             <th>Unrealized PnL</th>
                                             <th>Duration</th>
-                                            <th>Opened</th>
-                                            <th>Closed</th>
+                                            <th>Opened (UTC+5)</th>
+                                            <th>Closed (UTC+5)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -300,46 +300,51 @@
                                     </tbody>
                                 </table>
                             </div>
-                            
+
                             <!-- Trade Statistics -->
-                            @if(count($tradeDetails['closedTrades']) > 0)
+                            @if (count($tradeDetails['closedTrades']) > 0)
                                 @php
                                     $longTrades = collect($tradeDetails['closedTrades'])->where('position', 'LONG');
                                     $shortTrades = collect($tradeDetails['closedTrades'])->where('position', 'SHORT');
-                                    
+
                                     // LONG Statistics
                                     $longCount = $longTrades->count();
                                     $longProfitable = $longTrades->where('currentProfit', '>', 0)->count();
                                     $longLosses = $longTrades->where('currentProfit', '<', 0)->count();
                                     $longTotalProfit = $longTrades->sum('currentProfit');
                                     $longAvgProfit = $longCount > 0 ? $longTotalProfit / $longCount : 0;
-                                    
+
                                     // SHORT Statistics
                                     $shortCount = $shortTrades->count();
                                     $shortProfitable = $shortTrades->where('currentProfit', '>', 0)->count();
                                     $shortLosses = $shortTrades->where('currentProfit', '<', 0)->count();
                                     $shortTotalProfit = $shortTrades->sum('currentProfit');
                                     $shortAvgProfit = $shortCount > 0 ? $shortTotalProfit / $shortCount : 0;
-                                    
+
                                     // Overall Statistics
                                     $totalTrades = count($tradeDetails['closedTrades']);
-                                    $totalProfitable = collect($tradeDetails['closedTrades'])->where('currentProfit', '>', 0)->count();
-                                    $totalLosses = collect($tradeDetails['closedTrades'])->where('currentProfit', '<', 0)->count();
+                                    $totalProfitable = collect($tradeDetails['closedTrades'])
+                                        ->where('currentProfit', '>', 0)
+                                        ->count();
+                                    $totalLosses = collect($tradeDetails['closedTrades'])
+                                        ->where('currentProfit', '<', 0)
+                                        ->count();
                                     $totalProfit = collect($tradeDetails['closedTrades'])->sum('currentProfit');
                                     $avgProfit = $totalTrades > 0 ? $totalProfit / $totalTrades : 0;
                                     $winRate = $totalTrades > 0 ? ($totalProfitable / $totalTrades) * 100 : 0;
                                 @endphp
-                                
+
                                 <div class="mt-4 p-3 border-top" style="border-color: #2b3553 !important;">
                                     <h5 class="text-white mb-3">
                                         <i class="tim-icons icon-chart-bar-32 text-info"></i>
                                         Trade Statistics Summary
                                     </h5>
-                                    
+
                                     <div class="row">
                                         <!-- Overall Statistics -->
                                         <div class="col-lg-4 col-md-12 mb-3">
-                                            <div class="stats-card p-3 rounded" style="background-color: rgba(255,255,255,0.05); border: 1px solid #2b3553;">
+                                            <div class="stats-card p-3 rounded"
+                                                style="background-color: rgba(255,255,255,0.05); border: 1px solid #2b3553;">
                                                 <h6 class="text-white-50 mb-2">Overall Performance</h6>
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <span class="text-white">Total Trades:</span>
@@ -347,7 +352,8 @@
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <span class="text-white">Win Rate:</span>
-                                                    <span class="badge {{ $winRate >= 50 ? 'badge-success' : 'badge-warning' }}">
+                                                    <span
+                                                        class="badge {{ $winRate >= 50 ? 'badge-success' : 'badge-warning' }}">
                                                         {{ number_format($winRate, 1) }}%
                                                     </span>
                                                 </div>
@@ -361,22 +367,25 @@
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <span class="text-white">Total P&L:</span>
-                                                    <span class="font-weight-bold {{ $totalProfit >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <span
+                                                        class="font-weight-bold {{ $totalProfit >= 0 ? 'text-success' : 'text-danger' }}">
                                                         {{ number_format($totalProfit, 2) }}%
                                                     </span>
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <span class="text-white">Avg P&L:</span>
-                                                    <span class="font-weight-bold {{ $avgProfit >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <span
+                                                        class="font-weight-bold {{ $avgProfit >= 0 ? 'text-success' : 'text-danger' }}">
                                                         {{ number_format($avgProfit, 2) }}%
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- LONG Statistics -->
                                         <div class="col-lg-4 col-md-6 mb-3">
-                                            <div class="stats-card p-3 rounded" style="background-color: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.3);">
+                                            <div class="stats-card p-3 rounded"
+                                                style="background-color: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.3);">
                                                 <h6 class="text-success mb-2">
                                                     <i class="tim-icons icon-trend-up"></i>
                                                     LONG Positions
@@ -387,7 +396,8 @@
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <span class="text-white">Win Rate:</span>
-                                                    <span class="badge {{ $longCount > 0 && ($longProfitable / $longCount) >= 0.5 ? 'badge-success' : 'badge-warning' }}">
+                                                    <span
+                                                        class="badge {{ $longCount > 0 && $longProfitable / $longCount >= 0.5 ? 'badge-success' : 'badge-warning' }}">
                                                         {{ $longCount > 0 ? number_format(($longProfitable / $longCount) * 100, 1) : 0 }}%
                                                     </span>
                                                 </div>
@@ -401,22 +411,25 @@
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <span class="text-white">Total P&L:</span>
-                                                    <span class="font-weight-bold {{ $longTotalProfit >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <span
+                                                        class="font-weight-bold {{ $longTotalProfit >= 0 ? 'text-success' : 'text-danger' }}">
                                                         {{ number_format($longTotalProfit, 2) }}%
                                                     </span>
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <span class="text-white">Avg P&L:</span>
-                                                    <span class="font-weight-bold {{ $longAvgProfit >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <span
+                                                        class="font-weight-bold {{ $longAvgProfit >= 0 ? 'text-success' : 'text-danger' }}">
                                                         {{ number_format($longAvgProfit, 2) }}%
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- SHORT Statistics -->
                                         <div class="col-lg-4 col-md-6 mb-3">
-                                            <div class="stats-card p-3 rounded" style="background-color: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.3);">
+                                            <div class="stats-card p-3 rounded"
+                                                style="background-color: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.3);">
                                                 <h6 class="text-danger mb-2">
                                                     <i class="tim-icons icon-trend-down"></i>
                                                     SHORT Positions
@@ -427,7 +440,8 @@
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <span class="text-white">Win Rate:</span>
-                                                    <span class="badge {{ $shortCount > 0 && ($shortProfitable / $shortCount) >= 0.5 ? 'badge-success' : 'badge-warning' }}">
+                                                    <span
+                                                        class="badge {{ $shortCount > 0 && $shortProfitable / $shortCount >= 0.5 ? 'badge-success' : 'badge-warning' }}">
                                                         {{ $shortCount > 0 ? number_format(($shortProfitable / $shortCount) * 100, 1) : 0 }}%
                                                     </span>
                                                 </div>
@@ -441,13 +455,15 @@
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <span class="text-white">Total P&L:</span>
-                                                    <span class="font-weight-bold {{ $shortTotalProfit >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <span
+                                                        class="font-weight-bold {{ $shortTotalProfit >= 0 ? 'text-success' : 'text-danger' }}">
                                                         {{ number_format($shortTotalProfit, 2) }}%
                                                     </span>
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <span class="text-white">Avg P&L:</span>
-                                                    <span class="font-weight-bold {{ $shortAvgProfit >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <span
+                                                        class="font-weight-bold {{ $shortAvgProfit >= 0 ? 'text-success' : 'text-danger' }}">
                                                         {{ number_format($shortAvgProfit, 2) }}%
                                                     </span>
                                                 </div>
@@ -576,6 +592,7 @@
         }
 
         @media (max-width: 576px) {
+
             .table th,
             .table td {
                 padding: 0.5rem 0.25rem;
