@@ -40,6 +40,7 @@ class ReportService
     public static $shuffleCoins = false;
 
     public static $filterOnCoinType = false;
+    
     public static $coinTypeMetaverse = true;
     public static $coinTypeAlt = true;
     public static $coinTypeMeme = false;
