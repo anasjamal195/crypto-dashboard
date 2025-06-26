@@ -1791,7 +1791,7 @@ class BaseReport5m
                 }
 
 
-                $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+                $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index,'LONG');
 
                 $isInitial = $stepIndex == 0;
                 // Handle initial step (no existing trade required)
@@ -1969,7 +1969,7 @@ class BaseReport5m
                 }
 
 
-                $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index);
+                $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index,'SHORT');
 
                 $isInitial = $stepIndex == 0;
                 // Handle initial step (no existing trade required)
