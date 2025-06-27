@@ -96,9 +96,9 @@ class BaseReport5m
     public static $dynamicTP = 0;
     public static $dynamicSL = 0;
 
-    public static $dynamicTPSLgap = 0.2;
+    public static $dynamicTPSLgap = 0.3;
 
-    public static $initialTpPercent = 0.5;
+    public static $initialTpPercent = 0.6;
     public static $initialSlPercent = 1;
 
     public static function generateCoinReport(
@@ -871,25 +871,7 @@ class BaseReport5m
         $closingPrice = 0;
         $waitingCandlesBeforeStopLoss = intval(self::$stopLossWaitingDuration / CommonHelpers::$binanceIntervals[self::$interval]);
 
-
-
-
-        // if ($tradeType == 'SHORT') {
-        //     // Calculate Closing in profit 
-        //     if ($candle['low'] <= $open_price * (1 - self::$targetProfit / 100)) {
-        //         $closingPrice = $candle['low'];
-        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price < $data[$index]['close']) {
-        //         $closingPrice = $data[$index]['close'];
-        //     }
-        // } else if ($tradeType == 'LONG') {
-
-        //     // Calculate Closing in profit 
-        //     if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
-        //         $closingPrice = $candle['high'];
-        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
-        //         $closingPrice = $data[$index]['close'];
-        //     }
-        // }
+        $candlesPast = self::getIndexDiffFromTimestamps($data[$openingIndex]['binance_timestamp'], $data[$index]['binance_timestamp'], self::$interval);
 
 
 
@@ -905,7 +887,43 @@ class BaseReport5m
                 $closingPrice = self::$dynamicSL;
             }
         } else {
-            $currentProfit = (($data[$openingIndex]['close'] - $data[$index]['close']) / $data[$openingIndex]['close']) * 100;
+            // If TP is triggered
+            if ($data[$index]['close'] <= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['close'] * (1 - self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['close'] * (1 + (self::$dynamicTPSLgap / 2) / 100);
+            }
+            // If Sl is trigggerd
+            else if ($data[$index]['close'] > self::$dynamicSL) {
+                $closingPrice = self::$dynamicSL;
+            }
+        }
+
+
+
+        if (!$closingPrice) {
+
+
+            if ($candlesPast <= 3) {
+
+
+                if ($tradeType === 'LONG') {
+                    if (
+
+                        $data[$index]['close'] < $data[$index]['bb_lower']
+                        && $data[$index - 1]['close'] < $data[$index - 1]['bb_lower']
+
+                    ) {
+                        $closingPrice = $data[$index]['close'];
+                    }
+                } else if ($tradeType === 'SHORT') {
+                    if (
+                        $data[$index]['close'] > $data[$index]['bb_upper']
+                        && $data[$index - 1]['close'] > $data[$index - 1]['bb_upper']
+                    ) {
+                        $closingPrice = $data[$index]['close'];
+                    }
+                }
+            }
         }
 
 

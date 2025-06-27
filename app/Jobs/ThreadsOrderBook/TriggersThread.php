@@ -47,12 +47,12 @@ class TriggersThread implements ShouldQueue
     public $stopLoss = 1;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.5;
+    public $targetProfit = 0.6;
     public $tpTriggerPoint = 0.5;
-    public $profitIncrementPercentage = 0.2;
+    public $profitIncrementPercentage = 0.3;
     public $profitIncrementPercentageNext = 0.1;
     public static $stopLossMarginPercentage = 0.1;
-    public $formula = 'MACD & SR';
+    public $formula = 'MACD';
 
     // Confirmed Trades Entries
 
@@ -115,8 +115,8 @@ class TriggersThread implements ShouldQueue
                             if ($opening5m['direction']) {
                                 $tradeType = $opening5m['direction'];
                                 $this->formula  = $opening5m['formula'];
-                            } 
-                            
+                            }
+
                             // else if ($opening15m['direction']) {
                             //     $tradeType = $opening15m['direction'];
                             //     $this->formula  = $opening15m['formula'];
@@ -241,6 +241,37 @@ class TriggersThread implements ShouldQueue
 
                     if (!(isset($open_order['is_open']) && $open_order['is_open'])) {
 
+
+
+
+                        // Opening Confirmed till now - Checking for extreme price reversal
+                        $priceBuffer = 0.1;
+
+                        $previousPrice =  self::$activeExchange === 'binance' ?
+                            BinanceApiService::getCurrentPrice($symbol, 'FUTURE')
+                            : HyperLiquidApiService::getCurrentPrice($symbol, 'FUTURE');
+
+                        while (true) {
+                            $currentPrice = self::$activeExchange === 'binance' ?
+                                BinanceApiService::getCurrentPrice($symbol, 'FUTURE')
+                                : HyperLiquidApiService::getCurrentPrice($symbol, 'FUTURE');
+
+                            if ($tradeType === 'LONG') {
+                                if ($currentPrice > ($previousPrice * (1 + $priceBuffer / 100))) {
+                                    break;
+                                } else if ($currentPrice < $previousPrice) {
+                                    $previousPrice = $currentPrice;
+                                }
+                            } else if ($tradeType === 'SHORT') {
+                                if ($currentPrice < ($previousPrice * (1 - $priceBuffer / 100))) {
+                                    break;
+                                } else if ($currentPrice > $previousPrice) {
+                                    $previousPrice = $currentPrice;
+                                }
+                            }
+                            sleep(1);
+                        }
+
                         $supportResistanceArr = [
                             'support' => 1,
                             'resistance' => 1,
@@ -333,6 +364,7 @@ class TriggersThread implements ShouldQueue
         $secondLastCandle = $candleData[count($candleData) - 2];
         $thirdLastCandle = $candleData[count($candleData) - 3];
         $stopLoss = $open_order['stopLoss'];
+        $index = count($candleData) - 2;
         $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
 
         // Scenerio 1: If Current profit is less than 1%
@@ -344,6 +376,20 @@ class TriggersThread implements ShouldQueue
         // Handle Early Closing on Order Books
 
         $closeEarly = false;
+
+        // Early Closing Logic
+        $openTimestamp = $open_order['created_at'];
+        $minsPast = abs(Carbon::now('Asia/Karachi')->diffInMinutes($openTimestamp));
+
+
+        if ($minsPast <= 15) {
+            if (
+                $candleData[$index]['close'] < $candleData[$index]['bb_lower']
+                && $candleData[$index - 1]['close'] < $candleData[$index - 1]['bb_lower']
+            ) {
+                $closeEarly = true;
+            }
+        }
 
 
         // Check if SPOT enabled
@@ -440,6 +486,7 @@ class TriggersThread implements ShouldQueue
         $secondLastCandle = $candleData[count($candleData) - 2];
         $thirdLastCandle = $candleData[count($candleData) - 3];
 
+        $index = count($candleData) - 2;
         $stopLoss = $open_order['stopLoss'];
 
 
@@ -449,6 +496,19 @@ class TriggersThread implements ShouldQueue
 
 
         $closeEarly = false;
+        // Early Closing Logic
+        $openTimestamp = $open_order['created_at'];
+        $minsPast = abs(Carbon::now('Asia/Karachi')->diffInMinutes($openTimestamp));
+
+
+        if ($minsPast <= 15) {
+            if (
+                $candleData[$index]['close'] > $candleData[$index]['bb_upper']
+                && $candleData[$index - 1]['close'] > $candleData[$index - 1]['bb_upper']
+            ) {
+                $closeEarly = true;
+            }
+        }
 
 
         if ($currentCandle['close'] > $stopLoss || $closeEarly) {
@@ -467,6 +527,7 @@ class TriggersThread implements ShouldQueue
             DB::table('trade_handler')->where('id', $tradeInstance->id)->update([
                 'isWorkerDispatched' => false,
             ]);
+
             // Reset Trigger Time for stop loss
             // $this->nextSLTriggerTime = 30;
             return false;
@@ -613,5 +674,4 @@ class TriggersThread implements ShouldQueue
             ->select('coin_reports.*')
             ->get();
     }
-
 }
