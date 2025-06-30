@@ -272,6 +272,9 @@ class TriggersThread implements ShouldQueue
                             sleep(1);
                         }
 
+
+
+
                         $supportResistanceArr = [
                             'support' => 1,
                             'resistance' => 1,

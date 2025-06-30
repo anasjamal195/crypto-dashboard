@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\CommonHelpers;
+use App\DivergenceStrategyService;
 use App\Models\OrderBookSnapshot;
 use App\Services\BinanceApiService;
 use App\Services\BinanceVolumeIndicatorsService;
@@ -1192,11 +1193,223 @@ class BinanceController extends Controller
 
     public function showTrends($market, Request $request)
     {
-        $trends = DB::table('market_trends')->where('market', $market)->where('interval', $request->interval)->get();
-        $historicalTrends = MarketTrendService::getVolumesGraph($request->symbol);
 
-        return view('MarketTrends.index', ['trends' => $trends, 'pageSlug' => 'MarketTrends' . $market, 'historicalTrends' => $historicalTrends['data'], 'volumeSignals' => [], 'totalProfit' => 0]);
+
+
+        $symbol = 'BTCUSDT';
+        $interval = '15m';
+        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, null, 'FUTURE');
+
+        $strategy = new DivergenceStrategyService();
+        $strategy->setLookback(15);
+        $strategy->setPriceTolerance(0.8);
+
+        $openingMarkers = [];
+        $highs = [];
+        $lows = [];
+        $opened = null;
+        $openedIndex = null;
+
+        // Configuration parameters
+        $pivotLookback = 5;
+        $minCandlesAfterPivot = 5;
+        $minDistanceBetweenPivots = 10; // Minimum candles between pivots
+        $rsiDivergenceThreshold = 2.0; // Minimum RSI difference for divergence
+        $doubleTopTolerance = 0.002; // 0.2% tolerance for double top
+        $stopLossPercent = 2.0; // 1% stop loss
+        $takeProfitPercent = 6.0; // 2% take profit
+
+        foreach ($data as $index => &$candle) {
+            // Skip if we don't have enough historical data
+            if ($index < $pivotLookback * 2) {
+                continue;
+            }
+
+            $pivot = CommonHelpers::checkPivot($data, $index, $pivotLookback);
+
+            if ($pivot === 'high_pivot') {
+                // Only add if it's far enough from the last high
+                if (empty($highs) || ($index - end($highs)) >= $minDistanceBetweenPivots) {
+                    $highs[] = $index;
+                }
+            } else if ($pivot === 'low_pivot') {
+                // Only add if it's far enough from the last low
+                if (empty($lows) || ($index - end($lows)) >= $minDistanceBetweenPivots) {
+                    $lows[] = $index;
+                }
+            }
+
+            // Position Management
+            if ($opened === 'SHORT') {
+                $entryPrice = $data[$openedIndex]['close'];
+                $currentPrice = $data[$index]['close'];
+
+                // Take Profit
+                if ($currentPrice <= ($entryPrice * (1 - $takeProfitPercent / 100))) {
+                    $openingMarkers[] = [
+                        'timestamp_pst' => $candle['timestamp_pst'],
+                        'color' => '#26a69a',
+                        'text' => 'TP',
+                        'position' => 'belowBar'
+                    ];
+                    $opened = null;
+                    $openedIndex = null;
+                }
+                // Stop Loss
+                else if ($currentPrice >= ($entryPrice * (1 + $stopLossPercent / 100))) {
+                    $openingMarkers[] = [
+                        'timestamp_pst' => $candle['timestamp_pst'],
+                        'color' => '#ff6b6b',
+                        'text' => 'SL',
+                        'position' => 'aboveBar'
+                    ];
+                    $opened = null;
+                    $openedIndex = null;
+                }
+                continue;
+            }
+
+            // Entry Logic - Look for Short opportunities
+            if (count($highs) >= 2) {
+                $recentHighIndex = $highs[count($highs) - 1];
+                $secondRecentHighIndex = $highs[count($highs) - 2];
+
+                // Ensure we have enough candles after the recent high (avoid future leak)
+                if ($index <= ($recentHighIndex + $minCandlesAfterPivot)) {
+                    continue;
+                }
+
+                $recentHigh = $data[$recentHighIndex];
+                $secondRecentHigh = $data[$secondRecentHighIndex];
+
+                // Check for Double Top Pattern
+                $isDoubleTop = CommonHelpers::checkDoubleTop($recentHigh, $secondRecentHigh, $doubleTopTolerance);
+
+                // Check for RSI Divergence
+                $hasRsiDivergence = CommonHelpers::checkRsiDivergence($recentHigh, $secondRecentHigh, $rsiDivergenceThreshold);
+
+                // Additional confirmation: Price should be below recent high
+                $priceConfirmation = $data[$index]['close'] < $recentHigh['high'] * 0.998; // 0.2% below high
+
+                // Volume confirmation (if available)
+                $volumeConfirmation = true;
+                if (isset($recentHigh['volume']) && isset($secondRecentHigh['volume'])) {
+                    // Lower volume on second high suggests weakness
+                    $volumeConfirmation = $recentHigh['volume'] < $secondRecentHigh['volume'] * 1.1;
+                }
+
+                // Check if price has broken below the valley between the two highs
+                $valleyBreakout = CommonHelpers::checkValleyBreakout($data, $secondRecentHighIndex, $recentHighIndex, $index);
+
+                if ($isDoubleTop && $hasRsiDivergence && $priceConfirmation  && $valleyBreakout) {
+                    $openingMarkers[] = [
+                        'timestamp_pst' => $candle['timestamp_pst'],
+                        'color' => '#ef5350',
+                        'text' => 'SHORT',
+                        'position' => 'aboveBar'
+                    ];
+                    $opened = 'SHORT';
+                    $openedIndex = $index;
+                }
+            }
+
+            // Long Logic (RSI Divergence on Double Bottom)
+            if ($opened === null && count($lows) >= 2) {
+                $recentLowIndex = $lows[count($lows) - 1];
+                $secondRecentLowIndex = $lows[count($lows) - 2];
+
+                if ($index <= ($recentLowIndex + $minCandlesAfterPivot)) {
+                    continue;
+                }
+
+                $recentLow = $data[$recentLowIndex];
+                $secondRecentLow = $data[$secondRecentLowIndex];
+
+                // Check for Double Bottom Pattern
+                $isDoubleBottom = CommonHelpers::checkDoubleBottom($recentLow, $secondRecentLow, $doubleTopTolerance);
+
+                // Check for Bullish RSI Divergence
+                $hasBullishRsiDivergence = CommonHelpers::checkBullishRsiDivergence($recentLow, $secondRecentLow, $rsiDivergenceThreshold);
+
+                $priceConfirmation = $data[$index]['close'] > $recentLow['low'] * 1.002;
+
+                if ($isDoubleBottom && $hasBullishRsiDivergence && $priceConfirmation) {
+                    $openingMarkers[] = [
+                        'timestamp_pst' => $candle['timestamp_pst'],
+                        'color' => '#26a69a',
+                        'text' => 'LONG',
+                        'position' => 'belowBar'
+                    ];
+                    $opened = 'LONG';
+                    $openedIndex = $index;
+                }
+            }
+
+            // Long Position Management
+            if ($opened === 'LONG') {
+                $entryPrice = $data[$openedIndex]['close'];
+                $currentPrice = $data[$index]['close'];
+
+                // Take Profit
+                if ($currentPrice >= ($entryPrice * (1 + $takeProfitPercent / 100))) {
+                    $openingMarkers[] = [
+                        'timestamp_pst' => $candle['timestamp_pst'],
+                        'color' => '#26a69a',
+                        'text' => 'TP',
+                        'position' => 'aboveBar'
+                    ];
+                    $opened = null;
+                    $openedIndex = null;
+                }
+                // Stop Loss
+                else if ($currentPrice <= ($entryPrice * (1 - $stopLossPercent / 100))) {
+                    $openingMarkers[] = [
+                        'timestamp_pst' => $candle['timestamp_pst'],
+                        'color' => '#ff6b6b',
+                        'text' => 'SL',
+                        'position' => 'belowBar'
+                    ];
+                    $opened = null;
+                    $openedIndex = null;
+                }
+            }
+        }
+
+        return view('MarketTrends.index', ['data' => $data, 'pageSlug' => 'MarketTrends' . $market, 'openingMarkers' => $openingMarkers, 'symbol' => $symbol, 'interval' => $interval]);
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     public function getAvailableBalance(Request $request)
     {
         return BinanceApiService::fetchAvailableQuantity($request->symbol, Auth::user()->id, $request->market);

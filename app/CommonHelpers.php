@@ -2823,4 +2823,113 @@ class CommonHelpers
         $isCandleClosing =  $timePastCurrentCandle <= $allowedTimeSec;
         return $isCandleClosing;
     }
+
+
+
+    // Calculation functions
+
+    public static function checkPivot($data, $index, $n = 2)
+    {
+        $total = count($data);
+
+        // Make sure we have enough candles on both sides
+        if ($index < $n || $index > $total - $n - 1) {
+            return 'not_enough_data';
+        }
+
+        $isHighPivot = true;
+        $isLowPivot = true;
+
+        $currentHigh = $data[$index]['high'];
+        $currentLow = $data[$index]['low'];
+
+        for ($i = 1; $i <= $n; $i++) {
+            if ($currentHigh <= $data[$index - $i]['high'] || $currentHigh <= $data[$index + $i]['high']) {
+                $isHighPivot = false;
+            }
+            if ($currentLow >= $data[$index - $i]['low'] || $currentLow >= $data[$index + $i]['low']) {
+                $isLowPivot = false;
+            }
+        }
+
+        if ($isHighPivot) {
+            return 'high_pivot';
+        } elseif ($isLowPivot) {
+            return 'low_pivot';
+        } else {
+            return null;
+        }
+    }
+
+
+    public static function checkDoubleTop($recentHigh, $secondRecentHigh, $tolerance)
+    {
+        $priceDiff = abs($recentHigh['high'] - $secondRecentHigh['high']) / $secondRecentHigh['high'];
+        return $priceDiff <= $tolerance && $recentHigh['high'] > $secondRecentHigh['high'] * 0.995;
+    }
+
+    public static function checkDoubleBottom($recentLow, $secondRecentLow, $tolerance)
+    {
+        $priceDiff = abs($recentLow['low'] - $secondRecentLow['low']) / $secondRecentLow['low'];
+        return $priceDiff <= $tolerance && $recentLow['low'] < $secondRecentLow['low'] * 1.005;
+    }
+
+    public static function checkRsiDivergence($recentHigh, $secondRecentHigh, $threshold)
+    {
+        // Bearish divergence: Higher highs in price, lower highs in RSI
+        return ($recentHigh['high'] > $secondRecentHigh['high']) &&
+            ($recentHigh['rsi6'] < $secondRecentHigh['rsi6']) &&
+            (($secondRecentHigh['rsi6'] - $recentHigh['rsi6']) >= $threshold);
+    }
+
+    public static function checkBullishRsiDivergence($recentLow, $secondRecentLow, $threshold)
+    {
+        // Bullish divergence: Lower lows in price, higher lows in RSI
+        return ($recentLow['low'] < $secondRecentLow['low']) &&
+            ($recentLow['rsi6'] > $secondRecentLow['rsi6']) &&
+            (($recentLow['rsi6'] - $secondRecentLow['rsi6']) >= $threshold);
+    }
+
+    public static function checkValleyBreakout($data, $firstHighIndex, $secondHighIndex, $currentIndex)
+    {
+        // Find the lowest point between the two highs
+        $valleyLow = PHP_FLOAT_MAX;
+        for ($i = $firstHighIndex + 1; $i < $secondHighIndex; $i++) {
+            if ($data[$i]['low'] < $valleyLow) {
+                $valleyLow = $data[$i]['low'];
+            }
+        }
+
+        // Check if current price has broken below the valley
+        return $data[$currentIndex]['close'] < $valleyLow * 0.999; // 0.1% below valley
+    }
+
+    // Additional Risk Management
+    public static function calculatePositionSize($accountBalance, $riskPercent, $entryPrice, $stopLossPrice)
+    {
+        $riskAmount = $accountBalance * ($riskPercent / 100);
+        $priceRisk = abs($entryPrice - $stopLossPrice);
+        return $riskAmount / $priceRisk;
+    }
+
+    // Market Structure Analysis
+    public static function isInDowntrend($data, $currentIndex, $lookback = 50)
+    {
+        if ($currentIndex < $lookback) return false;
+
+        $recentHighs = [];
+        for ($i = $currentIndex - $lookback; $i <= $currentIndex; $i++) {
+            $pivot = CommonHelpers::checkPivot($data, $i, 5);
+            if ($pivot === 'high_pivot') {
+                $recentHighs[] = $data[$i]['high'];
+            }
+        }
+
+        // Check if recent highs are generally decreasing
+        if (count($recentHighs) >= 2) {
+            return end($recentHighs) < $recentHighs[0];
+        }
+
+        return false;
+    }
 }

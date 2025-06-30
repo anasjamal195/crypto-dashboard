@@ -98,6 +98,10 @@ class ReportService
     public static $initialSlPercent = 1;
 
 
+
+    public static $lows = [];
+    public static $highs = [];
+
     public static function generateCoinReport(
         $cmd = null,
         $formula = 'Default',
@@ -488,6 +492,27 @@ class ReportService
                 $waitingCandles--;
                 continue;
             }
+
+
+            // Highs and Lows Calculation
+
+
+            $pivot = CommonHelpers::checkPivot($data, $index, 5);
+            $minDistanceBetweenPivots = 10;
+            if ($pivot === 'high_pivot') {
+                // Only add if it's far enough from the last high
+                if (empty(self::$highs) || ($index - end(self::$highs)) >= $minDistanceBetweenPivots) {
+                    self::$highs[] = $index;
+                }
+            } else if ($pivot === 'low_pivot') {
+                // Only add if it's far enough from the last low
+                if (empty(self::$lows) || ($index - end(self::$lows)) >= $minDistanceBetweenPivots) {
+                    self::$lows[] = $index;
+                }
+            }
+
+
+
             $supportResistance = self::getSupportResistance($data, $index);
             $orderBookSnapshot = self::getOrderBookSnapshot($symbol, $data, $index);
 
@@ -628,6 +653,8 @@ class ReportService
 
         self::confirmOpening($symbol, 'TBD', $data, $index, 'TBD');
 
+        self::$lows = [];
+        self::$highs = [];
 
         self::logSafeModeEntry(self::$formula, $symbol, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
         // For shifting indexes
@@ -650,11 +677,11 @@ class ReportService
     {
 
         // LONG Entry
-        // $macdLong = self::checkConditionSetLongMACD($symbol, $data, $index);
-        // if ($macdLong) {
-        //     $tagName = 'MACD';
-        //     return $macdLong;
-        // }
+        $macdLong = self::checkConditionSetLongMACD($symbol, $data, $index);
+        if ($macdLong) {
+            $tagName = 'MACD';
+            return $macdLong;
+        }
 
         // else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
         //     $tagName = 'SR';
@@ -664,11 +691,11 @@ class ReportService
 
 
         // SHORT Entry
-        $macdShort = self::checkConditionSetShortMACD($symbol, $data, $index);
-        if ($macdShort) {
-            $tagName = 'MACD';
-            return $macdShort;
-        }
+        // $macdShort = self::checkConditionSetShortMACD($symbol, $data, $index);
+        // if ($macdShort) {
+        //     $tagName = 'MACD';
+        //     return $macdShort;
+        // }
 
         // else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
         //     $tagName = 'SR';
@@ -1729,75 +1756,114 @@ class ReportService
             // ======================================= MULTI STEP Setup for LONG entry =======================================
 
 
+
+
+
+            $initialSetup = false;
+
+
+            if (count(self::$lows) >= 2) {
+                $recentLowIndex = self::$lows[count(self::$lows) - 1];
+                $secondRecentLowIndex = self::$lows[count(self::$lows) - 2];
+
+                if ($index <= ($recentLowIndex + 10)) {
+                    return null;
+                }
+
+                $recentLow = $data[$recentLowIndex];
+                $secondRecentLow = $data[$secondRecentLowIndex];
+                $doubleTopTolerance = 0.002;
+                $rsiDivergenceThreshold = 2.0; // Minimum RSI difference for divergence
+
+                // Check for Double Bottom Pattern
+                $isDoubleBottom = CommonHelpers::checkDoubleBottom($recentLow, $secondRecentLow, $doubleTopTolerance);
+
+                // Check for Bullish RSI Divergence
+                $hasBullishRsiDivergence = CommonHelpers::checkBullishRsiDivergence($recentLow, $secondRecentLow, $rsiDivergenceThreshold);
+
+                $priceConfirmation = $data[$index]['close'] > $recentLow['low'] * 1.002;
+
+                if ($isDoubleBottom && $hasBullishRsiDivergence && $priceConfirmation) {
+                    $initialSetup = true;
+                }
+            }
+
+
+
+
+
+
             $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
 
-            $supportResistance = self::getSupportResistance($data, $index);
             // Define all steps with their conditions and scores
             $steps = [
                 // Step 1 - Volume Confirmation
                 [
                     'condition' => (
 
-                        $data[$index]['volume'] >= (1.2 * CommonHelpers::getSMAAtIndex($data, $index, 20, 'volume'))
+                        $initialSetup
 
                     ),
                     'candlesToCheck' => 10,
                 ],
 
-                // Step 2 - Bullish Momentum
-                [
-                    'condition' => (
 
 
-                        $data[$index]['close'] >= $data[$index]['bb_middle']
-                        && $data[$index]['rsi6'] > 45
-                        && $bbAnalysis['is_expanding']
+
+                // // Step 2 - Bullish Momentum
+                // [
+                //     'condition' => (
 
 
-                    ),
-                    'candlesToCheck' => 10
-                ],
+                //         $data[$index]['close'] >= $data[$index]['bb_middle']
+                //         && $data[$index]['rsi6'] > 45
+                //         && $bbAnalysis['is_expanding']
+
+
+                //     ),
+                //     'candlesToCheck' => 10
+                // ],
 
                 // Step 3 - Setup Formation
-                [
-                    'condition' => (
+                // [
+                //     'condition' => (
 
 
-                        $bbAnalysis['price_action']['is_near_lower_band']
-                        && $data[$index]['rsi6'] >= 25
-                        && $data[$index]['rsi6'] <= 45
-                        && $data[$index]['volume'] >= $data[$index]['volumeMA5']
+                //         $bbAnalysis['price_action']['is_near_lower_band']
+                //         && $data[$index]['rsi6'] >= 25
+                //         && $data[$index]['rsi6'] <= 45
+                //         && $data[$index]['volume'] >= $data[$index]['volumeMA5']
 
 
-                    ),
-                    'candlesToCheck' => 20
-                ],
+                //     ),
+                //     'candlesToCheck' => 20
+                // ],
 
-                // Step 4 - Bullish Candle Check
-                [
-                    'condition' => (
-                        ($bbAnalysis['price_action']['is_near_lower_band'] || $bbAnalysis['price_action']['crossed_lower_band'])
-                        && $data[$index]['rsi6'] <= 20
-                        && $data[$index]['volume'] >= (1.5 * $data[$index]['volumeMA10'])
-                    ),
-                    'candlesToCheck' => 20
-                ],
+                // // Step 4 - Bullish Candle Check
+                // [
+                //     'condition' => (
+                //         ($bbAnalysis['price_action']['is_near_lower_band'] || $bbAnalysis['price_action']['crossed_lower_band'])
+                //         && $data[$index]['rsi6'] <= 20
+                //         && $data[$index]['volume'] >= (1.5 * $data[$index]['volumeMA10'])
+                //     ),
+                //     'candlesToCheck' => 20
+                // ],
 
-                // Final Step - Entry Execution
-                [
-                    'condition' => (
+                // // Final Step - Entry Execution
+                // [
+                //     'condition' => (
 
-                        $data[$index]['per'] > 0
-                        && $data[$index]['low'] < $data[$index]['bb_lower']
+                //         $data[$index]['per'] > 0
+                //         && $data[$index]['low'] < $data[$index]['bb_lower']
 
-                        // && $data[$index]['close'] >  $supportResistance['support']
-                        // && $bbAnalysis['bb_lower_percent_change'] > 0
-                        // && $bbAnalysis['bb_middle_percent_change'] > 0
+                //         // && $data[$index]['close'] >  $supportResistance['support']
+                //         // && $bbAnalysis['bb_lower_percent_change'] > 0
+                //         // && $bbAnalysis['bb_middle_percent_change'] > 0
 
 
-                    ),
-                    'candlesToCheck' => 10,
-                ],
+                //     ),
+                //     'candlesToCheck' => 10,
+                // ],
                 // [
                 //     'condition' => (
                 //         $data[$index]['volume'] >= (2 * $data[$index]['volumeMA5'])
@@ -1907,7 +1973,7 @@ class ReportService
 
 
             $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-            
+
             // Define all steps with their conditions and scores
             $steps = [
                 // Step 1 - Volume Confirmation
