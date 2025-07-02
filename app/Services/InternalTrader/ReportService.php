@@ -23,7 +23,7 @@ class ReportService
     public static $delayMs = 10;
     public static $supportResistanceCandleSpan = 12;
 
-    public static $interval = '5m';
+    public static $interval = '15m';
     public static $targetProfit = 1;
     public static $stopLoss = 0.8;
     public static $stopLossWaitingDuration = 0;
@@ -94,7 +94,7 @@ class ReportService
 
     public static $dynamicTPSLgap = 0.2;
 
-    public static $initialTpPercent = 0.5;
+    public static $initialTpPercent = 1.5;
     public static $initialSlPercent = 1;
 
 
@@ -127,7 +127,7 @@ class ReportService
             // ->whereIn(
             //     'symbol',
             //     [
-            //         'JTOUSDT'
+            //         'BTCUSDT'
 
             //     ]
             // )
@@ -1762,32 +1762,67 @@ class ReportService
             $initialSetup = false;
 
 
-            if (count(self::$lows) >= 2) {
-                $recentLowIndex = self::$lows[count(self::$lows) - 1];
-                $secondRecentLowIndex = self::$lows[count(self::$lows) - 2];
+            $lastPivotLowBand = null;
 
-                if ($index <= ($recentLowIndex + 10)) {
-                    return null;
+
+            $loopIndex = $index - 10;
+
+            while ($loopIndex > 10) {
+                $pivot = CommonHelpers::checkPivot($data, $loopIndex, 20);
+
+                if ($pivot === 'low_pivot') {
+                    $lastPivotLowBand = [
+                        'min' => $data[$loopIndex]['low'],
+                        'max' => min($data[$loopIndex]['close'], $data[$loopIndex]['open']),
+                        'index' => $loopIndex
+                    ];
+                    break;
                 }
+                $loopIndex--;
+            }
 
-                $recentLow = $data[$recentLowIndex];
-                $secondRecentLow = $data[$secondRecentLowIndex];
-                $doubleTopTolerance = 0.002;
-                $rsiDivergenceThreshold = 2.0; // Minimum RSI difference for divergence
 
-                // Check for Double Bottom Pattern
-                $isDoubleBottom = CommonHelpers::checkDoubleBottom($recentLow, $secondRecentLow, $doubleTopTolerance);
 
-                // Check for Bullish RSI Divergence
-                $hasBullishRsiDivergence = CommonHelpers::checkBullishRsiDivergence($recentLow, $secondRecentLow, $rsiDivergenceThreshold);
 
-                $priceConfirmation = $data[$index]['close'] > $recentLow['low'] * 1.002;
 
-                if ($isDoubleBottom && $hasBullishRsiDivergence && $priceConfirmation) {
+            if ($lastPivotLowBand) {
+                if (
+                    (
+                        (
+                            min($data[$index]['close'], $data[$index]['open']) <= $lastPivotLowBand['max']
+                            && min($data[$index]['close'], $data[$index]['open']) >= $lastPivotLowBand['min']
+                        )
+                        ||
+                        (
+                            min($data[$index]['close'], $data[$index]['open']) >= $lastPivotLowBand['max']
+                            && $data[$index]['low'] <= $lastPivotLowBand['max']
+                        )
+                    )
+                    &&
+                    (
+                        $data[$index]['rsi6'] > $data[$lastPivotLowBand['index']]['rsi6']
+
+
+
+                        // Check RSI pivots Previous Low
+                        && $data[$lastPivotLowBand['index']]['rsi6'] < $data[$lastPivotLowBand['index'] - 1]['rsi6']
+                        && $data[$lastPivotLowBand['index']]['rsi6'] < $data[$lastPivotLowBand['index'] + 1]['rsi6']
+
+                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6']
+                    )
+                    // && (min($data[$index]['close'], $data[$index]['open']) - $data[$index]['low']) > ($data[$index]['high'] - max($data[$index]['close'], $data[$index]['open']))
+                    && abs($data[$index]['per']) > 0.3
+                    // && $data[$index]['rsi6'] <= 20
+
+                ) {
+
+
                     $initialSetup = true;
                 }
             }
 
+
+            // Trading Logic handler
 
 
 
@@ -1806,72 +1841,24 @@ class ReportService
                     ),
                     'candlesToCheck' => 10,
                 ],
-
-
-
-
-                // // Step 2 - Bullish Momentum
-                // [
-                //     'condition' => (
-
-
-                //         $data[$index]['close'] >= $data[$index]['bb_middle']
-                //         && $data[$index]['rsi6'] > 45
-                //         && $bbAnalysis['is_expanding']
-
-
-                //     ),
-                //     'candlesToCheck' => 10
-                // ],
-
-                // Step 3 - Setup Formation
-                // [
-                //     'condition' => (
-
-
-                //         $bbAnalysis['price_action']['is_near_lower_band']
-                //         && $data[$index]['rsi6'] >= 25
-                //         && $data[$index]['rsi6'] <= 45
-                //         && $data[$index]['volume'] >= $data[$index]['volumeMA5']
-
-
-                //     ),
-                //     'candlesToCheck' => 20
-                // ],
-
-                // // Step 4 - Bullish Candle Check
-                // [
-                //     'condition' => (
-                //         ($bbAnalysis['price_action']['is_near_lower_band'] || $bbAnalysis['price_action']['crossed_lower_band'])
-                //         && $data[$index]['rsi6'] <= 20
-                //         && $data[$index]['volume'] >= (1.5 * $data[$index]['volumeMA10'])
-                //     ),
-                //     'candlesToCheck' => 20
-                // ],
-
-                // // Final Step - Entry Execution
                 // [
                 //     'condition' => (
 
                 //         $data[$index]['per'] > 0
-                //         && $data[$index]['low'] < $data[$index]['bb_lower']
-
-                //         // && $data[$index]['close'] >  $supportResistance['support']
-                //         // && $bbAnalysis['bb_lower_percent_change'] > 0
-                //         // && $bbAnalysis['bb_middle_percent_change'] > 0
-
-
                 //     ),
                 //     'candlesToCheck' => 10,
                 // ],
                 // [
                 //     'condition' => (
-                //         $data[$index]['volume'] >= (2 * $data[$index]['volumeMA5'])
 
+                //         // $data[$index]['volume'] > 1.2 * $data[$index]['volumeMA5']
+                //         $data[$index]['dif'] >= $data[$index - 1]['dif']
                 //     ),
                 //     'candlesToCheck' => 10,
-                // ]
+                // ],
             ];
+
+
 
             // Process steps sequentially
             foreach ($steps as $stepIndex => $step) {
@@ -1903,18 +1890,56 @@ class ReportService
                     if ($isFinal) {
                         self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
 
-                        $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index, '1h');
 
-                        if (
-                            $allowOnHigherTrend
-                            && $data[$index]['obv'] > $data[$index - 1]['obv']
-                            && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-                            // && $data[$index]['stoch_d'] > $data[$index - 1]['stoch_d']
+                        $finalConditions = (
+                            // $data[$index]['close'] < $data[$index]['bb_middle']
 
-                        )
-                            return 'LONG';
-                        else
-                            return null;
+                            $bbAnalysis['is_expanding']
+
+                            // && ($index - $lastPivotLowBand['index']) <= 20
+
+
+                        );
+
+
+
+                        if ($finalConditions) {
+
+
+                            $data1h = BinanceApiService::getCandleStickDataPast($symbol, '1h', 1000, $data[$index]['binance_timestamp'], 'FUTURE');
+
+                            $index1h = count($data1h) - 1;
+                            // $srAnalyzer = new SupportResistanceAnalyzer($data1h, $index1h, 1000, 2);
+
+
+                            // $resistance_pivots = CommonHelpers::findPivotHighs($data1h, $index1h - 100, $index1h, 5);
+                            // $support_pivots = CommonHelpers::findPivotLows($data1h, $index1h - 100, $index1h, 5);
+                            // $range = CommonHelpers::getPivotsRange($support_pivots, 2);
+
+
+
+                            // $proceedCondition = false;
+                            // if (
+                            //     min($data[$index]['close'], $data[$index]['open'])  <= $range[1]
+                            //     && min($data[$index]['close'], $data[$index]['open'])  >= $range[0]
+                            // )
+
+
+                            // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index, '1h');
+
+                            // $proceedCondition = $allowOnHigherTrend;
+                            $proceedCondition = (
+                                $data1h[$index1h]['bb_middle'] >= $data1h[$index1h - 1]['bb_middle']
+                            );
+
+
+                            // error_log($index);
+                            if ($proceedCondition)
+                                // dd($majorSupport, $data[$index], $symbol);
+                                return 'LONG';
+                        }
+                        // else
+                        //     return null;
                     }
                 }
             }

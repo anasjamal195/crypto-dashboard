@@ -2932,4 +2932,245 @@ class CommonHelpers
 
         return false;
     }
+
+
+
+
+
+    public static function detectMarketStructure($data, $index, $options = [])
+    {
+        // Default parameters
+        $lookback = $options['lookback'] ?? 50;
+        $pivot_window = $options['pivot_window'] ?? 5;
+        $zone_percentage = $options['zone_percentage'] ?? 0.002; // 0.2%
+        $min_touches = $options['min_touches'] ?? 3;
+        $min_strength = $options['min_strength'] ?? 2;
+
+        // Ensure we have enough data
+        $start_index = max(0, $index - $lookback);
+        $end_index = min(count($data) - 1, $index);
+
+        if ($end_index - $start_index < $pivot_window * 2) {
+            return ['support_levels' => [], 'resistance_levels' => []];
+        }
+
+        // Find pivot points (support and resistance)
+        $resistance_pivots = self::findPivotHighs($data, $start_index, $end_index, $pivot_window);
+        $support_pivots = self::findPivotLows($data, $start_index, $end_index, $pivot_window);
+
+        // Group similar levels and calculate strength
+        $resistance_levels = self::groupAndAnalyzeLevels($data, $resistance_pivots, $start_index, $end_index, $zone_percentage, $min_touches, 'resistance');
+        $support_levels = self::groupAndAnalyzeLevels($data, $support_pivots, $start_index, $end_index, $zone_percentage, $min_touches, 'support');
+
+        // Filter by minimum strength
+        $resistance_levels = array_filter($resistance_levels, function ($level) use ($min_strength) {
+            return $level['strength'] >= $min_strength;
+        });
+
+        $support_levels = array_filter($support_levels, function ($level) use ($min_strength) {
+            return $level['strength'] >= $min_strength;
+        });
+
+        // Sort by strength (strongest first)
+        usort($resistance_levels, function ($a, $b) {
+            return $b['strength'] <=> $a['strength'];
+        });
+        usort($support_levels, function ($a, $b) {
+            return $b['strength'] <=> $a['strength'];
+        });
+
+        return [
+            'support_levels' => array_values($support_levels),
+            'resistance_levels' => array_values($resistance_levels)
+        ];
+    }
+
+    public static function findPivotHighs($data, $start, $end, $window)
+    {
+        $pivots = [];
+
+        for ($i = $start + $window; $i <= $end - $window; $i++) {
+            $current_high = $data[$i]['high'];
+            $is_pivot = true;
+
+            // Check if current high is higher than surrounding highs
+            for ($j = $i - $window; $j <= $i + $window; $j++) {
+                if ($j != $i && $data[$j]['high'] >= $current_high) {
+                    $is_pivot = false;
+                    break;
+                }
+            }
+
+            if ($is_pivot) {
+                $pivots[] = [
+                    'index' => $i,
+                    'price' => $current_high,
+                    'type' => 'resistance'
+                ];
+            }
+        }
+
+        return $pivots;
+    }
+
+    public static function findPivotLows($data, $start, $end, $window)
+    {
+        $pivots = [];
+
+        for ($i = $start + $window; $i <= $end - $window; $i++) {
+            $current_low = $data[$i]['low'];
+            $is_pivot = true;
+
+            // Check if current low is lower than surrounding lows
+            for ($j = $i - $window; $j <= $i + $window; $j++) {
+                if ($j != $i && $data[$j]['low'] <= $current_low) {
+                    $is_pivot = false;
+                    break;
+                }
+            }
+
+            if ($is_pivot) {
+                $pivots[] = [
+                    'index' => $i,
+                    'price' => $current_low,
+                    'type' => 'support'
+                ];
+            }
+        }
+
+        return $pivots;
+    }
+
+    public static function groupAndAnalyzeLevels($data, $pivots, $start, $end, $zone_percentage, $min_touches, $type)
+    {
+        if (empty($pivots)) return [];
+
+        $levels = [];
+        $used_pivots = [];
+
+        foreach ($pivots as $i => $pivot) {
+            if (in_array($i, $used_pivots)) continue;
+
+            $base_price = $pivot['price'];
+            $zone_size = $base_price * $zone_percentage;
+            $zone_upper = $base_price + $zone_size;
+            $zone_lower = $base_price - $zone_size;
+
+            $grouped_pivots = [$pivot];
+            $used_pivots[] = $i;
+
+            // Find other pivots within the same zone
+            foreach ($pivots as $j => $other_pivot) {
+                if ($i != $j && !in_array($j, $used_pivots)) {
+                    if ($other_pivot['price'] >= $zone_lower && $other_pivot['price'] <= $zone_upper) {
+                        $grouped_pivots[] = $other_pivot;
+                        $used_pivots[] = $j;
+                    }
+                }
+            }
+
+            // Calculate average price for the level
+            $avg_price = array_sum(array_column($grouped_pivots, 'price')) / count($grouped_pivots);
+
+            // Recalculate zone around average price
+            $final_zone_size = $avg_price * $zone_percentage;
+            $final_zone_upper = $avg_price + $final_zone_size;
+            $final_zone_lower = $avg_price - $final_zone_size;
+
+            // Count total touches (including wicks touching the zone)
+            $touches = self::countTouches($data, $start, $end, $final_zone_upper, $final_zone_lower, $type);
+
+            if (count($touches) >= $min_touches) {
+                $levels[] = [
+                    'price' => round($avg_price, 5),
+                    'zone_upper' => round($final_zone_upper, 5),
+                    'zone_lower' => round($final_zone_lower, 5),
+                    'strength' => count($touches),
+                    'type' => $type,
+                    'pivot_count' => count($grouped_pivots),
+                    'touches' => $touches,
+                    'first_touch' => min($touches),
+                    'last_touch' => max($touches)
+                ];
+            }
+        }
+
+        return $levels;
+    }
+
+    public static function countTouches($data, $start, $end, $zone_upper, $zone_lower, $type)
+    {
+        $touches = [];
+
+        for ($i = $start; $i <= $end; $i++) {
+            $candle = $data[$i];
+            $touched = false;
+
+            if ($type === 'resistance') {
+                // Check if high touched resistance zone
+                if ($candle['high'] >= $zone_lower && $candle['high'] <= $zone_upper) {
+                    $touched = true;
+                }
+            } else { // support
+                // Check if low touched support zone
+                if ($candle['low'] >= $zone_lower && $candle['low'] <= $zone_upper) {
+                    $touched = true;
+                }
+            }
+
+            if ($touched) {
+                $touches[] = $i;
+            }
+        }
+
+        // Remove consecutive touches (only count significant bounces)
+        return self::filterConsecutiveTouches($touches);
+    }
+
+    public static function filterConsecutiveTouches($touches, $min_gap = 3)
+    {
+        if (empty($touches)) return [];
+
+        $filtered = [$touches[0]];
+
+        for ($i = 1; $i < count($touches); $i++) {
+            if ($touches[$i] - end($filtered) >= $min_gap) {
+                $filtered[] = $touches[$i];
+            }
+        }
+
+        return $filtered;
+    }
+
+
+    public static function getPivotsRange($data, $percentR = 1)
+    {
+        $prices = array_column($data, 'price');
+        sort($prices);
+
+        // Step 2: Sliding window to find max count within 1% width
+        $maxCount = 0;
+        $bestRange = [0, 0];
+
+        for ($i = 0; $i < count($prices); $i++) {
+            $start = $prices[$i];
+            $end = $start * (1 + $percentR / 100); // 1% upper limit
+            $count = 0;
+
+            // Count how many fall within [start, end]
+            for ($j = $i; $j < count($prices); $j++) {
+                if ($prices[$j] <= $end) {
+                    $count++;
+                } else {
+                    break;
+                }
+            }
+
+            if ($count > $maxCount) {
+                $maxCount = $count;
+                $bestRange = [$start, $end];
+            }
+        }
+        return $bestRange;
+    }
 }
