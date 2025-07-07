@@ -356,7 +356,7 @@ class BinanceController extends Controller
         $rsiBelow40Profitable = $rsiBelow40Loss = $rsiBelow40Total = 0;
 
         $tradesBelowTP = 0;
-        $tpLimit = 0.5;
+        $tpLimit = 0.8;
 
         $bb_lower_count = $bb_lower_profit = $bb_lower_loss = 0;
         $bb_upper_count = $bb_upper_profit = $bb_upper_loss = 0;
@@ -557,28 +557,28 @@ class BinanceController extends Controller
         $confirmedTrades = DB::table('confirmed_trades')->where('formula', $formula)->get();
 
 
-        foreach ($confirmedTrades as $confirmTrade) {
+        // foreach ($confirmedTrades as $confirmTrade) {
 
-            $timestampMillis = $confirmTrade->confirm_candle_timestamp;
+        //     $timestampMillis = $confirmTrade->confirm_candle_timestamp;
 
 
-            // Convert to Carbon instance in Asia/Karachi timezone
-            $timestamp = Carbon::createFromTimestampMs($timestampMillis)->setTimezone('Asia/Karachi');
+        //     // Convert to Carbon instance in Asia/Karachi timezone
+        //     $timestamp = Carbon::createFromTimestampMs($timestampMillis)->setTimezone('Asia/Karachi');
 
-            // Format as SQL timestamp (Y-m-d H:i:s)
-            $sqlTimestamp = $timestamp->toDateTimeString();
+        //     // Format as SQL timestamp (Y-m-d H:i:s)
+        //     $sqlTimestamp = $timestamp->toDateTimeString();
 
-            // Add 5 minutes
-            $sqlTimestampPlus5Min = $timestamp->copy()->addMinutes(5)->toDateTimeString();
-            $timelineData[] = [
-                'symbol' => $confirmTrade->coin_name . '( ' . $confirmTrade->type . ' )',
-                'startTime' => $sqlTimestamp,
-                'endTime' => $sqlTimestampPlus5Min,
-                'color' => '#ffffff',
-                'id' => $confirmTrade->ict_id,
-                'buyingCandle' => null,
-            ];
-        }
+        //     // Add 5 minutes
+        //     $sqlTimestampPlus5Min = $timestamp->copy()->addMinutes(5)->toDateTimeString();
+        //     $timelineData[] = [
+        //         'symbol' => $confirmTrade->coin_name . '( ' . $confirmTrade->type . ' )',
+        //         'startTime' => $sqlTimestamp,
+        //         'endTime' => $sqlTimestampPlus5Min,
+        //         'color' => '#ffffff',
+        //         'id' => $confirmTrade->ict_id,
+        //         'buyingCandle' => null,
+        //     ];
+        // }
 
 
 
@@ -1197,22 +1197,32 @@ class BinanceController extends Controller
 
 
 
-        $symbol = request('symbol','BTCUSDT');
-        $interval = request('interval','15m');
+        $symbol = request('symbol', 'BTCUSDT');
+        $interval = request('interval', '15m');
         $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, null, 'FUTURE');
 
         $openingMarkers = [];
-
+        $lines = [];
+        $equations = [];
         $pivotLowZone = null;
 
 
 
 
         $openDetails = null;
-        $tp = request('tp','0.5');
+        $tp = request('tp', '0.5');
 
-        $sl = request('sl','1');
+        $sl = request('sl', '1');
 
+        $lineObj = [
+            'x1' => null, // timestamp for first point
+            'y1' => null,         // price for first point
+            'x2' => null, // timestamp for second point
+            'y2' => null,         // price for second point
+            'color' => '#ff0000',  // red color
+            'thickness' => 2,      // line thickness
+            'title' => 'Support Line'
+        ];
 
         $waitingCandles = 0;
         foreach ($data as $index => &$candle) {
@@ -1222,220 +1232,23 @@ class BinanceController extends Controller
                 $waitingCandles--;
                 continue;
             }
-            $srAnalyzer = new SupportResistanceAnalyzer($data, $index, 100, 3);
-            $srAnalysis = $srAnalyzer->analyze();
 
 
+            $openingCondition = (
+                $data[$index]['histogram'] > 0
+                && $data[$index - 1]['histogram'] < 0
+                && $data[$index]['dif'] < 0
+                && $data[$index]['dea'] < 0
 
+                && $data[$index]['close'] > $data[$index]['ema200']
+                && $data[$index - 1]['close'] > $data[$index - 1]['ema200']
+                && $data[$index - 2]['close'] > $data[$index - 2]['ema200']
+                && $data[$index - 3]['close'] > $data[$index - 3]['ema200']
+            );
 
-            if ($openDetails) {
 
-                $openPrice = $data[$openDetails['index']]['close'];
-                if ($openDetails['position'] === 'LONG') {
-                    if ($data[$index]['high'] >= $openPrice * (1 + $tp / 100)) {
-                        $openingMarkers[] = [
-                            'timestamp_pst' => $data[$index]['timestamp_pst'],
-                            'color' => 'white',
-                            'text' => 'TP',
-                            'position' => 'aboveBar'
-                        ];
 
-                        $openDetails = null;
-                    } else if ($data[$index]['close'] < $openPrice * (1 - $sl / 100)) {
-                        $openingMarkers[] = [
-                            'timestamp_pst' => $data[$index]['timestamp_pst'],
-                            'color' => 'red',
-                            'text' => 'SL',
-                            'position' => 'aboveBar'
-                        ];
-
-                        $openDetails = null;
-                    }
-                } else if ($openDetails['position'] === 'SHORT') {
-                }
-                continue;
-            }
-
-
-
-            $pivot = CommonHelpers::checkPivot($data, $index - 3, 3);
-
-
-            if ($pivotLowZone) {
-
-
-
-
-
-
-                if (
-                    ($data[$index]['close'] > $pivotLowZone['max']
-                        && $data[$index]['open'] < $pivotLowZone['max']
-                        && $data[$index]['open'] > $pivotLowZone['min'])
-                ) {
-
-
-
-
-                    $candlesClosedBelowZone = 0;
-                    for ($i = $pivotLowZone['index']; $i <= $index; $i++) {
-
-                        // Force close this checking 
-                        if ($data[$i]['close'] < $pivotLowZone['min']) {
-                            $candlesClosedBelowZone++;
-                        }
-                    }
-
-
-
-
-                    if ($candlesClosedBelowZone > 0) {
-                        $pivotLowZone = null;
-                        $waitingCandles = 4;
-                        continue;
-                    }
-
-                    $highestWithinBounce = $lowestWithingBounce = min($data[$pivotLowZone['index']]['close'], $data[$pivotLowZone['index']]['open']);
-
-                    for ($i = $pivotLowZone['index']; $i <= $index; $i++) {
-
-                        $bounceHigh = max($data[$i]['close'], $data[$i]['open']);
-
-                        if ($bounceHigh > $highestWithinBounce) {
-                            $highestWithinBounce = $bounceHigh;
-                        }
-                    }
-
-
-                    $maximumBounce = CommonHelpers::getPercentDiff($lowestWithingBounce, $highestWithinBounce, true);
-
-                    // if ($maximumBounce < 0.2) {
-                    //     $openingMarkers[] = [
-                    //         'timestamp_pst' => $data[$index]['timestamp_pst'],
-                    //         'color' => 'blue',
-                    //         'text' => 'Skipped',
-                    //         'position' => 'belowBar'
-                    //     ];
-
-
-
-                    //     $pivotLowZone = null;
-                    //     $waitingCandles = 4;
-                    //     continue;
-                    // }
-
-
-
-
-                    $rsiDivergence = (
-
-                        $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-
-                        // && $data[$pivotLowZone['index']]['rsi6'] <  $data[$pivotLowZone['index'] - 1]['rsi6']
-                        // && $data[$pivotLowZone['index']]['rsi6'] <  $data[$pivotLowZone['index'] + 1]['rsi6']
-
-
-                        && $data[$index]['rsi6'] > $data[$pivotLowZone['index']]['rsi6']
-                    );
-
-                    // $candleWickCondition = (
-
-                    // );
-                    if ($rsiDivergence) {
-                        $openingMarkers[] = [
-                            'timestamp_pst' => $data[$index]['timestamp_pst'],
-                            'color' => 'green',
-                            'text' => 'LONG',
-                            'position' => 'belowBar'
-                        ];
-                        $openDetails = [
-                            'index' => $index,
-                            'position' => 'LONG',
-                        ];
-                    }
-
-                    // dd($data[$index]);
-
-                    $pivotLowZone = null;
-                    // break;
-                    $waitingCandles = 4;
-                    continue;
-                }
-            }
-
-            if ($pivot === 'low_pivot' && $data[$index - 3]['close'] < $data[$index - 3]['ma25']) {
-
-
-                $pivotLowZone = [
-                    'min' => $data[$index - 3]['low'],
-                    'max' => min($data[$index - 3]['close'], $data[$index - 3]['open']),
-                    'index' => $index - 3
-                ];
-
-
-                $openingMarkers[] = [
-                    'timestamp_pst' => $data[$index - 3]['timestamp_pst'],
-                    'color' => 'purple',
-                    'text' => 'Pivot',
-                    'position' => 'belowBar'
-                ];
-            }
-
-
-
-
-
-
-            // $supportIndexes = $srAnalysis['sr_indexes']['support_indexes'];
-            // $resistanceIndexes = $srAnalysis['sr_indexes']['resistance_indexes'];
-
-            // $srBand = null;
-            // $srPrice = 0;
-
-            // if (count($supportIndexes) >= 1) {
-
-
-
-            //     foreach ($srAnalysis['support_resistance_levels'] as $srLevel) {
-            //         if ($srLevel['type'] === 'support') {
-            //             $srPrice = $srLevel['price'];
-            //         }
-            //     }
-
-            //     if (!$srPrice)
-            //         continue;
-
-            //     $srBand = [
-            //         'min' => $srPrice * (1 - 0.15 / 100),
-            //         'max' => $srPrice * (1 + 0.15 / 100),
-            //     ];
-
-
-
-            //     $low = min($data[$index]['close'], $data[$index]['open']);
-            //     $high = max($data[$index]['close'], $data[$index]['open']);
-
-
-
-
-            //     if (
-            //         $low <= $srBand['max']
-            //         && $low >= $srBand['min']
-
-            //     ) {
-
-            //         // dd($srAnalysis,$data[$index]);
-            //         $openingMarkers[] = [
-            //             'timestamp_pst' => $candle['timestamp_pst'],
-            //             'color' => '#26a69a',
-            //             'text' => 'LONG',
-            //             'position' => 'belowBar'
-            //         ];
-            //     }
-            // }
-
-
-            if (false) {
+            if ($openingCondition) {
                 $openingMarkers[] = [
                     'timestamp_pst' => $candle['timestamp_pst'],
                     'color' => '#26a69a',
@@ -1445,7 +1258,13 @@ class BinanceController extends Controller
             }
         }
 
-        return view('MarketTrends.index', ['data' => $data, 'pageSlug' => 'MarketTrends' . $market, 'openingMarkers' => $openingMarkers, 'symbol' => $symbol, 'interval' => $interval]);
+        // dd($data[count($data) - 2]);
+
+
+
+
+
+        return view('MarketTrends.index', ['data' => $data, 'pageSlug' => 'MarketTrends' . $market, 'openingMarkers' => $openingMarkers, 'lines' => $lines, 'equations' => $equations, 'symbol' => $symbol, 'interval' => $interval]);
     }
 
 

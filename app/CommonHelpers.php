@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
-
+    
 class CommonHelpers
 {
     public static $binanceIntervals = [
@@ -3172,5 +3172,53 @@ class CommonHelpers
             }
         }
         return $bestRange;
+    }
+
+
+
+
+
+    public static function getGoldCandlestickDataTwelve($interval = '1day', $apiKey = 'demo', $outputsize = 30)
+    {
+        $symbol = 'XAU/USD';
+
+        $url = "https://api.twelvedata.com/time_series?symbol={$symbol}&interval={$interval}&outputsize={$outputsize}&apikey={$apiKey}";
+
+        $response = file_get_contents($url);
+
+        if ($response === false) {
+            return false;
+        }
+
+        $data = json_decode($response, true);
+
+        if (!$data || isset($data['status']) && $data['status'] === 'error') {
+            return false;
+        }
+
+        if (!isset($data['values'])) {
+            return false;
+        }
+
+        $candlesticks = [];
+
+        foreach ($data['values'] as $item) {
+            $candlesticks[] = [
+                'timestamp' => $item['datetime'],
+                'datetime' => $item['datetime'],
+                'open' => floatval($item['open']),
+                'high' => floatval($item['high']),
+                'low' => floatval($item['low']),
+                'close' => floatval($item['close']),
+                'volume' => isset($item['volume']) ? intval($item['volume']) : 0
+            ];
+        }
+
+        // Sort by timestamp (oldest first)
+        usort($candlesticks, function ($a, $b) {
+            return strtotime($a['timestamp']) - strtotime($b['timestamp']);
+        });
+
+        return $candlesticks;
     }
 }

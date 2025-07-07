@@ -555,6 +555,7 @@ class BinanceApiService
         // Initialize technical indicator arrays
         $ema12 = [];
         $ema26 = [];
+        $ema200 = [];
         $macd = [];
         $signalLine = [];
         $gains = [];
@@ -568,6 +569,15 @@ class BinanceApiService
         $shouldBuy = [];
         $avgGain = 0; // Initialize avgGain
         $avgLoss = 0; // Initialize avgLoss
+
+        // NEW: ATR14 and RSI14 arrays
+        $atrValues = [];
+        $trueRanges = [];
+        $gains14 = [];
+        $losses14 = [];
+        $rsi14Values = [];
+        $avgGain14 = 0;
+        $avgLoss14 = 0;
 
         // Money Flow Index variables
         $mfiPeriod = 14;
@@ -589,7 +599,6 @@ class BinanceApiService
         $bbPeriod = 20;
         $bbDeviation = 2;
 
-
         // SAR parameters
         $af = 0.02;      // Acceleration Factor
         $afStep = 0.02;  // AF increment
@@ -600,7 +609,7 @@ class BinanceApiService
 
         // ADX parameters
         $adxPeriod = 14;
-        $trueRanges = [];
+        $adxTrueRanges = []; // Renamed to avoid conflict with ATR trueRanges
         $dmPlus = [];
         $dmMinus = [];
         $smoothedTR = [];
@@ -630,6 +639,56 @@ class BinanceApiService
             $timestampReadable = \Carbon\Carbon::createFromTimestampMs($timestamp)
                 ->setTimezone('Asia/Karachi')
                 ->toDateTimeString();
+
+            // NEW: Calculate ATR14 True Range
+            $currentTR = 0;
+            if ($index > 0) {
+                $prevClose = $closePrices[$index - 1];
+                $currentTR = max(
+                    abs($high - $low),
+                    abs($high - $prevClose),
+                    abs($low - $prevClose)
+                );
+            } else {
+                $currentTR = $high - $low; // First candle
+            }
+            $trueRanges[] = $currentTR;
+
+            // NEW: Calculate ATR14
+            $atr14 = null;
+            if ($index == 13) {
+                // First ATR is simple average of first 14 true ranges
+                $atr14 = array_sum($trueRanges) / 14;
+            } elseif ($index > 13) {
+                // Wilder's smoothing method: Previous ATR * 13 + Current TR) / 14
+                $atr14 = (($atrValues[$index - 1] * 13) + $currentTR) / 14;
+            }
+            $atrValues[] = $atr14;
+
+            // NEW: Calculate RSI14
+            $rsi14 = null;
+            if ($index >= 1) {
+                $change = $close - $closePrices[$index - 1];
+                $gains14[$index] = $change > 0 ? $change : 0;
+                $losses14[$index] = $change < 0 ? abs($change) : 0;
+
+                if ($index == 14) {
+                    // First average for RSI14
+                    $avgGain14 = array_sum(array_slice($gains14, 1, 14)) / 14;
+                    $avgLoss14 = array_sum(array_slice($losses14, 1, 14)) / 14;
+                } elseif ($index > 14) {
+                    // Wilder's smoothing method for RSI14
+                    $avgGain14 = (($avgGain14 * 13) + $gains14[$index]) / 14;
+                    $avgLoss14 = (($avgLoss14 * 13) + $losses14[$index]) / 14;
+                }
+
+                // Calculate RSI14
+                if ($index >= 14) {
+                    $rs14 = $avgLoss14 == 0 ? 100 : $avgGain14 / $avgLoss14;
+                    $rsi14 = 100 - (100 / (1 + $rs14));
+                }
+            }
+            $rsi14Values[] = $rsi14;
 
             // Calculate typical price for MFI and VWAP
             $typicalPrice = ($high + $low + $close) / 3;
@@ -695,13 +754,13 @@ class BinanceApiService
                 $prevLow = $lowPrices[$index - 1];
                 $prevClose = $closePrices[$index - 1];
 
-                // Calculate True Range
+                // Calculate True Range for ADX (using separate array)
                 $tr = max(
                     abs($high - $low),
                     abs($high - $prevClose),
                     abs($low - $prevClose)
                 );
-                $trueRanges[] = $tr;
+                $adxTrueRanges[] = $tr;
 
                 // Calculate Directional Movement
                 $upMove = $high - $prevHigh;
@@ -723,7 +782,7 @@ class BinanceApiService
                 // Calculate smoothed values after collecting enough data
                 if ($index == $adxPeriod) {
                     // First average for the period
-                    $smoothedTR[] = $adxPeriod > 0 ? array_sum($trueRanges) / $adxPeriod : 0;
+                    $smoothedTR[] = $adxPeriod > 0 ? array_sum($adxTrueRanges) / $adxPeriod : 0;
                     $smoothedDMPlus[] = $adxPeriod > 0 ? array_sum($dmPlus) / $adxPeriod : 0;
                     $smoothedDMMinus[] = $adxPeriod > 0 ? array_sum($dmMinus) / $adxPeriod : 0;
                 } elseif ($index > $adxPeriod) {
@@ -763,7 +822,7 @@ class BinanceApiService
                 }
             } else {
                 // First candle - initialize values
-                $trueRanges[] = $high - $low; // Initial TR is just the range
+                $adxTrueRanges[] = $high - $low; // Initial TR is just the range
                 $dmPlus[] = 0;
                 $dmMinus[] = 0;
             }
@@ -816,9 +875,11 @@ class BinanceApiService
             if ($index == 0) {
                 $ema12[] = $close;
                 $ema26[] = $close;
+                $ema200[] = $close;
             } else {
                 $ema12[] = self::calculateEMA($close, $ema12[$index - 1], 12);
                 $ema26[] = self::calculateEMA($close, $ema26[$index - 1], 26);
+                $ema200[] = self::calculateEMA($close, $ema200[$index - 1], 200);
             }
 
             // Calculate OBV (On Balance Volume) - Verifying calculation
@@ -842,7 +903,7 @@ class BinanceApiService
                 $signalLine[] = self::calculateEMA($dif, $signalLine[$index - 1], 9);
             }
 
-            // Calculate RSI
+            // Calculate RSI6 (keeping original)
             if ($index >= 1) {
                 $change = $close - $closePrices[$index - 1];
                 $gains[$index] = $change > 0 ? $change : 0;
@@ -1005,12 +1066,6 @@ class BinanceApiService
             $currentDiMinus = count($diMinus) ? end($diMinus) : null;
             $currentADX = count($adxValues) ? end($adxValues) : null;
 
-
-
-
-            // Timestamp Conversion
-
-            // dd($timestamp,$timestamp + (5 * 60 * 60 * 1000));
             // Store candlestick data with all indicators
             $candlesticks[] = [
                 'timestamp_pst' => $timestamp + (5 * 60 * 60 * 1000),
@@ -1034,6 +1089,8 @@ class BinanceApiService
                 'bb_upper' => $bbUpper,
                 'bb_lower' => $bbLower,
                 'rsi6' => $rsi6,
+                'rsi14' => $rsi14, // NEW: RSI14
+                'atr14' => $atr14, // NEW: ATR14
                 'per' => $percentageChange,
                 'dif' => $dif,
                 'dea' => $index > 0 ? $signalLine[$index] : null,
@@ -1062,10 +1119,10 @@ class BinanceApiService
 
                 'ema12' => end($ema12),
                 'ema26' => end($ema26),
+                'ema200' => end($ema200),
 
                 'cacheResetTime' =>  $cacheUpto,
                 'exchange' => 'binance',
-
             ];
         }
 

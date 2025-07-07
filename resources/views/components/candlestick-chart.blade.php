@@ -4,7 +4,9 @@
     'interval' => '15m',
     'id' => 'chart',
     'indicators',
-    'markers' => [], // New prop for markers
+    'markers' => [],
+    'lines' => [], // NEW: Array of line objects [{x1, y1, x2, y2, color, thickness}]
+    'equations' => [], // NEW: Array of equation objects [{equation, color, thickness, domain}]
 ])
 
 
@@ -274,7 +276,8 @@
 
             // New markers prop
             const markers = @json($markers); // Get markers from the props
-
+            const lines = @json($lines);
+            const equations = @json($equations);
             // Color scheme for dark theme
             const colors = {
                 background: '#0d1421',
@@ -304,6 +307,45 @@
                 return Math.floor(timestamp / 1000);
             }
 
+            function coordinateToPixel(x, y, chart, candleSeries) {
+                const timeScale = chart.timeScale();
+                const priceScale = chart.priceScale('right');
+
+                // Convert x (timestamp) to chart time format
+                const chartTime = convertTime(x);
+
+                // Get pixel positions
+                const xPixel = timeScale.timeToCoordinate(chartTime);
+                const yPixel = priceScale.priceToCoordinate(y);
+
+                return {
+                    x: xPixel,
+                    y: yPixel
+                };
+            }
+
+            // Helper function to evaluate equations
+            function evaluateEquation(equation, x) {
+                try {
+                    // Replace 'x' with the actual value and evaluate
+                    const expr = equation
+                        .replace(/x/g, x)
+                        .replace(/\^/g, '**') // Convert ^ to ** for exponentiation
+                        .replace(/sin/g, 'Math.sin')
+                        .replace(/cos/g, 'Math.cos')
+                        .replace(/tan/g, 'Math.tan')
+                        .replace(/log/g, 'Math.log')
+                        .replace(/sqrt/g, 'Math.sqrt')
+                        .replace(/abs/g, 'Math.abs')
+                        .replace(/pi/g, 'Math.PI')
+                        .replace(/e/g, 'Math.E');
+
+                    return eval(expr);
+                } catch (error) {
+                    console.error('Error evaluating equation:', equation, error);
+                    return null;
+                }
+            }
             // Parse all data series
             const candles = chartData.map(c => ({
                 time: convertTime(c.timestamp_pst),
@@ -409,7 +451,7 @@
                         0) // Use whichever field name you have in your data
                 })),
             };
-
+            
             // Create chart with professional styling
             const chart = LightweightCharts.createChart(document.getElementById(chartId), {
                 layout: {
@@ -486,6 +528,69 @@
                 wickDownColor: colors.downColor,
             });
             candleSeries.setData(candles);
+            const customLineSeries = [];
+            lines.forEach((line, index) => {
+                const lineSeries = chart.addLineSeries({
+                    color: line.color || '#ffffff',
+                    lineWidth: line.thickness || 2,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    crosshairMarkerVisible: false,
+                    title: line.title || `Line ${index + 1}`
+                });
+
+                // Create line data points
+                const lineData = [{
+                        time: convertTime(line.x1),
+                        value: line.y1
+                    },
+                    {
+                        time: convertTime(line.x2),
+                        value: line.y2
+                    }
+                ];
+
+                lineSeries.setData(lineData);
+                customLineSeries.push(lineSeries);
+            });
+
+            // Create equation series
+            const equationSeries = [];
+            equations.forEach((eq, index) => {
+                const eqSeries = chart.addLineSeries({
+                    color: eq.color || '#ffffff',
+                    lineWidth: eq.thickness || 2,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    crosshairMarkerVisible: false,
+                    title: eq.title || `Equation ${index + 1}`
+                });
+
+                // Generate points for the equation
+                const domain = eq.domain || {
+                    min: 0,
+                    max: candles.length - 1
+                };
+                const step = eq.step || 1;
+                const equationData = [];
+
+                for (let i = domain.min; i <= domain.max; i += step) {
+                    if (i < candles.length) {
+                        const candle = candles[i];
+                        const y = evaluateEquation(eq.equation, candle
+                            .close); // Using close price as x value
+                        if (y !== null && !isNaN(y)) {
+                            equationData.push({
+                                time: candle.time,
+                                value: y
+                            });
+                        }
+                    }
+                }
+
+                eqSeries.setData(equationData);
+                equationSeries.push(eqSeries);
+            });
 
             // Prepare the markers in the format needed by setMarkers
             const formattedMarkers = markers.map(marker => ({
@@ -878,9 +983,82 @@
                             }
                             break;
                     }
+
                 });
             }
 
+            function updateCustomLines() {
+                customLineSeries.forEach(series => {
+                    chart.removeSeries(series);
+                });
+                customLineSeries.length = 0;
+
+                lines.forEach((line, index) => {
+                    const lineSeries = chart.addLineSeries({
+                        color: line.color || '#ffffff',
+                        lineWidth: line.thickness || 2,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                        title: line.title || `Line ${index + 1}`
+                    });
+
+                    const lineData = [{
+                            time: convertTime(line.x1),
+                            value: line.y1
+                        },
+                        {
+                            time: convertTime(line.x2),
+                            value: line.y2
+                        }
+                    ];
+
+                    lineSeries.setData(lineData);
+                    customLineSeries.push(lineSeries);
+                });
+            }
+
+            // Function to update equations
+            function updateEquations() {
+                equationSeries.forEach(series => {
+                    chart.removeSeries(series);
+                });
+                equationSeries.length = 0;
+
+                equations.forEach((eq, index) => {
+                    const eqSeries = chart.addLineSeries({
+                        color: eq.color || '#ffffff',
+                        lineWidth: eq.thickness || 2,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                        title: eq.title || `Equation ${index + 1}`
+                    });
+
+                    const domain = eq.domain || {
+                        min: 0,
+                        max: candles.length - 1
+                    };
+                    const step = eq.step || 1;
+                    const equationData = [];
+
+                    for (let i = domain.min; i <= domain.max; i += step) {
+                        if (i < candles.length) {
+                            const candle = candles[i];
+                            const y = evaluateEquation(eq.equation, candle.close);
+                            if (y !== null && !isNaN(y)) {
+                                equationData.push({
+                                    time: candle.time,
+                                    value: y
+                                });
+                            }
+                        }
+                    }
+
+                    eqSeries.setData(equationData);
+                    equationSeries.push(eqSeries);
+                });
+            }
             // Initialize chart
             updateChart();
 
