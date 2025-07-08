@@ -95,7 +95,7 @@ class ReportService
     public static $dynamicTP = 0;
     public static $dynamicSL = 0;
 
-    public static $dynamicTPSLgap = 0.2;
+    public static $dynamicTPSLgap = 0.3;
 
     public static $initialTpPercent = 0.5;
     public static $initialSlPercent = 1;
@@ -105,7 +105,16 @@ class ReportService
     public static $lows = [];
     public static $highs = [];
 
+
+
+
+    // For Trendline strategy only
     public static $lastPivotLow = null;
+    public static $lastPivotHigh = null;
+
+
+    public static $tLineCoordHigh = null;
+    public static $tLineCoordLow = null;
 
     public static function generateCoinReport(
         $cmd = null,
@@ -132,8 +141,7 @@ class ReportService
             // ->whereIn(
             //     'symbol',
             //     [
-            //         'SCRTUSDT'
-
+            //         'BTCUSDT'
             //     ]
             // )
         ;
@@ -172,7 +180,6 @@ class ReportService
 
         self::addFormulaDetails();
         DB::table('confirmed_trades')->truncate();
-
 
         foreach ($coins as $index => $coin) {
 
@@ -461,6 +468,13 @@ class ReportService
         $safeModeEnableTimestamps = [];
         $safeModeDisabledTimestamps = [];
 
+
+        self::$tLineCoordHigh = null;
+        self::$lastPivotLow = null;
+
+        self::$tLineCoordLow = null;
+        self::$lastPivotHigh = null;
+
         foreach ($data as $index => $candle) {
 
 
@@ -651,7 +665,12 @@ class ReportService
                     self::$dynamicTP = 0;
                     self::$dynamicSL = 0;
                     self::$candlesToCheck = 1000;
+
+                    self::$tLineCoordHigh = null;
                     self::$lastPivotLow = null;
+
+                    self::$tLineCoordLow = null;
+                    self::$lastPivotHigh = null;
                 }
             }
         }
@@ -682,12 +701,28 @@ class ReportService
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps, &$tagName)
     {
 
+        // Composite Trading strategy wth trendlines
         // LONG Entry
-        $macdLong = self::checkConditionSetLongMACD($symbol, $data, $index);
+        $macdLong = self::checkConditionSetLongDoublePivotLong($symbol, $data, $index);
         if ($macdLong) {
-            $tagName = 'MACD';
+            $tagName = 'DOUBLE-PIVOT';
             return $macdLong;
         }
+
+
+
+        $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
+        if ($macdLong) {
+            $tagName = 'DOUBLE-PIVOT';
+            return $macdLong;
+        }
+
+        // // LONG Entry
+        // $macdLong = self::checkConditionSetLongMACD($symbol, $data, $index);
+        // if ($macdLong) {
+        //     $tagName = 'MACD';
+        //     return $macdLong;
+        // }
 
         // else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
         //     $tagName = 'SR';
@@ -1872,15 +1907,14 @@ class ReportService
 
                 $secondInteraction = (
                     $candleInteraction['overlap_analysis']['body_position'] === 'partial_from_above'
-                    && ($index - self::$lastPivotLow['index'] ) >= 3
+                    && ($index - self::$lastPivotLow['index']) >= 3
                 );
-
             }
 
 
 
 
-           
+
             // Define all steps with their conditions and scores
             $steps = [
                 // Step 1 - Volume Confirmation
@@ -1946,7 +1980,399 @@ class ReportService
         return null;
     }
 
+    public static function checkConditionSetLongDoublePivotLong($symbol, $data, $index)
+    {
 
+
+        if (self::$tLineCoordHigh) {
+
+
+
+            $tLineResistance = CommonHelpers::estimateLine($data[$index]['timestamp_pst'], self::$tLineCoordHigh['x1'], self::$tLineCoordHigh['y1'], self::$tLineCoordHigh['x2'], self::$tLineCoordHigh['y2']);
+            $tLineResistancePrev = CommonHelpers::estimateLine($data[$index - 1]['timestamp_pst'], self::$tLineCoordHigh['x1'], self::$tLineCoordHigh['y1'], self::$tLineCoordHigh['x2'], self::$tLineCoordHigh['y2']);
+
+
+
+            if (
+                $data[$index]['close'] > $tLineResistance
+                && $data[$index - 1]['close'] > $tLineResistancePrev
+                && $data[$index]['per'] > 0
+                && $data[$index - 1]['per'] > 0
+
+            ) {
+
+
+                $maxDiffFromDoubleBottom = 0;
+
+
+                for ($i = self::$tLineCoordHigh['secondBottomIndex']; $i <= $index; $i++) {
+
+                    $diffFromBottom = CommonHelpers::getPercentDiff(self::$tLineCoordHigh['secondBottomPrice'], $data[$index]['low'], true);
+
+                    if ($diffFromBottom < 0 && $maxDiffFromDoubleBottom > $diffFromBottom) {
+                        $maxDiffFromDoubleBottom = $diffFromBottom;
+                    }
+                }
+
+
+
+
+                $finalOpeningConditions = (
+                    $maxDiffFromDoubleBottom >= -0.3
+                );
+
+                if ($finalOpeningConditions) {
+                    return 'LONG';
+                }
+
+                self::$tLineCoordHigh = null;
+                self::$lastPivotLow = null;
+            }
+
+
+            return null;
+        }
+
+
+
+
+
+
+
+
+
+        $pivot = CommonHelpers::checkPivot($data, $index - 10, 10);
+
+        if ($pivot == 'high_pivot') {
+        } else  if ($pivot == 'low_pivot') {
+
+            self::$lastPivotLow = [
+                'index' => $index - 10,
+                'price' => $data[$index - 10]['low']
+            ];
+            return null;
+        }
+
+
+
+        if (self::$lastPivotLow) {
+            $noCandlesBelowFirstBottom = true;
+
+            for ($i = (self::$lastPivotLow['index'] + 1); $i <= $index - 1; $i++) {
+
+                if ($data[$i]['low'] <= self::$lastPivotLow['price']) {
+                    $noCandlesBelowFirstBottom = false;
+                    break;
+                }
+            }
+
+
+            $isPivotBetweenBottoms = false;
+
+
+            if (
+                (
+                    (
+                        $data[$index - 1]['low']  >= self::$lastPivotLow['price'] * (1 - 0.05 / 100)
+                        &&
+                        $data[$index - 1]['low']  <= self::$lastPivotLow['price'] * (1 + 0.05 / 100)
+
+                    )
+                )
+                &&
+                $noCandlesBelowFirstBottom
+
+            ) {
+
+
+
+                $minorHighPivots = [];
+                $loopIndex = $index - 3;
+                while (true) {
+
+                    $minorPivot = CommonHelpers::checkPivot($data, $loopIndex, 3);
+
+                    if ($minorPivot === 'high_pivot') {
+                        $pivotPrice = $data[$loopIndex]['high'];
+
+
+                        if (count($minorHighPivots) == 0) {
+                            $minorHighPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
+                            continue;
+                        }
+
+
+
+                        if (
+                            $pivotPrice < $minorHighPivots[count($minorHighPivots) - 1]['price']
+                            && $minorHighPivots[count($minorHighPivots) - 1]['price'] < $minorHighPivots[count($minorHighPivots) - 2]['price']
+                        ) {
+                            break;
+                        } else {
+                            $minorHighPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
+                        }
+                    }
+
+                    $loopIndex--;
+                }
+
+
+
+                $highestIndex = $minorHighPivots[0]['index'];
+
+
+                foreach ($minorHighPivots as $hPivot) {
+                    if ($hPivot['price'] > $data[$highestIndex]['high']) {
+                        $highestIndex = $hPivot['index'];
+                    }
+                }
+
+                $recentIndex = $minorHighPivots[0]['index'];
+
+
+                $tLineResistance = CommonHelpers::estimateLine($data[$index]['timestamp_pst'], $data[$highestIndex]['timestamp_pst'], $data[$highestIndex]['high'], $data[$recentIndex]['timestamp_pst'], $data[$recentIndex]['high']);
+
+
+                if ($data[$index]['high'] >= $tLineResistance) {
+                    return null;
+                }
+
+
+                if (
+                    !($minorHighPivots[0]['index'] > self::$lastPivotLow['index']
+                        && $minorHighPivots[0]['index'] < $index)
+                ) {
+                    return null;
+                }
+
+
+
+
+                $numberOfPivotsBetweenBottoms = 0;
+
+                foreach ($minorHighPivots as $hPivot) {
+
+                    if (
+                        $hPivot['index'] < $index
+                        &&  $hPivot['index'] > self::$lastPivotLow['index']
+                    ) {
+                        $numberOfPivotsBetweenBottoms++;
+                    }
+                }
+
+
+                if ($numberOfPivotsBetweenBottoms > 3) {
+                    return null;
+                }
+
+
+                self::$tLineCoordHigh = [
+                    'x1' => $data[$highestIndex]['timestamp_pst'],
+                    'y1' => $data[$highestIndex]['high'],
+                    'x2' =>  $data[$recentIndex]['timestamp_pst'],
+                    'y2' => $data[$recentIndex]['high'],
+                    'secondBottomPrice' => self::$lastPivotLow['price'],
+                    'secondBottomIndex' => self::$lastPivotLow['index'],
+                ];
+                return null;
+            }
+        }
+        return null;
+    }
+
+    public static function checkConditionSetLongDoublePivotShort($symbol, $data, $index)
+    {
+
+
+        if (self::$tLineCoordLow) {
+
+            $tLineSupport = CommonHelpers::estimateLine($data[$index]['timestamp_pst'], self::$tLineCoordLow['x1'], self::$tLineCoordLow['y1'], self::$tLineCoordLow['x2'], self::$tLineCoordLow['y2']);
+            $tLineSupportPrev = CommonHelpers::estimateLine($data[$index - 1]['timestamp_pst'], self::$tLineCoordLow['x1'], self::$tLineCoordLow['y1'], self::$tLineCoordLow['x2'], self::$tLineCoordLow['y2']);
+
+
+
+            if (
+                $data[$index]['close'] < $tLineSupport
+                && $data[$index - 1]['close'] < $tLineSupportPrev
+                && $data[$index]['per'] < 0
+                && $data[$index - 1]['per'] < 0
+
+            ) {
+
+
+                $maxDiffFromDoubleBottom = 0;
+
+
+                for ($i = self::$tLineCoordHigh['secondTopIndex']; $i <= $index; $i++) {
+
+                    $diffFromBottom = CommonHelpers::getPercentDiff(self::$tLineCoordHigh['secondTopPrice'], $data[$index]['low'], true);
+
+                    if ($diffFromBottom > 0 && $maxDiffFromDoubleBottom < $diffFromBottom) {
+                        $maxDiffFromDoubleBottom = $diffFromBottom;
+                    }
+                }
+
+
+
+
+                $finalOpeningConditions = (
+                    $maxDiffFromDoubleBottom <= 0.3
+                );
+
+                if ($finalOpeningConditions) {
+                    return 'SHORT';
+                }
+
+                self::$tLineCoordLow = null;
+                self::$lastPivotHigh = null;
+            }
+
+
+            return null;
+        }
+
+
+
+
+
+
+
+
+
+        $pivot = CommonHelpers::checkPivot($data, $index - 10, 10);
+
+        if ($pivot == 'high_pivot') {
+
+            self::$lastPivotHigh = [
+                'index' => $index - 10,
+                'price' => $data[$index - 10]['high']
+            ];
+            return null;
+        }
+
+
+
+        if (self::$lastPivotHigh) {
+            $noCandlesAboveFirstTop = true;
+
+            for ($i = (self::$lastPivotHigh['index'] + 1); $i <= $index - 1; $i++) {
+
+                if ($data[$i]['high'] >= self::$lastPivotHigh['price']) {
+                    $noCandlesAboveFirstTop = false;
+                    break;
+                }
+            }
+
+
+            if (
+                (
+                    (
+                        $data[$index - 1]['high']  <= self::$lastPivotLow['price'] * (1 + 0.05 / 100)
+                        &&
+                        $data[$index - 1]['high']  >= self::$lastPivotLow['price'] * (1 - 0.05 / 100)
+
+                    )
+                )
+                &&
+                $noCandlesAboveFirstTop
+
+            ) {
+
+
+
+                $minorLowPivots = [];
+                $loopIndex = $index - 3;
+                while (true) {
+
+                    $minorPivot = CommonHelpers::checkPivot($data, $loopIndex, 3);
+
+                    if ($minorPivot === 'low_pivot') {
+                        $pivotPrice = $data[$loopIndex]['low'];
+
+
+                        if (count($minorLowPivots) == 0) {
+                            $minorLowPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
+                            continue;
+                        }
+
+
+
+                        if (
+                            $pivotPrice > $minorLowPivots[count($minorLowPivots) - 1]['price']
+                            && $minorLowPivots[count($minorLowPivots) - 1]['price'] > $minorLowPivots[count($minorLowPivots) - 2]['price']
+                        ) {
+                            break;
+                        } else {
+                            $minorLowPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
+                        }
+                    }
+
+                    $loopIndex--;
+                }
+
+
+
+                $lowestIndex = $minorLowPivots[0]['index'];
+
+
+                foreach ($minorLowPivots as $lPivot) {
+                    if ($lPivot['price'] < $data[$lowestIndex]['low']) {
+                        $lowestIndex = $lPivot['index'];
+                    }
+                }
+
+                $recentIndex = $minorLowPivots[0]['index'];
+
+
+                $tLineSupport = CommonHelpers::estimateLine($data[$index]['timestamp_pst'], $data[$lowestIndex]['timestamp_pst'], $data[$lowestIndex]['low'], $data[$recentIndex]['timestamp_pst'], $data[$recentIndex]['low']);
+
+
+                if ($data[$index]['low'] <= $tLineSupport) {
+                    return null;
+                }
+
+
+                if (
+                    !($minorLowPivots[0]['index'] > self::$lastPivotLow['index']
+                        && $minorLowPivots[0]['index'] < $index)
+                ) {
+                    return null;
+                }
+
+
+
+
+                $numberOfPivotsBetweenTops = 0;
+
+                foreach ($minorLowPivots as $hPivot) {
+
+                    if (
+                        $hPivot['index'] < $index
+                        &&  $hPivot['index'] > self::$lastPivotLow['index']
+                    ) {
+                        $numberOfPivotsBetweenTops++;
+                    }
+                }
+
+
+                if ($numberOfPivotsBetweenTops > 3) {
+                    return null;
+                }
+
+
+                self::$tLineCoordHigh = [
+                    'x1' => $data[$lowestIndex]['timestamp_pst'],
+                    'y1' => $data[$lowestIndex]['low'],
+                    'x2' =>  $data[$recentIndex]['timestamp_pst'],
+                    'y2' => $data[$recentIndex]['low'],
+                    'secondTopPrice' => self::$lastPivotHigh['price'],
+                    'secondTopIndex' => self::$lastPivotHigh['index'],
+                ];
+                return null;
+            }
+        }
+        return null;
+    }
 
 
 
