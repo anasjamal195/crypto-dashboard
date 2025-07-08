@@ -17,6 +17,7 @@
             // 'adx',
             // 'sar',
         ]"
-            :markers="$openingMarkers" />
+            :markers="$openingMarkers" 
+            :lines="$lines" />
     </div>
 @endsection

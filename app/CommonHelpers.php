@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
-    
+
 class CommonHelpers
 {
     public static $binanceIntervals = [
@@ -2828,14 +2828,33 @@ class CommonHelpers
 
     // Calculation functions
 
-    public static function checkPivot($data, $index, $n = 2)
+    public static function checkPivot($data, $index, $n = 2, $maxIndex = null)
     {
         $total = count($data);
 
-        // Make sure we have enough candles on both sides
-        if ($index < $n || $index > $total - $n - 1) {
+        // Set maxIndex to array length if not provided
+        if ($maxIndex === null) {
+            $maxIndex = $total - 1;
+        }
+
+        // Ensure maxIndex doesn't exceed actual data bounds
+        $maxIndex = min($maxIndex, $total - 1);
+
+        // Make sure we have enough candles on the left side
+        if ($index < $n) {
             return 'not_enough_data';
         }
+
+        // Calculate available indexes on the right side
+        $availableRight = $maxIndex - $index;
+
+        // If no indexes available on right, return not_enough_data
+        if ($availableRight < 1) {
+            return 'not_enough_data';
+        }
+
+        // Use minimum of requested $n and available right indexes
+        $rightIndexes = min($n, $availableRight);
 
         $isHighPivot = true;
         $isLowPivot = true;
@@ -2843,11 +2862,22 @@ class CommonHelpers
         $currentHigh = $data[$index]['high'];
         $currentLow = $data[$index]['low'];
 
+        // Check left side (full $n indexes)
         for ($i = 1; $i <= $n; $i++) {
-            if ($currentHigh <= $data[$index - $i]['high'] || $currentHigh <= $data[$index + $i]['high']) {
+            if ($currentHigh <= $data[$index - $i]['high']) {
                 $isHighPivot = false;
             }
-            if ($currentLow >= $data[$index - $i]['low'] || $currentLow >= $data[$index + $i]['low']) {
+            if ($currentLow >= $data[$index - $i]['low']) {
+                $isLowPivot = false;
+            }
+        }
+
+        // Check right side (dynamic number of indexes - could be 1, 2, 3, 4, or more)
+        for ($i = 1; $i <= $rightIndexes; $i++) {
+            if ($currentHigh <= $data[$index + $i]['high']) {
+                $isHighPivot = false;
+            }
+            if ($currentLow >= $data[$index + $i]['low']) {
                 $isLowPivot = false;
             }
         }
@@ -3220,5 +3250,364 @@ class CommonHelpers
         });
 
         return $candlesticks;
+    }
+
+
+
+    public static function checkCandleOverlap($data, $index, $thresholdPrice, $type = 'support', $binSize = 0.05)
+    {
+        // Create the zone boundaries
+        $zoneMax = $thresholdPrice * (1 + $binSize / 100);
+        $zoneMin = $thresholdPrice * (1 - $binSize / 100);
+
+        // Get candle data
+        $candle = $data[$index];
+        $open = $candle['open'];
+        $close = $candle['close'];
+        $high = $candle['high'];
+        $low = $candle['low'];
+
+        // Calculate candle body range
+        $bodyMax = max($open, $close);
+        $bodyMin = min($open, $close);
+
+        // Determine candle direction
+        $isBullish = $close > $open;
+        $isBearish = $close < $open;
+        $isDoji = $close == $open;
+
+        // Calculate overlap percentages for more precise analysis
+        $bodyInZone = self::calculateOverlapPercentage($bodyMin, $bodyMax, $zoneMin, $zoneMax);
+        $wickInZone = self::calculateOverlapPercentage($low, $high, $zoneMin, $zoneMax);
+
+        // Analyze body position relative to zone
+        $bodyPosition = self::getBodyPosition($bodyMin, $bodyMax, $zoneMin, $zoneMax);
+
+        // Analyze wick interactions
+        $wickAnalysis = self::analyzeWickInteraction($low, $high, $bodyMin, $bodyMax, $zoneMin, $zoneMax);
+
+        // Build comprehensive response
+        $response = [
+            'zone_type' => $type,
+            'zone_boundaries' => [
+                'min' => $zoneMin,
+                'max' => $zoneMax,
+                'threshold' => $thresholdPrice
+            ],
+            'candle_data' => [
+                'open' => $open,
+                'close' => $close,
+                'high' => $high,
+                'low' => $low,
+                'body_max' => $bodyMax,
+                'body_min' => $bodyMin,
+                'direction' => $isBullish ? 'bullish' : ($isBearish ? 'bearish' : 'doji')
+            ],
+            'overlap_analysis' => [
+                'body_in_zone_percent' => $bodyInZone,
+                'total_wick_in_zone_percent' => $wickInZone,
+                'body_position' => $bodyPosition,
+                'wick_analysis' => $wickAnalysis
+            ],
+            'interaction_type' => self::determineInteractionType($bodyPosition, $wickAnalysis, $type, $isBullish, $isBearish),
+            'strength' => self::calculateInteractionStrength($bodyInZone, $wickInZone, $bodyPosition, $wickAnalysis),
+
+        ];
+
+        return $response;
+    }
+
+    private static function calculateOverlapPercentage($rangeMin, $rangeMax, $zoneMin, $zoneMax)
+    {
+        // Calculate what percentage of the range overlaps with the zone
+        $overlapMin = max($rangeMin, $zoneMin);
+        $overlapMax = min($rangeMax, $zoneMax);
+
+        if ($overlapMin >= $overlapMax) {
+            return 0; // No overlap
+        }
+
+        $overlapSize = $overlapMax - $overlapMin;
+        $rangeSize = $rangeMax - $rangeMin;
+
+        return $rangeSize > 0 ? ($overlapSize / $rangeSize) * 100 : 0;
+    }
+
+    private static function getBodyPosition($bodyMin, $bodyMax, $zoneMin, $zoneMax)
+    {
+        // Determine body position relative to zone
+        if ($bodyMax < $zoneMin) {
+            return 'completely_below';
+        } elseif ($bodyMin > $zoneMax) {
+            return 'completely_above';
+        } elseif ($bodyMin >= $zoneMin && $bodyMax <= $zoneMax) {
+            return 'completely_within';
+        } elseif ($bodyMin < $zoneMin && $bodyMax > $zoneMax) {
+            return 'engulfing_zone';
+        } elseif ($bodyMin < $zoneMin && $bodyMax >= $zoneMin && $bodyMax <= $zoneMax) {
+            return 'partial_from_below';
+        } elseif ($bodyMin >= $zoneMin && $bodyMin <= $zoneMax && $bodyMax > $zoneMax) {
+            return 'partial_from_above';
+        } else {
+            return 'undefined';
+        }
+    }
+
+    private static function analyzeWickInteraction($low, $high, $bodyMin, $bodyMax, $zoneMin, $zoneMax)
+    {
+        $upperWick = $high - $bodyMax;
+        $lowerWick = $bodyMin - $low;
+
+        $analysis = [
+            'upper_wick_size' => $upperWick,
+            'lower_wick_size' => $lowerWick,
+            'upper_wick_touches_zone' => false,
+            'lower_wick_touches_zone' => false,
+            'upper_wick_penetrates_zone' => false,
+            'lower_wick_penetrates_zone' => false,
+            'rejection_pattern' => 'none'
+        ];
+
+        // Check upper wick interaction
+        if ($upperWick > 0) {
+            if ($high >= $zoneMin && $high <= $zoneMax) {
+                $analysis['upper_wick_touches_zone'] = true;
+            }
+            if ($bodyMax < $zoneMin && $high >= $zoneMin) {
+                $analysis['upper_wick_penetrates_zone'] = true;
+            }
+        }
+
+        // Check lower wick interaction
+        if ($lowerWick > 0) {
+            if ($low >= $zoneMin && $low <= $zoneMax) {
+                $analysis['lower_wick_touches_zone'] = true;
+            }
+            if ($bodyMin > $zoneMax && $low <= $zoneMax) {
+                $analysis['lower_wick_penetrates_zone'] = true;
+            }
+        }
+
+        // Identify rejection patterns
+        if ($analysis['upper_wick_penetrates_zone'] && $upperWick > ($bodyMax - $bodyMin)) {
+            $analysis['rejection_pattern'] = 'upper_rejection';
+        } elseif ($analysis['lower_wick_penetrates_zone'] && $lowerWick > ($bodyMax - $bodyMin)) {
+            $analysis['rejection_pattern'] = 'lower_rejection';
+        }
+
+        return $analysis;
+    }
+
+    private static function determineInteractionType($bodyPosition, $wickAnalysis, $type, $isBullish, $isBearish)
+    {
+        // Determine the primary interaction type based on body position and wick analysis
+        switch ($bodyPosition) {
+            case 'completely_below':
+                if ($wickAnalysis['upper_wick_penetrates_zone']) {
+                    return $type === 'support' ? 'wick_test_from_below' : 'wick_test_resistance';
+                }
+                return $type === 'support' ? 'below_support' : 'below_resistance';
+
+            case 'completely_above':
+                if ($wickAnalysis['lower_wick_penetrates_zone']) {
+                    return $type === 'support' ? 'wick_test_from_above' : 'wick_retest_from_above';
+                }
+                return $type === 'support' ? 'above_support' : 'above_resistance';
+
+            case 'completely_within':
+                return $type === 'support' ? 'trading_within_support' : 'trading_within_resistance';
+
+            case 'engulfing_zone':
+                if ($isBullish) {
+                    return $type === 'support' ? 'bullish_engulfing_support' : 'bullish_breakthrough_resistance';
+                } elseif ($isBearish) {
+                    return $type === 'support' ? 'bearish_breakdown_support' : 'bearish_rejection_resistance';
+                }
+                return $type === 'support' ? 'engulfing_support' : 'engulfing_resistance';
+
+            case 'partial_from_below':
+                if ($isBullish) {
+                    return $type === 'support' ? 'bullish_bounce_support' : 'bullish_break_resistance';
+                } elseif ($isBearish) {
+                    return $type === 'support' ? 'bearish_retest_support' : 'bearish_rejection_resistance';
+                }
+                return $type === 'support' ? 'partial_break_above_support' : 'partial_break_resistance';
+
+            case 'partial_from_above':
+                if ($isBullish) {
+                    return $type === 'support' ? 'bullish_retest_support' : 'bullish_recovery_resistance';
+                } elseif ($isBearish) {
+                    return $type === 'support' ? 'bearish_break_support' : 'bearish_pullback_resistance';
+                }
+                return $type === 'support' ? 'partial_break_below_support' : 'partial_pullback_resistance';
+
+            default:
+                return 'undefined_interaction';
+        }
+    }
+
+    private static function calculateInteractionStrength($bodyInZone, $wickInZone, $bodyPosition, $wickAnalysis)
+    {
+        $strength = 0;
+
+        // Base strength on body interaction
+        switch ($bodyPosition) {
+            case 'completely_within':
+                $strength += 80;
+                break;
+            case 'engulfing_zone':
+                $strength += 90;
+                break;
+            case 'partial_from_below':
+            case 'partial_from_above':
+                $strength += 60;
+                break;
+            case 'completely_below':
+            case 'completely_above':
+                $strength += 20;
+                break;
+        }
+
+        // Add strength based on wick interaction
+        if ($wickAnalysis['upper_wick_penetrates_zone'] || $wickAnalysis['lower_wick_penetrates_zone']) {
+            $strength += 30;
+        }
+
+        // Add strength based on rejection patterns
+        if ($wickAnalysis['rejection_pattern'] !== 'none') {
+            $strength += 40;
+        }
+
+        // Normalize to 0-100 scale
+        $strength = min(100, max(0, $strength));
+
+        // Return descriptive strength
+        if ($strength >= 80) return 'very_strong';
+        if ($strength >= 60) return 'strong';
+        if ($strength >= 40) return 'moderate';
+        if ($strength >= 20) return 'weak';
+        return 'very_weak';
+    }
+
+    private static function generateTradingSignal($bodyPosition, $wickAnalysis, $type, $isBullish, $isBearish)
+    {
+        $signal = [
+            'direction' => 'neutral',
+            'confidence' => 'low',
+            'action' => 'wait',
+            'description' => ''
+        ];
+
+        if ($type === 'support') {
+            // Support level analysis
+            if ($bodyPosition === 'partial_from_below' && $isBullish) {
+                $signal = [
+                    'direction' => 'bullish',
+                    'confidence' => 'high',
+                    'action' => 'buy',
+                    'description' => 'Bullish bounce from support level'
+                ];
+            } elseif ($wickAnalysis['rejection_pattern'] === 'lower_rejection') {
+                $signal = [
+                    'direction' => 'bullish',
+                    'confidence' => 'medium',
+                    'action' => 'buy',
+                    'description' => 'Rejection at support with long lower wick'
+                ];
+            } elseif ($bodyPosition === 'partial_from_above' && $isBearish) {
+                $signal = [
+                    'direction' => 'bearish',
+                    'confidence' => 'high',
+                    'action' => 'sell',
+                    'description' => 'Support level breakdown'
+                ];
+            }
+        } else {
+            // Resistance level analysis
+            if ($bodyPosition === 'partial_from_below' && $isBullish) {
+                $signal = [
+                    'direction' => 'bullish',
+                    'confidence' => 'high',
+                    'action' => 'buy',
+                    'description' => 'Bullish breakout through resistance'
+                ];
+            } elseif ($wickAnalysis['rejection_pattern'] === 'upper_rejection') {
+                $signal = [
+                    'direction' => 'bearish',
+                    'confidence' => 'medium',
+                    'action' => 'sell',
+                    'description' => 'Rejection at resistance with long upper wick'
+                ];
+            } elseif ($bodyPosition === 'partial_from_above' && $isBearish) {
+                $signal = [
+                    'direction' => 'bearish',
+                    'confidence' => 'medium',
+                    'action' => 'sell',
+                    'description' => 'Failed breakout, pulling back from resistance'
+                ];
+            }
+        }
+
+        return $signal;
+    }
+    public static function calculateMA($data, $index, $length, $priceKey = 'close')
+    {
+        if ($index + 1 < $length) {
+            return null; // Not enough data
+        }
+
+        $sum = 0;
+        for ($i = $index - $length + 1; $i <= $index; $i++) {
+            $sum += $data[$i][$priceKey];
+        }
+
+        return $sum / $length;
+    }
+
+    public static function isWilliamsFractal($data, $index)
+    {
+        if ($index < 4) {
+            return null; // Not enough candles to form a fractal
+        }
+
+        // Extract highs and lows for last 5 candles (including current)
+        $highs = array_column(array_slice($data, $index - 4, 5), 'high');
+        $lows = array_column(array_slice($data, $index - 4, 5), 'low');
+
+        // Fractal is always at 3rd candle in the 5-candle window
+        $mid = 2;
+
+        // Bearish fractal (local top)
+        if (
+            $highs[$mid] > $highs[0] && $highs[$mid] > $highs[1] &&
+            $highs[$mid] > $highs[3] && $highs[$mid] > $highs[4]
+        ) {
+            return 'bearish'; // Sell signal
+        }
+
+        // Bullish fractal (local bottom)
+        if (
+            $lows[$mid] < $lows[0] && $lows[$mid] < $lows[1] &&
+            $lows[$mid] < $lows[3] && $lows[$mid] < $lows[4]
+        ) {
+            return 'bullish'; // Buy signal
+        }
+
+        return null;
+    }
+
+    public static function estimateLine($x, $x1, $y1, $x2, $y2)
+    {
+        if ($x2 - $x1 == 0) {
+            return $y2;
+        }
+
+        // Slope (m) = (y2 - y1) / (x2 - x1)
+        $m = ($y2 - $y1) / ($x2 - $x1);
+
+        // y = m * (x - x1) + y1
+        $y = $m * ($x - $x1) + $y1;
+
+        return $y;
     }
 }

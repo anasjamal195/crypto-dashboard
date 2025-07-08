@@ -11,6 +11,9 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\OrderBookSnapshot;
 use App\Services\SupportResistanceAnalyzer;
+use ArithmeticError;
+use DivisionByZeroError;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use stdClass;
 use Illuminate\Support\Facades\File;
@@ -94,13 +97,15 @@ class ReportService
 
     public static $dynamicTPSLgap = 0.2;
 
-    public static $initialTpPercent = 1.5;
+    public static $initialTpPercent = 0.5;
     public static $initialSlPercent = 1;
 
 
 
     public static $lows = [];
     public static $highs = [];
+
+    public static $lastPivotLow = null;
 
     public static function generateCoinReport(
         $cmd = null,
@@ -127,7 +132,7 @@ class ReportService
             // ->whereIn(
             //     'symbol',
             //     [
-            //         'BTCUSDT'
+            //         'SCRTUSDT'
 
             //     ]
             // )
@@ -439,7 +444,7 @@ class ReportService
 
         $intervalToMins = CommonHelpers::$binanceIntervals[self::$interval];
         $timestamp = $data[0]['binance_timestamp'] - (60 * $intervalToMins * 1000 * 1000);
-        $averageAdjustmetCandles =  BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, $timestamp, 'FUTURE');
+
 
         $data = array_map(function ($candle) {
             $candle['timestamp'] = $candle['timestamp'] / 1000;
@@ -447,7 +452,7 @@ class ReportService
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
             return $candle;
-        }, array_merge($averageAdjustmetCandles, $data));
+        }, array_merge($data));
 
         $waitingCandles = 0;
         $openingIndex = 0;
@@ -482,7 +487,7 @@ class ReportService
             ];
 
             // Skip Adjustment Candles and Volume Adjustment
-            if ($index < 1200) {
+            if ($index < 200) {
                 continue;
             }
 
@@ -646,6 +651,7 @@ class ReportService
                     self::$dynamicTP = 0;
                     self::$dynamicSL = 0;
                     self::$candlesToCheck = 1000;
+                    self::$lastPivotLow = null;
                 }
             }
         }
@@ -979,7 +985,15 @@ class ReportService
                 $closingPrice = self::$dynamicSL;
             }
         } else {
-            $currentProfit = (($data[$openingIndex]['close'] - $data[$index]['close']) / $data[$openingIndex]['close']) * 100;
+            // If TP is triggered
+            if ($data[$index]['close'] <= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['close'] * (1 - self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['close'] * (1 + (self::$dynamicTPSLgap / 2) / 100);
+            }
+            // If Sl is trigggerd
+            else if ($data[$index]['close'] > self::$dynamicSL) {
+                $closingPrice = self::$dynamicSL;
+            }
         }
 
 
@@ -1759,77 +1773,114 @@ class ReportService
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             $initialSetup = false;
-
-
-            $lastPivotLowBand = null;
-
-
-            $loopIndex = $index - 10;
-
-            while ($loopIndex > 10) {
-                $pivot = CommonHelpers::checkPivot($data, $loopIndex, 20);
-
-                if ($pivot === 'low_pivot') {
-                    $lastPivotLowBand = [
-                        'min' => $data[$loopIndex]['low'],
-                        'max' => min($data[$loopIndex]['close'], $data[$loopIndex]['open']),
-                        'index' => $loopIndex
-                    ];
-                    break;
-                }
-                $loopIndex--;
+            $srAnalysis = null;
+            try {
+                $srAnalyzer = new SupportResistanceAnalyzer($data, $index, 300);
+                $srAnalysis = $srAnalyzer->analyze();
+            } catch (DivisionByZeroError $e) {
+                // Handle division by zero specifically
+                error_log("Division by zero in SR analysis: " . $e->getMessage());
+                $srAnalysis = null;
+            } catch (ArithmeticError $e) {
+                // Handle other arithmetic errors (includes division by zero in some cases)
+                error_log("Arithmetic error in SR analysis: " . $e->getMessage());
+                $srAnalysis = null;
+            } catch (Exception $e) {
+                // Handle any other exceptions
+                error_log("General error in SR analysis: " . $e->getMessage());
+                $srAnalysis = null;
             }
 
 
+            if ($srAnalysis['market_structure']['nearest_support'] && $srAnalysis['market_structure']['nearest_support']['classification'] === 'major') {
+
+                $supportPrice = $srAnalysis['market_structure']['nearest_support']['price'];
 
 
 
-            if ($lastPivotLowBand) {
-                if (
-                    (
-                        (
-                            min($data[$index]['close'], $data[$index]['open']) <= $lastPivotLowBand['max']
-                            && min($data[$index]['close'], $data[$index]['open']) >= $lastPivotLowBand['min']
-                        )
-                        ||
-                        (
-                            min($data[$index]['close'], $data[$index]['open']) >= $lastPivotLowBand['max']
-                            && $data[$index]['low'] <= $lastPivotLowBand['max']
-                        )
-                    )
-                    &&
-                    (
-                        $data[$index]['rsi6'] > $data[$lastPivotLowBand['index']]['rsi6']
+                // $lookBack = 100;
+
+                // for ($i = $index - 5; $i >= ($index - $lookBack); $i--) {
+
+                //     $pivot = CommonHelpers::checkPivot($data, $i, 5);
+
+                //     if ($pivot === 'low_pivot') {
+                //         self::$lastPivotLow = [
+                //             'index' => $i,
+                //         ];
+
+                //         break;
+                //     }
+                // }
 
 
+                // if (self::$lastPivotLow) {
+                //     if (
+                //         $data[self::$lastPivotLow['index']]['low'] <= $supportPrice
+                //         && $data[self::$lastPivotLow['index'] - 1]['low'] > $supportPrice
+                //     ) {
+                //         $initialSetup = true;
+                //     }
+                // }
 
-                        // Check RSI pivots Previous Low
-                        && $data[$lastPivotLowBand['index']]['rsi6'] < $data[$lastPivotLowBand['index'] - 1]['rsi6']
-                        && $data[$lastPivotLowBand['index']]['rsi6'] < $data[$lastPivotLowBand['index'] + 1]['rsi6']
-
-                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6']
-                    )
-                    // && (min($data[$index]['close'], $data[$index]['open']) - $data[$index]['low']) > ($data[$index]['high'] - max($data[$index]['close'], $data[$index]['open']))
-                    && abs($data[$index]['per']) > 0.3
-                    // && $data[$index]['rsi6'] <= 20
-
-                ) {
+                $candleInteraction  = CommonHelpers::checkCandleOverlap($data, $index, $supportPrice, 'support');
 
 
+                if ($candleInteraction['overlap_analysis']['body_position'] === 'partial_from_above') {
+                    // dd($data[$index],$candleInteraction);
+                    self::$lastPivotLow = [
+                        'index' => $index,
+                        'price' => $supportPrice,
+                    ];
                     $initialSetup = true;
                 }
             }
-
-
-            // Trading Logic handler
-
 
 
 
 
             $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
 
+            $secondInteraction = false;
+
+
+            if (self::$lastPivotLow) {
+                $supportPrice = self::$lastPivotLow['price'];
+
+                $candleInteraction  = CommonHelpers::checkCandleOverlap($data, $index, $supportPrice, 'support');
+
+                $secondInteraction = (
+                    $candleInteraction['overlap_analysis']['body_position'] === 'partial_from_above'
+                    && ($index - self::$lastPivotLow['index'] ) >= 3
+                );
+
+            }
+
+
+
+
+           
             // Define all steps with their conditions and scores
             $steps = [
                 // Step 1 - Volume Confirmation
@@ -1839,26 +1890,22 @@ class ReportService
                         $initialSetup
 
                     ),
-                    'candlesToCheck' => 10,
+                    'candlesToCheck' => 100,
                 ],
-                // [
-                //     'condition' => (
 
-                //         $data[$index]['per'] > 0
-                //     ),
-                //     'candlesToCheck' => 10,
-                // ],
-                // [
-                //     'condition' => (
 
-                //         // $data[$index]['volume'] > 1.2 * $data[$index]['volumeMA5']
-                //         $data[$index]['dif'] >= $data[$index - 1]['dif']
-                //     ),
-                //     'candlesToCheck' => 10,
-                // ],
+                [
+                    'condition' => (
+
+                        $secondInteraction
+
+                    ),
+                    'candlesToCheck' => 20,
+                ],
+
+
+
             ];
-
-
 
             // Process steps sequentially
             foreach ($steps as $stepIndex => $step) {
@@ -1890,56 +1937,7 @@ class ReportService
                     if ($isFinal) {
                         self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
 
-
-                        $finalConditions = (
-                            // $data[$index]['close'] < $data[$index]['bb_middle']
-
-                            $bbAnalysis['is_expanding']
-
-                            // && ($index - $lastPivotLowBand['index']) <= 20
-
-
-                        );
-
-
-
-                        if ($finalConditions) {
-
-
-                            $data1h = BinanceApiService::getCandleStickDataPast($symbol, '1h', 1000, $data[$index]['binance_timestamp'], 'FUTURE');
-
-                            $index1h = count($data1h) - 1;
-                            // $srAnalyzer = new SupportResistanceAnalyzer($data1h, $index1h, 1000, 2);
-
-
-                            // $resistance_pivots = CommonHelpers::findPivotHighs($data1h, $index1h - 100, $index1h, 5);
-                            // $support_pivots = CommonHelpers::findPivotLows($data1h, $index1h - 100, $index1h, 5);
-                            // $range = CommonHelpers::getPivotsRange($support_pivots, 2);
-
-
-
-                            // $proceedCondition = false;
-                            // if (
-                            //     min($data[$index]['close'], $data[$index]['open'])  <= $range[1]
-                            //     && min($data[$index]['close'], $data[$index]['open'])  >= $range[0]
-                            // )
-
-
-                            // $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index, '1h');
-
-                            // $proceedCondition = $allowOnHigherTrend;
-                            $proceedCondition = (
-                                $data1h[$index1h]['bb_middle'] >= $data1h[$index1h - 1]['bb_middle']
-                            );
-
-
-                            // error_log($index);
-                            if ($proceedCondition)
-                                // dd($majorSupport, $data[$index], $symbol);
-                                return 'LONG';
-                        }
-                        // else
-                        //     return null;
+                        return 'LONG';
                     }
                 }
             }
