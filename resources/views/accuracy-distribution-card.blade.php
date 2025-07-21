@@ -10,7 +10,7 @@
     }
 
     if (!isset($longAccuracyDetails['profits'])) {
-        $$longAccuracyDetails = [
+        $longAccuracyDetails = [
             'accuracy' => 0,
             'profits' => 0,
             'losses' => 0,
@@ -19,7 +19,7 @@
         ];
     }
     if (!isset($shortAccuracyDetails['profits'])) {
-        $$shortAccuracyDetails = [
+        $shortAccuracyDetails = [
             'accuracy' => 0,
             'profits' => 0,
             'losses' => 0,
