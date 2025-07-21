@@ -48,13 +48,11 @@ class OpeningConditionServiceLive
 
 
         $data = self::$activeExchange === 'binance' ?
-            BinanceApiService::getCandleStickDataExternal($symbol, $interval, 500, null,  'FUTURE')
-            : HyperLiquidApiService::getCandleStickDataExternal($symbol, $interval, 500, null, 'FUTURE');
+            BinanceApiService::getCandleStickData($symbol, $interval, 500, null,  'FUTURE')
+            : HyperLiquidApiService::getCandleStickData($symbol, $interval, 500, null, 'FUTURE');
 
 
         $index = count($data) - 2;
-
-
 
         $cacheValue = time() * 1000;
 
@@ -67,7 +65,7 @@ class OpeningConditionServiceLive
         Cache::put($cacheKey, $cacheValue, $nextRoundedTime);
 
         // Check candle closing
-        if (!CommonHelpers::checkCandleClosing($data, 60)) {
+        if (!CommonHelpers::checkCandleClosing($data, 120)) {
             return [
                 'direction' => null,
                 'formula' => 'Pivot Swing - 15m'
