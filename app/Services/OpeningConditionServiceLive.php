@@ -67,7 +67,7 @@ class OpeningConditionServiceLive
         Cache::put($cacheKey, $cacheValue, $nextRoundedTime);
 
         // Check candle closing
-        if (!CommonHelpers::checkCandleClosing($data, 300)) {
+        if (!CommonHelpers::checkCandleClosing($data, 60)) {
             return [
                 'direction' => null,
                 'formula' => 'Pivot Swing - 15m'
@@ -114,7 +114,6 @@ class OpeningConditionServiceLive
         $interval = '15m';
 
 
-        return 'LONG';
         for ($i = 10; $i <= ($index - 6); $i++) {
 
             $p = CommonHelpers::checkPivot($data, $i, 6);
