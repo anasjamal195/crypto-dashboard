@@ -189,8 +189,6 @@ class OpeningConditionServiceLive
             && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] > $data[self::$highPivots[$lastPivotIndexHigh - 2]]['high']
             && $data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] > $data[self::$highPivots[$lastPivotIndexHigh - 3]]['high']
 
-            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['volume'] < $data[self::$highPivots[$lastPivotIndexHigh - 1]]['volumeMA5']
-
 
         ) {
 
