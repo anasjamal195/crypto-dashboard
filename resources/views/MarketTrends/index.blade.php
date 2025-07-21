@@ -10,7 +10,7 @@
             // 'ma99',
             // 'bb',
             // 'volume',
-            'rsi6',
+            // 'rsi6',
             // 'stoch_rsi',
             // 'macd_hist',
             // 'mfi',

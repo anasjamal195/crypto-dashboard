@@ -54,6 +54,27 @@ class FutureCoinDumper extends Command
         "LUSDUSDT"
     ];
 
+    public static $hardCodedCoins = [
+        'BNBUSDT',
+        'SOLUSDT',
+        'ADAUSDT',
+        'DOGEUSDT',
+        'LTCUSDT',
+        'LINKUSDT',
+        'ATOMUSDT',
+        'NEARUSDT',
+        'RUNEUSDT',
+        'UNIUSDT',
+        'AAVEUSDT',
+        'ALGOUSDT',
+        'FILUSDT',
+        'VETUSDT',
+        'ICPUSDT',
+        'SANDUSDT',
+        'MANAUSDT',
+        'AXSUSDT',
+    ];
+
 
     /**
      * The console command description.
@@ -70,12 +91,12 @@ class FutureCoinDumper extends Command
 
         Log::info("Coin List Dumper started");
         // Fetch Meta Values
-        self::$interval = CommonHelpers::getMetaValue(self::$user_id,'live_trade_worker_interval_future','1m');
-        self::$openPrice = CommonHelpers::getMetaValue(self::$user_id,'buy_price_future','5');
+        self::$interval = CommonHelpers::getMetaValue(self::$user_id, 'live_trade_worker_interval_future', '1m');
+        self::$openPrice = CommonHelpers::getMetaValue(self::$user_id, 'buy_price_future', '5');
 
         while (true) {
             try {
-                $binanceCoins = BinanceApiService::fetchTopUSDTPairsByVolume(1000);
+                $binanceCoins = count(self::$hardCodedCoins) > 0 ? self::$hardCodedCoins : BinanceApiService::fetchTopUSDTPairsByVolume(1000);
 
                 foreach ($binanceCoins as $binanceCoin) {
                     if (in_array($binanceCoin, self::$ignoreList)) {
