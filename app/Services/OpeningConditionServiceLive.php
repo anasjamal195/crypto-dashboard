@@ -32,7 +32,7 @@ class OpeningConditionServiceLive
         self::$activeExchange = $activeExchange;
     }
 
-    
+
     public static function getOpeningOn15m($symbol)
     {
 
@@ -114,7 +114,7 @@ class OpeningConditionServiceLive
         $interval = '15m';
 
 
-
+        return 'LONG';
         for ($i = 10; $i <= ($index - 6); $i++) {
 
             $p = CommonHelpers::checkPivot($data, $i, 6);
