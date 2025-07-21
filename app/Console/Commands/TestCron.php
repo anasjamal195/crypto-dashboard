@@ -41,40 +41,40 @@ class TestCron extends Command
     {
         $reportDetails = [
             [
-                'formula' => 'Multistep - Current',
+                'formula' => 'Analysis - Current',
                 'timestamp' => null,
                 'includeFiltered' => false,
             ],
+            [
+                'formula' => 'Analysis - Bullish',
+                'timestamp' => 1746126000000,
+                'includeFiltered' => false,
+            ],
             // [
-            //     'formula' => 'Multistep - Bullish',
+            //     'formula' => 'Analysis Bearish',
             //     'timestamp' => 1746126000000,
             //     'includeFiltered' => false,
             // ],
-            // [
-            //     'formula' => 'Multistep Bearish',
-            //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Multistep - Slight Bearish',
-            //     'timestamp' => 1745607600000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Multistep - Slight Bullish',
-            //     'timestamp' => 1744830000000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Multistep - Flat',
-            //     'timestamp' => 1732561200000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Multistep - Mixed',
-            //     'timestamp' => 1744225200000,
-            //     'includeFiltered' => false,
-            // ],
+            [
+                'formula' => 'Analysis - Slight Bearish',
+                'timestamp' => 1745607600000,
+                'includeFiltered' => false,
+            ],
+            [
+                'formula' => 'Analysis - Slight Bullish',
+                'timestamp' => 1744830000000,
+                'includeFiltered' => false,
+            ],
+            [
+                'formula' => 'Analysis - Flat',
+                'timestamp' => 1732561200000,
+                'includeFiltered' => false,
+            ],
+            [
+                'formula' => 'Analysis - Mixed',
+                'timestamp' => 1744225200000,
+                'includeFiltered' => false,
+            ],
 
         ];
 
@@ -84,7 +84,7 @@ class TestCron extends Command
             $formula = $details['formula'] . ' - Base';
             $timestamp = $details['timestamp'];
             $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
-            // $backtestFormula = 'Multistep - Current - Base - Wednesday, June 25, 2025 07:16 PM';
+            // $backtestFormula = 'Analysis - Current - Base - Wednesday, June 25, 2025 07:16 PM';
 
 
             if ($details['includeFiltered']) {

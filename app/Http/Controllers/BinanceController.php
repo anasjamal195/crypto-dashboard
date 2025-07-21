@@ -1081,7 +1081,7 @@ class BinanceController extends Controller
         $formulaConfig = json_decode($formulaDetails->report_config, true);
 
 
-
+        $limit = request('limit', 1000);
         $date = new DateTime($formulaDetails->created_at, new DateTimeZone('Asia/Karachi'));
         $date->setTimezone(new DateTimeZone('UTC')); // convert to UTC
         $createdTimestampMs = $date->getTimestamp() * 1000; // get UTC timestamp in milliseconds
@@ -1089,7 +1089,7 @@ class BinanceController extends Controller
         $isHyperliquid = ($formulaConfig && isset($formulaConfig['exchange']) && $formulaConfig['exchange'] === 'hyperliquid');
         $startUnix = ($formulaConfig && $formulaConfig['startUnix'])
             ? $formulaConfig['startUnix']
-            : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * ($isHyperliquid ? 5000 : 1000)));
+            : ($createdTimestampMs - (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000 * ($isHyperliquid ? 5000 : $limit)));
 
         $endUnix = ($formulaConfig && $formulaConfig['endUnix'])
             ? $formulaConfig['endUnix']
@@ -1102,7 +1102,7 @@ class BinanceController extends Controller
         $data = $isHyperliquid ?
             HyperLiquidApiService::getCandleStickData($symbol, $interval, 5000, $startUnix, $market)
             :
-            BinanceApiService::getCandleStickData($symbol, $interval, 1000, $startUnix, $market);
+            BinanceApiService::getCandleStickDataExtended($symbol, $interval, $limit, $startUnix, $market);
 
         foreach ($data as $index => &$candle) {
 
@@ -1197,9 +1197,112 @@ class BinanceController extends Controller
 
 
 
+        // $formulas = [
+        //     'Analysis - Current - Base - Saturday, July 19, 2025 11:36 PM',
+        //     'Analysis - Bullish - Base - Saturday, July 19, 2025 11:37 PM',
+        //     'Analysis - Slight Bearish - Base - Saturday, July 19, 2025 11:37 PM',
+        //     // 'Analysis - Slight Bullish - Base - Saturday, July 19, 2025 11:38 PM',
+        //     // 'Analysis - Flat - Base - Saturday, July 19, 2025 11:38 PM',
+        //     // 'Analysis - Mixed - Base - Saturday, July 19, 2025 11:38 PM',
+        // ];
+
+
+        // $bestPerformingSymbolsSet = [];
+
+        // $tableName = 'coin_reports';
+
+        // foreach ($formulas as $formula) {
+
+
+        //     $baseQuery = DB::table($tableName)->where('market', $market);
+
+        //     if ($formula) {
+        //         $baseQuery->where('formula', $formula);
+        //     }
+
+        //     // To filter only completed trades
+        //     $baseQuery->whereNotNull('sellingCandle');
+
+        //     // Clone the base query for reuse
+        //     $tradeDataQuery = clone $baseQuery;
+        //     $thresholdPercent = 90;
+        //     // Get aggregated trade data
+        //     $tradeData = $tradeDataQuery->select(
+        //         'symbol',
+        //         'formula',
+        //         'position',
+        //         'interval',
+        //         DB::raw('COUNT(*) as total_entries'),
+        //         DB::raw('SUM(profit) as total_profit'),
+        //         DB::raw('SUM(CASE WHEN profit < 0 THEN 1 ELSE 0 END) as number_of_sl'),
+        //         DB::raw('AVG(profit) as average_profit'),
+        //         DB::raw('AVG(duration) as average_duration'),
+        //         DB::raw('SUM(duration) as total_duration'),
+        //         DB::raw('MAX(profit) as max_profit'),
+        //         DB::raw('MIN(profit) as min_profit'),
+        //         DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),
+        //         DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),
+        //         DB::raw('MAX(created_at) as last_updated')
+        //     )
+
+        //         ->groupBy('symbol', 'position', 'formula', 'interval')
+        //         ->orderBy('total_entries', 'DESC')
+        //         ->orderBy('last_updated', 'DESC')
+        //         ->get();
+
+
+
+
+
+        //     foreach ($tradeData as $symbolTrade) {
+
+
+        //         $accuracy = (($symbolTrade->total_entries - $symbolTrade->number_of_sl) / ($symbolTrade->total_entries)) * 100;
+
+        //         if ($accuracy >= $thresholdPercent) {
+
+        //             if (isset($bestPerformingSymbolsSet[$symbolTrade->symbol])) {
+        //                 $bestPerformingSymbolsSet[$symbolTrade->symbol] = $bestPerformingSymbolsSet[$symbolTrade->symbol] + 1;
+        //             } else {
+        //                 $bestPerformingSymbolsSet[$symbolTrade->symbol] = 1;
+        //             }
+        //         }
+        //     }
+        // }
+
+
+
+
+        // arsort($bestPerformingSymbolsSet);
+
+
+        // dd($bestPerformingSymbolsSet);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '15m');
-        $data = BinanceApiService::getCandleStickData($symbol, $interval, 1000, null, 'FUTURE');
+        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, null, 'FUTURE');
 
         $openingMarkers = [];
         $lines = [];
@@ -1224,18 +1327,15 @@ class BinanceController extends Controller
             'title' => 'Support Line'
         ];
 
-
-        $pivots = [];
-        $lastSupportPrice = null;
+        $tlineHigh = null;
         $waitingCandles = 0;
-        $lastPivotHigh = null;
-        $lastPivotLow = null;
+        $lastLowPivot = null;
+        $lowPivots = [];
+        $highPivots = [];
 
-
-        $tLineCoord = null;
         foreach ($data as $index => &$candle) {
 
-            if ($index < 200 || $index > 900) {
+            if ($index < 200 || $index > count($data) - 100) {
                 continue;
             }
             if ($waitingCandles) {
@@ -1244,469 +1344,197 @@ class BinanceController extends Controller
             }
 
 
-
-            // $fractal = CommonHelpers::isWilliamsFractal($data, $index);
-
-            // $ma20 = CommonHelpers::calculateMA($data, $index, 20, 'close');
-            // $ma50 = CommonHelpers::calculateMA($data, $index, 50, 'close');
-            // $ma100 = CommonHelpers::calculateMA($data, $index, 100, 'close');
-
-
-            // if ($ma20 > $ma50 && $ma50 > $ma100) {
-            //     if ($fractal === 'bullish' && $data[$index]['close'] < $ma20 && $data[$index]['close'] > $ma50) {
-            //         $openingMarkers[] = [
-            //             'timestamp_pst' => $candle['timestamp_pst'],
-            //             'color' => 'green',
-            //             'text' => 'LONG',
-            //             'position' => 'belowBar'
-            //         ];
-            //     }
-            // }
-
-
-            // if ($ma20 < $ma50 && $ma50 < $ma100) {
-            //     if ($fractal === 'bearish' && $data[$index]['close'] > $ma20 && $data[$index]['close'] < $ma50) {
-            //         $openingMarkers[] = [
-            //             'timestamp_pst' => $candle['timestamp_pst'],
-            //             'color' => 'red',
-            //             'text' => 'SHORT',
-            //             'position' => 'aboveBar'
-            //         ];
-            //     }
-            // }
-
-
-            // $srAnalyzer = new SupportResistanceAnalyzer($data, $index, 300);
-
-
-            // $srAnalysis = $srAnalyzer->analyze();
-
-
-
-            // if ($srAnalysis['market_structure']['nearest_support'] && $srAnalysis['market_structure']['nearest_support']['classification'] === 'major') {
-
-            //     // dd($srAnalysis['market_structure']['nearest_support']);
-
-            //     $supportPrice = $srAnalysis['market_structure']['nearest_support']['price'];
-            //     $firstTouchIndex = $srAnalysis['market_structure']['nearest_support']['first_touch_index'];
-            //     $lastTouchIndex = $srAnalysis['market_structure']['nearest_support']['last_touch_index'];
-
-
-
-            //     // if ($supportPrice === $lastSupportPrice) {
-
-            //     //     $lines[count($lines) - 1]['x2'] = $data[$index]['timestamp_pst'];
-            //     // } else {
-            //     //     $lines[] = [
-            //     //         'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
-            //     //         'y1' => $supportPrice,         // price for first point
-            //     //         'x2' => $data[$index]['timestamp_pst'], // timestamp for second point
-            //     //         'y2' => $supportPrice,         // price for second point
-            //     //         'color' => '#ff0000',  // red color
-            //     //         'thickness' => 2,      // line thickness
-            //     //         'title' => 'Support Line ' . (count($lines) + 1)
-            //     //     ];
+            $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
 
 
 
 
 
 
-            //     //     $lastSupportPrice = $supportPrice;
-            //     // }
+            if ($pivot === 'low_pivot') {
+
+                $openingMarkers[] = [
+                    'timestamp_pst' => $data[$index - 6]['timestamp_pst'],
+                    'color' => 'blue',
+                    'text' => 'Low',
+                    'position' => 'belowBar'
+                ];
+                $lowPivots[] = $index - 6;
+            }
+
+            if ($pivot === 'high_pivot') {
+
+                $openingMarkers[] = [
+                    'timestamp_pst' => $data[$index - 6]['timestamp_pst'],
+                    'color' => 'orange',
+                    'text' => 'High',
+                    'position' => 'aboveBar'
+                ];
+                $highPivots[] = $index - 6;
+            }
+
+
+            $lastPivotIndex = count($lowPivots) - 1;
+
+            if (
+
+                $pivot === 'low_pivot'
+                && count($lowPivots) > 3
+                && $data[$lowPivots[$lastPivotIndex]]['low'] > $data[$lowPivots[$lastPivotIndex - 1]]['low']
+                && $data[$lowPivots[$lastPivotIndex - 1]]['low'] < $data[$lowPivots[$lastPivotIndex - 2]]['low']
+                && $data[$lowPivots[$lastPivotIndex - 2]]['low'] < $data[$lowPivots[$lastPivotIndex - 3]]['low']
+
+            ) {
 
 
 
-
-
-
-
-
-
-            //     // break;
-            //     // dd($lines);
-            // }
-
-
-
-            //  ================================================= LAST WORKING ==========================
-
-
-
-
-            if ($tLineCoord) {
-
-
-
-                $tLineResistance = CommonHelpers::estimateLine($data[$index]['timestamp_pst'], $tLineCoord['x1'], $tLineCoord['y1'], $tLineCoord['x2'], $tLineCoord['y2']);
-                $tLineResistancePrev = CommonHelpers::estimateLine($data[$index - 1]['timestamp_pst'], $tLineCoord['x1'], $tLineCoord['y1'], $tLineCoord['x2'], $tLineCoord['y2']);
-
-
-
-                if (
-                    $data[$index]['close'] > $tLineResistance
-                    && $data[$index - 1]['close'] > $tLineResistancePrev
-                    && $data[$index]['per'] > 0
-                    && $data[$index - 1]['per'] > 0
-
-                ) {
-
-
-                    $maxDiffFromDoubleBottom = 0;
-
-
-                    for($i = $tLineCoord['secondBottomIndex']; $i <= $index;$i++){
-
-                        $diffFromBottom = CommonHelpers::getPercentDiff($tLineCoord['secondBottomPrice'],$data[$index]['low'],true);
-
-                        if($diffFromBottom < 0 && $maxDiffFromDoubleBottom > $diffFromBottom){
-                            $maxDiffFromDoubleBottom = $diffFromBottom;
-                        }
-                    }
-
-
-
-
-                    $finalOpeningConditions = (
-                        $maxDiffFromDoubleBottom >= -0.3
-                    );
-
-                    if ($finalOpeningConditions) {
+                $firstPivotIndex = count($lowPivots) - 3;
+                $firstPivot = $lowPivots[$firstPivotIndex];
+                $lastPivot = $lowPivots[$lastPivotIndex];
+                $highPivots = [];
+                for ($i = $firstPivot; $i <= $lastPivot; $i++) {
+                    $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
+                    if ($minorPivot === 'high_pivot') {
+                        $highPivots[] = $i;
                         $openingMarkers[] = [
-                            'timestamp_pst' => $candle['timestamp_pst'],
-                            'color' => 'green',
-                            'text' => 'Entry Long',
+                            'timestamp_pst' => $data[$i]['timestamp_pst'],
+                            'color' => 'red',
+                            'text' => 'Minor High',
+                            'position' => 'aboveBar'
+                        ];
+                    }
+                }
+
+
+
+
+
+
+                $openingMarkers[] = [
+                    'timestamp_pst' => $candle['timestamp_pst'],
+                    'color' => 'green',
+                    'text' => 'Long',
+                    'position' => 'belowBar'
+                ];
+
+
+                $initialTp = $candle['close'] * (1 + 0.5 / 100);
+                $initialSl = $candle['close'] * (1 - 1 / 100);
+
+
+                $lines[] = [
+                    'x1' => $data[$index - 3]['timestamp_pst'], // timestamp for first point
+                    'y1' => $initialTp,         // price for first point
+                    'x2' => $data[$index + 3]['timestamp_pst'], // timestamp for second point
+                    'y2' => $initialTp,         // price for second point
+                    'color' => 'green',  // red color
+                    'thickness' => 2,      // line thickness
+                    'title' => 'Expected Tp'
+                ];
+
+                $lines[] = [
+                    'x1' => $data[$index - 3]['timestamp_pst'], // timestamp for first point
+                    'y1' => $initialSl,         // price for first point
+                    'x2' => $data[$index + 3]['timestamp_pst'], // timestamp for second point
+                    'y2' => $initialSl,         // price for second point
+                    'color' => 'red',  // red color
+                    'thickness' => 2,      // line thickness
+                    'title' => 'Expected Sl'
+                ];
+            }
+
+
+
+
+
+
+
+
+
+
+            $lastPivotIndexHigh = count($highPivots) - 1;
+
+            if (
+
+                $pivot === 'high_pivot'
+                && count($highPivots) > 3
+                && $data[$highPivots[$lastPivotIndexHigh]]['high'] < $data[$highPivots[$lastPivotIndexHigh - 1]]['high']
+                && $data[$highPivots[$lastPivotIndexHigh - 1]]['high'] > $data[$highPivots[$lastPivotIndexHigh - 2]]['high']
+                && $data[$highPivots[$lastPivotIndexHigh - 2]]['high'] > $data[$highPivots[$lastPivotIndexHigh - 3]]['high']
+
+            ) {
+
+
+
+                $firstPivotIndex = count($highPivots) - 3;
+                $firstPivot = $highPivots[$firstPivotIndex];
+                $lastPivot = $highPivots[$lastPivotIndexHigh];
+                $lowPivots = [];
+                for ($i = $firstPivot; $i <= $lastPivot; $i++) {
+                    $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
+                    if ($minorPivot === 'low_pivot') {
+                        $lowPivots[] = $i;
+                        $openingMarkers[] = [
+                            'timestamp_pst' => $data[$i]['timestamp_pst'],
+                            'color' => 'pink',
+                            'text' => 'Minor Low',
                             'position' => 'belowBar'
                         ];
                     }
-                    $tLineCoord = null;
-                    $lastPivotLow = null;
-
-                    // break;
                 }
 
+                if (count($lowPivots) >= 2) {
 
-                continue;
-            }
-
-
-
-
-
-
-
-
-
-            $pivot = CommonHelpers::checkPivot($data, $index - 10, 10);
-
-            if ($pivot == 'high_pivot') {
-                // $openingMarkers[] = [
-                //     'timestamp_pst' => $data[$index - 10]['timestamp_pst'],
-                //     'color' => 'red',
-                //     'text' => 'Pivot ' . (count($pivots) + 1),
-                //     'position' => 'aboveBar'
-                // ];
-                $lastPivotHigh = [
-                    'index' => $index - 10,
-                    'price' => $data[$index - 10]['high']
-                ];
-            } else  if ($pivot == 'low_pivot') {
-                $openingMarkers[] = [
-                    'timestamp_pst' => $data[$index - 10]['timestamp_pst'],
-                    'color' => '#26a69a',
-                    'text' => 'Pivot Low',
-                    'position' => 'belowBar'
-                ];
-                $lastPivotLow = [
-                    'index' => $index - 10,
-                    'price' => $data[$index - 10]['low']
-                ];
-            }
-
-
-
-
-            //  ================================================= LAST WORKING ==========================
-
-
-
-
-
-            if ($lastPivotLow) {
-                $noCandlesBelowFirstBottom = true;
-
-                for ($i = ($lastPivotLow['index'] + 1); $i <= $index - 1; $i++) {
-
-                    if ($data[$i]['low'] <= $lastPivotLow['price']) {
-                        $noCandlesBelowFirstBottom = false;
-                        break;
-                    }
-                }
-
-
-                $isPivotBetweenBottoms = false;
-
-
-                if (
-                    (
-                        (
-                            $data[$index - 1]['low']  >= $lastPivotLow['price'] * (1 - 0.05 / 100)
-                            &&
-                            $data[$index - 1]['low']  <= $lastPivotLow['price'] * (1 + 0.05 / 100)
-
-                        )
-                        // ||
-                        // (
-                        //     min($data[$index]['close'], $data[$index]['open'])  >= min($data[$lastPivotLow['index']]['close'], $data[$lastPivotLow['index']]['open']) * (1 - 0.05 / 100)
-                        //     &&
-                        //     min($data[$index]['close'], $data[$index]['open'])  <= min($data[$lastPivotLow['index']]['close'], $data[$lastPivotLow['index']]['open']) * (1 + 0.05 / 100)
-                        // )
-                    )
-                    &&
-                    $noCandlesBelowFirstBottom
-
-                ) {
-
-
-
-
-
-
-                    $minorHighPivots = [];
-                    $loopIndex = $index - 3;
-                    while (true) {
-
-                        $minorPivot = CommonHelpers::checkPivot($data, $loopIndex, 3);
-
-                        if ($minorPivot === 'high_pivot') {
-                            $pivotPrice = $data[$loopIndex]['high'];
-
-
-                            if (count($minorHighPivots) == 0) {
-                                $minorHighPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
-                                $openingMarkers[] = [
-                                    'timestamp_pst' => $data[$loopIndex]['timestamp_pst'],
-                                    'color' => 'red',
-                                    'text' => '',
-                                    'position' => 'aboveBar'
-                                ];
-                                continue;
-                            }
-
-
-
-                            if (
-
-                                $pivotPrice < $minorHighPivots[count($minorHighPivots) - 1]['price']
-                                && $minorHighPivots[count($minorHighPivots) - 1]['price'] < $minorHighPivots[count($minorHighPivots) - 2]['price']
-                            ) {
-
-                                $openingMarkers[] = [
-                                    'timestamp_pst' => $data[$loopIndex]['timestamp_pst'],
-                                    'color' => 'red',
-                                    'text' => '',
-                                    'position' => 'aboveBar'
-                                ];
-
-
-
-
-                                break;
-                            } else {
-                                $minorHighPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
-                                $openingMarkers[] = [
-                                    'timestamp_pst' => $data[$loopIndex]['timestamp_pst'],
-                                    'color' => 'red',
-                                    'text' => '',
-                                    'position' => 'aboveBar'
-                                ];
-                            }
-                        }
-
-
-
-
-                        $loopIndex--;
-                    }
-
-
-
-                    $highestIndex = $minorHighPivots[0]['index'];
-
-
-                    foreach ($minorHighPivots as $hPivot) {
-                        if ($hPivot['price'] > $data[$highestIndex]['high']) {
-                            $highestIndex = $hPivot['index'];
-                        }
-                    }
-
-                    $recentIndex = $minorHighPivots[0]['index'];
-
-
-                    $tLineResistance = CommonHelpers::estimateLine($data[$index]['timestamp_pst'], $data[$highestIndex]['timestamp_pst'], $data[$highestIndex]['high'], $data[$recentIndex]['timestamp_pst'], $data[$recentIndex]['high']);
-
-
-                    if ($data[$index]['high'] >= $tLineResistance) {
-                        $minorHighPivots = [];
-                        continue;
-                    }
-
-
+                    $lastLowPivot = count($lowPivots) - 1;
+                    $firstLowPivot = count($lowPivots) - 2;
                     if (
-                        !($minorHighPivots[0]['index'] > $lastPivotLow['index']
-                            && $minorHighPivots[0]['index'] < $index)
+                        $data[$lowPivots[$firstLowPivot]]['low'] > $data[$lowPivots[$lastLowPivot]]['low']
                     ) {
-                        $minorHighPivots = [];
                         continue;
                     }
+                }
 
 
-
-
-                    $numberOfPivotsBetweenBottoms = 0;
-
-                    foreach ($minorHighPivots as $hPivot) {
-
-                        if (
-                            $hPivot['index'] < $index
-                            &&  $hPivot['index'] > $lastPivotLow['index']
-                        ) {
-                            $numberOfPivotsBetweenBottoms++;
-                        }
-                    }
-
-
-                    if ($numberOfPivotsBetweenBottoms > 3) {
-                        continue;
-                    }
-
-
-                    $tLineCoord = [
-                        'x1' => $data[$highestIndex]['timestamp_pst'],
-                        'y1' => $data[$highestIndex]['high'],
-                        'x2' =>  $data[$recentIndex]['timestamp_pst'],
-                        'y2' => $data[$recentIndex]['high'],
-                        'secondBottomPrice' => $lastPivotLow['price'],
-                        'secondBottomIndex' => $lastPivotLow['index'],
-                    ];
-
-
-                    $openingMarkers[] = [
-                        'timestamp_pst' => $candle['timestamp_pst'],
-                        'color' => 'pink',
-                        'text' => 'Double Bottom',
-                        'position' => 'belowBar'
-                    ];
-                    $x2 = $data[$index + 50]['timestamp_pst'];
-                    $y2 = CommonHelpers::estimateLine($x2, $data[$highestIndex]['timestamp_pst'], $data[$highestIndex]['high'], $data[$recentIndex]['timestamp_pst'], $data[$recentIndex]['high']);
-                    $lines[] = [
-                        'x1' => $data[$highestIndex]['timestamp_pst'], // timestamp for first point
-                        'y1' => $data[$highestIndex]['high'],         // price for first point
-                        'x2' => $x2, // timestamp for second point
-                        'y2' => $y2,         // price for second point
-                        'color' => '#ff0000',  // red color
-                        'thickness' => 2,      // line thickness
-                        'title' => 'Trend Line'
-                    ];
-
-
+                if (count($lowPivots) == 0) {
                     continue;
                 }
+
+
+
+                $openingMarkers[] = [
+                    'timestamp_pst' => $candle['timestamp_pst'],
+                    'color' => 'white',
+                    'text' => 'Short',
+                    'position' => 'aboveBar'
+                ];
+
+
+                $initialTp = $candle['close'] * (1 - 0.5 / 100);
+                $initialSl = $candle['close'] * (1 + 1 / 100);
+
+
+                $lines[] = [
+                    'x1' => $data[$index - 3]['timestamp_pst'], // timestamp for first point
+                    'y1' => $initialTp,         // price for first point
+                    'x2' => $data[$index + 3]['timestamp_pst'], // timestamp for second point
+                    'y2' => $initialTp,         // price for second point
+                    'color' => 'green',  // red color
+                    'thickness' => 2,      // line thickness
+                    'title' => 'Expected Tp'
+                ];
+
+                $lines[] = [
+                    'x1' => $data[$index - 3]['timestamp_pst'], // timestamp for first point
+                    'y1' => $initialSl,         // price for first point
+                    'x2' => $data[$index + 3]['timestamp_pst'], // timestamp for second point
+                    'y2' => $initialSl,         // price for second point
+                    'color' => 'red',  // red color
+                    'thickness' => 2,      // line thickness
+                    'title' => 'Expected Sl'
+                ];
             }
         }
 
-        // dd($data[count($data) - 2]);
-
-        // dd($pivots);
-
-
-        //  ================================================= LAST WORKING ==========================
-
-
-        // $analysis = $this->analyzePivots($pivots);
-        // $chartData = $this->formatForChart($analysis);
-
-        // foreach ($chartData['high_trendlines'] as $line) {
-
-        //     $startIndex = $line['x1'];
-        //     $endIndex = $line['x2'];
-
-        //     $startPrice = $line['y1'];
-        //     $endPrice = $line['y2'];
-        //     $lines[] = [
-        //         'x1' => $data[$startIndex]['timestamp_pst'], // timestamp for first point
-        //         'y1' => $startPrice,         // price for first point
-        //         'x2' => $data[$endIndex]['timestamp_pst'], // timestamp for second point
-        //         'y2' => $endPrice,          // price for second point
-        //         'color' => 'red',  // red color
-        //         'thickness' => 2,      // line thickness
-        //         'title' => 'High line: ' . $line['strength']
-        //     ];
-        // }
-
-
-        // foreach ($chartData['low_trendlines'] as $line) {
-
-        //     $startIndex = $line['x1'];
-        //     $endIndex = $line['x2'];
-
-        //     $startPrice = $line['y1'];
-        //     $endPrice = $line['y2'];
-        //     $lines[] = [
-        //         'x1' => $data[$startIndex]['timestamp_pst'], // timestamp for first point
-        //         'y1' => $startPrice,         // price for first point
-        //         'x2' => $data[$endIndex]['timestamp_pst'], // timestamp for second point
-        //         'y2' => $endPrice,          // price for second point
-        //         'color' => 'blue',  // red color
-        //         'thickness' => 2,      // line thickness
-        //         'title' => 'Low line: ' . $line['strength']
-        //     ];
-        // }
-
-
-        //  ================================================= LAST WORKING ==========================
-
-        // foreach ($chartData['zones'] as $zone) {
-
-        //     if($zone['pivot_count'] < 5){
-        //         continue;
-        //     }
-        //     $startIndex = $zone['pivots'][0]['index'];
-        //     $endIndex = $zone['pivots'][count($zone['pivots']) - 1]['index'];
-
-        //     $startPrice = $zone['pivots'][0]['price'];
-        //     $endPrice = $zone['pivots'][count($zone['pivots']) - 1]['price'];
-
-
-        //     $lines[] = [
-        //         'x1' => $data[$startIndex]['timestamp_pst'], // timestamp for first point
-        //         'y1' => $startPrice,         // price for first point
-        //         'x2' => $data[$endIndex]['timestamp_pst'], // timestamp for second point
-        //         'y2' => $endPrice,          // price for second point
-        //         'color' => 'blue',  // red color
-        //         'thickness' => 2,      // line thickness
-        //         'title' => 'Pivot Count: ' . $zone['pivot_count']
-        //     ];
-        // }
-        // $lines[] = [
-        //     'x1' => $data[0]['timestamp_pst'], // timestamp for first point
-        //     'y1' => 108055.9,         // price for first point
-        //     'x2' => $data[999]['timestamp_pst'], // timestamp for second point
-        //     'y2' => 108055.9,         // price for second point
-        //     'color' => 'green',  // red color
-        //     'thickness' => 2,      // line thickness
-        //     'title' => 'Min Line'
-        // ];
-        // $lines[] = [
-        //     'x1' => $data[0]['timestamp_pst'], // timestamp for first point
-        //     'y1' => 108149.6,         // price for first point
-        //     'x2' => $data[999]['timestamp_pst'], // timestamp for second point
-        //     'y2' => 108149.6,         // price for second point
-        //     'color' => 'green',  // red color
-        //     'thickness' => 2,      // line thickness
-        //     'title' => 'Max Line'
-        // ];
-        // dd($chartData);
 
 
 

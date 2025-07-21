@@ -95,7 +95,7 @@ class ReportService
     public static $dynamicTP = 0;
     public static $dynamicSL = 0;
 
-    public static $dynamicTPSLgap = 0.3;
+    public static $dynamicTPSLgap = 0.2;
 
     public static $initialTpPercent = 0.5;
     public static $initialSlPercent = 1;
@@ -116,6 +116,12 @@ class ReportService
     public static $tLineCoordHigh = null;
     public static $tLineCoordLow = null;
 
+    public static $limit = 1000;
+
+
+    public static $lowPivots = [];
+    public static $highPivots = [];
+
     public static function generateCoinReport(
         $cmd = null,
         $formula = 'Default',
@@ -135,44 +141,43 @@ class ReportService
 
 
         $tradesTotal = [];
-        $coinsQuery = DB::table('coins')->where('market', 'FUTURE')->where('status', 'T')
+
+        $coins = [
+            // 'BTCUSDT',
+            // 'ETHUSDT',
+            'BNBUSDT',
+            'SOLUSDT',
+            // 'XRPUSDT',
+            'ADAUSDT',
+            // 'AVAXUSDT',
+            'DOGEUSDT',
+            // 'MATICUSDT',
+            // 'DOTUSDT',
+            'LTCUSDT',
+            // 'OPUSDT',
+            'LINKUSDT',
+            // 'ARBUSDT',
+            // 'INJUSDT',
+            'ATOMUSDT',
+            'NEARUSDT',
+            // 'FTMUSDT',
+            // 'SEIUSDT',
+            'RUNEUSDT',
 
 
-            // ->whereIn(
-            //     'symbol',
-            //     [
-            //         'BTCUSDT'
-            //     ]
-            // )
-        ;
+            'UNIUSDT',
+            'AAVEUSDT',
+            'ALGOUSDT',
+            'FILUSDT',
+            'VETUSDT',
+            'ICPUSDT',
+            'SANDUSDT',
+            'MANAUSDT',
+            'AXSUSDT',
+        ];
 
 
-        // Coin Type Filters
-        if (self::$filterOnCoinType) {
-            if (self::$coinTypeMetaverse)
-                $coinsQuery->where('is_metaverse', true);
-            if (self::$coinTypeAlt)
-                $coinsQuery->where('is_altcoin', true);
-            if (self::$coinTypeMeme)
-                $coinsQuery->where('is_meme_coin', true);
-            if (self::$coinTypeNft)
-                $coinsQuery->where('is_nft', true);
-            if (self::$coinTypeDefi)
-                $coinsQuery->where('is_defi', true);
-            if (self::$coinTypeWeb3)
-                $coinsQuery->where('is_web3', true);
-        }
-        if (self::$shuffleCoins) {
-            $coinsQuery->inRandomOrder();
-        }
-
-        if (self::$coinLimit) {
-            $coinsQuery->limit(self::$coinLimit);
-        } else {
-            self::$coinLimit = (clone $coinsQuery)->count();
-        }
-        $coins = $coinsQuery->get();
-
+        self::$coinLimit = count($coins);
         // Clear Console
         system('clear');
         $cmd->info('Processing: 0 %');
@@ -186,11 +191,11 @@ class ReportService
             try {
 
 
-                $symbol = $coin->symbol;
+                $symbol = $coin;
 
                 Log::info("Test Request Params" . self::$interval);
 
-                $data = BinanceApiService::getCandleStickData($symbol, self::$interval, 1000, self::$backTestTimeUnix, 'FUTURE');
+                $data = BinanceApiService::getCandleStickDataExtended($symbol, self::$interval, self::$limit, self::$backTestTimeUnix, 'FUTURE');
 
                 $trades = self::processCandles($symbol, $data);
 
@@ -208,7 +213,7 @@ class ReportService
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                dd($e);
+                // dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
@@ -233,7 +238,7 @@ class ReportService
 
 
         if (!self::$backTestTimeUnix) {
-            self::$backTestTimeUnix = time() * 1000 - (CommonHelpers::$binanceIntervals[self::$interval] * 60 * 1000 * 1000);
+            self::$backTestTimeUnix = time() * 1000 - (CommonHelpers::$binanceIntervals[self::$interval] * 60 * 1000 * self::$limit);
         }
 
 
@@ -241,7 +246,7 @@ class ReportService
             $diffInMins = CommonHelpers::$binanceIntervals[self::$interval];
 
             $startUnix = self::$backTestTimeUnix;
-            $endUnix = self::$backTestTimeUnix + ($diffInMins * 60 * 1000 * 1000);
+            $endUnix = self::$backTestTimeUnix + ($diffInMins * 60 * 1000 * self::$limit);
 
             // Get current time in milliseconds
             $currentUnixMillis = round(microtime(true) * 1000);
@@ -447,11 +452,6 @@ class ReportService
         $trades = [];
 
         $extremePrice = 0;
-
-
-        $intervalToMins = CommonHelpers::$binanceIntervals[self::$interval];
-        $timestamp = $data[0]['binance_timestamp'] - (60 * $intervalToMins * 1000 * 1000);
-
 
         $data = array_map(function ($candle) {
             $candle['timestamp'] = $candle['timestamp'] / 1000;
@@ -701,21 +701,39 @@ class ReportService
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps, &$tagName)
     {
 
+
+
+        // if ($data[$index]['close'] < $data[$index]['ema200']) {
+
+
         // Composite Trading strategy wth trendlines
         // LONG Entry
+
+
+        // $trend = CommonHelpers::updateTrends($symbol, $data, $index, 200);
+
+        // if (
+        //     $trend['trend'] === 'bullish'
+        //     || $trend['trend'] === 'bullish_pending'
+        //     || $trend['prediction'] === 'continued_rise'
+        // ) {
         $macdLong = self::checkConditionSetLongDoublePivotLong($symbol, $data, $index);
         if ($macdLong) {
             $tagName = 'DOUBLE-PIVOT';
             return $macdLong;
         }
+        // }
+        // }
 
 
+        // if ($data[$index]['close'] > $data[$index]['ema200']) {
 
-        $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
-        if ($macdLong) {
-            $tagName = 'DOUBLE-PIVOT';
-            return $macdLong;
-        }
+        // $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
+        // if ($macdLong) {
+        //     $tagName = 'DOUBLE-PIVOT';
+        //     return $macdLong;
+        // }
+        // }
 
         // // LONG Entry
         // $macdLong = self::checkConditionSetLongMACD($symbol, $data, $index);
@@ -1011,9 +1029,9 @@ class ReportService
         if ($tradeType === 'LONG') {
 
             // If TP is triggered
-            if ($data[$index]['close'] >= self::$dynamicTP) {
-                self::$dynamicTP = $data[$index]['close'] * (1 + self::$dynamicTPSLgap / 100);
-                self::$dynamicSL = $data[$index]['close'] * (1 - (self::$dynamicTPSLgap / 2) / 100);
+            if ($data[$index]['high'] >= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['high'] * (1 + self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['high'] * (1 - (self::$dynamicTPSLgap / 2) / 100);
             }
             // If Sl is trigggerd
             else if ($data[$index]['close'] < self::$dynamicSL) {
@@ -1021,9 +1039,9 @@ class ReportService
             }
         } else {
             // If TP is triggered
-            if ($data[$index]['close'] <= self::$dynamicTP) {
-                self::$dynamicTP = $data[$index]['close'] * (1 - self::$dynamicTPSLgap / 100);
-                self::$dynamicSL = $data[$index]['close'] * (1 + (self::$dynamicTPSLgap / 2) / 100);
+            if ($data[$index]['low'] <= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['low'] * (1 - self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['low'] * (1 + (self::$dynamicTPSLgap / 2) / 100);
             }
             // If Sl is trigggerd
             else if ($data[$index]['close'] > self::$dynamicSL) {
@@ -1984,6 +2002,117 @@ class ReportService
     {
 
 
+
+        $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
+
+
+
+
+
+
+        if ($pivot === 'low_pivot') {
+
+
+            self::$lowPivots[] = $index - 6;
+        }
+        else  
+        if ($pivot === 'high_pivot') {
+            self::$highPivots[] = $index - 6;
+        }
+
+
+
+
+
+        $lastPivotIndex = count(self::$lowPivots) - 1;
+
+        if (
+
+            $pivot === 'low_pivot'
+            && count(self::$lowPivots) > 3
+            && $data[self::$lowPivots[$lastPivotIndex]]['low'] > $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
+            && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] < $data[self::$lowPivots[$lastPivotIndex - 2]]['low']
+            && $data[self::$lowPivots[$lastPivotIndex - 2]]['low'] < $data[self::$lowPivots[$lastPivotIndex - 3]]['low']
+
+            // && $data[self::$lowPivots[$lastPivotIndex - 1]]['volume'] < $data[self::$lowPivots[$lastPivotIndex - 2]]['volume']
+
+        ) {
+
+
+
+            $firstPivotIndex = count(self::$lowPivots) - 3;
+            $firstPivot = self::$lowPivots[$firstPivotIndex];
+            $lastPivot = self::$lowPivots[$lastPivotIndex];
+            $highPivots = [];
+            for ($i = $firstPivot; $i <= $lastPivot; $i++) {
+                $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
+                if ($minorPivot === 'high_pivot') {
+                    $highPivots[] = $i;
+                }
+            }
+            return 'LONG';
+        }
+
+
+
+
+
+        $lastPivotIndexHigh = count(self::$highPivots) - 1;
+
+        if (
+
+            $pivot === 'high_pivot'
+            && count(self::$highPivots) > 3
+            && $data[self::$highPivots[$lastPivotIndexHigh]]['high'] < $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high']
+            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] > $data[self::$highPivots[$lastPivotIndexHigh - 2]]['high']
+            && $data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] > $data[self::$highPivots[$lastPivotIndexHigh - 3]]['high']
+
+            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['volume'] < $data[self::$highPivots[$lastPivotIndexHigh - 1]]['volumeMA5']
+
+
+        ) {
+
+
+
+            $firstPivotIndex = count(self::$highPivots) - 3;
+            $firstPivot = self::$highPivots[$firstPivotIndex];
+            $lastPivot = self::$highPivots[$lastPivotIndexHigh];
+            $lowPivots = [];
+            for ($i = $firstPivot; $i <= $lastPivot; $i++) {
+                $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
+                if ($minorPivot === 'low_pivot') {
+                    $lowPivots[] = $i;
+                }
+            }
+
+            if (count($lowPivots) >= 2) {
+
+                $lastLowPivot = count($lowPivots) - 1;
+                $firstLowPivot = count($lowPivots) - 2;
+                if (
+                    $data[$lowPivots[$firstLowPivot]]['low'] > $data[$lowPivots[$lastLowPivot]]['low']
+                ) {
+                    return null;
+                }
+            }
+
+
+            if (count($lowPivots) == 0) {
+                return null;
+            }
+            return 'SHORT';
+        }
+
+
+
+
+
+
+
+
+
+
+        return null;
         if (self::$tLineCoordHigh) {
 
 
@@ -1995,9 +2124,9 @@ class ReportService
 
             if (
                 $data[$index]['close'] > $tLineResistance
-                && $data[$index - 1]['close'] > $tLineResistancePrev
+                // && $data[$index - 1]['close'] > $tLineResistancePrev
                 && $data[$index]['per'] > 0
-                && $data[$index - 1]['per'] > 0
+                // && $data[$index - 1]['per'] > 0
 
             ) {
 
@@ -2007,7 +2136,7 @@ class ReportService
 
                 for ($i = self::$tLineCoordHigh['secondBottomIndex']; $i <= $index; $i++) {
 
-                    $diffFromBottom = CommonHelpers::getPercentDiff(self::$tLineCoordHigh['secondBottomPrice'], $data[$index]['low'], true);
+                    $diffFromBottom = CommonHelpers::getPercentDiff(self::$tLineCoordHigh['secondBottomPrice'], $data[$i]['low'], true);
 
                     if ($diffFromBottom < 0 && $maxDiffFromDoubleBottom > $diffFromBottom) {
                         $maxDiffFromDoubleBottom = $diffFromBottom;
@@ -2018,7 +2147,8 @@ class ReportService
 
 
                 $finalOpeningConditions = (
-                    $maxDiffFromDoubleBottom >= -0.3
+                    // $maxDiffFromDoubleBottom >= -0.3
+                    true
                 );
 
                 if ($finalOpeningConditions) {
@@ -2043,13 +2173,14 @@ class ReportService
 
         $pivot = CommonHelpers::checkPivot($data, $index - 10, 10);
 
-        if ($pivot == 'high_pivot') {
-        } else  if ($pivot == 'low_pivot') {
+        if ($pivot == 'low_pivot') {
 
             self::$lastPivotLow = [
                 'index' => $index - 10,
                 'price' => $data[$index - 10]['low']
             ];
+            // dd($data[$index]);
+
             return null;
         }
 
@@ -2073,9 +2204,9 @@ class ReportService
             if (
                 (
                     (
-                        $data[$index - 1]['low']  >= self::$lastPivotLow['price'] * (1 - 0.05 / 100)
+                        $data[$index]['low']  >= self::$lastPivotLow['price'] * (1 - 0.05 / 100)
                         &&
-                        $data[$index - 1]['low']  <= self::$lastPivotLow['price'] * (1 + 0.05 / 100)
+                        $data[$index]['low']  <= self::$lastPivotLow['price'] * (1 + 0.05 / 100)
 
                     )
                 )
@@ -2088,7 +2219,7 @@ class ReportService
 
                 $minorHighPivots = [];
                 $loopIndex = $index - 3;
-                while (true) {
+                while ($loopIndex > 10) {
 
                     $minorPivot = CommonHelpers::checkPivot($data, $loopIndex, 3);
 
@@ -2096,20 +2227,14 @@ class ReportService
                         $pivotPrice = $data[$loopIndex]['high'];
 
 
-                        if (count($minorHighPivots) == 0) {
-                            $minorHighPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
-                            continue;
-                        }
-
-
+                        $minorHighPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
 
                         if (
                             $pivotPrice < $minorHighPivots[count($minorHighPivots) - 1]['price']
                             && $minorHighPivots[count($minorHighPivots) - 1]['price'] < $minorHighPivots[count($minorHighPivots) - 2]['price']
                         ) {
+
                             break;
-                        } else {
-                            $minorHighPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
                         }
                     }
 
@@ -2203,9 +2328,11 @@ class ReportService
                 $maxDiffFromDoubleBottom = 0;
 
 
-                for ($i = self::$tLineCoordHigh['secondTopIndex']; $i <= $index; $i++) {
 
-                    $diffFromBottom = CommonHelpers::getPercentDiff(self::$tLineCoordHigh['secondTopPrice'], $data[$index]['low'], true);
+
+                for ($i = self::$tLineCoordLow['secondTopIndex']; $i <= $index; $i++) {
+
+                    $diffFromBottom = CommonHelpers::getPercentDiff(self::$tLineCoordLow['secondTopPrice'], $data[$index]['low'], true);
 
                     if ($diffFromBottom > 0 && $maxDiffFromDoubleBottom < $diffFromBottom) {
                         $maxDiffFromDoubleBottom = $diffFromBottom;
@@ -2267,9 +2394,9 @@ class ReportService
             if (
                 (
                     (
-                        $data[$index - 1]['high']  <= self::$lastPivotLow['price'] * (1 + 0.05 / 100)
+                        $data[$index - 1]['high']  <= self::$lastPivotHigh['price'] * (1 + 0.05 / 100)
                         &&
-                        $data[$index - 1]['high']  >= self::$lastPivotLow['price'] * (1 - 0.05 / 100)
+                        $data[$index - 1]['high']  >= self::$lastPivotHigh['price'] * (1 - 0.05 / 100)
 
                     )
                 )
@@ -2282,18 +2409,14 @@ class ReportService
 
                 $minorLowPivots = [];
                 $loopIndex = $index - 3;
-                while (true) {
+                while ($loopIndex > 10) {
 
                     $minorPivot = CommonHelpers::checkPivot($data, $loopIndex, 3);
 
                     if ($minorPivot === 'low_pivot') {
                         $pivotPrice = $data[$loopIndex]['low'];
 
-
-                        if (count($minorLowPivots) == 0) {
-                            $minorLowPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
-                            continue;
-                        }
+                        $minorLowPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
 
 
 
@@ -2302,8 +2425,6 @@ class ReportService
                             && $minorLowPivots[count($minorLowPivots) - 1]['price'] > $minorLowPivots[count($minorLowPivots) - 2]['price']
                         ) {
                             break;
-                        } else {
-                            $minorLowPivots[] = ['index' => $loopIndex, 'price' => $pivotPrice];
                         }
                     }
 
@@ -2333,7 +2454,7 @@ class ReportService
 
 
                 if (
-                    !($minorLowPivots[0]['index'] > self::$lastPivotLow['index']
+                    !($minorLowPivots[0]['index'] > self::$lastPivotHigh['index']
                         && $minorLowPivots[0]['index'] < $index)
                 ) {
                     return null;
@@ -2348,7 +2469,7 @@ class ReportService
 
                     if (
                         $hPivot['index'] < $index
-                        &&  $hPivot['index'] > self::$lastPivotLow['index']
+                        &&  $hPivot['index'] > self::$lastPivotHigh['index']
                     ) {
                         $numberOfPivotsBetweenTops++;
                     }
@@ -2360,7 +2481,7 @@ class ReportService
                 }
 
 
-                self::$tLineCoordHigh = [
+                self::$tLineCoordLow = [
                     'x1' => $data[$lowestIndex]['timestamp_pst'],
                     'y1' => $data[$lowestIndex]['low'],
                     'x2' =>  $data[$recentIndex]['timestamp_pst'],

@@ -2892,17 +2892,17 @@ class CommonHelpers
     }
 
 
-    public static function checkDoubleTop($recentHigh, $secondRecentHigh, $tolerance)
-    {
-        $priceDiff = abs($recentHigh['high'] - $secondRecentHigh['high']) / $secondRecentHigh['high'];
-        return $priceDiff <= $tolerance && $recentHigh['high'] > $secondRecentHigh['high'] * 0.995;
-    }
+    // public static function checkDoubleTop($recentHigh, $secondRecentHigh, $tolerance)
+    // {
+    //     $priceDiff = abs($recentHigh['high'] - $secondRecentHigh['high']) / $secondRecentHigh['high'];
+    //     return $priceDiff <= $tolerance && $recentHigh['high'] > $secondRecentHigh['high'] * 0.995;
+    // }
 
-    public static function checkDoubleBottom($recentLow, $secondRecentLow, $tolerance)
-    {
-        $priceDiff = abs($recentLow['low'] - $secondRecentLow['low']) / $secondRecentLow['low'];
-        return $priceDiff <= $tolerance && $recentLow['low'] < $secondRecentLow['low'] * 1.005;
-    }
+    // public static function checkDoubleBottom($recentLow, $secondRecentLow, $tolerance)
+    // {
+    //     $priceDiff = abs($recentLow['low'] - $secondRecentLow['low']) / $secondRecentLow['low'];
+    //     return $priceDiff <= $tolerance && $recentLow['low'] < $secondRecentLow['low'] * 1.005;
+    // }
 
     public static function checkRsiDivergence($recentHigh, $secondRecentHigh, $threshold)
     {
@@ -2967,53 +2967,53 @@ class CommonHelpers
 
 
 
-    public static function detectMarketStructure($data, $index, $options = [])
-    {
-        // Default parameters
-        $lookback = $options['lookback'] ?? 50;
-        $pivot_window = $options['pivot_window'] ?? 5;
-        $zone_percentage = $options['zone_percentage'] ?? 0.002; // 0.2%
-        $min_touches = $options['min_touches'] ?? 3;
-        $min_strength = $options['min_strength'] ?? 2;
+    // public static function detectMarketStructure($data, $index, $options = [])
+    // {
+    //     // Default parameters
+    //     $lookback = $options['lookback'] ?? 50;
+    //     $pivot_window = $options['pivot_window'] ?? 5;
+    //     $zone_percentage = $options['zone_percentage'] ?? 0.002; // 0.2%
+    //     $min_touches = $options['min_touches'] ?? 3;
+    //     $min_strength = $options['min_strength'] ?? 2;
 
-        // Ensure we have enough data
-        $start_index = max(0, $index - $lookback);
-        $end_index = min(count($data) - 1, $index);
+    //     // Ensure we have enough data
+    //     $start_index = max(0, $index - $lookback);
+    //     $end_index = min(count($data) - 1, $index);
 
-        if ($end_index - $start_index < $pivot_window * 2) {
-            return ['support_levels' => [], 'resistance_levels' => []];
-        }
+    //     if ($end_index - $start_index < $pivot_window * 2) {
+    //         return ['support_levels' => [], 'resistance_levels' => []];
+    //     }
 
-        // Find pivot points (support and resistance)
-        $resistance_pivots = self::findPivotHighs($data, $start_index, $end_index, $pivot_window);
-        $support_pivots = self::findPivotLows($data, $start_index, $end_index, $pivot_window);
+    //     // Find pivot points (support and resistance)
+    //     $resistance_pivots = self::findPivotHighs($data, $start_index, $end_index, $pivot_window);
+    //     $support_pivots = self::findPivotLows($data, $start_index, $end_index, $pivot_window);
 
-        // Group similar levels and calculate strength
-        $resistance_levels = self::groupAndAnalyzeLevels($data, $resistance_pivots, $start_index, $end_index, $zone_percentage, $min_touches, 'resistance');
-        $support_levels = self::groupAndAnalyzeLevels($data, $support_pivots, $start_index, $end_index, $zone_percentage, $min_touches, 'support');
+    //     // Group similar levels and calculate strength
+    //     $resistance_levels = self::groupAndAnalyzeLevels($data, $resistance_pivots, $start_index, $end_index, $zone_percentage, $min_touches, 'resistance');
+    //     $support_levels = self::groupAndAnalyzeLevels($data, $support_pivots, $start_index, $end_index, $zone_percentage, $min_touches, 'support');
 
-        // Filter by minimum strength
-        $resistance_levels = array_filter($resistance_levels, function ($level) use ($min_strength) {
-            return $level['strength'] >= $min_strength;
-        });
+    //     // Filter by minimum strength
+    //     $resistance_levels = array_filter($resistance_levels, function ($level) use ($min_strength) {
+    //         return $level['strength'] >= $min_strength;
+    //     });
 
-        $support_levels = array_filter($support_levels, function ($level) use ($min_strength) {
-            return $level['strength'] >= $min_strength;
-        });
+    //     $support_levels = array_filter($support_levels, function ($level) use ($min_strength) {
+    //         return $level['strength'] >= $min_strength;
+    //     });
 
-        // Sort by strength (strongest first)
-        usort($resistance_levels, function ($a, $b) {
-            return $b['strength'] <=> $a['strength'];
-        });
-        usort($support_levels, function ($a, $b) {
-            return $b['strength'] <=> $a['strength'];
-        });
+    //     // Sort by strength (strongest first)
+    //     usort($resistance_levels, function ($a, $b) {
+    //         return $b['strength'] <=> $a['strength'];
+    //     });
+    //     usort($support_levels, function ($a, $b) {
+    //         return $b['strength'] <=> $a['strength'];
+    //     });
 
-        return [
-            'support_levels' => array_values($support_levels),
-            'resistance_levels' => array_values($resistance_levels)
-        ];
-    }
+    //     return [
+    //         'support_levels' => array_values($support_levels),
+    //         'resistance_levels' => array_values($resistance_levels)
+    //     ];
+    // }
 
     public static function findPivotHighs($data, $start, $end, $window)
     {
@@ -3317,7 +3317,7 @@ class CommonHelpers
         return $response;
     }
 
-    private static function calculateOverlapPercentage($rangeMin, $rangeMax, $zoneMin, $zoneMax)
+    public static function calculateOverlapPercentage($rangeMin, $rangeMax, $zoneMin, $zoneMax)
     {
         // Calculate what percentage of the range overlaps with the zone
         $overlapMin = max($rangeMin, $zoneMin);
@@ -3333,7 +3333,7 @@ class CommonHelpers
         return $rangeSize > 0 ? ($overlapSize / $rangeSize) * 100 : 0;
     }
 
-    private static function getBodyPosition($bodyMin, $bodyMax, $zoneMin, $zoneMax)
+    public static function getBodyPosition($bodyMin, $bodyMax, $zoneMin, $zoneMax)
     {
         // Determine body position relative to zone
         if ($bodyMax < $zoneMin) {
@@ -3353,7 +3353,7 @@ class CommonHelpers
         }
     }
 
-    private static function analyzeWickInteraction($low, $high, $bodyMin, $bodyMax, $zoneMin, $zoneMax)
+    public static function analyzeWickInteraction($low, $high, $bodyMin, $bodyMax, $zoneMin, $zoneMax)
     {
         $upperWick = $high - $bodyMax;
         $lowerWick = $bodyMin - $low;
@@ -3398,7 +3398,7 @@ class CommonHelpers
         return $analysis;
     }
 
-    private static function determineInteractionType($bodyPosition, $wickAnalysis, $type, $isBullish, $isBearish)
+    public static function determineInteractionType($bodyPosition, $wickAnalysis, $type, $isBullish, $isBearish)
     {
         // Determine the primary interaction type based on body position and wick analysis
         switch ($bodyPosition) {
@@ -3446,7 +3446,7 @@ class CommonHelpers
         }
     }
 
-    private static function calculateInteractionStrength($bodyInZone, $wickInZone, $bodyPosition, $wickAnalysis)
+    public static function calculateInteractionStrength($bodyInZone, $wickInZone, $bodyPosition, $wickAnalysis)
     {
         $strength = 0;
 
@@ -3489,7 +3489,7 @@ class CommonHelpers
         return 'very_weak';
     }
 
-    private static function generateTradingSignal($bodyPosition, $wickAnalysis, $type, $isBullish, $isBearish)
+    public static function generateTradingSignal($bodyPosition, $wickAnalysis, $type, $isBullish, $isBearish)
     {
         $signal = [
             'direction' => 'neutral',
@@ -3609,5 +3609,538 @@ class CommonHelpers
         $y = $m * ($x - $x1) + $y1;
 
         return $y;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Trend Analysis
+    public static function updateTrends($symbol, $data, $index, $lookBack = 300)
+    {
+        // Ensure we have enough data
+        if ($index < 50 || count($data) < 50) {
+            return [
+                'trend' => 'insufficient_data',
+                'confidence' => 0,
+                'structure' => null,
+                'details' => 'Not enough data for analysis'
+            ];
+        }
+
+        // Define the range to analyze
+        $startIndex = max(0, $index - $lookBack);
+        $endIndex = min($index, count($data) - 1);
+
+        // Find all pivots in the range
+        $pivots = self::findPivotsInRange($data, $startIndex, $endIndex);
+
+        // Detect market structure
+        $structure = self::detectMarketStructure($data, $pivots, $index);
+
+        // Determine trend based on structure and current position
+        $trendAnalysis = self::analyzeTrend($data, $structure, $index);
+
+        return $trendAnalysis;
+    }
+
+    public static function findPivotsInRange($data, $startIndex, $endIndex)
+    {
+        $pivots = [
+            'highs' => [],
+            'lows' => []
+        ];
+
+        // Find all pivot points in the range
+        for ($i = $startIndex; $i <= $endIndex; $i++) {
+            $pivot = self::checkPivot($data, $i, 5, $endIndex);
+
+            if ($pivot === 'high_pivot') {
+                $pivots['highs'][] = [
+                    'index' => $i,
+                    'price' => $data[$i]['high'],
+                    'timestamp' => $data[$i]['timestamp'] ?? $i
+                ];
+            } elseif ($pivot === 'low_pivot') {
+                $pivots['lows'][] = [
+                    'index' => $i,
+                    'price' => $data[$i]['low'],
+                    'timestamp' => $data[$i]['timestamp'] ?? $i
+                ];
+            }
+        }
+
+        // Sort pivots by index (chronological order)
+        usort($pivots['highs'], function ($a, $b) {
+            return $a['index'] - $b['index'];
+        });
+
+        usort($pivots['lows'], function ($a, $b) {
+            return $a['index'] - $b['index'];
+        });
+
+        return $pivots;
+    }
+
+    public static function detectMarketStructure($data, $pivots, $currentIndex)
+    {
+        $structure = [
+            'type' => null,
+            'confidence' => 0,
+            'key_levels' => [],
+            'breakout_direction' => null,
+            'support_resistance' => []
+        ];
+
+        // Get recent highs and lows (last 4-6 of each)
+        $recentHighs = array_slice($pivots['highs'], -6);
+        $recentLows = array_slice($pivots['lows'], -6);
+
+        // Check for double top
+        $doubleTop = self::checkDoubleTop($recentHighs, $data[$currentIndex]['close']);
+        if ($doubleTop['detected']) {
+            $structure['type'] = 'double_top';
+            $structure['confidence'] = $doubleTop['confidence'];
+            $structure['key_levels'] = $doubleTop['levels'];
+            $structure['breakout_direction'] = $doubleTop['breakout_direction'];
+        }
+
+        // Check for double bottom
+        $doubleBottom = self::checkDoubleBottom($recentLows, $data[$currentIndex]['close']);
+        if ($doubleBottom['detected']) {
+            $structure['type'] = 'double_bottom';
+            $structure['confidence'] = $doubleBottom['confidence'];
+            $structure['key_levels'] = $doubleBottom['levels'];
+            $structure['breakout_direction'] = $doubleBottom['breakout_direction'];
+        }
+
+        // Check for head and shoulders
+        $headShoulders = self::checkHeadAndShoulders($recentHighs, $recentLows, $data[$currentIndex]['close']);
+        if ($headShoulders['detected']) {
+            $structure['type'] = 'head_and_shoulders';
+            $structure['confidence'] = $headShoulders['confidence'];
+            $structure['key_levels'] = $headShoulders['levels'];
+            $structure['breakout_direction'] = $headShoulders['breakout_direction'];
+        }
+
+        // Check for ascending/descending triangles
+        $triangle = self::checkTrianglePattern($recentHighs, $recentLows, $data[$currentIndex]['close']);
+        if ($triangle['detected']) {
+            $structure['type'] = $triangle['type'];
+            $structure['confidence'] = $triangle['confidence'];
+            $structure['key_levels'] = $triangle['levels'];
+            $structure['breakout_direction'] = $triangle['breakout_direction'];
+        }
+
+        // Check for support/resistance breakouts
+        $breakout = self::checkSupportResistanceBreakout($recentHighs, $recentLows, $data, $currentIndex);
+        if ($breakout['detected']) {
+            $structure['type'] = 'breakout';
+            $structure['confidence'] = $breakout['confidence'];
+            $structure['key_levels'] = $breakout['levels'];
+            $structure['breakout_direction'] = $breakout['direction'];
+        }
+
+        // Identify current support and resistance levels
+        $structure['support_resistance'] = self::identifySupportResistance($recentHighs, $recentLows);
+
+        return $structure;
+    }
+
+    public static function checkDoubleTop($highs, $currentPrice)
+    {
+        if (count($highs) < 2) {
+            return ['detected' => false, 'confidence' => 0];
+        }
+
+        // Get the two highest recent highs
+        $sortedHighs = $highs;
+        usort($sortedHighs, function ($a, $b) {
+            return $b['price'] - $a['price'];
+        });
+
+        $firstHigh = $sortedHighs[0];
+        $secondHigh = $sortedHighs[1];
+
+        // Check if they are similar in price (within 2%)
+        $priceDifference = abs($firstHigh['price'] - $secondHigh['price']) / $firstHigh['price'];
+
+        if ($priceDifference <= 0.02) {
+            // Find the low between the two highs
+            $minIndex = min($firstHigh['index'], $secondHigh['index']);
+            $maxIndex = max($firstHigh['index'], $secondHigh['index']);
+
+            $necklinePrice = $firstHigh['price']; // Simplified neckline
+
+            // Determine breakout direction
+            $breakoutDirection = null;
+            if ($currentPrice < $necklinePrice * 0.98) {
+                $breakoutDirection = 'bearish';
+            }
+
+            return [
+                'detected' => true,
+                'confidence' => 85,
+                'levels' => [$firstHigh['price'], $secondHigh['price']],
+                'breakout_direction' => $breakoutDirection
+            ];
+        }
+
+        return ['detected' => false, 'confidence' => 0];
+    }
+
+    public static function checkDoubleBottom($lows, $currentPrice)
+    {
+        if (count($lows) < 2) {
+            return ['detected' => false, 'confidence' => 0];
+        }
+
+        // Get the two lowest recent lows
+        $sortedLows = $lows;
+        usort($sortedLows, function ($a, $b) {
+            return $a['price'] - $b['price'];
+        });
+
+        $firstLow = $sortedLows[0];
+        $secondLow = $sortedLows[1];
+
+        // Check if they are similar in price (within 2%)
+        $priceDifference = abs($firstLow['price'] - $secondLow['price']) / $firstLow['price'];
+
+        if ($priceDifference <= 0.02) {
+            $necklinePrice = $firstLow['price']; // Simplified neckline
+
+            // Determine breakout direction
+            $breakoutDirection = null;
+            if ($currentPrice > $necklinePrice * 1.02) {
+                $breakoutDirection = 'bullish';
+            }
+
+            return [
+                'detected' => true,
+                'confidence' => 85,
+                'levels' => [$firstLow['price'], $secondLow['price']],
+                'breakout_direction' => $breakoutDirection
+            ];
+        }
+
+        return ['detected' => false, 'confidence' => 0];
+    }
+
+    public static function checkHeadAndShoulders($highs, $lows, $currentPrice)
+    {
+        if (count($highs) < 3) {
+            return ['detected' => false, 'confidence' => 0];
+        }
+
+        // Get last 3 highs
+        $lastThreeHighs = array_slice($highs, -3);
+
+        // Check if middle high is significantly higher than the other two
+        $leftShoulder = $lastThreeHighs[0];
+        $head = $lastThreeHighs[1];
+        $rightShoulder = $lastThreeHighs[2];
+
+        if (
+            $head['price'] > $leftShoulder['price'] * 1.02 &&
+            $head['price'] > $rightShoulder['price'] * 1.02 &&
+            abs($leftShoulder['price'] - $rightShoulder['price']) / $leftShoulder['price'] <= 0.03
+        ) {
+
+            // Calculate neckline (simplified)
+            $necklinePrice = min($leftShoulder['price'], $rightShoulder['price']);
+
+            $breakoutDirection = null;
+            if ($currentPrice < $necklinePrice * 0.98) {
+                $breakoutDirection = 'bearish';
+            }
+
+            return [
+                'detected' => true,
+                'confidence' => 90,
+                'levels' => [$leftShoulder['price'], $head['price'], $rightShoulder['price']],
+                'breakout_direction' => $breakoutDirection
+            ];
+        }
+
+        return ['detected' => false, 'confidence' => 0];
+    }
+
+    public static function checkTrianglePattern($highs, $lows, $currentPrice)
+    {
+        if (count($highs) < 3 || count($lows) < 3) {
+            return ['detected' => false, 'confidence' => 0];
+        }
+
+        // Check for ascending triangle (highs level, lows ascending)
+        $recentHighs = array_slice($highs, -3);
+        $recentLows = array_slice($lows, -3);
+
+        // Check if highs are relatively flat
+        $highPrices = array_column($recentHighs, 'price');
+        $highsFlat = (max($highPrices) - min($highPrices)) / max($highPrices) <= 0.02;
+
+        // Check if lows are ascending
+        $lowPrices = array_column($recentLows, 'price');
+        $lowsAscending = $lowPrices[2] > $lowPrices[1] && $lowPrices[1] > $lowPrices[0];
+
+        if ($highsFlat && $lowsAscending) {
+            $resistanceLevel = max($highPrices);
+            $breakoutDirection = null;
+            if ($currentPrice > $resistanceLevel * 1.01) {
+                $breakoutDirection = 'bullish';
+            }
+
+            return [
+                'detected' => true,
+                'type' => 'ascending_triangle',
+                'confidence' => 80,
+                'levels' => [$resistanceLevel, $lowPrices[2]],
+                'breakout_direction' => $breakoutDirection
+            ];
+        }
+
+        // Check for descending triangle (lows level, highs descending)
+        $lowsFlat = (max($lowPrices) - min($lowPrices)) / max($lowPrices) <= 0.02;
+        $highsDescending = $highPrices[2] < $highPrices[1] && $highPrices[1] < $highPrices[0];
+
+        if ($lowsFlat && $highsDescending) {
+            $supportLevel = min($lowPrices);
+            $breakoutDirection = null;
+            if ($currentPrice < $supportLevel * 0.99) {
+                $breakoutDirection = 'bearish';
+            }
+
+            return [
+                'detected' => true,
+                'type' => 'descending_triangle',
+                'confidence' => 80,
+                'levels' => [$supportLevel, $highPrices[2]],
+                'breakout_direction' => $breakoutDirection
+            ];
+        }
+
+        return ['detected' => false, 'confidence' => 0];
+    }
+
+    public static function checkSupportResistanceBreakout($highs, $lows, $data, $currentIndex)
+    {
+        if (empty($highs) || empty($lows)) {
+            return ['detected' => false, 'confidence' => 0];
+        }
+
+        $currentPrice = $data[$currentIndex]['close'];
+
+        // Get the most recent significant high and low
+        $lastHigh = end($highs);
+        $lastLow = end($lows);
+
+        // Check for resistance breakout
+        if ($currentPrice > $lastHigh['price'] * 1.005) {
+            return [
+                'detected' => true,
+                'confidence' => 75,
+                'levels' => [$lastHigh['price']],
+                'direction' => 'bullish'
+            ];
+        }
+
+        // Check for support breakdown
+        if ($currentPrice < $lastLow['price'] * 0.995) {
+            return [
+                'detected' => true,
+                'confidence' => 75,
+                'levels' => [$lastLow['price']],
+                'direction' => 'bearish'
+            ];
+        }
+
+        return ['detected' => false, 'confidence' => 0];
+    }
+
+    public static function identifySupportResistance($highs, $lows)
+    {
+        $levels = [];
+
+        // Recent resistance levels
+        if (!empty($highs)) {
+            $recentHighs = array_slice($highs, -3);
+            foreach ($recentHighs as $high) {
+                $levels[] = [
+                    'level' => $high['price'],
+                    'type' => 'resistance',
+                    'strength' => 70
+                ];
+            }
+        }
+
+        // Recent support levels
+        if (!empty($lows)) {
+            $recentLows = array_slice($lows, -3);
+            foreach ($recentLows as $low) {
+                $levels[] = [
+                    'level' => $low['price'],
+                    'type' => 'support',
+                    'strength' => 70
+                ];
+            }
+        }
+
+        return $levels;
+    }
+
+    public static function analyzeTrend($data, $structure, $currentIndex)
+    {
+        $currentPrice = $data[$currentIndex]['close'];
+        $trend = 'neutral';
+        $confidence = 50;
+        $prediction = 'sideways';
+
+        // Base trend analysis on detected structure
+        if ($structure['type']) {
+            switch ($structure['type']) {
+                case 'double_top':
+                    if ($structure['breakout_direction'] === 'bearish') {
+                        $trend = 'bearish';
+                        $confidence = 85;
+                        $prediction = 'continued_decline';
+                    } else {
+                        $trend = 'bearish_pending';
+                        $confidence = 70;
+                        $prediction = 'potential_decline';
+                    }
+                    break;
+
+                case 'double_bottom':
+                    if ($structure['breakout_direction'] === 'bullish') {
+                        $trend = 'bullish';
+                        $confidence = 85;
+                        $prediction = 'continued_rise';
+                    } else {
+                        $trend = 'bullish_pending';
+                        $confidence = 70;
+                        $prediction = 'potential_rise';
+                    }
+                    break;
+
+                case 'head_and_shoulders':
+                    if ($structure['breakout_direction'] === 'bearish') {
+                        $trend = 'bearish';
+                        $confidence = 90;
+                        $prediction = 'strong_decline';
+                    } else {
+                        $trend = 'bearish_pending';
+                        $confidence = 80;
+                        $prediction = 'potential_decline';
+                    }
+                    break;
+
+                case 'ascending_triangle':
+                    if ($structure['breakout_direction'] === 'bullish') {
+                        $trend = 'bullish';
+                        $confidence = 80;
+                        $prediction = 'continued_rise';
+                    } else {
+                        $trend = 'bullish_pending';
+                        $confidence = 70;
+                        $prediction = 'potential_breakout_up';
+                    }
+                    break;
+
+                case 'descending_triangle':
+                    if ($structure['breakout_direction'] === 'bearish') {
+                        $trend = 'bearish';
+                        $confidence = 80;
+                        $prediction = 'continued_decline';
+                    } else {
+                        $trend = 'bearish_pending';
+                        $confidence = 70;
+                        $prediction = 'potential_breakout_down';
+                    }
+                    break;
+
+                case 'breakout':
+                    $trend = $structure['breakout_direction'] === 'bullish' ? 'bullish' : 'bearish';
+                    $confidence = 75;
+                    $prediction = $structure['breakout_direction'] === 'bullish' ? 'continued_rise' : 'continued_decline';
+                    break;
+            }
+        }
+
+        // Additional confirmation using price action
+        $priceAction = self::analyzePriceAction($data, $currentIndex);
+
+        // Adjust confidence based on price action confirmation
+        if ($priceAction['direction'] === $trend) {
+            $confidence = min(95, $confidence + 10);
+        } elseif ($priceAction['direction'] === 'opposite') {
+            $confidence = max(30, $confidence - 20);
+        }
+
+        return [
+            'trend' => $trend,
+            'confidence' => $confidence,
+            'structure' => $structure,
+            'prediction' => $prediction,
+            'price_action' => $priceAction,
+            'details' => self::generateTrendDetails($trend, $structure, $confidence)
+        ];
+    }
+
+    public static function analyzePriceAction($data, $currentIndex)
+    {
+        // Simple price action analysis using recent candles
+        $lookback = min(10, $currentIndex);
+        $recentCandles = array_slice($data, $currentIndex - $lookback, $lookback + 1);
+
+        $bullishCandles = 0;
+        $bearishCandles = 0;
+
+        foreach ($recentCandles as $candle) {
+            if ($candle['close'] > $candle['open']) {
+                $bullishCandles++;
+            } else {
+                $bearishCandles++;
+            }
+        }
+
+        $direction = 'neutral';
+        if ($bullishCandles > $bearishCandles * 1.5) {
+            $direction = 'bullish';
+        } elseif ($bearishCandles > $bullishCandles * 1.5) {
+            $direction = 'bearish';
+        }
+
+        return [
+            'direction' => $direction,
+            'bullish_candles' => $bullishCandles,
+            'bearish_candles' => $bearishCandles,
+            'ratio' => $bullishCandles / max(1, $bearishCandles)
+        ];
+    }
+
+    public static function generateTrendDetails($trend, $structure, $confidence)
+    {
+        $details = "Market structure: " . ($structure['type'] ?? 'No clear pattern') . ". ";
+        $details .= "Current trend: " . $trend . " with " . $confidence . "% confidence. ";
+
+        if ($structure['breakout_direction']) {
+            $details .= "Breakout direction: " . $structure['breakout_direction'] . ". ";
+        }
+
+        return $details;
     }
 }

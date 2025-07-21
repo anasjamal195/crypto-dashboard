@@ -399,6 +399,50 @@ class BinanceApiService
         return $emptyResult;
     }
 
+
+    public static function getCandleStickDataExtended($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
+    {
+        $blockSize = 1000;
+
+        if ($limit <= $blockSize) {
+            return self::getCandleStickData($symbol, $interval, $limit, $timestamp, $market, true);
+        } else {
+
+            $intervalToMillis = self::$binanceIntervals[$interval] * 60 * 1000;
+            if ($timestamp) {
+
+                $startTime = $timestamp;
+                $endTime = $startTime +  ($intervalToMillis * $limit);
+
+                $requiredTime = $endTime - ($intervalToMillis * $blockSize);
+                $timestamp = $requiredTime;
+            }
+
+
+            $dataRaw = self::getCandleStickData($symbol, $interval, $blockSize, $timestamp, $market, false);
+
+            $limitLoop = $limit - $blockSize;
+
+            $lastTimestamp = $dataRaw[0][0] - $intervalToMillis;
+
+            while ($limitLoop > 0) {
+                $limitCurrent = ($limitLoop >= $blockSize) ? $blockSize : ($limitLoop);
+                $data = self::getCandleStickDataPast($symbol, $interval, $limitCurrent, $lastTimestamp, $market, false, false);
+
+                $lastTimestamp =  $data[0][0] - $intervalToMillis;
+                $dataRaw = array_merge($data, $dataRaw);
+                $limitLoop -= $limitCurrent;
+                sleep(0.3);
+            }
+
+
+
+            return self::processData($dataRaw, $market);
+        }
+    }
+
+
+
     /**
      * Get candlestick data for a given symbol and interval from Binance API using static method.
      *
@@ -1619,7 +1663,7 @@ class BinanceApiService
 
     // Misc Candle data functions for internal trader
 
-    public static function getCandleStickDataPast($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $external = false)
+    public static function getCandleStickDataPast($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $external = false, $processed = true)
     {
 
 
@@ -1627,7 +1671,7 @@ class BinanceApiService
 
         $revisedTimestamp = $timestamp - ($intervalInMins * ($limit) * 60000) +  1000;
 
-        $data = $external ? self::getCandleStickDataExternal($symbol, $interval, $limit, $revisedTimestamp, $market) : self::getCandleStickData($symbol, $interval, $limit, $revisedTimestamp, $market);
+        $data = $external ? self::getCandleStickDataExternal($symbol, $interval, $limit, $revisedTimestamp, $market, $processed) : self::getCandleStickData($symbol, $interval, $limit, $revisedTimestamp, $market, $processed);
 
         return $data;
     }
