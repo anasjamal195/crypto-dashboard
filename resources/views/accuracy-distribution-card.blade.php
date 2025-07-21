@@ -8,6 +8,26 @@
     if ($shortAccuracyDetails['accuracy'] < 0) {
         $shortAccuracyDetails['accuracy'] = 100;
     }
+
+    if (!isset($longAccuracyDetails['profits'])) {
+        $$longAccuracyDetails = [
+            'accuracy' => 0,
+            'profits' => 0,
+            'losses' => 0,
+            'total' => 0,
+            'lastUpdateTime' => 'Unknown',
+        ];
+    }
+    if (!isset($shortAccuracyDetails['profits'])) {
+        $$shortAccuracyDetails = [
+            'accuracy' => 0,
+            'profits' => 0,
+            'losses' => 0,
+            'total' => 0,
+            'lastUpdateTime' => 'Unknown',
+        ];
+    }
+
 @endphp
 
 
