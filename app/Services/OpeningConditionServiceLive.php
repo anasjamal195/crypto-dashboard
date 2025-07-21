@@ -86,14 +86,14 @@ class OpeningConditionServiceLive
 
 
         // SHORT Entry (Disabled for now)
-        // if (
-        //     self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
-        // ) {
-        //     return [
-        //         'direction' => 'SHORT',
-        //         'formula' => 'Pivot Swing - 15m'
-        //     ];
-        // }
+        if (
+            self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
+        ) {
+            return [
+                'direction' => 'SHORT',
+                'formula' => 'Pivot Swing - 15m'
+            ];
+        }
 
 
 
