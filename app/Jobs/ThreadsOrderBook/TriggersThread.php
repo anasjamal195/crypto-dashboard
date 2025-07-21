@@ -33,7 +33,7 @@ class TriggersThread implements ShouldQueue
     public $timeout = 360000000;
     public $tradeInstance;
     public $supportResistanceCandleSpan = 3;
-    public static $interval = '5m';
+    public static $interval = '15m';
     public static $isSpot;
     public $supportResistance;
     public $triggerPrice = 0;
@@ -47,12 +47,12 @@ class TriggersThread implements ShouldQueue
     public $stopLoss = 1;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.6;
+    public $targetProfit = 0.5;
     public $tpTriggerPoint = 0.5;
-    public $profitIncrementPercentage = 0.3;
+    public $profitIncrementPercentage = 0.2;
     public $profitIncrementPercentageNext = 0.1;
     public static $stopLossMarginPercentage = 0.1;
-    public $formula = 'MACD';
+    public $formula = 'Pivot Swings';
 
     // Confirmed Trades Entries
 
@@ -369,19 +369,19 @@ class TriggersThread implements ShouldQueue
 
         $closeEarly = false;
 
-        // Early Closing Logic
-        $openTimestamp = $open_order['created_at'];
-        $minsPast = abs(Carbon::now('Asia/Karachi')->diffInMinutes($openTimestamp));
+        // // Early Closing Logic
+        // $openTimestamp = $open_order['created_at'];
+        // $minsPast = abs(Carbon::now('Asia/Karachi')->diffInMinutes($openTimestamp));
 
 
-        if ($minsPast <= 15) {
-            if (
-                $candleData[$index]['close'] < $candleData[$index]['bb_lower']
-                && $candleData[$index - 1]['close'] < $candleData[$index - 1]['bb_lower']
-            ) {
-                $closeEarly = true;
-            }
-        }
+        // if ($minsPast <= 15) {
+        //     if (
+        //         $candleData[$index]['close'] < $candleData[$index]['bb_lower']
+        //         && $candleData[$index - 1]['close'] < $candleData[$index - 1]['bb_lower']
+        //     ) {
+        //         $closeEarly = true;
+        //     }
+        // }
 
 
         // Check if SPOT enabled
