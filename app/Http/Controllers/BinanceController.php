@@ -76,6 +76,7 @@ class BinanceController extends Controller
         $tableName = $request->input('safe_mode_view') ? 'coin_reports_safe_mode' : 'coin_reports';
 
 
+        
 
 
 
