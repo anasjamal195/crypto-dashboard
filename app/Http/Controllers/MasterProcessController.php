@@ -118,7 +118,7 @@ class MasterProcessController extends Controller
                 $data = $this->sendEmail();
                 return $this->jsonResponse($data, 'Email Sent', 200, true);
             case 'FETCH_MISSING_TRADES':
-                $data = $this->fetchMissingTrades();
+                $data = $this->fetchMissingTrades($email);
                 return $this->jsonResponse($data, 'Missing Trades Fetched', 200, true);
 
             default:
