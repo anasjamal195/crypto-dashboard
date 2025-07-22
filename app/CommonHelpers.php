@@ -4173,4 +4173,37 @@ class CommonHelpers
             ]
         );
     }
+
+    public static function fetchLiveTrades($symbol, $startTimeUnix, $endTimeUnix, $email)
+    {
+
+
+
+        $url = "https://rocket.cryptoapis.store/master-process/handle/" . config('binance.process_manager_client_key');
+
+
+
+        // Step 3: Create Carbon instance in Asia/Karachi timezone
+        $startTime = Carbon::createFromTimestamp($startTimeUnix / 1000, 'Asia/Karachi');
+
+        // Step 4: Clone and add 20 minutes
+        $endTime = Carbon::createFromTimestamp($endTimeUnix / 1000, 'Asia/Karachi');
+
+
+        $data = [
+            'action' => 'FETCH_MISSING_TRADES',
+            'email' => $email,
+            'symbol' => $symbol,
+            'start_time' => $startTime->toDateTimeString(),         // 'Y-m-d H:i:s'
+            'end_time' => $endTime->toDateTimeString(),     // 'Y-m-d H:i:s'
+        ];
+        $response = Http::post($url, $data);
+
+        if ($response->successful()) {
+            $response = $response->json();
+            return $response;
+        }
+
+        return null;
+    }
 }
