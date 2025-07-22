@@ -4174,7 +4174,7 @@ class CommonHelpers
         );
     }
 
-    public static function fetchLiveTrades($symbol, $startTimeUnix, $endTimeUnix, $email)
+    public static function fetchLiveTrades($symbol, $startTimeUnix, $endTimeUnix, $email = 'tanveer@cryptoapis.com')
     {
 
 
