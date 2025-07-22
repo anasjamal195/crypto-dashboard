@@ -4201,7 +4201,7 @@ class CommonHelpers
 
         if ($response->successful()) {
             $response = $response->json();
-            return $response;
+            return $response['data'];
         }
 
         return null;
