@@ -1447,7 +1447,7 @@ class CommonHelpers
             'updated_at' => Carbon::now()->toDateTimeString(),
         ]);
         $log =  DB::table('safety_logs')->find($id); // Returns the newly inserted row
-        MailerService::sendSafetyAlert($log);
+        MailerService::sendSafetyAlert($log,false);
         return $log;
     }
 

@@ -190,7 +190,6 @@ class MasterProcessController extends Controller
 
     protected function sendEmail()
     {
-
         $details = request('details');
         MailerService::sendFutureTradeDynamicEmail($details, true);
     }
