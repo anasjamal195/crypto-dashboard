@@ -47,30 +47,33 @@ class OpeningConditionServiceLive
         }
 
 
-        $data = self::$activeExchange === 'binance' ?
-            BinanceApiService::getCandleStickData($symbol, $interval, 500, null,  'FUTURE')
-            : HyperLiquidApiService::getCandleStickData($symbol, $interval, 500, null, 'FUTURE');
+        $data =
+            // self::$activeExchange === 'binance' ?
+            BinanceApiService::getCandleStickData($symbol, $interval, 500, null,  'FUTURE');
+        // : HyperLiquidApiService::getCandleStickData($symbol, $interval, 500, $timestampTest, 'FUTURE');
+
 
 
         $index = count($data) - 2;
 
+        // dd($data[$index]);
         $cacheValue = time() * 1000;
 
-        $now = now();
-        $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
-        $minutesToNextRounded = intval(($intervalToMins - ($now->minute % $intervalToMins)) / 2);
-        $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
+        // $now = now();
+        // $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
+        // $minutesToNextRounded = intval(($intervalToMins - ($now->minute % $intervalToMins)) / 2);
+        // $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
 
-
-        Cache::put($cacheKey, $cacheValue, $nextRoundedTime);
+        // dd($data[$index],end($data));
+        Cache::put($cacheKey, $cacheValue, 1);
 
         // Check candle closing
-        if (!CommonHelpers::checkCandleClosing($data, 120)) {
-            return [
-                'direction' => null,
-                'formula' => 'Pivot Swing - 15m'
-            ];
-        }
+        // if (!CommonHelpers::checkCandleClosing($data, 120)) {
+        //     return [
+        //         'direction' => null,
+        //         'formula' => 'Pivot Swing - 15m'
+        //     ];
+        // }
 
         // LONG ENTRY
         if (
@@ -93,11 +96,81 @@ class OpeningConditionServiceLive
             ];
         }
 
+        return [
+            'direction' => null,
+            'formula' => 'Pivot Swing - 15m - Not Found'
+        ];
+    }
 
+
+
+    public static function getOpeningOn15mReconcile($symbol, $timestampTrade)
+    {
+
+        $interval = '15m';
+        $cacheKey = "last_checked_for_opening_{$symbol}_{$interval}";
+
+        // if (Cache::get($cacheKey, 0)) {
+        //     return [
+        //         'direction' => null,
+        //         'formula' => 'Pivot Swing'
+        //     ];
+        // }
+
+        $timestampTest = $timestampTrade - (498 * CommonHelpers::$binanceIntervals[$interval] * 60 * 1000);
+
+        $data =
+            // self::$activeExchange === 'binance' ?
+            BinanceApiService::getCandleStickData($symbol, $interval, 500, $timestampTest,  'FUTURE');
+        // : HyperLiquidApiService::getCandleStickData($symbol, $interval, 500, $timestampTest, 'FUTURE');
+
+
+
+        $index = count($data) - 2;
+
+        // dd($data[$index]);
+        $cacheValue = time() * 1000;
+
+        $now = now();
+        $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
+        $minutesToNextRounded = intval(($intervalToMins - ($now->minute % $intervalToMins)) / 2);
+        $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
+
+        // dd($data[$index],end($data));
+        // Cache::put($cacheKey, $cacheValue, $nextRoundedTime);
+
+        // Check candle closing
+        // if (!CommonHelpers::checkCandleClosing($data, 120)) {
+        //     return [
+        //         'direction' => null,
+        //         'formula' => 'Pivot Swing - 15m'
+        //     ];
+        // }
+
+        // LONG ENTRY
+        if (
+            self::checkConditionSetLong15m($symbol, $data, $index) === 'LONG'
+        ) {
+            return [
+                'direction' => 'LONG',
+                'formula' => 'Pivot Swing - 15m'
+            ];
+        }
+
+
+        // SHORT Entry (Disabled for now)
+        if (
+            self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
+        ) {
+            return [
+                'direction' => 'SHORT',
+                'formula' => 'Pivot Swing - 15m'
+            ];
+        }
 
         return [
             'direction' => null,
-            'formula' => 'Pivot Swing - 15m'
+            'formula' => 'Pivot Swing - 15m - Not Found'
         ];
     }
 
@@ -112,6 +185,10 @@ class OpeningConditionServiceLive
         $interval = '15m';
 
 
+        $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
+
+
+
         for ($i = 10; $i <= ($index - 6); $i++) {
 
             $p = CommonHelpers::checkPivot($data, $i, 6);
@@ -122,10 +199,11 @@ class OpeningConditionServiceLive
         }
 
 
-        $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
+
 
 
         $lastPivotIndex = count(self::$lowPivots) - 1;
+
 
         if (
 
@@ -138,6 +216,9 @@ class OpeningConditionServiceLive
             // && $data[self::$lowPivots[$lastPivotIndex - 1]]['volume'] < $data[self::$lowPivots[$lastPivotIndex - 2]]['volume']
 
         ) {
+
+
+
 
             return 'LONG';
         }
