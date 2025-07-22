@@ -41,22 +41,22 @@ class ManageProcesses extends Command
         $currentProcess = 'laravel_master_safety_worker';
         while (true) {
 
-            $pythonServerHealth = self::checkPythonServerHealth('http://209.38.95.33:5000/health', 15);
+            // $pythonServerHealth = self::checkPythonServerHealth('http://209.38.95.33:5000/health', 15);
 
 
-            if (!$pythonServerHealth['success']) {
-                $pythonServerRestartAttempts++;
-                if ($pythonServerRestartAttempts > 3) {
-                    $remoteMonitor->stopSupervisorProcesses();
-                    CommonHelpers::addSafetyLog('STOPPED_ALL_PROCESSES', 'Python sdk server is down. Restart failed');
-                    SupervisorService::stop($currentProcess);
-                    break;
-                }
-                CommonHelpers::addSafetyLog('PYTHON_SERVER_RESTART_ATTEMPT', 'Python sdk server is down. Attempting Restart... ' . (3 - $pythonServerRestartAttempts) . ' attempts left');
-                $remoteMonitor->restartSupervisorProcesses('hyperliquid-sdk');
-                sleep(5);
-                continue;
-            }
+            // if (!$pythonServerHealth['success']) {
+            //     $pythonServerRestartAttempts++;
+            //     if ($pythonServerRestartAttempts > 3) {
+            //         $remoteMonitor->stopSupervisorProcesses();
+            //         CommonHelpers::addSafetyLog('STOPPED_ALL_PROCESSES', 'Python sdk server is down. Restart failed');
+            //         SupervisorService::stop($currentProcess);
+            //         break;
+            //     }
+            //     CommonHelpers::addSafetyLog('PYTHON_SERVER_RESTART_ATTEMPT', 'Python sdk server is down. Attempting Restart... ' . (3 - $pythonServerRestartAttempts) . ' attempts left');
+            //     $remoteMonitor->restartSupervisorProcesses('hyperliquid-sdk');
+            //     sleep(5);
+            //     continue;
+            // }
 
 
             // Check server Stats and Perform actions likewise
