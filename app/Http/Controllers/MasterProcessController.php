@@ -172,12 +172,12 @@ class MasterProcessController extends Controller
     {
         $trade_acc = User::where('email', $email)->first()->id;
 
-        $startTime = request('start_time');
+        $startTime = request('start_time'); // e.g. 2025-08-20 22:30:00 (UTC)
         $endTime = request('end_time');
+
         $liveTrades = DB::table('live_trades_future_results')
             ->where('trade_acc', $trade_acc)
-            ->where('created_at', '>=', $startTime)
-            ->where('created_at', '<=', $endTime)
+            ->whereBetween('created_at', [$startTime, $endTime])
             ->get();
 
         return $liveTrades;
