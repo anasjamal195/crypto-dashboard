@@ -958,7 +958,7 @@ class BinanceController extends Controller
 
 
 
-        $startTime = '2025-06-26 00:00:00';
+        $startTime = '2025-07-20 00:00:00';
 
 
 

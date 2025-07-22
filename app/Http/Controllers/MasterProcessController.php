@@ -181,7 +181,6 @@ class MasterProcessController extends Controller
             ->where('symbol', $symbol)
             ->whereBetween('created_at', [$startTime, $endTime])
             ->get();
-
         return $liveTrades;
     }
 
