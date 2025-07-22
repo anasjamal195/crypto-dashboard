@@ -124,6 +124,8 @@ class ReportService
     public static $highPivots = [];
 
     public static $failedOpenings = [];
+
+    
     public static function generateCoinReport(
         $cmd = null,
         $formula = 'Default',
@@ -139,43 +141,27 @@ class ReportService
         self::$baseReportFormula = $baseReportFormula;
 
 
-
-
-
         $tradesTotal = [];
 
         $coins = [
-            // 'BTCUSDT',
-            // 'ETHUSDT',
-            // 'BNBUSDT',
-            // 'SOLUSDT',
-            // // 'XRPUSDT',
-            // 'ADAUSDT',
-            // // 'AVAXUSDT',
-            // 'DOGEUSDT',
-            // // 'MATICUSDT',
-            // // 'DOTUSDT',
+            'BNBUSDT',
+            'SOLUSDT',
+            'ADAUSDT',
+            'DOGEUSDT',
             'LTCUSDT',
-            // 'OPUSDT',
-            // 'LINKUSDT',
-            // // 'ARBUSDT',
-            // // 'INJUSDT',
-            // 'ATOMUSDT',
-            // 'NEARUSDT',
-            // // 'FTMUSDT',
-            // // 'SEIUSDT',
-            // 'RUNEUSDT',
-
-
-            // 'UNIUSDT',
-            // 'AAVEUSDT',
-            // 'ALGOUSDT',
-            // 'FILUSDT',
-            // 'VETUSDT',
-            // 'ICPUSDT',
-            // 'SANDUSDT',
-            // 'MANAUSDT',
-            // 'AXSUSDT',
+            'LINKUSDT',
+            'ATOMUSDT',
+            'NEARUSDT',
+            'RUNEUSDT',
+            'UNIUSDT',
+            'AAVEUSDT',
+            'ALGOUSDT',
+            'FILUSDT',
+            'VETUSDT',
+            'ICPUSDT',
+            'SANDUSDT',
+            'MANAUSDT',
+            'AXSUSDT',
         ];
 
 
@@ -1014,28 +1000,6 @@ class ReportService
         $candle = $data[$index];
         $closingPrice = 0;
         $waitingCandlesBeforeStopLoss = intval(self::$stopLossWaitingDuration / CommonHelpers::$binanceIntervals[self::$interval]);
-
-
-
-
-        // if ($tradeType == 'SHORT') {
-        //     // Calculate Closing in profit 
-        //     if ($candle['low'] <= $open_price * (1 - self::$targetProfit / 100)) {
-        //         $closingPrice = $candle['low'];
-        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price < $data[$index]['close']) {
-        //         $closingPrice = $data[$index]['close'];
-        //     }
-        // } else if ($tradeType == 'LONG') {
-
-        //     // Calculate Closing in profit 
-        //     if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
-        //         $closingPrice = $candle['high'];
-        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
-        //         $closingPrice = $data[$index]['close'];
-        //     }
-        // }
-
-
 
         if ($tradeType === 'LONG') {
 

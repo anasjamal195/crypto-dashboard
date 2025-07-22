@@ -2224,12 +2224,11 @@ class CommonHelpers
     // Trade Operations
     public static function openInternalTrade($data)
     {
-
-        DB::table('coin_reports')->insert($data);
+        return DB::table('coin_reports_safe_mode')->insertGetId($data);
     }
     public static function closeInternalTrade($id, $data)
     {
-        DB::table('coin_reports')->where('id', $id)->update($data);
+        DB::table('coin_reports_safe_mode')->where('id', $id)->update($data);
     }
     public static function checkOpenTradeInternal($symbol, $interval, $position, $formula)
     {
@@ -4142,5 +4141,36 @@ class CommonHelpers
         }
 
         return $details;
+    }
+
+    public static function openInternalTradeEntry($data)
+    {
+
+        DB::table('live_trades_future_results')->insert(
+            [
+                'orderId' => $data['orderId'],
+                'symbol' => $data['symbol'],
+                'side' => $data['side'],
+                'amount' => $data['tradeAmount'],
+                'market' => $data['market'],
+                'type' => $data['open'],
+                'position' => $data['position'],
+                'qty' => $data['quantity'],
+                'leverage' => $data['leverage'],
+                'stopLoss' => $data['stopLoss'],
+                'stopLossReductionPrecentage' => 0.1,
+                'price' => $data['current_price'],
+                'trade_status' => 'open',
+                'trade_acc' => $data['trader'],
+                'targetProfit' => $data['targetProfit'],
+                'formula' => $data['formula'],
+                'turnoverPoint' => 1,
+                'liqPrice' => 1,
+                'currentSupport' => 1,
+                'currentResistance' => 1,
+                'exchange' => 'binance',
+                'created_at' => Carbon::now('Asia/Karachi'),
+            ]
+        );
     }
 }

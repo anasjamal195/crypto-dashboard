@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\OrderBookSnapshot;
 use App\Services\HyperLiquidApiService;
+use App\Services\OpeningConditionServiceLive;
 use App\Services\SupportResistanceAnalyzer;
 use Illuminate\Support\Facades\Log;
 use stdClass;
@@ -94,6 +95,38 @@ class BaseReport15m
     public static $activeExchange = 'binance';
 
 
+    public static $dynamicTP = 0;
+    public static $dynamicSL = 0;
+
+    public static $dynamicTPSLgap = 0.2;
+
+    public static $initialTpPercent = 0.5;
+    public static $initialSlPercent = 1;
+
+
+
+    public static $lows = [];
+    public static $highs = [];
+
+
+
+
+    // For Trendline strategy only
+    public static $lastPivotLow = null;
+    public static $lastPivotHigh = null;
+
+
+    public static $tLineCoordHigh = null;
+    public static $tLineCoordLow = null;
+
+    public static $limit = 1000;
+
+
+    public static $lowPivots = [];
+    public static $highPivots = [];
+
+    public static $failedOpenings = [];
+
     public static function generateCoinReport(
         $cmd = null,
         $formula = 'Default',
@@ -112,9 +145,28 @@ class BaseReport15m
 
 
         $tradesTotal = [];
-        $coinsQuery = Http::get('https://rocket.cryptoapis.store/csrf-free/get-all-symbols');
 
-        $coins = $coinsQuery->json()['data'];
+        $coins = [
+            'BNBUSDT',
+            'SOLUSDT',
+            'ADAUSDT',
+            'DOGEUSDT',
+            'LTCUSDT',
+            'LINKUSDT',
+            'ATOMUSDT',
+            'NEARUSDT',
+            'RUNEUSDT',
+            'UNIUSDT',
+            'AAVEUSDT',
+            'ALGOUSDT',
+            'FILUSDT',
+            'VETUSDT',
+            'ICPUSDT',
+            'SANDUSDT',
+            'MANAUSDT',
+            'AXSUSDT',
+        ];
+
 
         self::$coinLimit = count($coins);
         self::addFormulaDetails();
@@ -126,14 +178,18 @@ class BaseReport15m
 
                 // Log::info("Test Request Params" . self::$interval);
                 $data = self::$activeExchange === 'binance' ?
-                    BinanceApiService::getCandleStickData($symbol, self::$interval, 420, null, 'FUTURE')
-                    : HyperLiquidApiService::getCandleStickData($symbol, self::$interval, 420, null, 'FUTURE');
-
+                    BinanceApiService::getCandleStickData($symbol, self::$interval, 250, null, 'FUTURE')
+                    : HyperLiquidApiService::getCandleStickData($symbol, self::$interval, 250, null, 'FUTURE');
 
                 $trades = self::processCandles($symbol, $data);
 
                 // Insert trades into the database
-                DB::table('coin_reports_safe_mode')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formula)->where('market', 'FUTURE')->delete();
+                DB::table('coin_reports_safe_mode')
+                    ->where('symbol', $symbol)
+                    ->where('interval', self::$interval)
+                    ->where('formula', self::$formula)
+                    ->where('market', 'FUTURE')
+                    ->delete();
                 DB::table('coin_reports_safe_mode')->insert($trades);
 
 
@@ -385,15 +441,13 @@ class BaseReport15m
 
         $extremePrice = 0;
 
-
-
         $data = array_map(function ($candle) {
             $candle['timestamp'] = $candle['timestamp'] / 1000;
             $date = new \DateTime("@{$candle['timestamp']}");
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
             return $candle;
-        },  $data);
+        }, array_merge($data));
 
         $waitingCandles = 0;
         $openingIndex = 0;
@@ -401,6 +455,13 @@ class BaseReport15m
 
         $safeModeEnableTimestamps = [];
         $safeModeDisabledTimestamps = [];
+
+
+        self::$tLineCoordHigh = null;
+        self::$lastPivotLow = null;
+
+        self::$tLineCoordLow = null;
+        self::$lastPivotHigh = null;
 
         foreach ($data as $index => $candle) {
 
@@ -438,6 +499,27 @@ class BaseReport15m
                 $waitingCandles--;
                 continue;
             }
+
+
+            // Highs and Lows Calculation
+
+
+            $pivot = CommonHelpers::checkPivot($data, $index, 5);
+            $minDistanceBetweenPivots = 10;
+            if ($pivot === 'high_pivot') {
+                // Only add if it's far enough from the last high
+                if (empty(self::$highs) || ($index - end(self::$highs)) >= $minDistanceBetweenPivots) {
+                    self::$highs[] = $index;
+                }
+            } else if ($pivot === 'low_pivot') {
+                // Only add if it's far enough from the last low
+                if (empty(self::$lows) || ($index - end(self::$lows)) >= $minDistanceBetweenPivots) {
+                    self::$lows[] = $index;
+                }
+            }
+
+
+
             $supportResistance = self::getSupportResistance($data, $index);
             $orderBookSnapshot = self::getOrderBookSnapshot($symbol, $data, $index);
 
@@ -450,10 +532,10 @@ class BaseReport15m
 
 
 
-
                 if (
                     $tradeType
                 ) {
+
 
 
                     $candle['should_buy'] = true;
@@ -462,7 +544,13 @@ class BaseReport15m
                     $candle['orderBookSnapshot'] = $orderBookSnapshot ? $orderBookSnapshot->id : null;
                     $candle['openingVolumes'] = json_encode($volumeSignal);
 
+
+
+
+
                     $open_price = $candle['close'];
+
+
 
 
 
@@ -470,15 +558,28 @@ class BaseReport15m
 
 
 
-
                     $candle['trendDetails'] = json_encode(CommonHelpers::detectTrend($data, $index, 50, 50));
                     $currentTrade['buyingCandle'] = json_encode($candle);
                     $currentTrade['previousCandle'] = json_encode($data[$index - 1]);
                     $currentTrade['tagName'] = $tagName;
+                    $currentTrade['openingTimestamp'] = $data[$index]['binance_timestamp'];
+
 
                     $extremePrice = $open_price;
                     // Placeholder object for testing
                     $openingIndex = $index;
+
+                    if ($tradeType === 'LONG') {
+                        self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
+                        self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
+                        // dd(self::$dynamicTP, self::$dynamicSL, $data[$openingIndex], $symbol);
+                    } else {
+                        self::$dynamicTP = $data[$index]['close'] * (1 - self::$initialTpPercent / 100);
+                        self::$dynamicSL = $data[$index]['close'] * (1 + self::$initialSlPercent / 100);
+                    }
+
+                    // Insert OPening Entry
+                    // CommonHelpers::openInternalTrade($currentTrade);
                 }
             } else {
                 $closingPrice =  self::handleClosingConditions($symbol, $data, $index,  $tradeType, $openingIndex, $open_price);
@@ -521,14 +622,6 @@ class BaseReport15m
 
 
 
-                    error_log("$tradeType Entry for {$symbol}: " . $currentTrade['profit']);
-
-                    if ($currentTrade['profit'] < 0) {
-
-
-                        // dd(self::getTradeStatsFromReport(self::$baseReportFormula, $data[$openingIndex]['binance_timestamp']));
-                    }
-
                     // Resetting params
                     $extremePrice = 0;
                     $trades[] = $currentTrade;
@@ -537,13 +630,56 @@ class BaseReport15m
                     $tradeType = null;
                     $waitingCandles = 4;
                     $openingIndex = 0;
+
+                    self::$dynamicTP = 0;
+                    self::$dynamicSL = 0;
+                    self::$candlesToCheck = 1000;
+
+                    self::$tLineCoordHigh = null;
+                    self::$lastPivotLow = null;
+
+                    self::$tLineCoordLow = null;
+                    self::$lastPivotHigh = null;
+                } else if ($index == (count($data) - 1)) {
+
+                    // ForceFully Reset the trades if no closing found
+
+                    $currentTrade['buyingPrice'] = $open_price;
+                    $currentTrade['market'] = 'FUTURE';
+                    $currentTrade['symbol'] = $symbol;
+                    $currentTrade['interval'] = self::$interval;
+                    $currentTrade['lowestPrice'] = $extremePrice;
+                    $currentTrade['position'] = $tradeType;
+                    $currentTrade['formula'] = self::$formula;
+
+
+
+                    $extremePrice = 0;
+                    $trades[] = $currentTrade;
+                    $currentTrade = [];
+                    $open_price = 0;
+                    $tradeType = null;
+                    $waitingCandles = 4;
+                    $openingIndex = 0;
+
+                    self::$dynamicTP = 0;
+                    self::$dynamicSL = 0;
+                    self::$candlesToCheck = 1000;
+
+                    self::$tLineCoordHigh = null;
+                    self::$lastPivotLow = null;
+
+                    self::$tLineCoordLow = null;
+                    self::$lastPivotHigh = null;
                 }
             }
         }
 
 
-        self::confirmOpening($symbol, 'LONG', $data, $index);
-        self::confirmOpening($symbol, 'SHORT', $data, $index);
+        self::confirmOpening($symbol, 'TBD', $data, $index, 'TBD');
+
+        self::$lows = [];
+        self::$highs = [];
 
         self::logSafeModeEntry(self::$formula, $symbol, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
         // For shifting indexes
@@ -554,9 +690,9 @@ class BaseReport15m
         // dd($data_new);
         $data = $data_new;
 
-        // dd("Test");
         return $trades;
     }
+
 
 
 
@@ -565,28 +701,81 @@ class BaseReport15m
     public static function handleOpeningConditions($symbol, $data, $index, $supportResistance, $orderBookSnapshot, $trades, &$safeModeEnableTimestamps, &$safeModeDisabledTimestamps, &$tagName)
     {
 
-        
-        
-        // LONG Entry
-        if (self::checkConditionSetLongMACD($symbol, $data, $index) === 'LONG') {
-            $tagName = 'MACD';
-            return 'LONG';
-        } else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
-            $tagName = 'SR';
-            return 'LONG';
+        $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
+
+        if ($pivot === 'low_pivot') {
+            self::$lowPivots[] = $index - 6;
+        } else  
+        if ($pivot === 'high_pivot') {
+            self::$highPivots[] = $index - 6;
         }
 
 
 
 
+        $lastPivotIndex = count(self::$lowPivots) - 1;
+
+        if (
+            $pivot === 'low_pivot'
+            && count(self::$lowPivots) > 3
+            && $data[self::$lowPivots[$lastPivotIndex]]['low'] > $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
+            && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] < $data[self::$lowPivots[$lastPivotIndex - 2]]['low']
+            && $data[self::$lowPivots[$lastPivotIndex - 2]]['low'] < $data[self::$lowPivots[$lastPivotIndex - 3]]['low']
+        ) {
+
+            $firstPivotIndex = count(self::$lowPivots) - 3;
+            $firstPivot = self::$lowPivots[$firstPivotIndex];
+            $lastPivot = self::$lowPivots[$lastPivotIndex];
+            $highPivots = [];
+            for ($i = $firstPivot; $i <= $lastPivot; $i++) {
+                $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
+                if ($minorPivot === 'high_pivot') {
+                    $highPivots[] = $i;
+                }
+            }
+            return 'LONG';
+        }
 
 
-        // SHORT Entry
-        if (self::checkConditionSetShortMACD($symbol, $data, $index) === 'SHORT') {
-            $tagName = 'MACD';
-            return 'SHORT';
-        } else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
-            $tagName = 'SR';
+        $lastPivotIndexHigh = count(self::$highPivots) - 1;
+
+        if (
+
+            $pivot === 'high_pivot'
+            && count(self::$highPivots) > 3
+            && $data[self::$highPivots[$lastPivotIndexHigh]]['high'] < $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high']
+            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] > $data[self::$highPivots[$lastPivotIndexHigh - 2]]['high']
+            && $data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] > $data[self::$highPivots[$lastPivotIndexHigh - 3]]['high']
+
+        ) {
+
+
+            $firstPivotIndex = count(self::$highPivots) - 3;
+            $firstPivot = self::$highPivots[$firstPivotIndex];
+            $lastPivot = self::$highPivots[$lastPivotIndexHigh];
+            $lowPivots = [];
+            for ($i = $firstPivot; $i <= $lastPivot; $i++) {
+                $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
+                if ($minorPivot === 'low_pivot') {
+                    $lowPivots[] = $i;
+                }
+            }
+
+            if (count($lowPivots) >= 2) {
+
+                $lastLowPivot = count($lowPivots) - 1;
+                $firstLowPivot = count($lowPivots) - 2;
+                if (
+                    $data[$lowPivots[$firstLowPivot]]['low'] > $data[$lowPivots[$lastLowPivot]]['low']
+                ) {
+                    return null;
+                }
+            }
+
+
+            if (count($lowPivots) == 0) {
+                return null;
+            }
             return 'SHORT';
         }
 
@@ -807,27 +996,33 @@ class BaseReport15m
         $candle = $data[$index];
         $closingPrice = 0;
         $waitingCandlesBeforeStopLoss = intval(self::$stopLossWaitingDuration / CommonHelpers::$binanceIntervals[self::$interval]);
-        if ($tradeType == 'SHORT') {
-            // Calculate Closing in profit 
-            if ($candle['low'] <= $open_price * (1 - self::$targetProfit / 100)) {
-                $closingPrice = $candle['low'];
-            } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price < $data[$index]['close']) {
-                $closingPrice = $data[$index]['close'];
-            }
-        } else if ($tradeType == 'LONG') {
 
-            // Calculate Closing in profit 
-            if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
-                $closingPrice = $candle['high'];
-            } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
-                $closingPrice = $data[$index]['close'];
+        if ($tradeType === 'LONG') {
+
+            // If TP is triggered
+            if ($data[$index]['high'] >= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['high'] * (1 + self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['high'] * (1 - (self::$dynamicTPSLgap / 2) / 100);
+            }
+            // If Sl is trigggerd
+            else if ($data[$index]['close'] < self::$dynamicSL) {
+                $closingPrice = self::$dynamicSL;
+            }
+        } else {
+            // If TP is triggered
+            if ($data[$index]['low'] <= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['low'] * (1 - self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['low'] * (1 + (self::$dynamicTPSLgap / 2) / 100);
+            }
+            // If Sl is trigggerd
+            else if ($data[$index]['close'] > self::$dynamicSL) {
+                $closingPrice = self::$dynamicSL;
             }
         }
 
 
         return $closingPrice;
     }
-
 
 
     public static function insertSkippedTradesEntry($symbol, $data, $index, $position, $reasons = [])
@@ -1019,638 +1214,5 @@ class BaseReport15m
 
         DB::table('confirmed_trades_safe_mode')->where('coin_name', $symbol)->where('position', $position)->orderBy('update_time', 'DESC')->delete();
         return true;
-    }
-
-
-
-    public static function checkTrendOnHigherCandles($symbol, $position, $data, $index, $higherInterval = '1h')
-    {
-
-
-
-        $dataHigher = BinanceApiService::getCandleStickDataPast($symbol, $higherInterval, 500, $data[$index]['binance_timestamp'], 'FUTURE');
-        $indexHigher = count($dataHigher) - 2;
-
-        if ($position === 'LONG') {
-            $loopIndex = $indexHigher;
-            $crossOverCondition = false;
-            $bbMiddleCondition = $dataHigher[$indexHigher]['bb_middle'] <= $dataHigher[$indexHigher - 1]['bb_middle'];
-
-            // Check Last Crossover for dif dea
-            while ($loopIndex > 0) {
-
-                $difCurrent = $dataHigher[$loopIndex]['dif'];
-                $deaCurrent = $dataHigher[$loopIndex]['dea'];
-
-                $difPrev = $dataHigher[$loopIndex - 1]['dif'];
-                $deaPrev = $dataHigher[$loopIndex - 1]['dea'];
-
-
-                // Dif Crossing DEA from above
-                if ($difCurrent < $deaCurrent && $difPrev >= $deaPrev) {
-                    // if ($difCurrent > 0 && $deaCurrent > 0)
-                    $crossOverCondition = true;
-                    // else
-                    // $crossOverCondition = false;
-                    break;
-                }
-                // Dif Crossing DEA from below
-                else if ($difCurrent > $deaCurrent && $difPrev <= $deaPrev) {
-                    $crossOverCondition = false;
-                    break;
-                }
-
-                $loopIndex--;
-            }
-
-            return !($crossOverCondition && $bbMiddleCondition);
-        } else {
-            $loopIndex = $indexHigher;
-            $crossOverCondition = false;
-            $bbMiddleCondition = $dataHigher[$indexHigher]['bb_middle'] >= $dataHigher[$indexHigher - 1]['bb_middle'];
-
-            // Check Last Crossover for dif dea
-            while ($loopIndex > 0) {
-
-                $difCurrent = $dataHigher[$loopIndex]['dif'];
-                $deaCurrent = $dataHigher[$loopIndex]['dea'];
-
-                $difPrev = $dataHigher[$loopIndex - 1]['dif'];
-                $deaPrev = $dataHigher[$loopIndex - 1]['dea'];
-
-
-                // Dif Crossing DEA from above
-                if ($difCurrent < $deaCurrent && $difPrev >= $deaPrev) {
-                    // if ($difCurrent > 0 && $deaCurrent > 0)
-                    $crossOverCondition = false;
-                    // else
-                    // $crossOverCondition = false;
-                    break;
-                }
-                // Dif Crossing DEA from below
-                else if ($difCurrent > $deaCurrent && $difPrev <= $deaPrev) {
-                    $crossOverCondition = true;
-                    break;
-                }
-
-                $loopIndex--;
-            }
-
-            return !(($crossOverCondition && $bbMiddleCondition));
-        }
-    }
-    // LONG ENTRY DETECTION FUNCTION
-    public static function detectLongEntryWithSR($data, $index, $srAnalysis = null)
-    {
-        // Safety check
-        if ($index < 3 || !isset($data[$index]) || !isset($data[$index - 1])) {
-            return null;
-        }
-
-        $current = $data[$index];
-        $prev1 = $data[$index - 1];
-        $prev2 = $data[$index - 2];
-        $prev3 = $data[$index - 3];
-
-        // === SUPPORT/RESISTANCE ANALYSIS ===
-        $srScore = 0;
-        $srConfirmation = false;
-        $suggestedSL = null;
-        $suggestedTP = null;
-        $riskReward = 0;
-
-        if ($srAnalysis && isset($srAnalysis['trading_signals'])) {
-            foreach ($srAnalysis['trading_signals'] as $signal) {
-                if ($signal['type'] === 'buy') {
-                    $srConfirmation = true;
-                    $srScore = $signal['confidence'];
-                    $suggestedSL = $signal['stop_loss'];
-                    $suggestedTP = $signal['take_profit_1'];
-                    $riskReward = $signal['risk_reward']['ratio'] ?? 0;
-                    break;
-                }
-            }
-        }
-
-        // Analyze support levels for additional confirmation
-        $nearSupport = false;
-        $supportStrength = 0;
-        $supportDistance = 999;
-
-        if ($srAnalysis && isset($srAnalysis['support_resistance_levels'])) {
-            foreach ($srAnalysis['support_resistance_levels'] as $level) {
-                if ($level['type'] === 'support') {
-                    $distance = abs($current['close'] - $level['avg_price']) / $current['close'];
-                    $supportDistance = min($supportDistance, $distance);
-
-                    // Check if price is near support (within 0.5%)
-                    if ($distance <= 0.005) {
-                        $nearSupport = true;
-                        $supportStrength = $level['confidence'];
-
-                        // Bonus points for high-volume support touches
-                        if ($level['total_volume'] > 500000) {
-                            $srScore += 10;
-                        }
-
-                        // Bonus for recent touches
-                        if (isset($level['last_touch_index']) && ($index - $level['last_touch_index']) < 20) {
-                            $srScore += 15;
-                        }
-                    }
-                }
-            }
-        }
-
-        // === TECHNICAL INDICATOR ANALYSIS ===
-
-        // 1. Trend Analysis
-        $trendScore = 0;
-
-        // Moving Average Bullish Alignment
-        if ($current['ma7'] > $current['ma14'] && $current['ma14'] > $current['ma25']) {
-            $trendScore += 20;
-        }
-
-        // Price position relative to MAs
-        if ($current['close'] > $current['ma14']) $trendScore += 10;
-        if ($current['close'] > $current['ma25']) $trendScore += 10;
-
-        // Bollinger Band position (near lower band suggests reversal)
-        $bbPosition = ($current['close'] - $current['bb_lower']) / ($current['bb_upper'] - $current['bb_lower']);
-        if ($bbPosition < 0.2) $trendScore += 15; // Near lower band
-        if ($bbPosition < 0.1) $trendScore += 10; // Very close to lower band
-
-        // 2. Momentum Analysis
-        $momentumScore = 0;
-
-        // RSI Analysis
-        if ($current['rsi6'] < 30) $momentumScore += 20; // Oversold
-        if ($current['rsi6'] < 35 && $current['rsi6'] > $prev1['rsi6']) $momentumScore += 15; // Turning up
-        if ($current['rsi6'] > $prev1['rsi6'] && $current['close'] < $prev1['close']) $momentumScore += 10; // Bullish divergence
-
-        // Stochastic Analysis
-        if ($current['stoch_k'] < 20 && $current['stoch_d'] < 20) $momentumScore += 15;
-        if ($current['stoch_k'] > $prev1['stoch_k'] && $current['stoch_d'] > $prev1['stoch_d']) $momentumScore += 10;
-
-        // Williams %R
-        if ($current['wr'] < -80) $momentumScore += 10; // Oversold
-
-        // MACD Analysis
-        if ($current['dif'] > $current['dea'] && $current['histogram'] > 0) $momentumScore += 10;
-        if ($current['histogram'] > $prev1['histogram']) $momentumScore += 10; // Strengthening momentum
-
-        // 3. Volume Analysis
-        $volumeScore = 0;
-
-        // Volume spike confirmation
-        if ($current['volume'] > $current['volumeMA5'] * 1.3) $volumeScore += 15;
-        if ($current['volume'] > $current['volumeMA10'] * 1.2) $volumeScore += 10;
-
-        // OBV bullish confirmation
-        if ($current['obv'] > $prev1['obv']) $volumeScore += 10;
-        if ($current['obv'] > $prev2['obv'] && $current['obv'] > $prev3['obv']) $volumeScore += 5;
-
-        // Money Flow Index
-        if ($current['mfi'] > 50 && $current['mfi'] > $prev1['mfi']) $volumeScore += 10;
-
-        // 4. Price Action Analysis
-        $priceActionScore = 0;
-
-        // Bullish candlestick
-        if ($current['close'] > $current['open']) $priceActionScore += 10;
-
-        // Long lower wick (support/buying interest)
-        $lowerWick = min($current['open'], $current['close']) - $current['low'];
-        $bodySize = abs($current['close'] - $current['open']);
-        if ($lowerWick > $bodySize * 1.5) $priceActionScore += 15;
-
-        // Failed breakdown pattern (bullish reversal)
-        if ($current['low'] < $prev1['low'] && $current['close'] > $prev1['close']) $priceActionScore += 20;
-
-        // Higher lows pattern
-        if ($current['low'] > $prev1['low'] && $prev1['low'] > $prev2['low']) $priceActionScore += 10;
-
-        // === ADVANCED FILTERS ===
-
-        // Market structure confirmation
-        $structureScore = 0;
-        if ($srAnalysis && isset($srAnalysis['market_structure'])) {
-            $structure = $srAnalysis['market_structure'];
-
-            // Support-heavy environment
-            if ($structure['support_count'] > $structure['resistance_count']) {
-                $structureScore += 10;
-            }
-
-            // Recent support interaction
-            if (isset($structure['nearest_support']) && $supportDistance < 0.01) {
-                $structureScore += 15;
-            }
-        }
-
-        // === RISK MANAGEMENT CHECKS ===
-
-        // Volatility filter
-        $bbWidth = ($current['bb_upper'] - $current['bb_lower']) / $current['bb_middle'];
-        $highVolatility = $bbWidth > 0.08;
-
-        // VWAP distance filter
-        $vwapDistance = abs($current['close'] - $current['vwap']) / $current['close'];
-        $tooFarFromVWAP = $vwapDistance > 0.05;
-
-        // Recent strong bearish momentum check
-        $recentBearMomentum = ($prev1['close'] < $prev2['close'] * 0.985) &&
-            ($prev2['close'] < $prev3['close'] * 0.985);
-
-        // === SCORING SYSTEM ===
-
-        $totalTechnicalScore = $trendScore + $momentumScore + $volumeScore + $priceActionScore + $structureScore;
-        $totalScore = $totalTechnicalScore + ($srScore * 0.8); // Weight S/R analysis
-
-        // === ENTRY CONDITIONS ===
-
-        // Base requirements
-        $baseConditionsMet = ($totalTechnicalScore >= 60) && // Strong technical setup
-            ($current['close'] > $current['open']) && // Bullish candle
-            !$highVolatility && // Reasonable volatility
-            !$tooFarFromVWAP && // Near VWAP
-            !$recentBearMomentum; // No strong counter-trend
-
-        // Enhanced conditions with S/R
-        $enhancedConditionsMet = $baseConditionsMet &&
-            ($srConfirmation || $nearSupport) && // S/R confirmation
-            ($srScore >= 60); // Minimum S/R confidence
-
-        // === SPECIFIC ENTRY SIGNAL FOR 15M CANDLES ===
-        // Target: 1% TP, 0.8% SL
-        // RSI turning up from oversold + near support + strong S/R score
-
-        if (
-            $data[$index]['rsi6'] >= 30 &&
-            $data[$index - 1]['rsi6'] <= 30 &&
-            $data[$index]['rsi6'] > $data[$index - 1]['rsi6'] &&
-            $nearSupport &&
-            $srScore >= 75
-        ) {
-            return 'LONG';
-        }
-
-        return null;
-    }
-
-    // SR ANALYSIS FUNCTIONS
-    public static function detectShortEntryWithSR($data, $index, $srAnalysis = null)
-    {
-        // Safety check
-        if ($index < 3 || !isset($data[$index]) || !isset($data[$index - 1])) {
-            return null;
-        }
-
-        $current = $data[$index];
-        $prev1 = $data[$index - 1];
-        $prev2 = $data[$index - 2];
-        $prev3 = $data[$index - 3];
-
-        // === SUPPORT/RESISTANCE ANALYSIS ===
-        $srScore = 0;
-        $srConfirmation = false;
-        $suggestedSL = null;
-        $suggestedTP = null;
-        $riskReward = 0;
-
-        if ($srAnalysis && isset($srAnalysis['trading_signals'])) {
-            foreach ($srAnalysis['trading_signals'] as $signal) {
-                if ($signal['type'] === 'sell') {
-                    $srConfirmation = true;
-                    $srScore = $signal['confidence'];
-                    $suggestedSL = $signal['stop_loss'];
-                    $suggestedTP = $signal['take_profit_1'];
-                    $riskReward = $signal['risk_reward']['ratio'] ?? 0;
-                    break;
-                }
-            }
-        }
-
-        // Analyze resistance levels for additional confirmation
-        $nearResistance = false;
-        $resistanceStrength = 0;
-        $resistanceDistance = 999;
-
-        if ($srAnalysis && isset($srAnalysis['support_resistance_levels'])) {
-            foreach ($srAnalysis['support_resistance_levels'] as $level) {
-                if ($level['type'] === 'resistance') {
-                    $distance = abs($current['close'] - $level['avg_price']) / $current['close'];
-                    $resistanceDistance = min($resistanceDistance, $distance);
-
-                    // Check if price is near resistance (within 0.5%)
-                    if ($distance <= 0.005) {
-                        $nearResistance = true;
-                        $resistanceStrength = $level['confidence'];
-
-                        // Bonus points for high-volume resistance touches
-                        if ($level['total_volume'] > 500000) {
-                            $srScore += 10;
-                        }
-
-                        // Bonus for recent touches
-                        if (isset($level['last_touch_index']) && ($index - $level['last_touch_index']) < 20) {
-                            $srScore += 15;
-                        }
-                    }
-                }
-            }
-        }
-
-        // === TECHNICAL INDICATOR ANALYSIS ===
-
-        // 1. Trend Analysis
-        $trendScore = 0;
-
-        // Moving Average Bearish Alignment
-        if ($current['ma7'] < $current['ma14'] && $current['ma14'] < $current['ma25']) {
-            $trendScore += 20;
-        }
-
-        // Price position relative to MAs
-        if ($current['close'] < $current['ma14']) $trendScore += 10;
-        if ($current['close'] < $current['ma25']) $trendScore += 10;
-
-        // Bollinger Band position (near upper band suggests reversal)
-        $bbPosition = ($current['close'] - $current['bb_lower']) / ($current['bb_upper'] - $current['bb_lower']);
-        if ($bbPosition > 0.8) $trendScore += 15; // Near upper band
-        if ($bbPosition > 0.9) $trendScore += 10; // Very close to upper band
-
-        // 2. Momentum Analysis
-        $momentumScore = 0;
-
-        // RSI Analysis
-        if ($current['rsi6'] > 70) $momentumScore += 20; // Overbought
-        if ($current['rsi6'] > 65 && $current['rsi6'] < $prev1['rsi6']) $momentumScore += 15; // Turning down
-        if ($current['rsi6'] < $prev1['rsi6'] && $current['close'] > $prev1['close']) $momentumScore += 10; // Bearish divergence
-
-        // Stochastic Analysis
-        if ($current['stoch_k'] > 80 && $current['stoch_d'] > 80) $momentumScore += 15;
-        if ($current['stoch_k'] < $prev1['stoch_k'] && $current['stoch_d'] < $prev1['stoch_d']) $momentumScore += 10;
-
-        // Williams %R
-        if ($current['wr'] > -20) $momentumScore += 10; // Overbought
-
-        // MACD Analysis
-        if ($current['dif'] < $current['dea'] && $current['histogram'] < 0) $momentumScore += 10;
-        if ($current['histogram'] < $prev1['histogram']) $momentumScore += 10; // Weakening momentum
-
-        // 3. Volume Analysis
-        $volumeScore = 0;
-
-        // Volume spike confirmation
-        if ($current['volume'] > $current['volumeMA5'] * 1.3) $volumeScore += 15;
-        if ($current['volume'] > $current['volumeMA10'] * 1.2) $volumeScore += 10;
-
-        // OBV bearish confirmation
-        if ($current['obv'] < $prev1['obv']) $volumeScore += 10;
-        if ($current['obv'] < $prev2['obv'] && $current['obv'] < $prev3['obv']) $volumeScore += 5;
-
-        // Money Flow Index
-        if ($current['mfi'] < 50 && $current['mfi'] < $prev1['mfi']) $volumeScore += 10;
-
-        // 4. Price Action Analysis
-        $priceActionScore = 0;
-
-        // Bearish candlestick
-        if ($current['close'] < $current['open']) $priceActionScore += 10;
-
-        // Long upper wick (rejection)
-        $upperWick = $current['high'] - max($current['open'], $current['close']);
-        $bodySize = abs($current['close'] - $current['open']);
-        if ($upperWick > $bodySize * 1.5) $priceActionScore += 15;
-
-        // Failed breakout pattern
-        if ($current['high'] > $prev1['high'] && $current['close'] < $prev1['close']) $priceActionScore += 20;
-
-        // Lower highs pattern
-        if ($current['high'] < $prev1['high'] && $prev1['high'] < $prev2['high']) $priceActionScore += 10;
-
-        // === ADVANCED FILTERS ===
-
-        // Market structure confirmation
-        $structureScore = 0;
-        if ($srAnalysis && isset($srAnalysis['market_structure'])) {
-            $structure = $srAnalysis['market_structure'];
-
-            // Resistance-heavy environment
-            if ($structure['resistance_count'] > $structure['support_count']) {
-                $structureScore += 10;
-            }
-
-            // Recent resistance interaction
-            if (isset($structure['nearest_resistance']) && $resistanceDistance < 0.01) {
-                $structureScore += 15;
-            }
-        }
-
-        // === RISK MANAGEMENT CHECKS ===
-
-        // Volatility filter
-        $bbWidth = ($current['bb_upper'] - $current['bb_lower']) / $current['bb_middle'];
-        $highVolatility = $bbWidth > 0.08;
-
-        // VWAP distance filter
-        $vwapDistance = abs($current['close'] - $current['vwap']) / $current['close'];
-        $tooFarFromVWAP = $vwapDistance > 0.05;
-
-        // Recent strong bullish momentum check
-        $recentBullMomentum = ($prev1['close'] > $prev2['close'] * 1.015) &&
-            ($prev2['close'] > $prev3['close'] * 1.015);
-
-        // === SCORING SYSTEM ===
-
-        $totalTechnicalScore = $trendScore + $momentumScore + $volumeScore + $priceActionScore + $structureScore;
-        $totalScore = $totalTechnicalScore + ($srScore * 0.8); // Weight S/R analysis
-
-        // === ENTRY CONDITIONS ===
-
-        // Base requirements
-        $baseConditionsMet = ($totalTechnicalScore >= 60) && // Strong technical setup
-            ($current['close'] < $current['open']) && // Bearish candle
-            !$highVolatility && // Reasonable volatility
-            !$tooFarFromVWAP && // Near VWAP
-            !$recentBullMomentum; // No strong counter-trend
-
-        // Enhanced conditions with S/R
-        $enhancedConditionsMet = $baseConditionsMet &&
-            ($srConfirmation || $nearResistance) && // S/R confirmation
-            ($srScore >= 60); // Minimum S/R confidence
-
-
-
-        // === RETURN SIGNAL ===
-
-        if ($data[$index]['rsi6'] <= 70 && $data[$index - 1]['rsi6'] >= 70 && $data[$index]['rsi6'] < $data[$index - 1]['rsi6'] &&  $nearResistance && $srScore >= 75) {
-            return 'SHORT';
-        }
-
-
-        return null;
-    }
-
-
-
-
-
-
-
-
-
-    public static function checkConditionSetLongSR($symbol, $data, $index)
-    {
-        if (self::$longEnabled) {
-
-
-            if (!self::$isBaseReport) {
-                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONGSR, $data[$index]['binance_timestamp'], 6);
-                if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 75) {
-                        return null;
-                    }
-                }
-            }
-
-            $srAnalyzer = new SupportResistanceAnalyzer($data, $index);
-            $srAnalysis = $srAnalyzer->analyze();
-
-            $entry = self::detectLongEntryWithSR($data, $index, $srAnalysis);
-
-
-            if ($entry === 'LONG') {
-                return $entry;
-            }
-        }
-        return null;
-    }
-
-
-    public static function checkConditionSetLongMACD($symbol, $data, $index)
-    {
-        if (self::$longEnabled) {
-
-
-            if (!self::$isBaseReport) {
-                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONGMACD, $data[$index]['binance_timestamp'], 6);
-
-                if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 73) {
-                        return null;
-                    }
-                }
-            }
-
-            if (
-                $data[$index]['histogram'] > $data[$index - 1]['histogram'] && $data[$index]['histogram'] < 0
-
-                && $data[$index - 1]['histogram'] < $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] < 0
-                && $data[$index - 2]['histogram'] < $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] < 0
-                && $data[$index - 3]['histogram'] < $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] < 0
-                && !self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)
-            ) {
-                self::insertConfirmBasicTradeEntry($symbol, 'LONG', $data, $index);
-            }
-
-            if (self::checkConfirmTradeValidity($symbol, 'LONG', $data, $index)) {
-                $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-                $buyCondition =
-                    (
-                        $data[$index]['rsi6'] < 30
-                        && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-                        && $bbAnalysis['price_action']['is_near_lower_band']
-                        && $data[$index]['close'] > $data[$index]['bb_lower']
-                        && $data[$index]['open'] < $data[$index]['bb_lower']
-                    );
-
-                if ($buyCondition) {
-                    self::confirmOpening($symbol, 'LONG', $data, $index);
-                    return 'LONG';
-                }
-            }
-        }
-        return null;
-    }
-
-
-
-
-
-
-
-
-
-    public static function checkConditionSetShortSR($symbol, $data, $index)
-    {
-        if (self::$shortEnabled) {
-            $skippingReasons = [];
-
-            if (!self::$isBaseReport) {
-                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORTSR, $data[$index]['binance_timestamp'], 6);
-                if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 75) {
-                        return null;
-                    }
-                }
-            }
-
-            $srAnalyzer = new SupportResistanceAnalyzer($data, $index);
-            $srAnalysis = $srAnalyzer->analyze();
-
-            $entry = self::detectShortEntryWithSR($data, $index, $srAnalysis);
-
-            if ($entry === 'SHORT')
-                return $entry;
-        }
-        return null;
-    }
-
-
-    public static function checkConditionSetShortMACD($symbol, $data, $index)
-    {
-        if (self::$shortEnabled) {
-            if (!self::$isBaseReport) {
-                $currentAccuracy = self::parseAccuracy(self::$progressionDetailsSHORTMACD, $data[$index]['binance_timestamp'], 6);
-                if ($currentAccuracy != -1) {
-                    if ($currentAccuracy < 73) {
-                        return null;
-                    }
-                }
-            }
-            if (
-                $data[$index]['histogram'] < $data[$index - 1]['histogram'] && $data[$index]['histogram'] > 0
-                && $data[$index - 1]['histogram'] > $data[$index - 2]['histogram'] && $data[$index - 1]['histogram'] > 0
-                && $data[$index - 2]['histogram'] > $data[$index - 3]['histogram'] && $data[$index - 2]['histogram'] > 0
-                && $data[$index - 3]['histogram'] > $data[$index - 4]['histogram'] && $data[$index - 3]['histogram'] > 0
-
-                && !self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)
-
-            ) {
-                self::insertConfirmBasicTradeEntry($symbol, 'SHORT', $data, $index);
-            }
-
-            if (self::checkConfirmTradeValidity($symbol, 'SHORT', $data, $index)) {
-                $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-                $buyCondition =
-                    (
-                        $data[$index]['rsi6'] > 70
-                        && $data[$index]['rsi6'] < $data[$index - 1]['rsi6']
-                        && $bbAnalysis['price_action']['is_near_upper_band']
-                        && $data[$index]['close'] < $data[$index]['bb_upper']
-                        && $data[$index]['open'] > $data[$index]['bb_upper']
-                    );
-
-                if ($buyCondition) {
-                    self::confirmOpening($symbol, 'SHORT', $data, $index);
-
-                    return 'SHORT';
-                }
-            }
-        }
-        return null;
     }
 }
