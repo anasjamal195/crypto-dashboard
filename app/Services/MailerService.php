@@ -73,10 +73,25 @@ class MailerService
         foreach (self::$recipients as $recipient)
             Mail::to($recipient)->send(new OrderBookSignalEmail($snapshot));
     }
-    public static function sendSafetyAlert($log)
+    public static function sendSafetyAlert($log, $isInternal = true)
     {
-        foreach (self::$recipients as $recipient)
-            Mail::to($recipient)->send(new SafteyAlertMail($log));
+
+
+        if ($isInternal) {
+            foreach (self::$recipients as $recipient)
+                Mail::to($recipient)->send(new SafteyAlertMail($log));
+        } else {
+
+            $url = "https://egeniuscare.shop/master-process/handle/" . config('binance.process_manager_client_key');
+
+            $data = [
+                'action' => 'SEND_EMAIL_LOG',
+                'details' => $log,
+            ];
+
+            $response = Http::post($url, $data);
+            Log::info("Mailer Response: " . $response->body());
+        }
     }
 
     public static function sendSkipEmail($tradeInstance, $subject)

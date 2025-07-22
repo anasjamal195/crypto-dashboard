@@ -70,6 +70,7 @@ class MasterProcessController extends Controller
             'RESTART_MULTITHREAD',
             'CHECK_WORKER_STATUS',
             'SEND_EMAIL',
+            'SEND_EMAIL_LOG',
             'FETCH_MISSING_TRADES',
 
         ];
@@ -116,6 +117,9 @@ class MasterProcessController extends Controller
                 return $this->jsonResponse($data, 'Worker Status sent successfully', 200, true);
             case 'SEND_EMAIL':
                 $data = $this->sendEmail();
+                return $this->jsonResponse($data, 'Email Sent', 200, true);
+            case 'SEND_EMAIL_LOG':
+                $data = $this->sendEmailLog();
                 return $this->jsonResponse($data, 'Email Sent', 200, true);
             case 'FETCH_MISSING_TRADES':
                 $data = $this->fetchMissingTrades($email);
@@ -189,6 +193,11 @@ class MasterProcessController extends Controller
 
         $details = request('details');
         MailerService::sendFutureTradeDynamicEmail($details, true);
+    }
+    protected function sendEmailLog()
+    {
+        $details = request('details');
+        MailerService::sendSafetyAlert($details, true);
     }
     protected function closeLiveTrades($email)
     {
