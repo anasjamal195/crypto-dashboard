@@ -70,6 +70,7 @@ class MasterProcessController extends Controller
             'RESTART_MULTITHREAD',
             'CHECK_WORKER_STATUS',
             'SEND_EMAIL',
+            'FETCH_MISSING_TRADES',
 
         ];
 
@@ -116,6 +117,9 @@ class MasterProcessController extends Controller
             case 'SEND_EMAIL':
                 $data = $this->sendEmail();
                 return $this->jsonResponse($data, 'Email Sent', 200, true);
+            case 'FETCH_MISSING_TRADES':
+                $data = $this->fetchMissingTrades();
+                return $this->jsonResponse($data, 'Missing Trades Fetched', 200, true);
 
             default:
                 return $this->jsonResponse(null, 'Action not found', 404, false);
@@ -164,12 +168,26 @@ class MasterProcessController extends Controller
         return $liveTrades;
     }
 
+    protected function fetchMissingTrades($email)
+    {
+        $trade_acc = User::where('email', $email)->first()->id;
 
-    protected function sendEmail(){
+        $startTime = request('start_time');
+        $endTime = request('end_time');
+        $liveTrades = DB::table('live_trades_future_results')
+            ->where('trade_acc', $trade_acc)
+            ->where('created_at', '>=', $startTime)
+            ->where('created_at', '<=', $endTime)
+            ->get();
+
+        return $liveTrades;
+    }
+
+    protected function sendEmail()
+    {
 
         $details = request('details');
-        MailerService::sendFutureTradeDynamicEmail($details,true);
-
+        MailerService::sendFutureTradeDynamicEmail($details, true);
     }
     protected function closeLiveTrades($email)
     {
