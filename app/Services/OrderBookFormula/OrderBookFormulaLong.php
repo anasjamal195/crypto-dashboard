@@ -66,6 +66,15 @@ class OrderBookFormulaLong
                     }
                 }
             }
+
+
+
+            // Check for missing trades
+
+            
+
+
+
         } catch (\Exception $e) {
             Log::error('LongWorkerOrderBook: Error - ' . $e->getMessage());
             Log::error($e->getTraceAsString());

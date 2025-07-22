@@ -174,7 +174,7 @@ class BaseReport15m
 
         foreach ($coins as $index => $coin) {
             try {
-                $symbol = $coin['symbol'];
+                $symbol = $coin;
 
                 // Log::info("Test Request Params" . self::$interval);
                 $data = self::$activeExchange === 'binance' ?
@@ -203,7 +203,7 @@ class BaseReport15m
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                // dd($e);
+                dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
@@ -676,7 +676,7 @@ class BaseReport15m
         }
 
 
-        self::confirmOpening($symbol, 'TBD', $data, $index, 'TBD');
+        // self::confirmOpening($symbol, 'TBD', $data, $index, 'TBD');
 
         self::$lows = [];
         self::$highs = [];
