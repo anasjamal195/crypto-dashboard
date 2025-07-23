@@ -55,26 +55,26 @@ class TestCron extends Command
             //     'timestamp' => 1746126000000,
             //     'includeFiltered' => false,
             // ],
-            // [
-            //     'formula' => 'Analysis - Slight Bearish',
-            //     'timestamp' => 1745607600000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Analysis - Slight Bullish',
-            //     'timestamp' => 1744830000000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Analysis - Flat',
-            //     'timestamp' => 1732561200000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Analysis - Mixed',
-            //     'timestamp' => 1744225200000,
-            //     'includeFiltered' => false,
-            // ],
+            [
+                'formula' => 'Analysis - Slight Bearish',
+                'timestamp' => 1745607600000,
+                'includeFiltered' => false,
+            ],
+            [
+                'formula' => 'Analysis - Slight Bullish',
+                'timestamp' => 1744830000000,
+                'includeFiltered' => false,
+            ],
+            [
+                'formula' => 'Analysis - Flat',
+                'timestamp' => 1732561200000,
+                'includeFiltered' => false,
+            ],
+            [
+                'formula' => 'Analysis - Mixed',
+                'timestamp' => 1744225200000,
+                'includeFiltered' => false,
+            ],
 
         ];
 

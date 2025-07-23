@@ -67,32 +67,25 @@
 
     <div class="row">
         <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 class="card-title mb-0">Candlestick Chart</h4>
-                        <small class="text-muted">Visual representation of trade data</small>
-                    </div>
-                    <div>
-                        <button class="btn btn-warning btn-sm me-2" onclick="resetZoom()">Reset Zoom</button>
-                        <button id="gridToggleBtn" class="btn btn-outline-info btn-sm" onclick="toggleGrid()">Hide
-                            Grid</button>
-                        <a target="_blank" href="https://www.binance.com/en/futures/{{ request('symbol') }}"
-                            class="btn btn-outline-primary btn-sm">Show on Binance</a>
 
 
 
-                    </div>
+            <x-candlestick-chart :data="$data" symbol="{{ $symbol }}" interval="{{ $interval }}"
+                :indicators="[
+                        // 'ma7',
+                        // 'ma14',
+                        // 'ma25',
+                        // 'ma99',
+                        // 'bb',
+                        // 'volume',
+                        // 'rsi6',
+                        // 'stoch_rsi',
+                        // 'macd_hist',
+                        // 'mfi',
+                        // 'adx',
+                        // 'sar',
+                    ]" :markers="$tradeMarkers" />
 
-
-
-                </div>
-
-
-                <div class="card-body">
-                    <canvas id="candlestickChart" style="height: 800px;"></canvas>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -617,8 +610,7 @@
 
                                                                             <!-- MACD -->
                                                                             <tr class="bg-dark">
-                                                                                <td colspan="4"
-                                                                                    class="font-weight-bold">
+                                                                                <td colspan="4" class="font-weight-bold">
                                                                                     MACD</td>
                                                                             </tr>
                                                                             <tr>
@@ -651,8 +643,7 @@
 
                                                                             <!-- Volume Indicators -->
                                                                             <tr class="bg-dark">
-                                                                                <td colspan="4"
-                                                                                    class="font-weight-bold">
+                                                                                <td colspan="4" class="font-weight-bold">
                                                                                     Volume Indicators</td>
                                                                             </tr>
                                                                             <tr>
@@ -1431,7 +1422,7 @@
     </script>
 
 
-
+    {{-- 
 
     <script>
         let gridVisible = true;
@@ -1823,6 +1814,8 @@
             chart.update();
         }
     </script>
+     --}}
+
     </div>
 
 

@@ -47,7 +47,7 @@ class TriggersThread implements ShouldQueue
     public $stopLoss = 1;
     public $nextSLTriggerTime = 30;
     public $slTriggerTimeInc = 30;
-    public $targetProfit = 0.5;
+    public $targetProfit = 0.7;
     public $tpTriggerPoint = 0.5;
     public $profitIncrementPercentage = 0.2;
     public $profitIncrementPercentageNext = 0.1;
@@ -108,13 +108,16 @@ class TriggersThread implements ShouldQueue
                             $openingResults = new OpeningConditionServiceLive($this->workerId, $this->account, self::$activeExchange);
 
                             // $opening15m = $openingResults->getOpeningOn15m($symbol);
-                            $opening5m = $openingResults->getOpeningOn15m($symbol);
+                            $opening15m = $openingResults->getOpeningOn15m($symbol);
 
 
 
-                            if ($opening5m['direction']) {
-                                $tradeType = $opening5m['direction'];
-                                $this->formula  = $opening5m['formula'];
+                            if ($opening15m['direction']) {
+                                $tradeType = $opening15m['direction'];
+                                $this->formula  = $opening15m['formula'];
+                                $this->targetProfit  = $opening15m['targetProfit'];
+                                $this->stopLoss  = $opening15m['stopLoss'];
+                                $this->profitIncrementPercentage  = $opening15m['profitIncrementPercentage'];
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 $this->formula  = 'Pivot Swing';
@@ -444,17 +447,18 @@ class TriggersThread implements ShouldQueue
                 $stopLossPrice = $currentPrice * (1 - self::$stopLossMarginPercentage / 100);
 
 
-                $tpSlOrders = self::$activeExchange === 'binance' ?
-                    BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
-                    : HyperLiquidApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
-                if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
-                    return false;
-                }
-                self::$activeExchange === 'binance' ?
-                    BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING')
-                    : HyperLiquidApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
-            }
+                // DISABLED TEMPORARILY
 
+                // $tpSlOrders = self::$activeExchange === 'binance' ?
+                //     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
+                //     : HyperLiquidApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
+                // if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
+                //     return false;
+                // }
+                // self::$activeExchange === 'binance' ?
+                //     BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING')
+                //     : HyperLiquidApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+            }
 
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
                 'stopLoss' =>  $stopLossPrice,
@@ -550,17 +554,17 @@ class TriggersThread implements ShouldQueue
 
                 $stopLossPrice = $currentPrice * (1 + self::$stopLossMarginPercentage / 100);
 
-                $tpSlOrders =  self::$activeExchange === 'binance' ?
-                    BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
-                    : HyperLiquidApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
+                // $tpSlOrders =  self::$activeExchange === 'binance' ?
+                //     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
+                //     : HyperLiquidApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
 
-                if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
-                    return false;
-                }
+                // if (!($tpSlOrders['takeProfit'] && $tpSlOrders['stopLoss'])) {
+                //     return false;
+                // }
 
-                self::$activeExchange === 'binance' ?
-                    BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING')
-                    : HyperLiquidApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+                // self::$activeExchange === 'binance' ?
+                //     BinanceApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING')
+                //     : HyperLiquidApiService::updateTradeDetails($open_order['orderId'], $takeProfitPrice, $stopLossPrice, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
             }
 
             DB::table('live_trades_future_results')->where('orderId', $open_order['orderId'])->update([

@@ -76,7 +76,6 @@ class BinanceController extends Controller
         $tableName = $request->input('safe_mode_view') ? 'coin_reports_safe_mode' : 'coin_reports';
 
 
-        
 
 
 
@@ -958,7 +957,7 @@ class BinanceController extends Controller
 
 
 
-        $startTime = '2025-07-20 00:00:00';
+        $startTime = '2025-06-26 00:00:00';
 
 
 
@@ -1177,6 +1176,28 @@ class BinanceController extends Controller
         $volumeSignals = CommonHelpers::getVolumeSignals($symbol, $interval, true, $data[0]['binance_timestamp'], 1000);
 
 
+
+        $tradeMarkers = [];
+        
+
+        foreach ($trades as $index => $trade) {
+
+                $tradeMarkers[] = [
+                    'timestamp_pst' => $trade->buyingCandle->timestamp_pst,
+                    'color' => 'green',
+                    'text' => 'Open '. $index + 1,
+                    'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
+                ];
+
+                $tradeMarkers[] = [
+                    'timestamp_pst' => $trade->sellingCandle->timestamp_pst,
+                    'color' => 'red',
+                    'text' => 'Close '. $index + 1,
+                    'position' => $trade->position === 'SHORT' ? 'belowBar' : 'aboveBar'
+                ];
+            
+        }
+
         return view('CoinReports.coin-report-details', [
             'pageSlug' => 'Report Details',
             'symbol' => $symbol,
@@ -1190,6 +1211,9 @@ class BinanceController extends Controller
             'data' => $data,
             'volumeSignals' => $volumeSignals,
             'liveTradesData' => $liveTradesData,
+            'tradeMarkers' => $tradeMarkers,
+            
+
         ]);
     }
 

@@ -39,10 +39,17 @@ class OpeningConditionServiceLive
         $interval = '15m';
         $cacheKey = "last_checked_for_opening_{$symbol}_{$interval}";
 
+        $targetProfit = 0.7;
+        $stopLoss = 1;
+        $profitIncPer = 0.2;
+
         if (Cache::get($cacheKey, 0)) {
             return [
                 'direction' => null,
-                'formula' => 'Pivot Swing'
+                'formula' => 'Pivot Swing',
+                'profitIncrementPercentage' => $profitIncPer,
+                'stopLoss' => $stopLoss,
+                'targetProfit' => $targetProfit,
             ];
         }
 
@@ -68,37 +75,69 @@ class OpeningConditionServiceLive
         Cache::put($cacheKey, $cacheValue, 1);
 
         // Check candle closing
-        // if (!CommonHelpers::checkCandleClosing($data, 120)) {
-        //     return [
-        //         'direction' => null,
-        //         'formula' => 'Pivot Swing - 15m'
-        //     ];
-        // }
+        if (!CommonHelpers::checkCandleClosing($data, 120)) {
+            return [
+                'direction' => null,
+                'formula' => 'Pivot Swing - 15m',
+                'profitIncrementPercentage' => $profitIncPer,
+                'stopLoss' => $stopLoss,
+                'targetProfit' => $targetProfit,
+            ];
+        }
+
+
+
+
 
         // LONG ENTRY
         if (
             self::checkConditionSetLong15m($symbol, $data, $index) === 'LONG'
         ) {
+
+
+
+
+            $sl = self::$lowPivots[count(self::$lowPivots) - 2];
+
+
+
+            $bufferSize = 0.5 * $data[$index]['atr14'];
+
+
+            // $bufferSizePer = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$index]['close'] + $bufferSize, true);
+
+            $profitIncPer = $bufferSize;
+            $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['low']);
+
             return [
                 'direction' => 'LONG',
-                'formula' => 'Pivot Swing - 15m'
+                'formula' => 'Pivot Swing - 15m',
+                'profitIncrementPercentage' => $profitIncPer,
+                'stopLoss' => $stopLoss,
+                'targetProfit' => $targetProfit,
             ];
         }
 
 
         // SHORT Entry (Disabled for now)
-        if (
-            self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
-        ) {
-            return [
-                'direction' => 'SHORT',
-                'formula' => 'Pivot Swing - 15m'
-            ];
-        }
+        // if (
+        //     self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
+        // ) {
+        //     return [
+        //         'direction' => 'SHORT',
+        //         'formula' => 'Pivot Swing - 15m',
+        //         'profitIncrementPercentage' => $profitIncPer,
+        //         'stopLoss' => $stopLoss,
+        //         'targetProfit' => $targetProfit,
+        //     ];
+        // }
 
         return [
             'direction' => null,
-            'formula' => 'Pivot Swing - 15m - Not Found'
+            'formula' => 'Pivot Swing - 15m - Not Found',
+            'profitIncrementPercentage' => $profitIncPer,
+            'stopLoss' => $stopLoss,
+            'targetProfit' => $targetProfit,
         ];
     }
 
