@@ -801,6 +801,10 @@ class CommonHelpers
         ]);
     }
 
+    public static function checkWorkerEngagement($workerId, $symbol, $account)
+    {
+        return DB::table('worker_symbols')->where('symbol', $symbol)->where('worker_id', '!=', $workerId)->first();
+    }
 
     public static function workerFreeAllSymbols($workerId, $account = null)
     {
@@ -1447,7 +1451,7 @@ class CommonHelpers
             'updated_at' => Carbon::now()->toDateTimeString(),
         ]);
         $log =  DB::table('safety_logs')->find($id); // Returns the newly inserted row
-        MailerService::sendSafetyAlert($log,false);
+        MailerService::sendSafetyAlert($log, false);
         return $log;
     }
 

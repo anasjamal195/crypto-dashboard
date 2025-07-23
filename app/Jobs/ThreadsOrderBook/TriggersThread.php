@@ -270,6 +270,18 @@ class TriggersThread implements ShouldQueue
                         ];
                         Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Opening Position: ' . $symbol);
 
+                        // Checking if its not engaged in any other worker
+
+                        Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Checking Worker Engagement: ' . $symbol);
+
+                        $workerEngagement = CommonHelpers::checkWorkerEngagement($this->workerId, $symbol, $this->account);
+                        if ($workerEngagement) {
+                            CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
+                            Log::info('TriggersThreadOrderBook ' . $this->workerId . ': Symbol: ' . $symbol . ' Already engaged in worker: ' . $workerEngagement->worker_id);
+                            continue;
+                        }
+
+
                         try {
                             if (self::$isSpot && $tradeType === 'LONG') {
                                 self::$activeExchange === 'binance' ?
