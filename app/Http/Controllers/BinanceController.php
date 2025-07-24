@@ -1178,24 +1178,38 @@ class BinanceController extends Controller
 
 
         $tradeMarkers = [];
-        
+
 
         foreach ($trades as $index => $trade) {
 
-                $tradeMarkers[] = [
-                    'timestamp_pst' => $trade->buyingCandle->timestamp_pst,
-                    'color' => 'green',
-                    'text' => 'Open '. $index + 1,
-                    'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
-                ];
+            $tradeMarkers[] = [
+                'timestamp_pst' => $trade->buyingCandle->timestamp_pst,
+                'color' => 'green',
+                'text' => 'Open ' . $index + 1,
+                'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
+            ];
 
-                $tradeMarkers[] = [
-                    'timestamp_pst' => $trade->sellingCandle->timestamp_pst,
-                    'color' => 'red',
-                    'text' => 'Close '. $index + 1,
-                    'position' => $trade->position === 'SHORT' ? 'belowBar' : 'aboveBar'
-                ];
-            
+            $tradeMarkers[] = [
+                'timestamp_pst' => $trade->sellingCandle->timestamp_pst,
+                'color' => 'red',
+                'text' => 'Close ' . $index + 1,
+                'position' => $trade->position === 'SHORT' ? 'belowBar' : 'aboveBar'
+            ];
+
+
+
+            $buyingCandle = $trade->buyingCandle;
+            if (isset($buyingCandle->lowPivots)) {
+                foreach ($buyingCandle->lowPivots as $lpIndex => $lp) {
+                    $lpCount =  $lpIndex + 1;
+                    $tradeMarkers[] = [
+                        'timestamp_pst' => $lp,
+                        'color' => 'orange',
+                        'text' => 'LP ' . $lpCount,
+                        'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
+                    ];
+                }
+            }
         }
 
         return view('CoinReports.coin-report-details', [
@@ -1212,7 +1226,7 @@ class BinanceController extends Controller
             'volumeSignals' => $volumeSignals,
             'liveTradesData' => $liveTradesData,
             'tradeMarkers' => $tradeMarkers,
-            
+
 
         ]);
     }
