@@ -248,7 +248,7 @@
                             </span>
                         </td>
                         <td>{{ $order->targetProfit ? $order->targetProfit . '%' : '-' }}</td>
-                        <td>{{ $order->stopLoss ? App\CommonHelpers::getPercentDiff($order->price, $order->stopLoss) . '%' : '-' }}
+                        <td>{{ $order->stopLoss ?  $order->stopLoss . '$' : '-' }}
                         </td>
 
                         <td>{{ round($differenceInMinutes) }}</td>
