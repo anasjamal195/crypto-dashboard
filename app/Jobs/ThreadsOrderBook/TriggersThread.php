@@ -117,7 +117,7 @@ class TriggersThread implements ShouldQueue
                                 $this->formula  = $opening15m['formula'];
                                 $this->targetProfit  = $opening15m['targetProfit'];
                                 $this->stopLoss  = $opening15m['stopLoss'];
-                                // $this->profitIncrementPercentage  = $opening15m['profitIncrementPercentage'];
+                                $this->profitIncrementPercentage  = $opening15m['profitIncrementPercentage'];
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 $this->formula  = 'Pivot Swing';

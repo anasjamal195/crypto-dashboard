@@ -620,7 +620,7 @@ class ReportService
 
                         $bufferSizePer = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$index]['close'] + $bufferSize, true);
 
-                        // self::$dynamicTPSLgap = $bufferSize;
+                        self::$dynamicTPSLgap = $bufferSize;
                         // error_log($bufferSize);
                         self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
                         // self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
@@ -666,7 +666,7 @@ class ReportService
 
                         $bufferSizePer = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$index]['close'] + $bufferSize, true);
 
-                        // self::$dynamicTPSLgap = $bufferSize;
+                        self::$dynamicTPSLgap = $bufferSize;
                         // error_log($bufferSize);
                         self::$dynamicTP = $data[$index]['close'] * (1 - self::$initialTpPercent / 100);
                         // self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
