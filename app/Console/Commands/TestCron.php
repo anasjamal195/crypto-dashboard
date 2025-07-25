@@ -90,11 +90,9 @@ class TestCron extends Command
             $formula = $details['formula'] . ' - Base';
             $timestamp = $details['timestamp'];
             $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
-            // $backtestFormula = 'Analysis - Current - Base - Wednesday, June 25, 2025 07:16 PM';
-
 
             if ($details['includeFiltered']) {
-                CommonHelpers::filterReportOnWorkerLimit($formula, $workerLimit);
+                CommonHelpers::filterReportOnWorkerLimit($backtestFormula, $workerLimit);
             }
         }
 
