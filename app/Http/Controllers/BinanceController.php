@@ -948,28 +948,9 @@ class BinanceController extends Controller
     }
     public function getCoinReportConfirmedTrades($formula, Request $request)
     {
-        // $confirmedTrades = DB::table('confirmed_trades')
-        //     ->select([
-        //         'confirmed_trades.exchange',
-        //         'confirmed_trades.coin_name',
-        //         'confirmed_trades.type',
-        //         'confirmed_trades.intention',
-        //         'confirmed_trades.confirm_candle_timestamp',
-        //         'coin_reports.id as coin_report_id',
-        //         'coin_reports.openingTimestamp'
-        //     ])
-        //     ->where('confirmed_trades.formula', $formula)
-        //     ->leftJoin('coin_reports', function ($join) {
-        //         $join->on('confirmed_trades.formula', '=', 'coin_reports.formula')
-        //             ->on('confirmed_trades.openingTimestamp', '=', 'coin_reports.openingTimestamp')
-        //             ->on('confirmed_trades.coin_name', '=', 'coin_reports.symbol')
-        //             ->on('confirmed_trades.type', '=', 'coin_reports.position');
-        //     })
-        //     ->get();
+     
 
-
-
-        $startTime = '2025-06-26 00:00:00';
+        $startTime = '2025-07-26 00:00:00';
 
 
 

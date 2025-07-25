@@ -787,26 +787,26 @@ class ReportService
 
         // $trend = CommonHelpers::updateTrends($symbol, $data, $index, 200);
 
-        if (
-            $data[$index]['close'] > $data[$index]['ema200']
-        ) {
-            $macdLong = self::checkConditionSetLongDoublePivotLong($symbol, $data, $index);
+        // if (
+        //     $data[$index]['close'] > $data[$index]['ema200']
+        // ) {
+        //     $macdLong = self::checkConditionSetLongDoublePivotLong($symbol, $data, $index);
+        //     if ($macdLong) {
+        //         $tagName = 'DOUBLE-PIVOT';
+        //         return $macdLong;
+        //     }
+        // }
+        // }
+
+
+        if ($data[$index]['close'] < $data[$index]['ema200']) {
+
+            $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
             if ($macdLong) {
                 $tagName = 'DOUBLE-PIVOT';
                 return $macdLong;
             }
         }
-        // }
-
-
-        // if ($data[$index]['close'] > $data[$index]['ema200']) {
-
-        $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
-        if ($macdLong) {
-            $tagName = 'DOUBLE-PIVOT';
-            return $macdLong;
-        }
-        // }
 
         // // LONG Entry
         // $macdLong = self::checkConditionSetLongMACD($symbol, $data, $index);
@@ -1098,7 +1098,7 @@ class ReportService
 
 
 
-       return $netProfit;
+        return $netProfit;
     }
 
     public static function handleClosingConditions($symbol, $data, $index, $tradeType, $openingIndex, $open_price)
