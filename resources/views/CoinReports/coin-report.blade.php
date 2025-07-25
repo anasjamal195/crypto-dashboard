@@ -2384,12 +2384,11 @@
                             },
 
 
-
-                             {
+                            {
                                 label: 'Profits Long',
                                 data: profits_long,
-                                borderColor: '#8e44ad', // Deep purple
-                                backgroundColor: 'rgba(142, 68, 173, 0.2)', 
+                                borderColor: '#e67e22', // Orange
+                                backgroundColor: 'rgba(230, 126, 34, 0.2)', // Light transparent orange
                                 borderWidth: 1,
                                 fill: true,
                                 tension: 0.1,
@@ -2403,8 +2402,8 @@
                             {
                                 label: 'Profits Short',
                                 data: profits_short,
-                                borderColor: '#16a085', // Teal
-                                backgroundColor: 'rgba(22, 160, 133, 0.2)', // Light transparent teal
+                                borderColor: '#2980b9', // Blue
+                                backgroundColor: 'rgba(41, 128, 185, 0.2)', // Light transparent blue
                                 borderWidth: 1,
                                 fill: true,
                                 tension: 0.1,
@@ -2415,12 +2414,11 @@
                                 yAxisID: 'y2',
                                 hidden: true
                             },
-
                             {
                                 label: 'Profits Total',
                                 data: profits_total,
-                                borderColor: '#16a085', // Teal
-                                backgroundColor: 'rgba(22, 160, 133, 0.2)', // Light transparent teal
+                                borderColor: '#27ae60', // Green
+                                backgroundColor: 'rgba(39, 174, 96, 0.2)', // Light transparent green
                                 borderWidth: 1,
                                 fill: true,
                                 tension: 0.1,
