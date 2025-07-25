@@ -2548,8 +2548,8 @@ class BinanceApiService
 
 
 
-        // $tpSlOrders = self::placeTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $response['orderId']);
-        // self::insertTradeDetails($response['orderId'], $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
+        $tpSlOrders = self::placeTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $response['orderId']);
+        self::insertTradeDetails($response['orderId'], $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
 
 
         return $data;
@@ -2654,7 +2654,7 @@ class BinanceApiService
         if ($openOrder->trade_status === 'close' || !$positionDetails) {
 
 
-            // self::cancelExistingStopOrders($openOrderId);
+            self::cancelExistingStopOrders($openOrderId);
             $response =  self::getLastCloseOrder($symbol, $trader);
 
             $isMarketOrder = $response['origType'] === 'MARKET';
@@ -2773,7 +2773,7 @@ class BinanceApiService
         CommonHelpers::updateLiveTradeSession($trader);
 
 
-        // self::cancelExistingStopOrders($openOrderId);
+        self::cancelExistingStopOrders($openOrderId);
 
 
         $status = $closedInternally ? 'CLOSED_INTERNALLY' : 'CLOSED_EXTERNALLY';
