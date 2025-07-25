@@ -4210,4 +4210,122 @@ class CommonHelpers
 
         return null;
     }
+
+
+    public static function filterReportOnWorkerLimit($formula, $workerLimit = 5)
+    {
+
+        $newFormula = 'Filtered (' . $workerLimit . ') - ' . $formula;
+        $formulaDetailsComplete = DB::table('formula_details')->where('formula', $formula)->first();
+
+        if (!$formulaDetailsComplete) {
+            return null;
+        }
+        $formulaDetails = json_decode($formulaDetailsComplete->report_config, true);
+        $interval = $formulaDetails['interval'];
+        $intervalMillis =  (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000);
+        $loopTimestamp = intval(($formulaDetails['startUnix'] / $intervalMillis)) * $intervalMillis;
+        $allTrades = DB::table('coin_reports')
+            ->where('formula', $formula)
+            ->orderBy('openingTimestamp', 'ASC')
+            ->get()
+            ->groupBy('openingTimestamp'); // Grouped by timestamp for easy lookup
+
+        $tradesFinalArr = [];
+        $workersDetail = [];
+
+        for ($i = 0; $i < $workerLimit; $i++) {
+            $workersDetail['w' . $i] = [
+                'tradeActive' => 0,
+                'startTime' => null,
+                'endTime' => null,
+            ];
+        }
+
+
+        // dd($workersDetail);
+        while ($loopTimestamp < $formulaDetails['endUnix']) {
+            // Logic to free workers on trade completion
+            foreach ($workersDetail as $workerId => $wDetail) {
+                if ($wDetail['tradeActive']) {
+
+                    if ($loopTimestamp >= $wDetail['endTime']) {
+                        $workersDetail[$workerId] = [
+                            'tradeActive' => 0,
+                            'startTime' => null,
+                            'endTime' => null,
+                        ];
+                    }
+                }
+            }
+            $tradesForTimestamp = $allTrades[$loopTimestamp] ?? collect();
+            // Logic to allocate trades to available workers
+            if (!empty($tradesForTimestamp)) {
+                foreach ($tradesForTimestamp as $tTrade) {
+                    // Now allocat each trade to respective available worker
+                    foreach ($workersDetail as $workerId => $wDetail) {
+                        if (!$wDetail['tradeActive']) {
+
+                            $openTime = json_decode($tTrade->buyingCandle, true)['binance_timestamp'];
+                            $closeTime = json_decode($tTrade->sellingCandle, true)['binance_timestamp'];
+
+                            $workersDetail[$workerId] = [
+                                'tradeActive' => 1,
+                                'startTime' => $openTime,
+                                'endTime' => $closeTime,
+                            ];
+                            $trade = $tTrade;
+                            $tradesFinalArr[] = [
+                                'exchange' => $trade->exchange,
+                                'symbol' => $trade->symbol,
+                                'interval' => $trade->interval,
+                                'market' => $trade->market,
+                                'openingTimestamp' => $trade->openingTimestamp,
+                                'position' => $trade->position,
+                                'previousCandle' => $trade->previousCandle,
+                                'buyingCandle' => $trade->buyingCandle,
+                                'sellingCandle' => $trade->sellingCandle,
+                                'buyingPrice' => $trade->buyingPrice,
+                                'liquidationPrice' => $trade->liquidationPrice,
+                                'sellingPrice' => $trade->sellingPrice,
+                                'lowestPrice' => $trade->lowestPrice,
+                                'lowestPricePercentage' => $trade->lowestPricePercentage,
+                                'profit' => $trade->profit,
+                                'closed_early' => $trade->closed_early,
+                                'duration' => $trade->duration,
+                                'created_at' => Carbon::now()->toDateTimeString(),
+                                'formula' => $newFormula,
+                                'tagName' => $trade->tagName,
+                                'openingVolumes' => $trade->openingVolumes,
+                                'closingVolumes' => $trade->closingVolumes,
+                                'confirmCandle' => $trade->confirmCandle,
+                                'highestCandle' => $trade->highestCandle,
+                            ];
+                            break;
+                        }
+                    }
+                }
+            }
+            $loopTimestamp += $intervalMillis;
+        }
+
+
+        $formulaDetails['formula'] = $newFormula;
+
+        DB::table('formula_details')->updateOrinsert(
+            [
+                'formula' => $newFormula,
+            ],
+            [
+                'details' => str_replace($formula, $newFormula, $formulaDetailsComplete->details),
+                'report_config' => json_encode($formulaDetails),
+                'created_at' => Carbon::now()->toDateTimeString(),
+                'updated_at' => Carbon::now()->toDateTimeString(),
+            ]
+        );
+
+        DB::table('coin_reports')->insert($tradesFinalArr);
+
+        return $tradesFinalArr;
+    }
 }

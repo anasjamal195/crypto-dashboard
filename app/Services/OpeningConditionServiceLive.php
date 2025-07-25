@@ -94,7 +94,6 @@ class OpeningConditionServiceLive
             self::checkConditionSetLong15m($symbol, $data, $index) === 'LONG'
         ) {
 
-
             $sl = self::$lowPivots[count(self::$lowPivots) - 2];
 
             $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);

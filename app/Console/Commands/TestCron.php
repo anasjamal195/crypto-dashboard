@@ -50,16 +50,7 @@ class TestCron extends Command
                 'timestamp' => 1746126000000,
                 'includeFiltered' => false,
             ],
-            // [
-            //     'formula' => 'Analysis Bearish',
-            //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Analysis - Slight Bearish',
-            //     'timestamp' => 1745607600000,
-            //     'includeFiltered' => false,
-            // ],
+
             [
                 'formula' => 'Analysis - Slight Bullish',
                 'timestamp' => 1744830000000,
@@ -76,9 +67,24 @@ class TestCron extends Command
                 'includeFiltered' => false,
             ],
 
+
+
+
+            // [
+            //     'formula' => 'Analysis Bearish',
+            //     'timestamp' => 1746126000000,
+            //     'includeFiltered' => false,
+            // ],
+            // [
+            //     'formula' => 'Analysis - Slight Bearish',
+            //     'timestamp' => 1745607600000,
+            //     'includeFiltered' => false,
+            // ],
+
         ];
 
 
+        $workerLimit = 5;
         foreach ($reportDetails as $details) {
 
             $formula = $details['formula'] . ' - Base';
@@ -88,54 +94,10 @@ class TestCron extends Command
 
 
             if ($details['includeFiltered']) {
-                $formula = $details['formula'] . ' - Filtered';
-                $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
+                CommonHelpers::filterReportOnWorkerLimit($formula, $workerLimit);
             }
         }
 
-
-        dd("Done on all trends with all coins");
-        dd('test');
-        $analystUsers = [
-            [
-                'email' => 'analyst1@egeniuscare.shop',
-                'password' => 'Test@kt21234$',
-            ],
-            [
-                'email' => 'analyst2@egeniuscare.shop',
-                'password' => 'Test*8pk1234$',
-            ],
-            [
-                'email' => 'analyst3@egeniuscare.shop',
-                'password' => 'TestGk21234$',
-            ],
-            [
-                'email' => 'analyst4@egeniuscare.shop',
-                'password' => 'TestXc@llj1234$',
-            ],
-            [
-                'email' => 'analyst5@egeniuscare.shop',
-                'password' => 'TestD125*o1234$',
-            ],
-        ];
-
-        $users = [];
-
-        foreach ($analystUsers as $index => $user) {
-            $users[] = [
-                'name' => "Analysis Tool User " . ($index + 1) . " (Beta)",
-                'email' => $user['email'],
-                'email_verified_at' => now(),
-                'password' => Hash::make($user['password']),
-                'role' => 'analyst',
-                'api_key' => Str::random(32),
-                'api_secret' => Str::random(64),
-                'domain_name' => 'egeniuscare.shop',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        }
-
-        DB::table('users')->insert($users);
+        dd("Completed Schedule");
     }
 }
