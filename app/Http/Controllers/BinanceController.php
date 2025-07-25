@@ -681,6 +681,8 @@ class BinanceController extends Controller
         $progressionDetailsLONG = request('safe_mode_view') ? ReportServiceSafeMode::getProgressionDetails($formula, 'LONG', $endUnix) : ReportService::getProgressionDetails($formula, 'LONG', $endUnix);
         $progressionDetailsSHORT = request('safe_mode_view') ? ReportServiceSafeMode::getProgressionDetails($formula, 'SHORT', $endUnix) : ReportService::getProgressionDetails($formula, 'SHORT', $endUnix);
 
+
+
         // Plotting them in current trend data
         foreach ($dataTrendReferenceActual as &$candle) {
             if (isset($timeWiseTradeCount[$candle['binance_timestamp']])) {
@@ -715,11 +717,14 @@ class BinanceController extends Controller
             $candle['accuracy_short'] =  request('safe_mode_view') ? ReportServiceSafeMode::parseAccuracy($progressionDetailsSHORT, $candle['binance_timestamp'], 6) : ReportService::parseAccuracy($progressionDetailsSHORT, $candle['binance_timestamp'], 6);
 
 
+            $profitLong = ReportService::parseProfit($progressionDetailsLONG, $candle['binance_timestamp']);
+            $profitShort = ReportService::parseProfit($progressionDetailsSHORT, $candle['binance_timestamp']);
+
             // NET Profits Calculation
 
-            $candle['profits_short'] = 1;
-            $candle['profits_long'] = 1;
-            $candle['profits_total'] = 1;
+            $candle['profits_short'] = $profitShort;
+            $candle['profits_long'] = $profitLong;
+            $candle['profits_total'] = $profitLong + $profitShort;
         }
 
 

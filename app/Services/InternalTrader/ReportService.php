@@ -956,6 +956,7 @@ class ReportService
                     JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
                     symbol,
                     COUNT(*) as total_trades,
+                    SUM(profit) as profit,
                     SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as profitable_trades,
                     SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as loss_trades,
                     ROUND((SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as accuracy
@@ -986,6 +987,7 @@ class ReportService
                     'timestamp' => $timestamp,
                     'total_profit' => 0,
                     'total_loss' => 0,
+                    'profit' => 0,
                     'accuracy' => 0,
                     'high_accuracy_symbols' => [],
                 ];
@@ -993,6 +995,7 @@ class ReportService
 
             $grouped[$timestamp]['total_profit'] += $row->profitable_trades;
             $grouped[$timestamp]['total_loss'] += $row->loss_trades;
+            $grouped[$timestamp]['profit'] += $row->profit;
 
             if ($row->accuracy > 90) {
                 $grouped[$timestamp]['high_accuracy_symbols'][] = $row->symbol;
@@ -1054,7 +1057,6 @@ class ReportService
             $filterHoursStartTime = 0;
         }
 
-
         $totalProfits = 0;
         $totalLosses = 0;
 
@@ -1067,8 +1069,36 @@ class ReportService
 
 
 
+
         $totalTrades = $totalProfits + $totalLosses;
         return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
+    }
+    public static function parseProfit($grouped, $endTime, $hours = null)
+    {
+
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+        $netProfit = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+                $netProfit += $data['profit'];
+            }
+        }
+
+
+
+
+       return $netProfit;
     }
 
     public static function handleClosingConditions($symbol, $data, $index, $tradeType, $openingIndex, $open_price)

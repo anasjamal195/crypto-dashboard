@@ -716,7 +716,7 @@ class ReportServiceSafeMode
 
     public static function parseAccuracy($grouped, $endTime, $hours = null)
     {
-
+        
         $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
         if (!$hours) {
             $filterHoursStartTime = 0;
