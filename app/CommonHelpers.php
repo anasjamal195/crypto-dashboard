@@ -4319,6 +4319,7 @@ class CommonHelpers
             [
                 'details' => str_replace($formula, $newFormula, $formulaDetailsComplete->details),
                 'report_config' => json_encode($formulaDetails),
+                'progress' => 100,
                 'created_at' => Carbon::now()->toDateTimeString(),
                 'updated_at' => Carbon::now()->toDateTimeString(),
             ]

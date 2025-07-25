@@ -37,7 +37,7 @@ class FilterReportWithWorkers extends Command
         $filterResult = CommonHelpers::filterReportOnWorkerLimit($formula, $workerLimit);
 
         if ($filterResult)
-            $this->info("Report Filtered: Filtered (".$workerLimit.") - " . $formula);
+            $this->info("Report Filtered: Filtered (" . $workerLimit . ") - " . $formula);
         else {
             $this->error('Error during filteration...');
         }

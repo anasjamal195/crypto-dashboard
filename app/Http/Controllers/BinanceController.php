@@ -713,6 +713,13 @@ class BinanceController extends Controller
 
             $candle['accuracy_long'] = request('safe_mode_view') ? ReportServiceSafeMode::parseAccuracy($progressionDetailsLONG, $candle['binance_timestamp'], 6) : ReportService::parseAccuracy($progressionDetailsLONG, $candle['binance_timestamp'], 6);
             $candle['accuracy_short'] =  request('safe_mode_view') ? ReportServiceSafeMode::parseAccuracy($progressionDetailsSHORT, $candle['binance_timestamp'], 6) : ReportService::parseAccuracy($progressionDetailsSHORT, $candle['binance_timestamp'], 6);
+
+
+            // NET Profits Calculation
+
+            $candle['profits_short'] = 1;
+            $candle['profits_long'] = 1;
+            $candle['profits_total'] = 1;
         }
 
 
