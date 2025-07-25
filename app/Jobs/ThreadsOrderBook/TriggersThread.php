@@ -117,7 +117,7 @@ class TriggersThread implements ShouldQueue
                                 $this->formula  = $opening15m['formula'];
                                 $this->targetProfit  = $opening15m['targetProfit'];
                                 $this->stopLoss  = $opening15m['stopLoss'];
-                                $this->profitIncrementPercentage  = $opening15m['profitIncrementPercentage'];
+                                // $this->profitIncrementPercentage  = $opening15m['profitIncrementPercentage'];
                             } else {
                                 CommonHelpers::workerFreeSymbol($this->workerId, $symbol, $this->account);
                                 $this->formula  = 'Pivot Swing';
@@ -444,11 +444,10 @@ class TriggersThread implements ShouldQueue
                 $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
 
                 $takeProfitPrice = $openingPrice * (1 + $newTakeProfitPercentage / 100);
-                $stopLossPrice = $currentPrice * (1 - self::$stopLossMarginPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 - $profitIncrementPercentage / 100);
 
 
                 // DISABLED TEMPORARILY
-
                 $tpSlOrders = self::$activeExchange === 'binance' ?
                     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])
                     : HyperLiquidApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId']);
@@ -552,7 +551,7 @@ class TriggersThread implements ShouldQueue
                 $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
                 $takeProfitPrice = $openingPrice * (1 - $newTakeProfitPercentage / 100);
 
-                $stopLossPrice = $currentPrice * (1 + self::$stopLossMarginPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 + $profitIncrementPercentage / 100);
 
                 $tpSlOrders =  self::$activeExchange === 'binance' ?
                     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])

@@ -97,7 +97,7 @@ class OpeningConditionServiceLive
 
             $sl = self::$lowPivots[count(self::$lowPivots) - 2];
 
-            $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $stopLoss);
+            $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
             $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
             if ($slPercentage > 3 && $atrPercentage < 0.4) {
                 $sl = self::$lowPivots[count(self::$lowPivots) - 1];
@@ -124,14 +124,15 @@ class OpeningConditionServiceLive
         ) {
 
             $sl = self::$highPivots[count(self::$highPivots) - 2];
-            $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $stopLoss);
+            $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['high']);
             $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
             if ($slPercentage > 3 && $atrPercentage < 0.4) {
                 $sl = self::$highPivots[count(self::$highPivots) - 1];
             }
             $bufferSize = 0.5 * $data[$index]['atr14'];
             $profitIncPer = $bufferSize;
-            $stopLoss = $data[$sl]['high'];
+
+            $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['high']);
 
             return [
                 'direction' => 'SHORT',

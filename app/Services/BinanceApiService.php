@@ -3388,7 +3388,7 @@ class BinanceApiService
      * @return array An array containing both order responses
      */
 
-    public static function placeTpSlOrders($symbol, $trader, float $takeProfitPrice, float $stopLossPrice, $openOrderId, $priceMargin = 0.2)
+    public static function placeTpSlOrders($symbol, $trader, float $takeProfitPrice, float $stopLossPrice, $openOrderId, $priceMargin = 0.5)
     {
 
 
@@ -3397,11 +3397,8 @@ class BinanceApiService
         $secretKey = $user->api_secret;
 
 
-
-
         // Cancel existing orders before placing new ones
         self::cancelExistingStopOrders($openOrderId);
-
 
         // Get position details
         $positionDetails = self::getPositionDetails($symbol, $trader);
