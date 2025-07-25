@@ -22,6 +22,10 @@ class FilterReportWithWorkers extends Command
     protected $description = 'Filters trades by formula and assigns them to available workers, Default workers will be 5!';
 
     /**
+     * 
+     * 
+     * 
+     * 
      * Execute the console command.
      */
     public function handle()
