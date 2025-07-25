@@ -605,7 +605,7 @@ class ReportService
 
                         $sl = self::$lowPivots[count(self::$lowPivots) - 2];
 
-                        $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], self::$dynamicSL);
+                        $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
 
                         $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
 
@@ -651,7 +651,7 @@ class ReportService
                     } else {
                         $sl = self::$highPivots[count(self::$highPivots) - 2];
 
-                        $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], self::$dynamicSL);
+                        $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['high']);
 
                         $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
 
