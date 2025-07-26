@@ -1023,7 +1023,7 @@ class BinanceController extends Controller
             'pendingOpening' => $confirmedTrades,
             'openedTrades' => $openedTrades,
             'closedTrades' => $closedTrades,
-            'startTime' => $startTime,e
+            'startTime' => $startTime,
         ];
 
         $tradeDetails = json_decode(json_encode($tradeDetails), true);
