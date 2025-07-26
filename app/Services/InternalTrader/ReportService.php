@@ -117,7 +117,7 @@ class ReportService
     public static $tLineCoordHigh = null;
     public static $tLineCoordLow = null;
 
-    public static $limit = 1000;
+    public static $limit = 3000;
 
 
     public static $lowPivots = [];
@@ -609,7 +609,7 @@ class ReportService
 
                         $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
 
-                        if ($slPercentage > 3 && $atrPercentage < 0.4) {
+                        if ($slPercentage > 3 && $atrPercentage < 0.3) {
                             $sl = self::$lowPivots[count(self::$lowPivots) - 1];
                         }
 
@@ -621,33 +621,8 @@ class ReportService
                         $bufferSizePer = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$index]['close'] + $bufferSize, true);
 
                         self::$dynamicTPSLgap = $bufferSize;
-                        // error_log($bufferSize);
                         self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
-                        // self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
                         self::$dynamicSL = $data[$sl]['low'];
-
-
-
-                        // if ($slPercentage > 3) {
-                        //     $extremePrice = 0;
-                        //     $currentTrade = [];
-                        //     $open_price = 0;
-                        //     $tradeType = null;
-                        //     $waitingCandles = 4;
-                        //     $openingIndex = 0;
-
-                        //     self::$dynamicTP = 0;
-                        //     self::$dynamicSL = 0;
-                        //     self::$candlesToCheck = 1000;
-
-                        //     self::$tLineCoordHigh = null;
-                        //     self::$lastPivotLow = null;
-
-                        //     self::$tLineCoordLow = null;
-                        //     self::$lastPivotHigh = null;
-                        // }
-
-                        // dd(self::$dynamicTP, self::$dynamicSL, $data[$openingIndex], $symbol);
                     } else {
                         $sl = self::$highPivots[count(self::$highPivots) - 2];
 
@@ -778,60 +753,30 @@ class ReportService
 
 
 
-        // if ($data[$index]['close'] < $data[$index]['ema200']) {
+        // ############### LONG CONDITIONS ####################
 
-
-        // Composite Trading strategy wth trendlines
-        // LONG Entry
-
-
-        // $trend = CommonHelpers::updateTrends($symbol, $data, $index, 200);
-
-        // if (
-        //     $data[$index]['close'] > $data[$index]['ema200']
-        // ) {
-        //     $macdLong = self::checkConditionSetLongDoublePivotLong($symbol, $data, $index);
-        //     if ($macdLong) {
-        //         $tagName = 'DOUBLE-PIVOT';
-        //         return $macdLong;
-        //     }
-        // }
-        // }
-
-
-        if ($data[$index]['close'] < $data[$index]['ema200']) {
-
-            $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
+        if (
+            // $data[$index]['close'] > $data[$index]['ema200']
+            true
+        ) {
+            $macdLong = self::checkConditionSetLongDoublePivotLong($symbol, $data, $index);
             if ($macdLong) {
                 $tagName = 'DOUBLE-PIVOT';
                 return $macdLong;
             }
         }
 
-        // // LONG Entry
-        // $macdLong = self::checkConditionSetLongMACD($symbol, $data, $index);
-        // if ($macdLong) {
-        //     $tagName = 'MACD';
-        //     return $macdLong;
-        // }
 
-        // else if (self::checkConditionSetLongSR($symbol, $data, $index) === 'LONG') {
-        //     $tagName = 'SR';
-        //     return 'LONG';
-        // }
+        // ############### SHORT CONDITIONS ####################
 
 
+        // if ($data[$index]['close'] < $data[$index]['ema200']) {
 
-        // SHORT Entry
-        // $macdShort = self::checkConditionSetShortMACD($symbol, $data, $index);
-        // if ($macdShort) {
-        //     $tagName = 'MACD';
-        //     return $macdShort;
-        // }
-
-        // else if (self::checkConditionSetShortSR($symbol, $data, $index) === 'SHORT') {
-        //     $tagName = 'SR';
-        //     return 'SHORT';
+        //     $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
+        //     if ($macdLong) {
+        //         $tagName = 'DOUBLE-PIVOT';
+        //         return $macdLong;
+        //     }
         // }
 
         return null;
@@ -2146,11 +2091,13 @@ class ReportService
 
 
 
-            if ($data[$index]['per'] > 0) {
+            if (
+                $data[$index]['per'] > 0
+                && $data[$index]['histogram'] > 0
+                && $data[$index - 1]['histogram'] < 0
+            ) {
                 return 'LONG';
             } else {
-
-
                 $initialSetup = true;
             }
         }
@@ -2161,11 +2108,13 @@ class ReportService
                 'condition' => (
                     $initialSetup
                 ),
-                'candlesToCheck' => 20,
+                'candlesToCheck' => 100,
             ],
             [
                 'condition' => (
                     $data[$index]['per'] > 0.1
+                    && $data[$index]['histogram'] > 0
+                    && $data[$index - 1]['histogram'] < 0
                 ),
                 'candlesToCheck' => 10,
             ],
