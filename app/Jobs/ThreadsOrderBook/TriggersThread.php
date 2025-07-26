@@ -51,7 +51,7 @@ class TriggersThread implements ShouldQueue
     public $tpTriggerPoint = 0.5;
     public $profitIncrementPercentage = 0.2;
     public $profitIncrementPercentageNext = 0.1;
-    public static $stopLossMarginPercentage = 0.1;
+    public static $stopLossMarginPercentage = 0.2;
     public $formula = 'Pivot Swings';
 
     // Confirmed Trades Entries
@@ -444,7 +444,7 @@ class TriggersThread implements ShouldQueue
                 $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
 
                 $takeProfitPrice = $openingPrice * (1 + $newTakeProfitPercentage / 100);
-                $stopLossPrice = $currentPrice * (1 - $profitIncrementPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 - self::$stopLossMarginPercentage / 100);
 
 
                 // DISABLED TEMPORARILY
@@ -551,7 +551,7 @@ class TriggersThread implements ShouldQueue
                 $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
                 $takeProfitPrice = $openingPrice * (1 - $newTakeProfitPercentage / 100);
 
-                $stopLossPrice = $currentPrice * (1 + $profitIncrementPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 + self::$stopLossMarginPercentage / 100);
 
                 $tpSlOrders =  self::$activeExchange === 'binance' ?
                     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])

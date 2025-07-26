@@ -4325,7 +4325,7 @@ class CommonHelpers
             ]
         );
 
-        DB::table('coin_reports')->where('formula',$newFormula)->delete();
+        DB::table('coin_reports')->where('formula', $newFormula)->delete();
         DB::table('coin_reports')->insert($tradesFinalArr);
 
         return $tradesFinalArr;

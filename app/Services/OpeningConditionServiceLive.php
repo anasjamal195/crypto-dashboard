@@ -118,29 +118,29 @@ class OpeningConditionServiceLive
 
 
         // SHORT Entry (Disabled for now)
-        if (
-            self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
-        ) {
+        // if (
+        //     self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
+        // ) {
 
-            $sl = self::$highPivots[count(self::$highPivots) - 2];
-            $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['high']);
-            $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
-            if ($slPercentage > 3 && $atrPercentage < 0.4) {
-                $sl = self::$highPivots[count(self::$highPivots) - 1];
-            }
-            $bufferSize = 0.5 * $data[$index]['atr14'];
-            $profitIncPer = $bufferSize;
+        //     $sl = self::$highPivots[count(self::$highPivots) - 2];
+        //     $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['high']);
+        //     $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
+        //     if ($slPercentage > 3 && $atrPercentage < 0.4) {
+        //         $sl = self::$highPivots[count(self::$highPivots) - 1];
+        //     }
+        //     $bufferSize = 0.5 * $data[$index]['atr14'];
+        //     $profitIncPer = $bufferSize;
 
-            $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['high']);
+        //     $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['high']);
 
-            return [
-                'direction' => 'SHORT',
-                'formula' => 'Pivot Swing - 15m',
-                'profitIncrementPercentage' => $profitIncPer,
-                'stopLoss' => $stopLoss,
-                'targetProfit' => $targetProfit,
-            ];
-        }
+        //     return [
+        //         'direction' => 'SHORT',
+        //         'formula' => 'Pivot Swing - 15m',
+        //         'profitIncrementPercentage' => $profitIncPer,
+        //         'stopLoss' => $stopLoss,
+        //         'targetProfit' => $targetProfit,
+        //     ];
+        // }
 
         return [
             'direction' => null,
@@ -271,12 +271,15 @@ class OpeningConditionServiceLive
 
         ) {
 
-            if ($data[$index]['per'] > 0) {
+            if (
+                $data[$index]['per'] > 0
+                && $data[$index]['histogram'] > 0
+                && $data[$index - 1]['histogram'] < 0
+            ) {
                 return 'LONG';
             } else {
-
-
                 $initialSetup = true;
+                CommonHelpers::addSafetyLog('Incoming Trade: ' . $symbol . 'Type: LONG  Interval: 15m ', 'System detected an incoming potential LONG trade on ' . $symbol . ' on 15m interval chart...');
             }
         }
         $steps = [
@@ -284,11 +287,14 @@ class OpeningConditionServiceLive
                 'condition' => (
                     $initialSetup
                 ),
-                'candlesToCheck' => 20,
+                'candlesToCheck' => 100,
             ],
             [
                 'condition' => (
-                    $data[$index]['per'] > 0.1
+                    $data[$index]['per'] > 0
+                    && $data[$index]['histogram'] > 0
+                    && $data[$index - 1]['histogram'] < 0
+
                 ),
                 'candlesToCheck' => 10,
             ],
