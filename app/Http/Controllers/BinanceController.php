@@ -948,7 +948,7 @@ class BinanceController extends Controller
     }
     public function getCoinReportConfirmedTrades($formula, Request $request)
     {
-     
+
 
         $startTime = '2025-07-26 00:00:00';
 
@@ -1023,6 +1023,7 @@ class BinanceController extends Controller
             'pendingOpening' => $confirmedTrades,
             'openedTrades' => $openedTrades,
             'closedTrades' => $closedTrades,
+            'startTime' => $startTime,e
         ];
 
         $tradeDetails = json_decode(json_encode($tradeDetails), true);

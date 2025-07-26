@@ -11,7 +11,8 @@
                             <div class="row">
                                 <div class="col-sm-6 text-left">
                                     <h2 class="card-title text-white">eGeniusCare Live Crypto Trading</h2>
-                                    <p class="card-category text-white-50">Real-time trading overview (5m-candlesticks)</p>
+                                    <p class="card-category text-white-50">Real-time trading overview (5m-candlesticks) from
+                                        {{ $tradeDetails['startTime'] }} onwards</p>
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="btn-group btn-group-toggle float-right" data-toggle="buttons">
