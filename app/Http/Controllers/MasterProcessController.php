@@ -196,6 +196,7 @@ class MasterProcessController extends Controller
     protected function sendEmailLog()
     {
         $details = request('details');
+        $details = json_decode(json_encode($details));
         MailerService::sendSafetyAlert($details, true);
     }
     protected function closeLiveTrades($email)
