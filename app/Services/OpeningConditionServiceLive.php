@@ -369,17 +369,24 @@ class OpeningConditionServiceLive
 
 
         $interval = '15m';
-        for ($i = 10; $i <= ($index - 6); $i++) {
+        for ($i = 10; $i <= ($index - 5); $i++) {
 
-            $p = CommonHelpers::checkPivot($data, $i, 6);
+            $p = CommonHelpers::checkPivot($data, $i, 5);
 
             if ($p === 'high_pivot') {
-                self::$highPivots[] = $i;
+                if (
+                    !empty(self::$highPivots) &&
+                    self::$highPivots[count(self::$highPivots) - 1] == $i
+                ) {
+                    continue;
+                } else {
+                    self::$highPivots[] = $i;
+                }
             }
         }
 
 
-        $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
+        $pivot = CommonHelpers::checkPivot($data, $index - 5, 5);
 
 
 
@@ -389,41 +396,26 @@ class OpeningConditionServiceLive
         $lastPivotIndexHigh = count(self::$highPivots) - 1;
         $initialSetupShort = false;
 
-        if (
+        $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, '15m', 'SHORT');
+        if (!$confirmedTrade) {
+            if (
 
-            $pivot === 'high_pivot'
-            && count(self::$highPivots) > 3
-            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] <= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 + 0.3 / 100))
-            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] >= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 - 0.3 / 100))
-
-
-            // Third Arch bottom rising upwards
-            && $data[self::$highPivots[$lastPivotIndexHigh]]['high'] < $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high']
+                $pivot === 'high_pivot'
+                && count(self::$highPivots) > 3
+                && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] <= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 + 0.1 / 100))
+                && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] >= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 - 0.1 / 100))
 
 
-        ) {
+            ) {
 
-            $firstPivotIndex = count(self::$highPivots) - 3;
-            $firstPivot = self::$highPivots[$firstPivotIndex];
-            $lastPivot = self::$highPivots[$lastPivotIndexHigh];
-            $lowPivots = [];
-            for ($i = $firstPivot; $i <= $lastPivot; $i++) {
-                $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
-                if ($minorPivot === 'low_pivot') {
-                    $lowPivots[] = $i;
+                if ($data[$index]['per'] < 0) {
+                    return 'SHORT';
+                } else {
+                    $initialSetupShort = true;
+                    CommonHelpers::addSafetyLog('Incoming Trade: ' . $symbol . 'Type: SHORT  Interval: 15m ', 'System detected an incoming potential SHORT trade on ' . $symbol . ' on 15m interval chart...');
                 }
             }
-
-
-
-            if ($data[$index]['per'] < 0) {
-                return 'SHORT';
-            } else {
-                $initialSetupShort = true;
-            }
         }
-
-
         $steps = [
             [
                 'condition' => (
