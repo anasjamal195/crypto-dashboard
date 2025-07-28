@@ -311,7 +311,7 @@ class OpeningConditionServiceLive
             }
 
 
-            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, 'LONG');
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, '15m', 'LONG');
 
             $isInitial = $stepIndex == 0;
             // Handle initial step (no existing trade required)
@@ -438,7 +438,7 @@ class OpeningConditionServiceLive
             }
 
 
-            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, 'SHORT');
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, '15m', 'SHORT');
 
             $isInitial = $stepIndex == 0;
             // Handle initial step (no existing trade required)
