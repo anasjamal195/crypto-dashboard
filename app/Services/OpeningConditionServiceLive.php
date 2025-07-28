@@ -233,35 +233,24 @@ class OpeningConditionServiceLive
 
         $interval = '15m';
 
-
         $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
 
-
-
         for ($i = 10; $i <= ($index - 6); $i++) {
-
             $p = CommonHelpers::checkPivot($data, $i, 6);
-
             if ($p === 'low_pivot') {
-
-                if (
-                    !empty(self::$lowPivots) &&
-                    self::$lowPivots[count(self::$lowPivots) - 1] == $i
-                ) {
-                    continue;
-                } else {
-                    self::$lowPivots[] = $i;
-                }
+                self::$lowPivots[] = $i;
             }
         }
 
 
+
         $lastPivotIndex = count(self::$lowPivots) - 1;
         $initialSetup = false;
-
-
-
         $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, '15m', 'LONG');
+
+
+
+
 
         if (!$confirmedTrade) {
 
@@ -269,7 +258,6 @@ class OpeningConditionServiceLive
 
                 $pivot === 'low_pivot'
                 && count(self::$lowPivots) > 3
-
 
                 && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] <= ($data[self::$lowPivots[$lastPivotIndex - 2]]['low'] * (1 + 0.3 / 100))
                 && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] >= ($data[self::$lowPivots[$lastPivotIndex - 2]]['low'] * (1 - 0.3 / 100))
@@ -287,14 +275,30 @@ class OpeningConditionServiceLive
                     && $data[$index]['histogram'] > 0
                     && $data[$index - 1]['histogram'] < 0
                 ) {
+                    Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
+                    Log::info("1) Pivots Timestamps:  " . implode(' ', [
+                        $data[self::$lowPivots[$lastPivotIndex]],
+                        $data[self::$lowPivots[$lastPivotIndex - 1]],
+                        $data[self::$lowPivots[$lastPivotIndex - 2]],
+                    ]));
+                    Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
+                    Log::info("3) LONG Opening Right Away:! ");
+
                     return 'LONG';
                 } else {
                     $initialSetup = true;
-                    CommonHelpers::addSafetyLog('Incoming Trade: ' . $symbol . 'Type: LONG  Interval: 15m ', 'System detected an incoming potential LONG trade on ' . $symbol . ' on 15m interval chart...');
+                    Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
+                    Log::info("1) Pivots Timestamps:  " . implode(' ', [
+                        $data[self::$lowPivots[$lastPivotIndex]],
+                        $data[self::$lowPivots[$lastPivotIndex - 1]],
+                        $data[self::$lowPivots[$lastPivotIndex - 2]],
+                    ]));
+                    Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
+                    Log::info("3) LONG Confirmed Trade added! ");
+                    CommonHelpers::addSafetyLog('Incoming Trade: ' . $symbol . ' Type: LONG  Interval: 15m ', 'System detected an incoming potential LONG trade on ' . $symbol . ' on 15m interval chart...');
                 }
             }
         }
-
 
         $steps = [
             [
@@ -374,14 +378,7 @@ class OpeningConditionServiceLive
             $p = CommonHelpers::checkPivot($data, $i, 5);
 
             if ($p === 'high_pivot') {
-                if (
-                    !empty(self::$highPivots) &&
-                    self::$highPivots[count(self::$highPivots) - 1] == $i
-                ) {
-                    continue;
-                } else {
-                    self::$highPivots[] = $i;
-                }
+                self::$highPivots[] = $i;
             }
         }
 
@@ -409,10 +406,26 @@ class OpeningConditionServiceLive
             ) {
 
                 if ($data[$index]['per'] < 0) {
+                    Log::info('TriggersThreadOrderBook ' . $symbol . " SHORT Opening Conditions Detail: ");
+                    Log::info("1) Pivots Timestamps:  " . implode(' ', [
+                        $data[self::$highPivots[$lastPivotIndexHigh]],
+                        $data[self::$highPivots[$lastPivotIndexHigh - 1]],
+                        $data[self::$highPivots[$lastPivotIndexHigh - 2]],
+                    ]));
+                    Log::info("2) SHORT Current Time: " . $data[$index]['timestampReadable']);
+                    Log::info("3) SHORT Opening Right Away:! ");
                     return 'SHORT';
                 } else {
                     $initialSetupShort = true;
-                    CommonHelpers::addSafetyLog('Incoming Trade: ' . $symbol . 'Type: SHORT  Interval: 15m ', 'System detected an incoming potential SHORT trade on ' . $symbol . ' on 15m interval chart...');
+                    Log::info('TriggersThreadOrderBook ' . $symbol . " SHORT Opening Conditions Detail: ");
+                    Log::info("1) Pivots Timestamps:  " . implode(' ', [
+                        $data[self::$highPivots[$lastPivotIndexHigh]],
+                        $data[self::$highPivots[$lastPivotIndexHigh - 1]],
+                        $data[self::$highPivots[$lastPivotIndexHigh - 2]],
+                    ]));
+                    Log::info("2) SHORT Current Time: " . $data[$index]['timestampReadable']);
+                    Log::info("3) SHORT Confirmed Trade added! ");
+                    CommonHelpers::addSafetyLog('Incoming Trade: ' . $symbol . ' Type: SHORT  Interval: 15m ', 'System detected an incoming potential SHORT trade on ' . $symbol . ' on 15m interval chart...');
                 }
             }
         }
