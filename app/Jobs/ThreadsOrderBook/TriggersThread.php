@@ -124,7 +124,7 @@ class TriggersThread implements ShouldQueue
                                 continue;
                             }
 
-                            Log::info("Conditions Met " . $symbol);
+                            Log::info('TriggersThreadOrderBook ' . $this->workerId . " Conditions Met " . $symbol);
 
                             // ========================================================================
 
