@@ -287,7 +287,7 @@
     </style>
 
     {{-- Accuracy Distribution Chart --}}
-    <div class="row">
+    {{-- <div class="row">
         <div class="col-12">
             <div class="card card-stats mb-4">
                 <div class="card-header">
@@ -305,7 +305,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> --}}
     {{-- 
     @include('accuracy-distribution-card', [
         'safeModeAccuracyFormula' => 'Base Report - 15m',
