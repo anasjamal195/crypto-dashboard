@@ -242,8 +242,16 @@ class OpeningConditionServiceLive
 
             $p = CommonHelpers::checkPivot($data, $i, 6);
 
-            if ($p === 'low_pivot' && self::$lowPivots[count(self::$lowPivots) - 1] != $i) {
-                self::$lowPivots[] = $i;
+            if ($p === 'low_pivot') {
+
+                if (
+                    !empty(self::$lowPivots) &&
+                    self::$lowPivots[count(self::$lowPivots) - 1] == $i
+                ) {
+                    continue;
+                } else {
+                    self::$lowPivots[] = $i;
+                }
             }
         }
 
@@ -286,13 +294,6 @@ class OpeningConditionServiceLive
                 }
             }
         }
-
-
-
-
-
-
-
 
 
         $steps = [
