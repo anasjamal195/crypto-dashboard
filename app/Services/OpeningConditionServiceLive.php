@@ -242,46 +242,59 @@ class OpeningConditionServiceLive
 
             $p = CommonHelpers::checkPivot($data, $i, 6);
 
-            if ($p === 'low_pivot') {
+            if ($p === 'low_pivot' && self::$lowPivots[count(self::$lowPivots) - 1] != $i) {
                 self::$lowPivots[] = $i;
             }
         }
 
 
-
-
-
         $lastPivotIndex = count(self::$lowPivots) - 1;
         $initialSetup = false;
 
-        if (
-
-            $pivot === 'low_pivot'
-            && count(self::$lowPivots) > 3
 
 
-            && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] <= ($data[self::$lowPivots[$lastPivotIndex - 2]]['low'] * (1 + 0.3 / 100))
-            && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] >= ($data[self::$lowPivots[$lastPivotIndex - 2]]['low'] * (1 - 0.3 / 100))
+        $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, '15m', 'LONG');
 
-
-            // Third Arch bottom rising upwards
-            && $data[self::$lowPivots[$lastPivotIndex]]['low'] > $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
-
-            // && $data[self::$lowPivots[$lastPivotIndex - 1]]['volume'] < $data[self::$lowPivots[$lastPivotIndex - 2]]['volume']
-
-        ) {
+        if (!$confirmedTrade) {
 
             if (
-                $data[$index]['per'] > 0
-                && $data[$index]['histogram'] > 0
-                && $data[$index - 1]['histogram'] < 0
+
+                $pivot === 'low_pivot'
+                && count(self::$lowPivots) > 3
+
+
+                && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] <= ($data[self::$lowPivots[$lastPivotIndex - 2]]['low'] * (1 + 0.3 / 100))
+                && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] >= ($data[self::$lowPivots[$lastPivotIndex - 2]]['low'] * (1 - 0.3 / 100))
+
+
+                // Third Arch bottom rising upwards
+                && $data[self::$lowPivots[$lastPivotIndex]]['low'] > $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
+
+                // && $data[self::$lowPivots[$lastPivotIndex - 1]]['volume'] < $data[self::$lowPivots[$lastPivotIndex - 2]]['volume']
+
             ) {
-                return 'LONG';
-            } else {
-                $initialSetup = true;
-                CommonHelpers::addSafetyLog('Incoming Trade: ' . $symbol . 'Type: LONG  Interval: 15m ', 'System detected an incoming potential LONG trade on ' . $symbol . ' on 15m interval chart...');
+
+                if (
+                    $data[$index]['per'] > 0
+                    && $data[$index]['histogram'] > 0
+                    && $data[$index - 1]['histogram'] < 0
+                ) {
+                    return 'LONG';
+                } else {
+                    $initialSetup = true;
+                    CommonHelpers::addSafetyLog('Incoming Trade: ' . $symbol . 'Type: LONG  Interval: 15m ', 'System detected an incoming potential LONG trade on ' . $symbol . ' on 15m interval chart...');
+                }
             }
         }
+
+
+
+
+
+
+
+
+
         $steps = [
             [
                 'condition' => (
@@ -298,8 +311,6 @@ class OpeningConditionServiceLive
                 ),
                 'candlesToCheck' => 10,
             ],
-
-
         ];
 
         // Process steps sequentially
