@@ -1204,6 +1204,17 @@ class BinanceController extends Controller
                     ];
                 }
             }
+             if (isset($buyingCandle->highPivots)) {
+                foreach ($buyingCandle->highPivots as $hpIndex => $hp) {
+                    $hpCount =  $hpIndex + 1;
+                    $tradeMarkers[] = [
+                        'timestamp_pst' => $hp,
+                        'color' => 'blue',
+                        'text' => 'HP ' . $hpCount,
+                        'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
+                    ];
+                }
+            }
         }
 
         return view('CoinReports.coin-report-details', [

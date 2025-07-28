@@ -117,7 +117,7 @@ class ReportService
     public static $tLineCoordHigh = null;
     public static $tLineCoordLow = null;
 
-    public static $limit = 3000;
+    public static $limit = 1000;
 
 
     public static $lowPivots = [];
@@ -147,23 +147,23 @@ class ReportService
         $coins = [
             // 'BTCUSDT',
             'BNBUSDT',
-            'SOLUSDT',
-            'ADAUSDT',
-            'DOGEUSDT',
-            'LTCUSDT',
-            'LINKUSDT',
-            'ATOMUSDT',
-            'NEARUSDT',
-            'RUNEUSDT',
-            'UNIUSDT',
-            'AAVEUSDT',
-            'ALGOUSDT',
-            'FILUSDT',
-            'VETUSDT',
-            'ICPUSDT',
-            'SANDUSDT',
-            'MANAUSDT',
-            'AXSUSDT',
+            // 'SOLUSDT',
+            // 'ADAUSDT',
+            // 'DOGEUSDT',
+            // 'LTCUSDT',
+            // 'LINKUSDT',
+            // 'ATOMUSDT',
+            // 'NEARUSDT',
+            // 'RUNEUSDT',
+            // 'UNIUSDT',
+            // 'AAVEUSDT',
+            // 'ALGOUSDT',
+            // 'FILUSDT',
+            // 'VETUSDT',
+            // 'ICPUSDT',
+            // 'SANDUSDT',
+            // 'MANAUSDT',
+            // 'AXSUSDT',
         ];
 
 
@@ -552,16 +552,19 @@ class ReportService
                     $candle['currentResistance'] = $supportResistance['resistance'];
                     $candle['orderBookSnapshot'] = $orderBookSnapshot ? $orderBookSnapshot->id : null;
                     $candle['openingVolumes'] = json_encode($volumeSignal);
-                    // $candle['lowPivots'] = [
-                    //     $data[self::$lowPivots[count(self::$lowPivots) - 3]]['timestamp_pst'],
-                    //     $data[self::$lowPivots[count(self::$lowPivots) - 2]]['timestamp_pst'],
-                    //     $data[self::$lowPivots[count(self::$lowPivots) - 1]]['timestamp_pst'],
-                    // ];
-                    // $candle['highPivots'] = [
-                    //     $data[self::$highPivots[count(self::$highPivots) - 3]]['timestamp_pst'],
-                    //     $data[self::$highPivots[count(self::$highPivots) - 2]]['timestamp_pst'],
-                    //     $data[self::$highPivots[count(self::$highPivots) - 1]]['timestamp_pst'],
-                    // ];
+
+                    if (count(self::$lowPivots) >= 3)
+                        $candle['lowPivots'] = [
+                            $data[self::$lowPivots[count(self::$lowPivots) - 3]]['timestamp_pst'],
+                            $data[self::$lowPivots[count(self::$lowPivots) - 2]]['timestamp_pst'],
+                            $data[self::$lowPivots[count(self::$lowPivots) - 1]]['timestamp_pst'],
+                        ];
+                    if (count(self::$highPivots) >= 3)
+                        $candle['highPivots'] = [
+                            $data[self::$highPivots[count(self::$highPivots) - 3]]['timestamp_pst'],
+                            $data[self::$highPivots[count(self::$highPivots) - 2]]['timestamp_pst'],
+                            $data[self::$highPivots[count(self::$highPivots) - 1]]['timestamp_pst'],
+                        ];
 
                     if (!self::$isBaseReport) {
                         $candle['macd_frequency_long'] = self::parseFrequency(self::$progressionDetailsLONGMACD, $data[$index]['binance_timestamp'], 6);
@@ -772,11 +775,11 @@ class ReportService
 
         // if ($data[$index]['close'] < $data[$index]['ema200']) {
 
-        //     $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
-        //     if ($macdLong) {
-        //         $tagName = 'DOUBLE-PIVOT';
-        //         return $macdLong;
-        //     }
+        // $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
+        // if ($macdLong) {
+        //     $tagName = 'DOUBLE-PIVOT';
+        //     return $macdLong;
+        // }
         // }
 
         return null;
@@ -2166,11 +2169,11 @@ class ReportService
 
     public static function checkConditionSetLongDoublePivotShort($symbol, $data, $index)
     {
-        $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
+        $pivot = CommonHelpers::checkPivot($data, $index - 5, 5);
 
 
         if ($pivot === 'high_pivot') {
-            self::$highPivots[] = $index - 6;
+            self::$highPivots[] = $index - 5;
         }
         $lastPivotIndexHigh = count(self::$highPivots) - 1;
         $initialSetupShort = false;
@@ -2178,41 +2181,15 @@ class ReportService
 
             $pivot === 'high_pivot'
             && count(self::$highPivots) > 3
-            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] <= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 + 0.3 / 100))
-            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] >= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 - 0.3 / 100))
+            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] <= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 + 0.1 / 100))
+            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] >= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 - 0.1 / 100))
 
 
             // Third Arch bottom rising upwards
-            && $data[self::$highPivots[$lastPivotIndexHigh]]['high'] < $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high']
+            // && $data[self::$highPivots[$lastPivotIndexHigh]]['high'] < $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high']
 
         ) {
 
-            $firstPivotIndex = count(self::$highPivots) - 3;
-            $firstPivot = self::$highPivots[$firstPivotIndex];
-            $lastPivot = self::$highPivots[$lastPivotIndexHigh];
-            $lowPivots = [];
-            for ($i = $firstPivot; $i <= $lastPivot; $i++) {
-                $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
-                if ($minorPivot === 'low_pivot') {
-                    $lowPivots[] = $i;
-                }
-            }
-
-            // if (count($lowPivots) >= 2) {
-
-            //     $lastLowPivot = count($lowPivots) - 1;
-            //     $firstLowPivot = count($lowPivots) - 2;
-            //     if (
-            //         $data[$lowPivots[$firstLowPivot]]['low'] > $data[$lowPivots[$lastLowPivot]]['low']
-            //     ) {
-            //         return null;
-            //     }
-            // }
-
-
-            // if (count($lowPivots) == 0) {
-            //     return null;
-            // }
 
 
             if ($data[$index]['per'] < 0) {
