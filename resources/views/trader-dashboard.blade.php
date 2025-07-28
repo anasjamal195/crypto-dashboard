@@ -306,7 +306,7 @@
             </div>
         </div>
     </div>
-
+    {{-- 
     @include('accuracy-distribution-card', [
         'safeModeAccuracyFormula' => 'Base Report - 15m',
         'tagName' => 'MACD',
@@ -333,7 +333,7 @@
         'tagName' => 'SR',
         'shortThreshold' => 75,
         'longThreshold' => 75,
-    ])
+    ]) --}}
 
 
 
