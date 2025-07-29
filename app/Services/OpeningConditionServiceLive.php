@@ -238,25 +238,86 @@ class OpeningConditionServiceLive
             }
         }
 
+        $initialSetup = false;
+
         $lastPivotIndex = count(self::$lowPivots) - 1;
-
-
         if (
-
             count(self::$lowPivots) > 3
             && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.05 / 100))
             && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+            // && $data[$index]['open'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+            && $data[$index]['histogram'] > $data[$index - 1]['histogram']
 
         ) {
-
-
             Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
             Log::info("1) Pivots Timestamps:  " . implode(' ', [
                 $data[self::$lowPivots[$lastPivotIndex]]['timestampReadable'],
             ]));
             Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
-            Log::info("3) LONG Opening Right Away:! ");
-            return 'LONG';
+            if ($data[$index]['per'] > 0.1) {
+                Log::info("3) LONG Opening Right Away:! ");
+                return 'LONG';
+            } else {
+                Log::info("3) LONG Opening Delayed! ");
+
+                $initialSetup = true;
+            }
+        }
+
+
+
+        $steps = [
+            [
+                'condition' => (
+                    $initialSetup
+                ),
+                'candlesToCheck' => 20,
+            ],
+            [
+                'condition' => (
+                    $data[$index]['per'] > 0.1
+                ),
+                'candlesToCheck' => 10,
+            ],
+
+
+        ];
+
+        // Process steps sequentially
+        foreach ($steps as $stepIndex => $step) {
+
+
+            if (!$step['condition']) {
+                continue;
+            }
+
+
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, 'LONG');
+
+            $isInitial = $stepIndex == 0;
+            // Handle initial step (no existing trade required)
+            if ($isInitial && !$confirmedTrade) {
+                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
+                continue;
+            }
+
+            // Handle subsequent steps (existing trade with correct checkpoint required)
+            $requiredCheckpoint = ($stepIndex == 0 ? null : ($stepIndex - 1));
+
+            if ($confirmedTrade && $confirmedTrade->checkpoints == $requiredCheckpoint) {
+                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
+
+                // Handle final step
+                $isFinal = $stepIndex === count($steps) - 1;
+
+                if ($isFinal) {
+                    self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+                    if (
+                        true
+                    )
+                        return 'LONG';
+                }
+            }
         }
 
         return null;
@@ -267,9 +328,9 @@ class OpeningConditionServiceLive
 
 
         $interval = '15m';
-        for ($i = 10; $i <= ($index - 5); $i++) {
+        for ($i = 10; $i <= ($index - 6); $i++) {
 
-            $p = CommonHelpers::checkPivot($data, $i, 5);
+            $p = CommonHelpers::checkPivot($data, $i, 6);
 
             if ($p === 'high_pivot') {
                 self::$highPivots[] = $i;
@@ -277,23 +338,87 @@ class OpeningConditionServiceLive
         }
 
         $lastPivotIndexHigh = count(self::$highPivots) - 1;
-        $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, '15m', 'SHORT');
-        if (!$confirmedTrade) {
-            if (
-                count(self::$highPivots) > 3
-                && $data[$index]['high'] >=  ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 + 0.05 / 100))
-                && $data[$index]['close'] < ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 - 0.05 / 100))
-            ) {
-                Log::info('TriggersThreadOrderBook ' . $symbol . " SHORT Opening Conditions Detail: ");
-                Log::info("1) Pivots Timestamps:  " . implode(' ', [
-                    $data[self::$highPivots[$lastPivotIndexHigh]]['timestampReadable'],
+        $initialSetupShort = false;
+        if (
 
-                ]));
-                Log::info("2) SHORT Current Time: " . $data[$index]['timestampReadable']);
+            count(self::$highPivots) > 3
+            && $data[$index]['high'] >=  ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 + 0.05 / 100))
+            && $data[$index]['close'] < ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 - 0.05 / 100))
+            // && $data[$index]['open'] < ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 - 0.05 / 100))
+            && $data[$index]['histogram'] < $data[$index - 1]['histogram']
+
+        ) {
+
+            Log::info('TriggersThreadOrderBook ' . $symbol . " SHORT Opening Conditions Detail: ");
+            Log::info("1) Pivots Timestamps:  " . implode(' ', [
+                $data[self::$highPivots[$lastPivotIndexHigh]]['timestampReadable'],
+            ]));
+            Log::info("2) SHORT Current Time: " . $data[$index]['timestampReadable']);
+            if ($data[$index]['per'] < 0) {
+
                 Log::info("3) SHORT Opening Right Away:! ");
                 return 'SHORT';
+            } else {
+                Log::info("3) SHORT Opening Delayed:! ");
+
+                $initialSetupShort = true;
             }
         }
+
+        $steps = [
+            [
+                'condition' => (
+                    $initialSetupShort
+                ),
+                'candlesToCheck' => 20,
+            ],
+            [
+                'condition' => (
+                    $data[$index]['per'] < -0.1
+                ),
+                'candlesToCheck' => 10,
+            ],
+
+
+        ];
+
+        // Process steps sequentially
+        foreach ($steps as $stepIndex => $step) {
+
+
+            if (!$step['condition']) {
+                continue;
+            }
+
+
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, 'SHORT');
+
+            $isInitial = $stepIndex == 0;
+            // Handle initial step (no existing trade required)
+            if ($isInitial && !$confirmedTrade) {
+                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'SHORT', $step['candlesToCheck']);
+                continue;
+            }
+
+            // Handle subsequent steps (existing trade with correct checkpoint required)
+            $requiredCheckpoint = ($stepIndex == 0 ? null : ($stepIndex - 1));
+
+            if ($confirmedTrade && $confirmedTrade->checkpoints == $requiredCheckpoint) {
+                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'SHORT', $step['candlesToCheck']);
+
+                // Handle final step
+                $isFinal = $stepIndex === count($steps) - 1;
+
+                if ($isFinal) {
+                    self::confirmOpening($symbol, 'TBD', $data, $index, 'SHORT');
+                    if (
+                        true
+                    )
+                        return 'SHORT';
+                }
+            }
+        }
+
         return null;
     }
 
