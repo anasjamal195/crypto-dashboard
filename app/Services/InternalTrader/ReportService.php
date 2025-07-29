@@ -147,23 +147,23 @@ class ReportService
         $coins = [
             // 'BTCUSDT',
             'BNBUSDT',
-            // 'SOLUSDT',
-            // 'ADAUSDT',
-            // 'DOGEUSDT',
-            // 'LTCUSDT',
-            // 'LINKUSDT',
-            // 'ATOMUSDT',
-            // 'NEARUSDT',
-            // 'RUNEUSDT',
-            // 'UNIUSDT',
-            // 'AAVEUSDT',
-            // 'ALGOUSDT',
-            // 'FILUSDT',
-            // 'VETUSDT',
-            // 'ICPUSDT',
-            // 'SANDUSDT',
-            // 'MANAUSDT',
-            // 'AXSUSDT',
+            'SOLUSDT',
+            'ADAUSDT',
+            'DOGEUSDT',
+            'LTCUSDT',
+            'LINKUSDT',
+            'ATOMUSDT',
+            'NEARUSDT',
+            'RUNEUSDT',
+            'UNIUSDT',
+            'AAVEUSDT',
+            'ALGOUSDT',
+            'FILUSDT',
+            'VETUSDT',
+            'ICPUSDT',
+            'SANDUSDT',
+            'MANAUSDT',
+            'AXSUSDT',
         ];
 
 
@@ -626,6 +626,9 @@ class ReportService
                         self::$dynamicTPSLgap = $bufferSize;
                         self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
                         self::$dynamicSL = $data[$sl]['low'];
+
+
+                        // error_log("$tradeType Opening  for {$symbol}: " . $data[$index]['timestampReadable']);
                     } else {
                         $sl = self::$highPivots[count(self::$highPivots) - 2];
 
@@ -759,7 +762,6 @@ class ReportService
         // ############### LONG CONDITIONS ####################
 
         if (
-            // $data[$index]['close'] > $data[$index]['ema200']
             true
         ) {
             $macdLong = self::checkConditionSetLongDoublePivotLong($symbol, $data, $index);
@@ -773,15 +775,15 @@ class ReportService
         // ############### SHORT CONDITIONS ####################
 
 
-        // if ($data[$index]['close'] < $data[$index]['ema200']) {
-
-        // $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
-        // if ($macdLong) {
-        //     $tagName = 'DOUBLE-PIVOT';
-        //     return $macdLong;
-        // }
-        // }
-
+        if (
+            true
+        ) {
+            $macdLong = self::checkConditionSetLongDoublePivotShort($symbol, $data, $index);
+            if ($macdLong) {
+                $tagName = 'DOUBLE-PIVOT';
+                return $macdLong;
+            }
+        }
         return null;
     }
 
@@ -2066,102 +2068,14 @@ class ReportService
 
 
         $lastPivotIndex = count(self::$lowPivots) - 1;
-        $initialSetup = false;
-
         if (
-            $pivot === 'low_pivot'
-            && count(self::$lowPivots) > 3
-            // First Double Bottom
-            && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] <= ($data[self::$lowPivots[$lastPivotIndex - 2]]['low'] * (1 + 0.3 / 100))
-            && $data[self::$lowPivots[$lastPivotIndex - 1]]['low'] >= ($data[self::$lowPivots[$lastPivotIndex - 2]]['low'] * (1 - 0.3 / 100))
+            count(self::$lowPivots) > 3
+            && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.05 / 100))
+            && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
 
-
-            // Third Arch bottom rising upwards
-            && $data[self::$lowPivots[$lastPivotIndex]]['low'] > $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
-            // && $data[self::$lowPivots[$lastPivotIndex - 2]]['low'] < $data[self::$lowPivots[$lastPivotIndex - 3]]['low']
         ) {
-
-            $firstPivotIndex = count(self::$lowPivots) - 3;
-            $firstPivot = self::$lowPivots[$firstPivotIndex];
-            $lastPivot = self::$lowPivots[$lastPivotIndex];
-            $highPivots = [];
-            for ($i = $firstPivot; $i <= $lastPivot; $i++) {
-                $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
-                if ($minorPivot === 'high_pivot') {
-                    $highPivots[] = $i;
-                }
-            }
-
-
-
-            if (
-                $data[$index]['per'] > 0
-                && $data[$index]['histogram'] > 0
-                && $data[$index - 1]['histogram'] < 0
-            ) {
-                return 'LONG';
-            } else {
-                $initialSetup = true;
-            }
+            return 'LONG';
         }
-
-
-        $steps = [
-            [
-                'condition' => (
-                    $initialSetup
-                ),
-                'candlesToCheck' => 100,
-            ],
-            [
-                'condition' => (
-                    $data[$index]['per'] > 0.1
-                    && $data[$index]['histogram'] > 0
-                    && $data[$index - 1]['histogram'] < 0
-                ),
-                'candlesToCheck' => 10,
-            ],
-
-
-        ];
-
-        // Process steps sequentially
-        foreach ($steps as $stepIndex => $step) {
-
-
-            if (!$step['condition']) {
-                continue;
-            }
-
-
-            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, 'LONG');
-
-            $isInitial = $stepIndex == 0;
-            // Handle initial step (no existing trade required)
-            if ($isInitial && !$confirmedTrade) {
-                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
-                continue;
-            }
-
-            // Handle subsequent steps (existing trade with correct checkpoint required)
-            $requiredCheckpoint = ($stepIndex == 0 ? null : ($stepIndex - 1));
-
-            if ($confirmedTrade && $confirmedTrade->checkpoints == $requiredCheckpoint) {
-                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
-
-                // Handle final step
-                $isFinal = $stepIndex === count($steps) - 1;
-
-                if ($isFinal) {
-                    self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
-                    if (
-                        true
-                    )
-                        return 'LONG';
-                }
-            }
-        }
-
 
 
         return null;
@@ -2179,17 +2093,13 @@ class ReportService
         $initialSetupShort = false;
         if (
 
-            $pivot === 'high_pivot'
-            && count(self::$highPivots) > 3
-            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] <= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 + 0.1 / 100))
-            && $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high'] >= ($data[self::$highPivots[$lastPivotIndexHigh - 2]]['high'] * (1 - 0.1 / 100))
-
-
-            // Third Arch bottom rising upwards
-            // && $data[self::$highPivots[$lastPivotIndexHigh]]['high'] < $data[self::$highPivots[$lastPivotIndexHigh - 1]]['high']
+            count(self::$highPivots) > 3
+            && $data[$index]['high'] >=  ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 + 0.05 / 100))
+            && $data[$index]['close'] < ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 - 0.05 / 100))
 
         ) {
 
+            return 'SHORT';
 
 
             if ($data[$index]['per'] < 0) {

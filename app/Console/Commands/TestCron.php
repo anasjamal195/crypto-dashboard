@@ -43,43 +43,45 @@ class TestCron extends Command
             [
                 'formula' => 'Analysis - Current',
                 'timestamp' => null,
-                'includeFiltered' => false,
+                'includeFiltered' => true,
             ],
-            // [
-            //     'formula' => 'Analysis - Bullish',
-            //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => false,
-            // ],
+            [
+                'formula' => 'Analysis - Bullish',
+                'timestamp' => 1746126000000,
+                'includeFiltered' => true,
+            ],
 
-            // [
-            //     'formula' => 'Analysis - Slight Bullish',
-            //     'timestamp' => 1744830000000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Analysis - Flat',
-            //     'timestamp' => 1732561200000,
-            //     'includeFiltered' => false,
-            // ],
-            // [
-            //     'formula' => 'Analysis - Mixed',
-            //     'timestamp' => 1744225200000,
-            //     'includeFiltered' => false,
-            // ],
+            [
+                'formula' => 'Analysis - Slight Bullish',
+                'timestamp' => 1744830000000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Analysis - Flat',
+                'timestamp' => 1732561200000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Analysis - Mixed',
+                'timestamp' => 1744225200000,
+                'includeFiltered' => true,
+            ],
+            [
+                'formula' => 'Analysis - Slight Bearish',
+                'timestamp' => 1745607600000,
+                'includeFiltered' => true,
+            ],
 
 
+            
 
 
             // [
             //     'formula' => 'Analysis Bearish',
             //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => false,
+            //     'includeFiltered' => true,
             // ],
-            // [
-            //     'formula' => 'Analysis - Slight Bearish',
-            //     'timestamp' => 1745607600000,
-            //     'includeFiltered' => false,
-            // ],
+
 
         ];
 
