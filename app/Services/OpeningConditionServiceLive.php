@@ -54,6 +54,20 @@ class OpeningConditionServiceLive
         }
 
 
+
+
+        // ########### Checking Candle closing on specific interval ##############
+        if (!CommonHelpers::checkCandleClosingAbsolute($interval, 60)) {
+            return [
+                'direction' => null,
+                'formula' => 'Pivot Sweep - 15m',
+                'profitIncrementPercentage' => $profitIncPer,
+                'stopLoss' => $stopLoss,
+                'targetProfit' => $targetProfit,
+            ];
+        }
+
+
         $data =
             // self::$activeExchange === 'binance' ?
             BinanceApiService::getCandleStickData($symbol, $interval, 500, null,  'FUTURE');
@@ -66,24 +80,11 @@ class OpeningConditionServiceLive
         // dd($data[$index]);
         $cacheValue = time() * 1000;
 
-        // $now = now();
-        // $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
-        // $minutesToNextRounded = intval(($intervalToMins - ($now->minute % $intervalToMins)) / 2);
-        // $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
+        Cache::put($cacheKey, $cacheValue, now()->addSeconds(15));
 
-        // dd($data[$index],end($data));
-        Cache::put($cacheKey, $cacheValue, 1);
 
-        // Check candle closing
-        if (!CommonHelpers::checkCandleClosing($data, 60)) {
-            return [
-                'direction' => null,
-                'formula' => 'Pivot Sweep - 15m',
-                'profitIncrementPercentage' => $profitIncPer,
-                'stopLoss' => $stopLoss,
-                'targetProfit' => $targetProfit,
-            ];
-        }
+
+
 
 
 
@@ -252,7 +253,6 @@ class OpeningConditionServiceLive
             Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
             Log::info("1) Pivots Timestamps:  " . implode(' ', [
                 $data[self::$lowPivots[$lastPivotIndex]]['timestampReadable'],
-
             ]));
             Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
             Log::info("3) LONG Opening Right Away:! ");
