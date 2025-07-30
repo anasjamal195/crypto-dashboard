@@ -424,7 +424,7 @@ class TriggersThread implements ShouldQueue
                 $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
 
                 $takeProfitPrice = $openingPrice * (1 + $newTakeProfitPercentage / 100);
-                $stopLossPrice = $currentPrice * (1 - $profitIncrementPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 - self::$stopLossMarginPercentage / 100);
 
 
                 // DISABLED TEMPORARILY
@@ -449,7 +449,6 @@ class TriggersThread implements ShouldQueue
 
             ]);
         } else {
-
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
                 'previousPrice' => $open_order['currentPrice'],
                 'currentPrice' => $currentPrice,
@@ -457,7 +456,6 @@ class TriggersThread implements ShouldQueue
                 'targetProfit' => $targetProfit,
                 'stopLoss' => $stopLoss,
                 'updated_at' => Carbon::now()->toDateTimeString(),
-
             ]);
         }
 
