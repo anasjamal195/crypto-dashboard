@@ -2826,6 +2826,24 @@ class CommonHelpers
         $isCandleClosing =  $timePastCurrentCandle <= $allowedTimeSec;
         return $isCandleClosing;
     }
+    public static function checkCandleClosingAbsolute($interval, $allowedTimeSec)
+    {
+        $now = now();
+        $minute = $now->minute;
+        $second = $now->second;
+
+        // Find how many minutes past the last 15-minute mark
+        $minutesPast = $minute % CommonHelpers::$binanceIntervals[$interval];
+
+        // Total seconds past last 15-minute mark
+        $secondsPast = ($minutesPast * 60) + $second;
+        // Check candle closing
+        if ($secondsPast < $allowedTimeSec) {
+            return true;
+        }
+
+        return false;
+    }
 
 
 
@@ -4308,6 +4326,7 @@ class CommonHelpers
             }
             $loopTimestamp += $intervalMillis;
         }
+
 
         $formulaDetails['formula'] = $newFormula;
 
