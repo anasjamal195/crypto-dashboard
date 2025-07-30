@@ -176,7 +176,7 @@ class OpeningConditionServiceLive
             BinanceApiService::getCandleStickData($symbol, $interval, 500, $timestampTest,  'FUTURE');
         // : HyperLiquidApiService::getCandleStickData($symbol, $interval, 500, $timestampTest, 'FUTURE');
 
-
+        
 
         $index = count($data) - 2;
 

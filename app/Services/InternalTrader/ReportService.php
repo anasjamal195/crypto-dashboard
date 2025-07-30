@@ -76,7 +76,7 @@ class ReportService
 
     public static $progressionDetailsLONGMACD = [];
     public static $progressionDetailsLONGSR = [];
-    
+
     public static $progressionDetailsSHORT = [];
 
     public static $progressionDetailsSHORTMACD = [];
@@ -116,7 +116,7 @@ class ReportService
     public static $tLineCoordHigh = null;
     public static $tLineCoordLow = null;
 
-    public static $limit = 3000;
+    public static $limit = 1000;
 
 
     public static $lowPivots = [];
@@ -146,7 +146,7 @@ class ReportService
         $tradesTotal = [];
 
         $coins = [
-            // 'BTCUSDT',
+            'BTCUSDT',
             'BNBUSDT',
             'SOLUSDT',
             'ADAUSDT',
@@ -165,6 +165,37 @@ class ReportService
             'SANDUSDT',
             'MANAUSDT',
             'AXSUSDT',
+
+
+            // Major Altcoins
+            'AVAXUSDT',
+            'DOTUSDT',
+            'TRXUSDT',
+            'XRPUSDT',
+
+            // DeFi/Layer 1 Tokens
+            'FTMUSDT',
+            'ONEUSDT',
+            'EGLDUSDT',
+            'ZILUSDT',
+            'WAVESUSDT',
+
+            // Gaming/Metaverse
+            'ENJUSDT',
+            'CHZUSDT',
+            'GALAUSDT',
+
+            // Established Altcoins
+            'XLMUSDT',
+            'EOSUSDT',
+            'ETCUSDT',
+            'BCHUSDT',
+
+            // Mid-caps with good patterns
+            'CRVUSDT',
+            'COMPUSDT',
+            'MKRUSDT',
+            'YFIUSDT'
         ];
 
 
@@ -208,7 +239,7 @@ class ReportService
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                dd($e);
+                // dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
@@ -663,6 +694,8 @@ class ReportService
                     $extremePrice = $open_price;
                     // Placeholder object for testing
                     $openingIndex = $index;
+
+                    // error_log("Opening at: ". $data[$index]['binance_timestamp']);
                 }
             } else {
                 $closingPrice =  self::handleClosingConditions($symbol, $data, $index,  $tradeType, $openingIndex, $open_price);
@@ -752,6 +785,7 @@ class ReportService
         self::logSafeModeEntry(self::$formula, $symbol, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
         // For shifting indexes
         $data_new = [];
+
         foreach ($data as $d) {
             $data_new[] = $d;
         }
@@ -1069,25 +1103,6 @@ class ReportService
         $closingPrice = 0;
         $waitingCandlesBeforeStopLoss = intval(self::$stopLossWaitingDuration / CommonHelpers::$binanceIntervals[self::$interval]);
 
-
-
-
-        // if ($tradeType == 'SHORT') {
-        //     // Calculate Closing in profit 
-        //     if ($candle['low'] <= $open_price * (1 - self::$targetProfit / 100)) {
-        //         $closingPrice = $candle['low'];
-        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price < $data[$index]['close']) {
-        //         $closingPrice = $data[$index]['close'];
-        //     }
-        // } else if ($tradeType == 'LONG') {
-
-        //     // Calculate Closing in profit 
-        //     if ($candle['high'] >= $open_price * (1 + self::$targetProfit / 100)) {
-        //         $closingPrice = $candle['high'];
-        //     } else if ($index - $openingIndex  >= $waitingCandlesBeforeStopLoss && CommonHelpers::getPercentDiff($open_price, $data[$index]['close']) >= self::$stopLoss && $open_price > $data[$index]['close']) {
-        //         $closingPrice = $data[$index]['close'];
-        //     }
-        // }
 
 
 
