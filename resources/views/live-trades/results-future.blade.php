@@ -119,7 +119,7 @@
             </div>
             <div class="row mb-4">
                 @php
-                    $defaultStart = request()->get('start_date') ?? now()->startOfDay()->format('Y-m-d\TH:i');
+                    $defaultStart = request()->get('start_date') ;
                 @endphp
 
                 <div class="col-md-4">
