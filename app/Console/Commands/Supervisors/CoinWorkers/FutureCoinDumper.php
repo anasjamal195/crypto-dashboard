@@ -79,7 +79,7 @@ class FutureCoinDumper extends Command
         'AVAXUSDT',
         'DOTUSDT',
         'TRXUSDT',
-        'SHIBUSDT',
+        // 'SHIBUSDT',
         'XRPUSDT',
 
         // DeFi/Layer 1 Tokens
