@@ -1945,11 +1945,11 @@ class BinanceController extends Controller
             $orders = DB::table('live_trades_future_results')
                 ->where('trade_acc', Auth::user()->id)
                 ->where('type', 'open');
-            if ($request->filled('start_date') ?? now()->startOfDay()->format('Y-m-d\TH:i'))
+            if ($request->filled('start_date'))
                 $orders = $orders->where(
                     'created_at',
                     '>=',
-                    Carbon::parse($request->start_date ?? now()->startOfDay()->format('Y-m-d\TH:i'))->format('Y-m-d H:i:s')
+                    Carbon::parse($request->start_date)->format('Y-m-d H:i:s')
                 );
             if ($request->filled('end_date'))
                 $orders = $orders->where(
