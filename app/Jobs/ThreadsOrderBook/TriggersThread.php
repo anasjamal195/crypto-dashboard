@@ -320,24 +320,18 @@ class TriggersThread implements ShouldQueue
                                     $tradeLoop = false;
                                     break;
                                 }
-                                $supportResistance = null;
 
-
-                                if (self::$isSpot && $tradeType === 'LONG')
-                                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'SPOT', [$this->supportResistanceCandleSpan], null, false);
-                                else
-                                    $supportResistance = MarketTrendService::getCurrentSupportResistanceValue($symbol, self::$interval, 'FUTURE', [$this->supportResistanceCandleSpan], null, false);
-
+                                $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
 
                                 if ($tradeType === 'LONG')
-                                    $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
+                                    $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $currentPrice, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
-                                    $tradeLoop = $this->manageOpenOrderShort($tradeInstance, $open_order['order'], $supportResistance, $this->profitIncrementPercentage, $this->workerId);
+                                    $tradeLoop = $this->manageOpenOrderShort($tradeInstance, $open_order['order'], $currentPrice, $this->profitIncrementPercentage, $this->workerId);
                             } catch (\Exception $e) {
                                 Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                                 Log::error($e->getTraceAsString());
                             }
-                            CommonHelpers::delayS(2);
+                            CommonHelpers::delayS(1);
                         }
 
                         // Trade Completion, Remove and free this coin from this worker and prepare for next iteration
@@ -362,20 +356,21 @@ class TriggersThread implements ShouldQueue
         }
     }
 
-    private  function manageOpenOrderLong($tradeInstance,  $open_order, $supportResistance, $profitIncrementPercentage, $workerId)
+    private  function manageOpenOrderLong($tradeInstance,  $open_order, $currentPrice, $profitIncrementPercentage, $workerId)
     {
 
         $targetProfit = $open_order['targetProfit'];
-        $candleData = $supportResistance['candleData'];
-        $currentCandle = $candleData[count($candleData) - 1];
-        $secondLastCandle = $candleData[count($candleData) - 2];
-        $thirdLastCandle = $candleData[count($candleData) - 3];
+
         $stopLoss = $open_order['stopLoss'];
-        $index = count($candleData) - 2;
-        $isCandleClosing = (now()->timestamp - $candleData[count($candleData) - 1]['binance_timestamp'] / 1000) <= 40;
+
+
+
+
 
         // Scenerio 1: If Current profit is less than 1%
-        $currentProfit = (($currentCandle['close'] - $open_order['price']) / $open_order['price']) * 100;
+        $currentProfit = CommonHelpers::getPercentDiff($open_order['price'], $currentPrice, true);
+
+
         Log::info('TriggersThreadOrderBook ' . $workerId . ': ' . $open_order['symbol'] . ' ' . $open_order['position'] . ' Current profit ' . $currentProfit);
 
 
@@ -384,26 +379,11 @@ class TriggersThread implements ShouldQueue
 
         $closeEarly = false;
 
-        // // Early Closing Logic
-        // $openTimestamp = $open_order['created_at'];
-        // $minsPast = abs(Carbon::now('Asia/Karachi')->diffInMinutes($openTimestamp));
-
-
-        // if ($minsPast <= 15) {
-        //     if (
-        //         $candleData[$index]['close'] < $candleData[$index]['bb_lower']
-        //         && $candleData[$index - 1]['close'] < $candleData[$index - 1]['bb_lower']
-        //     ) {
-        //         $closeEarly = true;
-        //     }
-        // }
-
-
         // Check if SPOT enabled
         $tableName = $open_order['market'] === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
 
 
-        if ($currentCandle['close'] < $stopLoss || $closeEarly) {
+        if (($currentPrice < $stopLoss && CommonHelpers::checkCandleClosingAbsolute('15m', 5)) || $closeEarly) {
             // Checking Upper Wick Formation
 
             if ($open_order['market'] === 'SPOT') {
@@ -418,8 +398,8 @@ class TriggersThread implements ShouldQueue
 
 
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
-                'previousPrice' => $currentCandle['close'],
-                'currentPrice' => $currentCandle['close'],
+                'previousPrice' => $open_order['currentPrice'],
+                'currentPrice' => $currentPrice,
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
                 'updated_at' => Carbon::now()->toDateTimeString(),
@@ -432,19 +412,19 @@ class TriggersThread implements ShouldQueue
             // $this->nextSLTriggerTime = 30;
             return false;
         } else if ($currentProfit > $targetProfit) {
-            // Update TP SL orders on binance also
 
+
+            // Update TP SL orders on binance also
             if (!self::$isSpot) {
 
                 // Extract Meta values
-                $currentPrice = $currentCandle['close'];
                 $openingPrice = $open_order['price'];
 
 
                 $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
 
                 $takeProfitPrice = $openingPrice * (1 + $newTakeProfitPercentage / 100);
-                $stopLossPrice = $currentPrice * (1 - self::$stopLossMarginPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 - $profitIncrementPercentage / 100);
 
 
                 // DISABLED TEMPORARILY
@@ -471,8 +451,8 @@ class TriggersThread implements ShouldQueue
         } else {
 
             DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
-                'previousPrice' => $currentCandle['close'],
-                'currentPrice' => $currentCandle['close'],
+                'previousPrice' => $open_order['currentPrice'],
+                'currentPrice' => $currentPrice,
                 'currentProfit' => $currentProfit,
                 'targetProfit' => $targetProfit,
                 'stopLoss' => $stopLoss,

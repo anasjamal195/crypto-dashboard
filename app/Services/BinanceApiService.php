@@ -3388,7 +3388,7 @@ class BinanceApiService
      * @return array An array containing both order responses
      */
 
-    public static function placeTpSlOrders($symbol, $trader, float $takeProfitPrice, float $stopLossPrice, $openOrderId, $priceMargin = 0.5)
+    public static function placeTpSlOrders($symbol, $trader, float $takeProfitPrice, float $stopLossPrice, $openOrderId, $priceMargin = 1)
     {
 
 

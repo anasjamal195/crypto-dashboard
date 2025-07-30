@@ -102,8 +102,10 @@ class OpeningConditionServiceLive
             if ($slPercentage > 3 && $atrPercentage < 0.4) {
                 $sl = self::$lowPivots[count(self::$lowPivots) - 1];
             }
-            $bufferSize = 0.5 * $data[$index]['atr14'];
-            $profitIncPer = $bufferSize;
+            $bufferSize = 1 * $data[$index]['atr14'];
+            $bufferSizePer = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$index]['close'] + $bufferSize, true);
+
+            $profitIncPer = $bufferSizePer;
 
 
             $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['low']);
@@ -119,29 +121,29 @@ class OpeningConditionServiceLive
 
 
         // SHORT Entry (Disabled for now)
-        if (
-            self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
-        ) {
+        // if (
+        //     self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
+        // ) {
 
-            $sl = self::$highPivots[count(self::$highPivots) - 2];
-            $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['high']);
-            $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
-            if ($slPercentage > 3 && $atrPercentage < 0.4) {
-                $sl = self::$highPivots[count(self::$highPivots) - 1];
-            }
-            $bufferSize = 0.5 * $data[$index]['atr14'];
-            $profitIncPer = $bufferSize;
+        //     $sl = self::$highPivots[count(self::$highPivots) - 2];
+        //     $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['high']);
+        //     $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
+        //     if ($slPercentage > 3 && $atrPercentage < 0.4) {
+        //         $sl = self::$highPivots[count(self::$highPivots) - 1];
+        //     }
+        //     $bufferSize = 0.5 * $data[$index]['atr14'];
+        //     $profitIncPer = $bufferSize;
 
-            $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['high']);
+        //     $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['high']);
 
-            return [
-                'direction' => 'SHORT',
-                'formula' => 'Pivot Sweep - 15m',
-                'profitIncrementPercentage' => $profitIncPer,
-                'stopLoss' => $stopLoss,
-                'targetProfit' => $targetProfit,
-            ];
-        }
+        //     return [
+        //         'direction' => 'SHORT',
+        //         'formula' => 'Pivot Sweep - 15m',
+        //         'profitIncrementPercentage' => $profitIncPer,
+        //         'stopLoss' => $stopLoss,
+        //         'targetProfit' => $targetProfit,
+        //     ];
+        // }
 
         return [
             'direction' => null,
@@ -241,12 +243,30 @@ class OpeningConditionServiceLive
         $initialSetup = false;
 
         $lastPivotIndex = count(self::$lowPivots) - 1;
+        $candlesBetweenPivots = 0;
+        for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
+            if (count(self::$lowPivots) > 3 && $data[$i]['close'] < $data[self::$lowPivots[$lastPivotIndex]]['low']) {
+                $candlesBetweenPivots++;
+            }
+        }
+        $checkPreviousCollision = true;
+        for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
+            if (
+                count(self::$lowPivots) > 3
+                && $data[$i]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
+                && $data[$i]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+            ) {
+                $checkPreviousCollision = false;
+                break;
+            }
+        }
         if (
             count(self::$lowPivots) > 3
-            && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.05 / 100))
+            && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
             && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
-            // && $data[$index]['open'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
-            && $data[$index]['histogram'] > $data[$index - 1]['histogram']
+            && $checkPreviousCollision
+            && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
+
 
         ) {
             Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
@@ -279,8 +299,6 @@ class OpeningConditionServiceLive
                 ),
                 'candlesToCheck' => 10,
             ],
-
-
         ];
 
         // Process steps sequentially
@@ -444,8 +462,6 @@ class OpeningConditionServiceLive
         // BB Calculations for highest point squeez
         $highestPointIndex = self::getTightestSqueezIndex($data, $index);
         $bbDiffHighest = CommonHelpers::getPercentDiff($data[$highestPointIndex]['bb_lower'], $data[$highestPointIndex]['bb_upper']);
-
-
 
         $id =  DB::table('confirmed_trades')->insertGetId([
             'coin_name' => $symbol,

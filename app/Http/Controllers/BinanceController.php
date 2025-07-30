@@ -1104,6 +1104,9 @@ class BinanceController extends Controller
             $date = new \DateTime("@{$candle['timestamp']}");
             $date->setTimezone(new \DateTimeZone('Asia/Karachi'));
             $candle['timestamp'] =  $date->format('Y-m-d H:i:s');
+
+
+            // $candle['rsi6'] = $candle['atr14'];
         }
 
 
@@ -1193,27 +1196,44 @@ class BinanceController extends Controller
 
 
             $buyingCandle = $trade->buyingCandle;
-            if (isset($buyingCandle->lowPivots)) {
-                foreach ($buyingCandle->lowPivots as $lpIndex => $lp) {
-                    $lpCount =  $lpIndex + 1;
-                    $tradeMarkers[] = [
-                        'timestamp_pst' => $lp,
-                        'color' => 'orange',
-                        'text' => 'LP ' . $lpCount,
-                        'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
-                    ];
-                }
+            // if (isset($buyingCandle->lowPivots)) {
+            //     foreach ($buyingCandle->lowPivots as $lpIndex => $lp) {
+            //         $lpCount =  $lpIndex + 1;
+            //         $tradeMarkers[] = [
+            //             'timestamp_pst' => $lp,
+            //             'color' => 'orange',
+            //             'text' => 'LP ' . $lpCount,
+            //             'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
+            //         ];
+            //     }
+            // }
+            // if (isset($buyingCandle->highPivots)) {
+            //     foreach ($buyingCandle->highPivots as $hpIndex => $hp) {
+            //         $hpCount =  $hpIndex + 1;
+            //         $tradeMarkers[] = [
+            //             'timestamp_pst' => $hp,
+            //             'color' => 'blue',
+            //             'text' => 'HP ' . $hpCount,
+            //             'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
+            //         ];
+            //     }
+            // }
+
+            if (isset($buyingCandle->confirmTradeTimestamp)) {
+                $tradeMarkers[] = [
+                    'timestamp_pst' => $buyingCandle->confirmTradeTimestamp,
+                    'color' => 'pink',
+                    'text' => 'CT ' . $index + 1,
+                    'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
+                ];
             }
-             if (isset($buyingCandle->highPivots)) {
-                foreach ($buyingCandle->highPivots as $hpIndex => $hp) {
-                    $hpCount =  $hpIndex + 1;
-                    $tradeMarkers[] = [
-                        'timestamp_pst' => $hp,
-                        'color' => 'blue',
-                        'text' => 'HP ' . $hpCount,
-                        'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
-                    ];
-                }
+            if (isset($buyingCandle->lpIndex)) {
+                $tradeMarkers[] = [
+                    'timestamp_pst' => $buyingCandle->lpIndex,
+                    'color' => 'orange',
+                    'text' => 'LP ' . $index + 1,
+                    'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
+                ];
             }
         }
 
