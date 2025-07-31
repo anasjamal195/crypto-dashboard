@@ -2826,6 +2826,24 @@ class CommonHelpers
         $isCandleClosing =  $timePastCurrentCandle <= $allowedTimeSec;
         return $isCandleClosing;
     }
+    public static function checkCandleClosingAbsolute($interval, $allowedTimeSec)
+    {
+        $now = now();
+        $minute = $now->minute;
+        $second = $now->second;
+
+        // Find how many minutes past the last 15-minute mark
+        $minutesPast = $minute % CommonHelpers::$binanceIntervals[$interval];
+
+        // Total seconds past last 15-minute mark
+        $secondsPast = ($minutesPast * 60) + $second;
+        // Check candle closing
+        if ($secondsPast < $allowedTimeSec) {
+            return true;
+        }
+
+        return false;
+    }
 
 
 
@@ -2867,20 +2885,20 @@ class CommonHelpers
 
         // Check left side (full $n indexes)
         for ($i = 1; $i <= $n; $i++) {
-            if ($currentHigh <= $data[$index - $i]['high']) {
+            if ($currentHigh < $data[$index - $i]['high']) {
                 $isHighPivot = false;
             }
-            if ($currentLow >= $data[$index - $i]['low']) {
+            if ($currentLow > $data[$index - $i]['low']) {
                 $isLowPivot = false;
             }
         }
 
         // Check right side (dynamic number of indexes - could be 1, 2, 3, 4, or more)
         for ($i = 1; $i <= $rightIndexes; $i++) {
-            if ($currentHigh <= $data[$index + $i]['high']) {
+            if ($currentHigh < $data[$index + $i]['high']) {
                 $isHighPivot = false;
             }
-            if ($currentLow >= $data[$index + $i]['low']) {
+            if ($currentLow > $data[$index + $i]['low']) {
                 $isLowPivot = false;
             }
         }
