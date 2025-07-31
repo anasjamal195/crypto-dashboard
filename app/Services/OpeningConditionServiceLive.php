@@ -107,7 +107,7 @@ class OpeningConditionServiceLive
             if ($data[$sl]['low'] >= $data[$index]['close']) {
                 $stopLoss = 2;
             } else {
-                $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
+                $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']) + 0.7;
 
 
                 if ($stopLoss >= 5) {
