@@ -103,12 +103,14 @@ class OpeningConditionServiceLive
                 $loopIndex--;
             }
 
+
             if ($data[$sl]['low'] >= $data[$index]['close']) {
+                $stopLoss = 2;
             } else {
-                $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
+                $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
 
 
-                if ($slPercentage >= 5) {
+                if ($stopLoss >= 5) {
                     return [
                         'direction' => null,
                         'formula' => 'Pivot Sweep - 15m',
@@ -119,7 +121,6 @@ class OpeningConditionServiceLive
                 }
             }
 
-            $stopLoss = $slPercentage;
             return [
                 'direction' => 'LONG',
                 'formula' => 'Pivot Sweep - 15m',
@@ -314,7 +315,7 @@ class OpeningConditionServiceLive
         // Process steps sequentially
         foreach ($steps as $stepIndex => $step) {
 
-            
+
 
             if (!$step['condition']) {
                 continue;
