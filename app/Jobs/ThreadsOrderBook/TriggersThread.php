@@ -383,7 +383,9 @@ class TriggersThread implements ShouldQueue
         $tableName = $open_order['market'] === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
 
 
-        if (($currentPrice < $stopLoss && CommonHelpers::checkCandleClosingAbsolute('15m', 5)) || $closeEarly) {
+        $candleClosingCheck = ($stopLoss < $open_order['price']) ? CommonHelpers::checkCandleClosingAbsolute('15m', 5) : true;
+
+        if (($currentPrice < $stopLoss && $candleClosingCheck) || $closeEarly) {
             // Checking Upper Wick Formation
 
             if ($open_order['market'] === 'SPOT') {
@@ -424,7 +426,7 @@ class TriggersThread implements ShouldQueue
                 $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
 
                 $takeProfitPrice = $openingPrice * (1 + $newTakeProfitPercentage / 100);
-                $stopLossPrice = $currentPrice * (1 - self::$stopLossMarginPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 - ($profitIncrementPercentage / 2) / 100);
 
 
                 // DISABLED TEMPORARILY
@@ -529,7 +531,7 @@ class TriggersThread implements ShouldQueue
                 $newTakeProfitPercentage = $targetProfit + $profitIncrementPercentage;
                 $takeProfitPrice = $openingPrice * (1 - $newTakeProfitPercentage / 100);
 
-                $stopLossPrice = $currentPrice * (1 + self::$stopLossMarginPercentage / 100);
+                $stopLossPrice = $currentPrice * (1 + $profitIncrementPercentage / 100);
 
                 $tpSlOrders =  self::$activeExchange === 'binance' ?
                     BinanceApiService::placeTpSlOrders($open_order['symbol'], $open_order['trade_acc'], $takeProfitPrice, $stopLossPrice, $open_order['orderId'])

@@ -40,7 +40,7 @@ class OpeningConditionServiceLive
         $cacheKey = "last_checked_for_opening_{$symbol}_{$interval}";
 
         $targetProfit = 0.7;
-        $stopLoss = 1;
+        $stopLoss = 2;
         $profitIncPer = 0.2;
 
         if (Cache::get($cacheKey, 0)) {
@@ -97,19 +97,29 @@ class OpeningConditionServiceLive
 
             $sl = self::$lowPivots[count(self::$lowPivots) - 2];
 
-            $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
-            $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
-            if ($slPercentage > 3 && $atrPercentage < 0.4) {
-                $sl = self::$lowPivots[count(self::$lowPivots) - 1];
+            $loopIndex = count(self::$lowPivots) - 1;
+            while ($loopIndex >= 0 && $data[self::$lowPivots[$loopIndex]]['low'] >= $data[$index]['close']) {
+                $sl = self::$lowPivots[$loopIndex];
+                $loopIndex--;
             }
-            $bufferSize = 1 * $data[$index]['atr14'];
-            $bufferSizePer = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$index]['close'] + $bufferSize, true);
 
-            $profitIncPer = $bufferSizePer;
+            if ($data[$sl]['low'] >= $data[$index]['close']) {
+            } else {
+                $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
 
 
-            $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['low']);
+                if ($slPercentage >= 5) {
+                    return [
+                        'direction' => null,
+                        'formula' => 'Pivot Sweep - 15m',
+                        'profitIncrementPercentage' => $profitIncPer,
+                        'stopLoss' => $stopLoss,
+                        'targetProfit' => $targetProfit,
+                    ];
+                }
+            }
 
+            $stopLoss = $slPercentage;
             return [
                 'direction' => 'LONG',
                 'formula' => 'Pivot Sweep - 15m',
@@ -176,7 +186,7 @@ class OpeningConditionServiceLive
             BinanceApiService::getCandleStickData($symbol, $interval, 500, $timestampTest,  'FUTURE');
         // : HyperLiquidApiService::getCandleStickData($symbol, $interval, 500, $timestampTest, 'FUTURE');
 
-        
+
 
         $index = count($data) - 2;
 
@@ -291,7 +301,7 @@ class OpeningConditionServiceLive
                 'condition' => (
                     $initialSetup
                 ),
-                'candlesToCheck' => 20,
+                'candlesToCheck' => 10,
             ],
             [
                 'condition' => (
