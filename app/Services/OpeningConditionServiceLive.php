@@ -314,13 +314,14 @@ class OpeningConditionServiceLive
         // Process steps sequentially
         foreach ($steps as $stepIndex => $step) {
 
+            
 
             if (!$step['condition']) {
                 continue;
             }
 
 
-            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, 'LONG');
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'LONG');
 
             $isInitial = $stepIndex == 0;
             // Handle initial step (no existing trade required)
@@ -419,7 +420,7 @@ class OpeningConditionServiceLive
             }
 
 
-            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, 'SHORT');
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'SHORT');
 
             $isInitial = $stepIndex == 0;
             // Handle initial step (no existing trade required)

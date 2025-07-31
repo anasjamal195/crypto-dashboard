@@ -378,6 +378,15 @@ class BinanceController extends Controller
         $profitableChangeSum = 0;
         $lossChangeSum = 0;
 
+
+        $maxSL = 0;
+        $minSL = PHP_FLOAT_MAX;
+        $sumSL = 0;
+      
+        $maxLP = 0;
+        $minLP = PHP_FLOAT_MAX;
+        $sumLP = 0;
+        $tradesAbove5perSL = 0;
         $earlyClosedProfitable = $earlyClosedLoss = 0;
 
 
@@ -423,6 +432,32 @@ class BinanceController extends Controller
                 }
             }
 
+
+            if (isset($buyingCandle['slPer'])) {
+                if ($maxSL < $buyingCandle['slPer']) {
+                    $maxSL = $buyingCandle['slPer'];
+                }
+                if ($minSL > $buyingCandle['slPer']) {
+                    $minSL = $buyingCandle['slPer'];
+                }
+
+                if($buyingCandle['slPer'] <= 5){
+                    $tradesAbove5perSL++;
+                }
+
+                $sumSL += $buyingCandle['slPer'];
+            }
+            if (isset($trade['lowestPricePercentage'])) {
+                if ($maxLP < $trade['lowestPricePercentage']) {
+                    $maxLP = $trade['lowestPricePercentage'];
+                }
+                if ($minLP > $trade['lowestPricePercentage']) {
+                    $minLP = $trade['lowestPricePercentage'];
+                }
+
+
+                $sumLP += $trade['lowestPricePercentage'];
+            }
 
 
 
@@ -891,6 +926,16 @@ class BinanceController extends Controller
             'instantAverageTime' => $instantOpenings ? round($instantAverageTime / $instantOpenings) : 0,
             'instantAverageTimeProfit' => $instantOpeningsProfit ? round($instantAverageTimeProfit / $instantOpeningsProfit) : 0,
             'instantAverageTimeLoss' => $instantAverageTimeLoss ? round($instantAverageTimeLoss / $instantOpeningsLoss) : 0,
+
+            'maxSL' => count($tradeArr) ? $maxSL : 0,
+            'minSL' => count($tradeArr) ? $minSL : 0,
+            'avgSL' => count($tradeArr) ? $sumSL / count($tradeArr) : 0,
+            
+            'maxLP' => count($tradeArr) ? $maxLP : 0,
+            'minLP' => count($tradeArr) ? $minLP : 0,
+            'avgLP' => count($tradeArr) ? $sumLP / count($tradeArr) : 0,
+
+            'tradesAbove5perSL' => $tradesAbove5perSL,
 
             'wrProfitable' => $wrProfitable,
             'wrLoss' => $wrLoss,

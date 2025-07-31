@@ -98,7 +98,7 @@ class ReportService
     public static $dynamicTPSLgap = 0.2;
 
     public static $initialTpPercent = 0.7;
-    public static $initialSlPercent = 1;
+    public static $initialSlPercent = 2;
 
 
 
@@ -146,7 +146,7 @@ class ReportService
         $tradesTotal = [];
 
         $coins = [
-            'BTCUSDT',
+            // 'BTCUSDT',
             'BNBUSDT',
             'SOLUSDT',
             'ADAUSDT',
@@ -169,8 +169,10 @@ class ReportService
 
             // Major Altcoins
             'AVAXUSDT',
+            'MATICUSDT',
             'DOTUSDT',
             'TRXUSDT',
+            'SHIBUSDT',
             'XRPUSDT',
 
             // DeFi/Layer 1 Tokens
@@ -634,21 +636,55 @@ class ReportService
 
                         $sl = self::$lowPivots[count(self::$lowPivots) - 2];
 
-                        $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
+                        $loopIndex = count(self::$lowPivots) - 1;
+                        while ($loopIndex >= 0 && $data[self::$lowPivots[$loopIndex]]['low'] >= $data[$index]['close']) {
+                            $sl = self::$lowPivots[$loopIndex];
+                            $loopIndex--;
+                        }
+
+                        if ($data[$sl]['low'] >= $data[$index]['close']) {
+                            self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
+                        } else {
+                            $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
+                            self::$dynamicSL = $data[$sl]['low'] * (1 - 0.7 / 100);
+
+                            if ($slPercentage >= 5) {
+                                $extremePrice = 0;
+                                $currentTrade = [];
+                                $open_price = 0;
+                                $tradeType = null;
+                                $waitingCandles = 4;
+                                $openingIndex = 0;
+
+                                self::$dynamicTP = 0;
+                                self::$dynamicSL = 0;
+                                self::$candlesToCheck = 1000;
+
+                                self::$tLineCoordHigh = null;
+                                self::$lastPivotLow = null;
+
+                                self::$tLineCoordLow = null;
+                                self::$lastPivotHigh = null;
+                                self::$confirmedTradeIndex = null;
+                                self::$lpIndex = null;
+                                continue;
+                            }
+                        }
+
 
                         $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
 
-                        if ($slPercentage > 3 && $atrPercentage < 0.3) {
-                            $sl = self::$lowPivots[count(self::$lowPivots) - 1];
-                        }
+                        // if ($slPercentage > 3 && $atrPercentage < 0.3) {
+                        //     $sl = self::$lowPivots[count(self::$lowPivots) - 1];
+                        // }
 
 
 
                         $bufferSize = 1 * $data[$index]['atr14'];
                         $bufferSizePer = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$index]['close'] + $bufferSize, true);
 
-                        self::$dynamicTPSLgap = $bufferSizePer;
-                        self::$dynamicSL = $data[$sl]['low'];
+                        // self::$dynamicTPSLgap = $bufferSizePer;
+                        // self::$dynamicSL = $data[$sl]['low'];
                         self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
 
 
@@ -672,10 +708,10 @@ class ReportService
 
                         $bufferSizePer = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$index]['close'] + $bufferSize, true);
 
-                        self::$dynamicTPSLgap = $bufferSize;
+                        // self::$dynamicTPSLgap = $bufferSize;
                         // error_log($bufferSize);
                         self::$dynamicTP = $data[$index]['close'] * (1 - self::$initialTpPercent / 100);
-                        // self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
+                        self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
                         self::$dynamicSL = $data[$sl]['high'];
                         $candle['slPer'] = CommonHelpers::getPercentDiff($open_price, self::$dynamicSL);
                     }
@@ -694,8 +730,6 @@ class ReportService
                     $extremePrice = $open_price;
                     // Placeholder object for testing
                     $openingIndex = $index;
-
-                    // error_log("Opening at: ". $data[$index]['binance_timestamp']);
                 }
             } else {
                 $closingPrice =  self::handleClosingConditions($symbol, $data, $index,  $tradeType, $openingIndex, $open_price);
@@ -785,7 +819,6 @@ class ReportService
         self::logSafeModeEntry(self::$formula, $symbol, $safeModeEnableTimestamps, $safeModeDisabledTimestamps);
         // For shifting indexes
         $data_new = [];
-
         foreach ($data as $d) {
             $data_new[] = $d;
         }
@@ -1103,10 +1136,10 @@ class ReportService
         $closingPrice = 0;
         $waitingCandlesBeforeStopLoss = intval(self::$stopLossWaitingDuration / CommonHelpers::$binanceIntervals[self::$interval]);
 
-
-
-
         if ($tradeType === 'LONG') {
+
+
+
 
             // If TP is triggered
             if ($data[$index]['high'] >= self::$dynamicTP) {
@@ -1119,9 +1152,9 @@ class ReportService
             }
         } else {
             // If TP is triggered
-            if ($data[$index]['low'] <= self::$dynamicTP) {
-                self::$dynamicTP = $data[$index]['low'] * (1 - self::$dynamicTPSLgap / 100);
-                self::$dynamicSL = $data[$index]['low'] * (1 + (self::$dynamicTPSLgap / 2) / 100);
+            if ($data[$index]['close'] <= self::$dynamicTP) {
+                self::$dynamicTP = $data[$index]['close'] * (1 - self::$dynamicTPSLgap / 100);
+                self::$dynamicSL = $data[$index]['close'] * (1 + (self::$dynamicTPSLgap / 2) / 100);
             }
             // If Sl is trigggerd
             else if ($data[$index]['close'] > self::$dynamicSL) {
