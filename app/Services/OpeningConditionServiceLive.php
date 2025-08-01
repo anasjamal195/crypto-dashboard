@@ -98,6 +98,7 @@ class OpeningConditionServiceLive
             $sl = self::$lowPivots[count(self::$lowPivots) - 2];
 
             $loopIndex = count(self::$lowPivots) - 1;
+
             while ($loopIndex >= 0 && $data[self::$lowPivots[$loopIndex]]['low'] >= $data[$index]['close']) {
                 $sl = self::$lowPivots[$loopIndex];
                 $loopIndex--;
@@ -243,7 +244,7 @@ class OpeningConditionServiceLive
 
         $interval = '15m';
 
-
+        self::$lowPivots = [];
         for ($i = 10; $i <= ($index - 6); $i++) {
             $p = CommonHelpers::checkPivot($data, $i, 6);
             if ($p === 'low_pivot') {
@@ -253,56 +254,59 @@ class OpeningConditionServiceLive
 
         $initialSetup = false;
 
-        $lastPivotIndex = count(self::$lowPivots) - 1;
-        $candlesBetweenPivots = 0;
-        for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
-            if (count(self::$lowPivots) > 3 && $data[$i]['close'] < $data[self::$lowPivots[$lastPivotIndex]]['low']) {
-                $candlesBetweenPivots++;
+
+
+        $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'LONG');
+
+
+        if (!$confirmedTrade) {
+
+
+
+            $lastPivotIndex = count(self::$lowPivots) - 1;
+
+            $checkPreviousCollision = true;
+            for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
+                if (
+                    count(self::$lowPivots) > 3
+                    && $data[$i]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
+                    && $data[$i]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+                ) {
+                    $checkPreviousCollision = false;
+                    break;
+                }
             }
-        }
-        $checkPreviousCollision = true;
-        for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
             if (
                 count(self::$lowPivots) > 3
-                && $data[$i]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
-                && $data[$i]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+                && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
+                && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+                && $checkPreviousCollision
+                && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
+
+
             ) {
-                $checkPreviousCollision = false;
-                break;
+                Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
+                Log::info("1) Pivots Timestamps:  " . implode(' ', [
+                    $data[self::$lowPivots[$lastPivotIndex]]['timestampReadable'],
+                ]));
+                Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
+                if ($data[$index]['per'] > 0.1) {
+                    Log::info("3) LONG Opening Right Away:! ");
+                    return 'LONG';
+                } else {
+                    Log::info("3) LONG Opening Delayed! ");
+
+                    $initialSetup = true;
+                }
             }
         }
-        if (
-            count(self::$lowPivots) > 3
-            && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
-            && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
-            && $checkPreviousCollision
-            && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
-
-
-        ) {
-            Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
-            Log::info("1) Pivots Timestamps:  " . implode(' ', [
-                $data[self::$lowPivots[$lastPivotIndex]]['timestampReadable'],
-            ]));
-            Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
-            if ($data[$index]['per'] > 0.1) {
-                Log::info("3) LONG Opening Right Away:! ");
-                return 'LONG';
-            } else {
-                Log::info("3) LONG Opening Delayed! ");
-
-                $initialSetup = true;
-            }
-        }
-
-
 
         $steps = [
             [
                 'condition' => (
                     $initialSetup
                 ),
-                'candlesToCheck' => 10,
+                'candlesToCheck' => 30,
             ],
             [
                 'condition' => (
