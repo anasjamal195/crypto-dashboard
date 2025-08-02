@@ -39,6 +39,7 @@ class TestCron extends Command
      */
     public function handle()
     {
+
         $reportDetails = [
             [
                 'formula' => 'Analysis - Current',

@@ -350,8 +350,12 @@ class OpeningConditionServiceLive
 
                     if (
                         $reconcile['verifiedIndex'] == $index
-                    )
+                    ) {
                         return 'LONG';
+                    } else {
+                        Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Canceled due to reconcilliation error: ");
+                        Log::info('TriggersThreadOrderBook ' . $symbol . ": "  . json_encode($reconcile));
+                    }
                 }
             }
         }
