@@ -138,6 +138,15 @@ class TriggersThread implements ShouldQueue
                             }
                             Log::info("Trade instance found " . $symbol);
 
+                            // Waiting period of 4 candles
+
+
+
+
+
+
+
+
                             CommonHelpers::workerEngageSymbolOpenTrade($this->workerId, $tradeInstance);
                             $tradeToOpen =  $tradeInstance;
                             Log::info("Opening Confirmed in main loop, breaking to open... " . $symbol);
@@ -180,12 +189,33 @@ class TriggersThread implements ShouldQueue
                     $openOrder = DB::table('live_trades_future_results')->where('trade_acc', $trade_acc)->where('symbol', $symbol)->where('trade_status', 'open')->first();
 
                     $this->manageRestartedWorker($openOrder->orderId);
-
-
                     $openTrade = false;
                 }
 
+
                 Log::info("No open orders found, progressing to open... " . $symbol);
+
+
+
+                // Checking last trade time
+                $lastOpenedOrder = DB::table('live_trades_future_results')
+                    ->where('symbol', $symbol)
+                    ->where('position', $tradeType)
+                    ->where('trade_acc', $this->account)
+                    ->where('exchange', self::$activeExchange)
+                    ->where('type', 'close')
+                    ->latest()
+                    ->first();
+
+                if ($lastOpenedOrder) {
+                    $created = Carbon::parse($lastOpenedOrder->created_at, 'Asia/Karachi');
+                    $now = Carbon::now('Asia/Karachi');
+                    $diffInHours = abs($now->diffInHours($created));
+                    if ($diffInHours < 1.25) {
+                        $openTrade = false;
+                        Log::info("Cancelling due to cooldown period for " . $symbol . " Time Remaining: " . (1.25 - $diffInHours) . 'h');
+                    }
+                }
 
 
 

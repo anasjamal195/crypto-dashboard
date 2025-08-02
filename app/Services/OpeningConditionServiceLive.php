@@ -346,8 +346,10 @@ class OpeningConditionServiceLive
 
                 if ($isFinal) {
                     self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+                    $reconcile = self::checkPreviousTriggerBullish($data, $index, $interval, $confirmedTrade);
+
                     if (
-                        true
+                        $reconcile['verifiedIndex'] == $index
                     )
                         return 'LONG';
                 }
@@ -571,7 +573,34 @@ class OpeningConditionServiceLive
         // );
         return true;
     }
+    public static function checkPreviousTriggerBullish($data, $index, $interval, $confirmedTrade)
+    {
+        $ctIndex = self::getIndexDiffFromTimestamps($confirmedTrade->confirm_candle_timestamp, $data[$index]['binance_timestamp'], $interval, true);
+        $ctIndex = $index - $ctIndex;
 
+        $verifiedIndex = $index;
+
+        for ($i = $ctIndex; $i <= $index; $i++) {
+
+
+            if ($data[$i]['per'] > 0.1) {
+                $verifiedIndex = $i;
+                break;
+            }
+        }
+
+        return [
+            'verifiedIndex' => $verifiedIndex,
+            'currentIndex' => $index,
+            'verifiedTimestamp' => $data[$verifiedIndex]['timestampReadable'],
+            'verifiedTimestampUnix' => $data[$verifiedIndex]['binance_timestamp'],
+            'currentTimestamp' => $data[$index]['timestampReadable'],
+            'currentTimestampUnix' => $data[$index]['binance_timestamp'],
+            'percentGain' => CommonHelpers::getPercentDiff($data[$verifiedIndex]['close'], $data[$index]['close'], true),
+            'numberOfCandlesPast' => $index - $verifiedIndex,
+            'diffInMins' => ($data[$index]['binance_timestamp'] - $data[$verifiedIndex]['binance_timestamp']) / (1000 * 60),
+        ];
+    }
 
 
     public static function checkTrendOnHigherCandles($symbol, $position, $data, $index, $higherInterval = '1h')
