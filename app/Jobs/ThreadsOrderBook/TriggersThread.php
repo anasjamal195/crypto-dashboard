@@ -437,6 +437,8 @@ class TriggersThread implements ShouldQueue
         $tableName = $open_order['market'] === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
 
 
+
+        
         $candleClosingCheck = ($stopLoss < $open_order['price']) ? CommonHelpers::checkCandleClosingAbsolute('15m', 5) : true;
 
         if (($currentPrice < $stopLoss && $candleClosingCheck) || $closeEarly) {
