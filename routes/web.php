@@ -1,5 +1,6 @@
 <?php
 
+use App\CommonHelpers;
 use App\Http\Controllers\DynamicTradeController;
 use App\Http\Controllers\TradeHandlerController;
 use App\Http\Controllers\UserController;
@@ -54,7 +55,7 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 Route::get('/home', 'App\Http\Controllers\HomeController@index')->name('home')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/coin-report/delete', 'App\Http\Controllers\BinanceController@deleteCoinReport')->name('coinReport.delete')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/coin-report/{market}', 'App\Http\Controllers\BinanceController@getCoinReport')->name('coinReport')->middleware(['auth', AnalystRoleRedirect::class]);
-Route::get('/coin-report-confirmed-trades/{formula}', 'App\Http\Controllers\BinanceController@getCoinReportConfirmedTrades')->name('coinReport.confirmed_trades')->middleware([ AnalystRoleRedirect::class]);
+Route::get('/coin-report-confirmed-trades/{formula}', 'App\Http\Controllers\BinanceController@getCoinReportConfirmedTrades')->name('coinReport.confirmed_trades')->middleware([AnalystRoleRedirect::class]);
 Route::get('/coin-report-details/{market}', 'App\Http\Controllers\BinanceController@getCoinReportDetails')->name('coinReportDetails')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/market-trends/{market}', 'App\Http\Controllers\BinanceController@showTrends')->name('marketTrends')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/candle-averages/{market}', 'App\Http\Controllers\BinanceController@showAverages')->name('candle.averages')->middleware(['auth', AnalystRoleRedirect::class]);
@@ -78,6 +79,18 @@ Route::get('/get-current-price', function (Request $request) {
 	return BinanceApiService::getCurrentPrice($request->symbol, $request->market);
 })->name('get.current.price')->middleware(['auth', AnalystRoleRedirect::class]);
 
+Route::get('/deploy-current-branch', function (Request $request) {
+
+
+	$response = CommonHelpers::deployLatestCommit();
+
+
+	if ($response['success']) {
+		return redirect()->back()->withSuccess($response['message']);
+	} else {
+		return redirect()->back()->withErrors($response['message']);
+	}
+})->name('deploy-git-commit');
 
 Route::get('/order-book/overview', [App\Http\Controllers\OrderBookSnapshotController::class, 'overview'])->name('order-book.overview')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/order-book', [App\Http\Controllers\OrderBookSnapshotController::class, 'index'])->name('order-book.index')->middleware(['auth', AnalystRoleRedirect::class]);

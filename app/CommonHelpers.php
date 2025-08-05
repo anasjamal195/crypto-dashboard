@@ -4354,7 +4354,7 @@ class CommonHelpers
     {
 
 
-        
+
 
         if (!$domain) {
             $domain = env('PLESK_GIT_DOMAIN');
@@ -4409,7 +4409,39 @@ class CommonHelpers
 
         // Clean up message
         $result['message'] = trim($result['message']);
-
         return $result;
+    }
+
+
+    public static function deployLatestCommit($domain = '', $repoName = '')
+    {
+        if (!$domain) {
+            $domain = env('PLESK_GIT_DOMAIN');
+        }
+        if (!$repoName) {
+            $repoName = env('PLESK_GIT_REPO_NAME');
+        }
+
+        // Sanitize inputs
+        $domain = escapeshellarg($domain);
+        $repoName = escapeshellarg($repoName);
+
+        // Build the deploy command
+        $command = "sudo plesk ext git --deploy -domain $domain -name $repoName";
+
+        // Run the command
+        $output = shell_exec($command);
+
+        if (!$output) {
+            return [
+                'success' => false,
+                'message' => 'Deployment command returned no output or failed.'
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => trim($output)
+        ];
     }
 }
