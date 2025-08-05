@@ -5,6 +5,13 @@
         <h2>Trade Handler Settings</h2>
 
 
+        @include('components.log-window')
+
+        <br>
+
+
+
+
         @if (auth()->user()->role != 'superadmin')
             <a href="{{ route('process-handler.start-multithread') }}" class="btn btn-primary btn-sm m-2">Start
                 Multithread</a>

@@ -2,6 +2,7 @@
 
 use App\CommonHelpers;
 use App\Http\Controllers\DynamicTradeController;
+use App\Http\Controllers\LogController;
 use App\Http\Controllers\TradeHandlerController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\AnalystRoleRedirect;
@@ -98,6 +99,12 @@ Route::get('/order-book/{id}', [App\Http\Controllers\OrderBookSnapshotController
 // Volume Signals UI
 Route::get('/volume-signals', [App\Http\Controllers\BinanceController::class, 'volumeSignal'])->name('volume-signals.index')->middleware(['auth', AnalystRoleRedirect::class]);
 
+// In your web.php or admin routes
+Route::prefix('admin/logs')->group(function () {
+	Route::get('/content', [LogController::class, 'getContent']);
+	Route::get('/latest', [LogController::class, 'getLatest']);
+	Route::get('/download', [LogController::class, 'download']);
+});
 
 
 Route::get('/trade-handler/delete/all', [TradeHandlerController::class, 'deleteAll'])->name('trade-handler.delete.all')->middleware(['auth', AnalystRoleRedirect::class]);
