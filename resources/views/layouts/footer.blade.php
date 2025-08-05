@@ -1,27 +1,35 @@
 <footer class="footer">
-    <div class="container-fluid">
-        {{-- <ul class="nav">
-            <li class="nav-item">
-                <a href="https://creative-tim.com" target="blank" class="nav-link">
-                    {{ __('Creative Tim') }}
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="https://updivision.com" target="blank" class="nav-link">
-                    {{ __('Updivision') }}
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link">
-                    {{ __('About Us') }}
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link">
-                    {{ __('Blog') }}
-                </a>
-            </li>
-        </ul> --}}
+    <div class="container-fluid"
+        style="
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+">
+
+        @php
+            $gitInfo = \App\CommonHelpers::getLastGitCommit(); // Replace with your actual controller/class
+        @endphp
+
+        @if ($gitInfo['success'])
+            <div class="mx-5 d-flex align-items-center justify-content-center text-muted">
+                <i class="tim-icons icon-git-branch mr-2"></i>
+                <span class="git-commit-text">
+
+                    <small>Last Commit</small>
+                    <span class="mx-2">•</span>
+                    <code class="commit-hash-mini">{{ $gitInfo['message'] }}</code>
+                    <span class="mx-2">•</span>
+                    <small>{{ \Carbon\Carbon::parse($gitInfo['date'])->diffForHumans() }}</small>
+                </span>
+            </div>
+        @else
+            <div class="text-center text-muted">
+                <i class="tim-icons icon-git-branch mr-1"></i>
+                <small>No git info available</small>
+            </div>
+        @endif
+
+
         <div class="copyright">
             &copy; {{ now()->year }} {{ __('made with') }} <i class="tim-icons icon-heart-2"></i> {{ __('by') }}
             <a href="https://egeniuscare.com/" target="_blank">{{ __('eGenuiusCare') }}</a>.

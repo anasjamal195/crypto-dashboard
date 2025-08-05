@@ -4348,4 +4348,68 @@ class CommonHelpers
 
         return $tradesFinalArr;
     }
+
+
+    public static function getLastGitCommit($domain = '', $repoName = '')
+    {
+
+
+        
+
+        if (!$domain) {
+            $domain = env('PLESK_GIT_DOMAIN');
+        }
+        if (!$repoName) {
+            $repoName = env('PLESK_GIT_REPO_NAME');
+        }
+
+
+
+        // Sanitize inputs
+        $domain = escapeshellarg($domain);
+        $repoName = escapeshellarg($repoName);
+
+
+
+
+        // Build the command
+        $command = "sudo plesk ext git --get-last-commit -domain $domain -name $repoName";
+
+        // Run the command
+        $output = shell_exec($command);
+
+        if (!$output) {
+            return [
+                'success' => false,
+                'message' => 'No output from command or command failed.'
+            ];
+        }
+
+        // Parse the output
+        $lines = explode("\n", trim($output));
+        $result = [
+            'success' => true,
+            'commit_hash' => '',
+            'author' => '',
+            'date' => '',
+            'message' => ''
+        ];
+
+        foreach ($lines as $line) {
+            if (strpos($line, 'commit ') === 0) {
+                $result['commit_hash'] = trim(substr($line, 7));
+            } elseif (strpos($line, 'Author:') === 0) {
+                $result['author'] = trim(substr($line, 7));
+            } elseif (strpos($line, 'Date:') === 0) {
+                $result['date'] = trim(substr($line, 5));
+            } else {
+                $result['message'] .= trim($line) . " ";
+            }
+        }
+
+        // Clean up message
+        $result['message'] = trim($result['message']);
+
+        return $result;
+    }
 }
