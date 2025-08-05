@@ -37,4 +37,6 @@
             {{ __('Contact support at') }} <a href="mailto:info@egeniuscare.com">info@egeniuscare.com</a>.
         </div>
     </div>
+    
 </footer>
+
