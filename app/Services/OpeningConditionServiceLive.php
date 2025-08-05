@@ -264,25 +264,51 @@ class OpeningConditionServiceLive
 
 
             $lastPivotIndex = count(self::$lowPivots) - 1;
-
             $checkPreviousCollision = true;
             for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
                 if (
                     count(self::$lowPivots) > 3
-                    && $data[$i]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
-                    && $data[$i]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+                    && $data[$i]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.2 / 100))
+                    && $data[$i]['close'] >= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0 / 100))
+                    // && $data[$i]['close'] <= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.1 / 100))
                 ) {
                     $checkPreviousCollision = false;
                     break;
                 }
             }
+
+
+
+
+            $regularMacdRed = true;
+
+            $loopIndex  = $index - 1;
+            while ($loopIndex >= 3 && $data[$loopIndex]['histogram'] < 0) {
+
+
+
+                if (
+                    $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] // dark candle
+                    && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] // light candle
+                ) {
+                    $regularMacdRed = false;
+                    break;
+                }
+                $loopIndex--;
+            }
+
+
+
+
+
             if (
                 count(self::$lowPivots) > 3
                 && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
                 && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
                 && $checkPreviousCollision
                 && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
-
+                && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
+                && $regularMacdRed
 
             ) {
                 Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
@@ -290,12 +316,11 @@ class OpeningConditionServiceLive
                     $data[self::$lowPivots[$lastPivotIndex]]['timestampReadable'],
                 ]));
                 Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
-                if ($data[$index]['per'] > 0.1) {
+                if ($data[$index]['per'] > 0.1 || true) {
                     Log::info("3) LONG Opening Right Away:! ");
                     return 'LONG';
                 } else {
                     Log::info("3) LONG Opening Delayed! ");
-
                     $initialSetup = true;
                 }
             }

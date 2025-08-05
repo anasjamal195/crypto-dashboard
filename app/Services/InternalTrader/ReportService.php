@@ -151,57 +151,57 @@ class ReportService
 
         $coins = [
             // // 'BTCUSDT',
-            // 'BNBUSDT',
-            // 'SOLUSDT',
-            // 'ADAUSDT',
-            // 'DOGEUSDT',
-            // 'LTCUSDT',
-            // 'LINKUSDT',
-            // 'ATOMUSDT',
-            // 'NEARUSDT',
-            // 'RUNEUSDT',
-            // 'UNIUSDT',
-            // 'AAVEUSDT',
-            // 'ALGOUSDT',
-            // 'FILUSDT',
-            // 'VETUSDT',
-            // 'ICPUSDT',
-            // 'SANDUSDT',
-            // 'MANAUSDT',
-            // 'AXSUSDT',
+            'BNBUSDT',
+            'SOLUSDT',
+            'ADAUSDT',
+            'DOGEUSDT',
+            'LTCUSDT',
+            'LINKUSDT',
+            'ATOMUSDT',
+            'NEARUSDT',
+            'RUNEUSDT',
+            'UNIUSDT',
+            'AAVEUSDT',
+            'ALGOUSDT',
+            'FILUSDT',
+            'VETUSDT',
+            'ICPUSDT',
+            'SANDUSDT',
+            'MANAUSDT',
+            'AXSUSDT',
 
 
-            // // Major Altcoins
-            // 'AVAXUSDT',
-            // 'MATICUSDT',
-            // 'DOTUSDT',
-            // 'TRXUSDT',
-            // 'SHIBUSDT',
-            // 'XRPUSDT',
+            // Major Altcoins
+            'AVAXUSDT',
+            'MATICUSDT',
+            'DOTUSDT',
+            'TRXUSDT',
+            'SHIBUSDT',
+            'XRPUSDT',
 
-            // // DeFi/Layer 1 Tokens
-            // 'FTMUSDT',
-            // 'ONEUSDT',
-            // 'EGLDUSDT',
-            // 'ZILUSDT',
-            // 'WAVESUSDT',
+            // DeFi/Layer 1 Tokens
+            'FTMUSDT',
+            'ONEUSDT',
+            'EGLDUSDT',
+            'ZILUSDT',
+            'WAVESUSDT',
 
-            // // Gaming/Metaverse
+            // Gaming/Metaverse
             'ENJUSDT',
-            // 'CHZUSDT',
-            // 'GALAUSDT',
+            'CHZUSDT',
+            'GALAUSDT',
 
-            // // Established Altcoins
-            // 'XLMUSDT',
-            // 'EOSUSDT',
-            // 'ETCUSDT',
-            // 'BCHUSDT',
+            // Established Altcoins
+            'XLMUSDT',
+            'EOSUSDT',
+            'ETCUSDT',
+            'BCHUSDT',
 
-            // // Mid-caps with good patterns
-            // 'CRVUSDT',
-            // 'COMPUSDT',
-            // 'MKRUSDT',
-            // 'YFIUSDT'
+            // Mid-caps with good patterns
+            'CRVUSDT',
+            'COMPUSDT',
+            'MKRUSDT',
+            'YFIUSDT'
         ];
 
 
@@ -660,11 +660,18 @@ class ReportService
                         }
 
                         if ($data[$sl]['low'] >= $data[$index]['close']) {
+                            // if ($data[$index]['close'] < $data[$index]['ma99']) {
+                            // self::$dynamicSL = $data[$index]['close'] * (1 - 1 / 100);
+                            // } else {
                             self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
+                            // }
                         } else {
                             $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
                             self::$dynamicSL = $data[$sl]['low'] * (1 - 0.7 / 100);
 
+
+
+                            error_log("SL Percent: " . round($slPercentage, 2));
                             if ($slPercentage >= 3) {
                                 $extremePrice = 0;
                                 $currentTrade = [];
@@ -721,6 +728,8 @@ class ReportService
                         if ($data[$sl]['high'] <= $data[$index]['close']) {
                             self::$dynamicSL = $data[$index]['close'] * (1 + self::$initialSlPercent / 100);
                         } else {
+
+
                             $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['high']);
                             self::$dynamicSL = $data[$sl]['high'] * (1 + 0.7 / 100);
 
@@ -1196,32 +1205,25 @@ class ReportService
 
         if ($tradeType === 'LONG') {
 
-
-
-
             // // If TP is triggered
             if ($data[$index]['high'] >= self::$dynamicTP) {
                 self::$dynamicTP = $data[$index]['high'] * (1 + self::$dynamicTPSLgap / 100);
                 self::$dynamicSL = $data[$index]['high'] * (1 - (self::$dynamicTPSLgap / 2) / 100);
             }
+
             // // If Sl is trigggerd
             else if ($data[$index]['close'] < self::$dynamicSL) {
                 $closingPrice = self::$dynamicSL;
+            } else if (
+
+                $data[$index]['histogram'] < $data[$index - 1]['histogram']
+                && $data[$index]['close'] < $data[$index]['ma99']
+                && $data[$index]['per'] < 0
+                // && CommonHelpers::getPercentDiff($data[$openingIndex]['close'], self::$dynamicSL, true) <= -2
+                && CommonHelpers::getPercentDiff($data[$openingIndex]['close'], $data[$index]['close'], true) <= -1
+            ) {
+                $closingPrice = $data[$index]['close'];
             }
-
-
-
-
-            // $lastPivotIndex = count(self::$lowPivots) - 1;
-            // if (
-            //     $data[$index]['high'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
-            //     && $data[$index]['high'] >= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.05 / 100))
-            //     && $data[$index]['close'] <= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.05 / 100))
-
-
-            // ) {
-            //     $closingPrice = $data[$index]['close'];
-            // }
         } else {
             // If TP is triggered
             if ($data[$index]['close'] <= self::$dynamicTP) {
@@ -2210,19 +2212,43 @@ class ReportService
                     break;
                 }
             }
+
+
+
+
+            $regularMacdRed = true;
+
+            $loopIndex  = $index - 1;
+            while($loopIndex >= 3 && $data[$loopIndex]['histogram'] < 0){
+                
+
+
+                if(
+                    $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] // dark candle
+                    && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] // light candle
+                ){
+                    $regularMacdRed = false;
+                    break;
+                }
+                $loopIndex--;
+            }
+
+
+
+
+
+
             if (
                 count(self::$lowPivots) > 3
                 && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
                 && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
-
-                // && $data[$index]['volume'] <= $data[$index]['volumeMA5']
-                // && $candlesBetweenPivots <= 2
                 && $checkPreviousCollision
                 && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
-
-                // && $data[$index]['open'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
-
+                && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
+                && $regularMacdRed
             ) {
+
+                return 'LONG';
                 if (
                     $data[$index]['per'] > 0.1
                     // && $data[$index]['histogram'] > $data[$index - 1]['histogram']
@@ -2234,8 +2260,8 @@ class ReportService
                     $initialSetup = true;
                     self::$confirmedTradeIndex = $index;
                     self::$lpIndex = self::$lowPivots[$lastPivotIndex];
-                    error_log("CT at: " . $data[$index]['timestampReadable']);
-                    self::$waitingCandles = 3;
+                    // error_log("CT at: " . $data[$index]['timestampReadable']);
+                    // self::$waitingCandles = 3;
                 }
             }
         }
@@ -2297,10 +2323,9 @@ class ReportService
 
                     if (
                         $reconcile['verifiedIndex'] == $index
+                        // && $data[$index]['close'] > $data[self::$lpIndex]['low']
                     ) {
                         return 'LONG';
-                    } else {
-                        dd($reconcile);
                     }
                 }
             }

@@ -351,12 +351,14 @@ class TriggersThread implements ShouldQueue
                                     break;
                                 }
 
-                                $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
+                                // $currentPrice = BinanceApiService::getCurrentPrice($symbol, 'FUTURE');
+
+                                $candleData = BinanceApiService::getCandleStickData($symbol, self::$interval, 300, null, 'FUTURE', true);
 
                                 if ($tradeType === 'LONG')
-                                    $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $currentPrice, $this->profitIncrementPercentage, $this->workerId);
+                                    $tradeLoop = $this->manageOpenOrderLong($tradeInstance, $open_order['order'], $candleData, $this->profitIncrementPercentage, $this->workerId);
                                 else if ($tradeType === 'SHORT')
-                                    $tradeLoop = $this->manageOpenOrderShort($tradeInstance, $open_order['order'], $currentPrice, $this->profitIncrementPercentage, $this->workerId);
+                                    $tradeLoop = $this->manageOpenOrderShort($tradeInstance, $open_order['order'], $candleData, $this->profitIncrementPercentage, $this->workerId);
                             } catch (\Exception $e) {
                                 Log::error('TriggersThreadOrderBook ' . $this->workerId . ': Error - ' . $e->getMessage());
                                 Log::error($e->getTraceAsString());
@@ -386,8 +388,16 @@ class TriggersThread implements ShouldQueue
         }
     }
 
-    private  function manageOpenOrderLong($tradeInstance,  $open_order, $currentPrice, $profitIncrementPercentage, $workerId)
+    private  function manageOpenOrderLong($tradeInstance,  $open_order, $candleData, $profitIncrementPercentage, $workerId)
     {
+
+
+
+        $currentPrice = $candleData[count($candleData) - 1]['close'];
+
+        $index = count($candleData) - 2;
+
+        $data = $candleData;
 
         $targetProfit = $open_order['targetProfit'];
 
@@ -404,10 +414,24 @@ class TriggersThread implements ShouldQueue
         Log::info('TriggersThreadOrderBook ' . $workerId . ': ' . $open_order['symbol'] . ' ' . $open_order['position'] . ' Current profit ' . $currentProfit);
 
 
-
         // Handle Early Closing on Order Books
 
         $closeEarly = false;
+
+        if (
+            $data[$index]['histogram'] < $data[$index - 1]['histogram']
+            && $data[$index]['close'] < $data[$index]['ma99']
+            && $data[$index]['per'] < 0
+            && $currentProfit <= -1
+        ) {
+            $closeEarly = true;
+            Log::info('TriggersThreadOrderBook ' . $workerId . ': ' . $open_order['symbol'] . ' ' . $open_order['position'] . ' Closing Early Due to weak momentum ');
+        }
+
+
+
+
+
 
         // Check if SPOT enabled
         $tableName = $open_order['market'] === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
