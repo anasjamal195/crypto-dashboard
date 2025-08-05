@@ -86,7 +86,7 @@ Route::get('/deploy-current-branch', function (Request $request) {
 	} else {
 		return redirect()->back()->withErrors($response['message']);
 	}
-})->name('deploy-git-commit');
+})->name('deploy-git-commit')->middleware(['auth', AnalystRoleRedirect::class]);
 
 Route::get('/order-book/overview', [App\Http\Controllers\OrderBookSnapshotController::class, 'overview'])->name('order-book.overview')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/order-book', [App\Http\Controllers\OrderBookSnapshotController::class, 'index'])->name('order-book.index')->middleware(['auth', AnalystRoleRedirect::class]);
