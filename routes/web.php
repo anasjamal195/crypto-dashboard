@@ -80,11 +80,7 @@ Route::get('/get-current-price', function (Request $request) {
 })->name('get.current.price')->middleware(['auth', AnalystRoleRedirect::class]);
 
 Route::get('/deploy-current-branch', function (Request $request) {
-
-
 	$response = CommonHelpers::deployLatestCommit();
-
-
 	if ($response['success']) {
 		return redirect()->back()->withSuccess($response['message']);
 	} else {
