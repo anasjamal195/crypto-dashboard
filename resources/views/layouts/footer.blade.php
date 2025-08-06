@@ -3,8 +3,7 @@
         style="
     display: flex;
     align-items: center;
-    justify-content: space-between;
-">
+    justify-content: space-between;">
 
 
         @if (auth()->user() && auth()->user()->role !== 'analyst')

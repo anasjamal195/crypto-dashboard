@@ -111,7 +111,7 @@ class OpeningConditionServiceLive
                 $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']) + 0.7;
 
 
-                if ($stopLoss >= 5) {
+                if ($stopLoss >= 3) {
                     return [
                         'direction' => null,
                         'formula' => 'Pivot Sweep - 15m',
@@ -256,134 +256,134 @@ class OpeningConditionServiceLive
 
 
 
-        $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'LONG');
+        // $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'LONG');
 
 
-        if (!$confirmedTrade) {
-
-
-
-            $lastPivotIndex = count(self::$lowPivots) - 1;
-            $checkPreviousCollision = true;
-            for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
-                if (
-                    count(self::$lowPivots) > 3
-                    && $data[$i]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.2 / 100))
-                    && $data[$i]['close'] >= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0 / 100))
-                    // && $data[$i]['close'] <= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.1 / 100))
-                ) {
-                    $checkPreviousCollision = false;
-                    break;
-                }
-            }
+        // if (!$confirmedTrade) {
 
 
 
-
-            $regularMacdRed = true;
-
-            $loopIndex  = $index - 1;
-            while ($loopIndex >= 3 && $data[$loopIndex]['histogram'] < 0) {
-
-
-
-                if (
-                    $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] // dark candle
-                    && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] // light candle
-                ) {
-                    $regularMacdRed = false;
-                    break;
-                }
-                $loopIndex--;
-            }
-
-
-
-
-
+        $lastPivotIndex = count(self::$lowPivots) - 1;
+        $checkPreviousCollision = true;
+        for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
             if (
                 count(self::$lowPivots) > 3
-                && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
-                && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
-                && $checkPreviousCollision
-                && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
-                && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
-                && $regularMacdRed
-
+                && $data[$i]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.2 / 100))
+                && $data[$i]['close'] >= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0 / 100))
+                // && $data[$i]['close'] <= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.1 / 100))
             ) {
-                Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
-                Log::info("1) Pivots Timestamps:  " . implode(' ', [
-                    $data[self::$lowPivots[$lastPivotIndex]]['timestampReadable'],
-                ]));
-                Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
-                if ($data[$index]['per'] > 0.1 || true) {
-                    Log::info("3) LONG Opening Right Away:! ");
-                    return 'LONG';
-                } else {
-                    Log::info("3) LONG Opening Delayed! ");
-                    $initialSetup = true;
-                }
+                $checkPreviousCollision = false;
+                break;
             }
         }
 
-        $steps = [
-            [
-                'condition' => (
-                    $initialSetup
-                ),
-                'candlesToCheck' => 30,
-            ],
-            [
-                'condition' => (
-                    $data[$index]['per'] > 0.1
-                ),
-                'candlesToCheck' => 10,
-            ],
-        ];
-
-        // Process steps sequentially
-        foreach ($steps as $stepIndex => $step) {
 
 
 
-            if (!$step['condition']) {
-                continue;
+
+        $regularMacdRed = true;
+
+        $loopIndex  = $index - 1;
+        while ($loopIndex >= 3 && $data[$loopIndex]['histogram'] < 0) {
+            if (
+                $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] // dark candle
+                && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] // light candle
+            ) {
+                $regularMacdRed = false;
+                break;
             }
-
-
-            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'LONG');
-
-            $isInitial = $stepIndex == 0;
-            // Handle initial step (no existing trade required)
-            if ($isInitial && !$confirmedTrade) {
-                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
-                continue;
-            }
-
-            // Handle subsequent steps (existing trade with correct checkpoint required)
-            $requiredCheckpoint = ($stepIndex == 0 ? null : ($stepIndex - 1));
-
-            if ($confirmedTrade && $confirmedTrade->checkpoints == $requiredCheckpoint) {
-                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
-
-                // Handle final step
-                $isFinal = $stepIndex === count($steps) - 1;
-
-                if ($isFinal) {
-                    self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
-                    $reconcile = self::checkPreviousTriggerBullish($data, $index, $interval, $confirmedTrade);
-
-                    if (
-                        $reconcile['verifiedIndex'] == $index
-                    ) {
-                        return 'LONG';
-                    } else {
-                        Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Canceled due to reconcilliation error: ");
-                        Log::info('TriggersThreadOrderBook ' . $symbol . ": "  . json_encode($reconcile));
-                    }
-                }
-            }
+            $loopIndex--;
         }
+
+
+
+
+        if (
+            count(self::$lowPivots) > 3
+            && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
+            && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+            && $checkPreviousCollision
+            && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
+            && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
+            && $regularMacdRed
+
+        ) {
+            Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
+            Log::info("1) Pivots Timestamps:  " . implode(' ', [
+                $data[self::$lowPivots[$lastPivotIndex]]['timestampReadable'],
+            ]));
+            Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
+            Log::info("3) LONG Opening Right Away:! ");
+            return 'LONG';
+
+            // if ($data[$index]['per'] > 0.1 || true) {
+            //     Log::info("3) LONG Opening Right Away:! ");
+            //     return 'LONG';
+            // } else {
+            //     Log::info("3) LONG Opening Delayed! ");
+            //     $initialSetup = true;
+            // }
+        }
+        // }
+
+        // $steps = [
+        //     [
+        //         'condition' => (
+        //             $initialSetup
+        //         ),
+        //         'candlesToCheck' => 30,
+        //     ],
+        //     [
+        //         'condition' => (
+        //             $data[$index]['per'] > 0.1
+        //         ),
+        //         'candlesToCheck' => 10,
+        //     ],
+        // ];
+
+        // // Process steps sequentially
+        // foreach ($steps as $stepIndex => $step) {
+
+
+
+        //     if (!$step['condition']) {
+        //         continue;
+        //     }
+
+
+        //     $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'LONG');
+
+        //     $isInitial = $stepIndex == 0;
+        //     // Handle initial step (no existing trade required)
+        //     if ($isInitial && !$confirmedTrade) {
+        //         self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
+        //         continue;
+        //     }
+
+        //     // Handle subsequent steps (existing trade with correct checkpoint required)
+        //     $requiredCheckpoint = ($stepIndex == 0 ? null : ($stepIndex - 1));
+
+        //     if ($confirmedTrade && $confirmedTrade->checkpoints == $requiredCheckpoint) {
+        //         self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
+
+        //         // Handle final step
+        //         $isFinal = $stepIndex === count($steps) - 1;
+
+        //         if ($isFinal) {
+        //             self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+        //             $reconcile = self::checkPreviousTriggerBullish($data, $index, $interval, $confirmedTrade);
+
+        //             if (
+        //                 $reconcile['verifiedIndex'] == $index
+        //             ) {
+        //                 return 'LONG';
+        //             } else {
+        //                 Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Canceled due to reconcilliation error: ");
+        //                 Log::info('TriggersThreadOrderBook ' . $symbol . ": "  . json_encode($reconcile));
+        //             }
+        //         }
+        //     }
+        // }
 
         return null;
     }

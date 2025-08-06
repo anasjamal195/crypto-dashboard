@@ -15,14 +15,14 @@ class LogController extends Controller
     public function getContent()
     {
         $logPath = $this->getLogPath();
-        
+
         if (!File::exists($logPath)) {
             return response()->json(['content' => 'Log file not found.', 'stats' => ['size' => '0 KB']]);
         }
 
         $content = File::get($logPath);
         $size = File::size($logPath);
-        
+
         return response()->json([
             'content' => $content,
             'stats' => ['size' => $this->formatBytes($size)]
@@ -45,11 +45,11 @@ class LogController extends Controller
     private function formatBytes($bytes, $precision = 2)
     {
         $units = array('B', 'KB', 'MB', 'GB', 'TB');
-        
+
         for ($i = 0; $bytes > 1024; $i++) {
             $bytes /= 1024;
         }
-        
+
         return round($bytes, $precision) . ' ' . $units[$i];
     }
 }
