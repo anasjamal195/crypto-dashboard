@@ -239,7 +239,7 @@ class OpeningConditionServiceLive
     }
 
 
-    public static function checkConditionSetLong15m($symbol, $data, $index)
+    public static function  checkConditionSetLong15m($symbol, $data, $index)
     {
 
         $interval = '15m';
@@ -303,8 +303,8 @@ class OpeningConditionServiceLive
             && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
             && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
             && $checkPreviousCollision
-            && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
-            && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
+            // && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
+            // && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
             && $regularMacdRed
 
         ) {
