@@ -127,7 +127,17 @@ class FutureCoinDumper extends Command
     public function handle()
     {
 
+
+        Log::info("Clearing Previous Data");
+
+        DB::table('coins')->truncate();
+        DB::table('trade_handler')->truncate();
+
+
+
+
         Log::info("Coin List Dumper started");
+
         // Fetch Meta Values
         self::$interval = CommonHelpers::getMetaValue(self::$user_id, 'live_trade_worker_interval_future', '1m');
         self::$openPrice = CommonHelpers::getMetaValue(self::$user_id, 'buy_price_future', '5');
