@@ -133,13 +133,12 @@ class OpeningConditionServiceLive
         'SNXUSDT',      // Synthetix - Synthetic assets
         'GMXUSDT',      // GMX - Perpetual trading
         'RDNTUSDT',     // Radiant - Cross-chain lending
-        'PEPEUSDT',     // High volume meme token
+
 
         // // Gaming/Metaverse (similar to SAND, MANA, GALA patterns)
         'AXSUSDT',      // Axie Infinity - P2E gaming
         'ENJUSDT',      // Enjin - Gaming platform
         'IMXUSDT',      // Immutable X - Gaming L2
-        'BEAMUSDT',     // Beam - Gaming blockchain
         'RONINUSDT',    // Ronin - Gaming sidechain
         'MAGICUSDT'    // Magic - Gaming ecosystem
     ];

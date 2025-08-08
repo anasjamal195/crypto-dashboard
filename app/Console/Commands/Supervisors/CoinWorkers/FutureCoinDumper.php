@@ -106,9 +106,7 @@ class FutureCoinDumper extends Command
         'SNXUSDT',
         'GMXUSDT',
         'RDNTUSDT',
-        'PEPEUSDT',
         'IMXUSDT',
-        'BEAMUSDT',
         'RONINUSDT',
         'MAGICUSDT'
     ];
