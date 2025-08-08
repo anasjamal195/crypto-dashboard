@@ -55,6 +55,7 @@ class FutureCoinDumper extends Command
     ];
 
     public static $hardCodedCoins = [
+
         'BNBUSDT',
         'SOLUSDT',
         'ADAUSDT',
@@ -73,38 +74,43 @@ class FutureCoinDumper extends Command
         'SANDUSDT',
         'MANAUSDT',
         'AXSUSDT',
-
-
-        // Major Altcoins
         'AVAXUSDT',
         'DOTUSDT',
         'TRXUSDT',
-        // 'SHIBUSDT',
         'XRPUSDT',
-
-        // DeFi/Layer 1 Tokens
         'FTMUSDT',
         'ONEUSDT',
         'EGLDUSDT',
         'ZILUSDT',
         'WAVESUSDT',
-
-        // Gaming/Metaverse
         'ENJUSDT',
         'CHZUSDT',
         'GALAUSDT',
-
-        // Established Altcoins
         'XLMUSDT',
         'EOSUSDT',
         'ETCUSDT',
         'BCHUSDT',
-
-        // Mid-caps with good patterns
         'CRVUSDT',
         'COMPUSDT',
         'MKRUSDT',
-        'YFIUSDT'
+        'YFIUSDT',
+        'MATICUSDT',
+        'HBARUSDT',
+        'FLOWUSDT',
+        'APTUSDT',
+        'SUIUSDT',
+        'SEIUSDT',
+        'SUSHIUSDT',
+        'CAKEUSDT',
+        '1INCHUSDT',
+        'SNXUSDT',
+        'GMXUSDT',
+        'RDNTUSDT',
+        'PEPEUSDT',
+        'IMXUSDT',
+        'BEAMUSDT',
+        'RONINUSDT',
+        'MAGICUSDT'
     ];
 
 

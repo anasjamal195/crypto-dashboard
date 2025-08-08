@@ -21,9 +21,132 @@ class OpeningConditionServiceLive
     public static $volumeMA5ValidFor = 1000;
     public static $upperWickValidFor = 1000;
     public static $bollSqueezValidFor = 1000;
-    public static $lowPivots = [];
-    public static $highPivots = [];
+    public static $lowPivotsA = [];
+    public static $highPivotsA = [];
 
+    public static $lowPivotsB = [];
+    public static $highPivotsB = [];
+
+    public static $formulaACoins = [
+        'BNBUSDT',
+        'SOLUSDT',
+        'ADAUSDT',
+        'DOGEUSDT',
+        'LTCUSDT',
+        'LINKUSDT',
+        'ATOMUSDT',
+        'NEARUSDT',
+        'RUNEUSDT',
+        'UNIUSDT',
+        'AAVEUSDT',
+        'ALGOUSDT',
+        'FILUSDT',
+        'VETUSDT',
+        'ICPUSDT',
+        'SANDUSDT',
+        'MANAUSDT',
+        'AXSUSDT',
+
+
+        // Major Altcoins
+        'AVAXUSDT',
+        'DOTUSDT',
+        'TRXUSDT',
+        // 'SHIBUSDT',
+        'XRPUSDT',
+
+        // DeFi/Layer 1 Tokens
+        'FTMUSDT',
+        'ONEUSDT',
+        'EGLDUSDT',
+        'ZILUSDT',
+        'WAVESUSDT',
+
+        // Gaming/Metaverse
+        'ENJUSDT',
+        'CHZUSDT',
+        'GALAUSDT',
+
+        // Established Altcoins
+        'XLMUSDT',
+        'EOSUSDT',
+        'ETCUSDT',
+        'BCHUSDT',
+
+        // Mid-caps with good patterns
+        'CRVUSDT',
+        'COMPUSDT',
+        'MKRUSDT',
+        'YFIUSDT'
+    ];
+
+    public static $formulaBCoins = [
+        'BNBUSDT',      // Binance ecosystem - appeared in all tests
+        'AVAXUSDT',     // Layer 1 - appeared in all tests  
+        'VETUSDT',      // Supply chain - appeared in all tests
+        'LTCUSDT',      // Established alt - appeared in 3 tests
+        'SANDUSDT',     // Gaming/Metaverse - appeared in 3 tests
+        'ADAUSDT',      // Major Layer 1 - appeared in 3 tests
+        'MKRUSDT',      // DeFi governance - appeared in 3 tests
+        'COMPUSDT',     // DeFi lending - appeared in 3 tests
+
+
+        // TIER 2: STRONG CANDIDATES (appeared in 2+ tests)
+        'SOLUSDT',      // Major Layer 1
+        'ATOMUSDT',     // Cosmos ecosystem
+        'NEARUSDT',     // Layer 1 protocol
+        'DOGEUSDT',     // High volume meme coin
+        'AAVEUSDT',     // DeFi lending
+        'FILUSDT',      // Decentralized storage
+        'ETCUSDT',      // Ethereum Classic
+        'CHZUSDT',      // Sports tokens
+        'ICPUSDT',      // Internet Computer
+        'EGLDUSDT',     // MultiversX
+        'XRPUSDT',      // Payment token
+        'TRXUSDT',      // Established blockchain
+        'UNIUSDT',      // Leading DEX
+        'BCHUSDT',      // Bitcoin fork
+        'CRVUSDT',      // DeFi yield farming
+        'ALGOUSDT',     // Pure proof-of-stake
+        'MANAUSDT',     // Metaverse
+        'GALAUSDT',     // Gaming
+
+
+        // TIER 3: ADDITIONAL HIGH-POTENTIAL COINS
+        // Based on similar characteristics
+
+        // Layer 1 & Infrastructure (similar to AVAX, SOL, ADA patterns)
+        'DOTUSDT',      // Polkadot - Multi-chain protocol
+        'MATICUSDT',    // Polygon - Ethereum scaling
+        'FTMUSDT',      // Fantom - High-speed blockchain
+        'HBARUSDT',     // Hedera - Enterprise blockchain
+        'FLOWUSDT',     // Flow - NFT-focused blockchain
+        'APTUSDT',      // Aptos - High-performance L1
+        'SUIUSDT',      // Sui - Next-gen L1
+        'SEIUSDT',      // Sei - Trading-focused L1
+
+        // DeFi Tokens (similar to AAVE, UNI, CRV patterns)
+        'LINKUSDT',     // Chainlink - Oracle network
+        'SUSHIUSDT',    // SushiSwap - DEX
+        'CAKEUSDT',     // PancakeSwap - BSC DEX
+        '1INCHUSDT',    // 1inch - DEX aggregator
+        'SNXUSDT',      // Synthetix - Synthetic assets
+        'GMXUSDT',      // GMX - Perpetual trading
+        'RDNTUSDT',     // Radiant - Cross-chain lending
+        'PEPEUSDT',     // High volume meme token
+
+        // // Gaming/Metaverse (similar to SAND, MANA, GALA patterns)
+        'AXSUSDT',      // Axie Infinity - P2E gaming
+        'ENJUSDT',      // Enjin - Gaming platform
+        'IMXUSDT',      // Immutable X - Gaming L2
+        'BEAMUSDT',     // Beam - Gaming blockchain
+        'RONINUSDT',    // Ronin - Gaming sidechain
+        'MAGICUSDT'    // Magic - Gaming ecosystem
+    ];
+
+
+
+    public static $formulaType = null;
 
     public function __construct($workerId, $account, $activeExchange)
     {
@@ -35,7 +158,6 @@ class OpeningConditionServiceLive
 
     public static function getOpeningOn15m($symbol)
     {
-
         $interval = '15m';
         $cacheKey = "last_checked_for_opening_{$symbol}_{$interval}";
 
@@ -52,9 +174,6 @@ class OpeningConditionServiceLive
                 'targetProfit' => $targetProfit,
             ];
         }
-
-
-
 
         // ########### Checking Candle closing on specific interval ##############
         if (!CommonHelpers::checkCandleClosingAbsolute($interval, 60)) {
@@ -82,80 +201,94 @@ class OpeningConditionServiceLive
 
         Cache::put($cacheKey, $cacheValue, now()->addSeconds(15));
 
+        // ############################################### Formula A Entries ###############################################
 
+        if (in_array($symbol, self::$formulaACoins)) {
 
+            if (
+                self::checkConditionSetLong15mA($symbol, $data, $index) === 'LONG'
+            ) {
 
-
-
-
-
-
-        // LONG ENTRY
-        if (
-            self::checkConditionSetLong15m($symbol, $data, $index) === 'LONG'
-        ) {
-
-            $sl = self::$lowPivots[count(self::$lowPivots) - 2];
-
-            $loopIndex = count(self::$lowPivots) - 1;
-
-            while ($loopIndex >= 0 && $data[self::$lowPivots[$loopIndex]]['low'] >= $data[$index]['close']) {
-                $sl = self::$lowPivots[$loopIndex];
-                $loopIndex--;
-            }
-
-
-            if ($data[$sl]['low'] >= $data[$index]['close']) {
-                $stopLoss = 2;
-            } else {
-                $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']) + 0.7;
-
-
-                if ($stopLoss >= 3) {
-                    return [
-                        'direction' => null,
-                        'formula' => 'Pivot Sweep - 15m',
-                        'profitIncrementPercentage' => $profitIncPer,
-                        'stopLoss' => $stopLoss,
-                        'targetProfit' => $targetProfit,
-                    ];
+                $sl = $index;
+                $sl = self::$lowPivotsA[count(self::$lowPivotsA) - 2];
+                $loopIndex = count(self::$lowPivotsA) - 1;
+                while ($loopIndex >= 0 && $data[self::$lowPivotsA[$loopIndex]]['low'] >= $data[$index]['close']) {
+                    $sl = self::$lowPivotsA[$loopIndex];
+                    $loopIndex--;
                 }
-            }
+                if ($data[$sl]['low'] >= $data[$index]['close']) {
+                    $stopLoss = 2;
+                } else {
+                    $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']) + 0.7;
+                    if ($stopLoss >= 3) {
+                        Log::info('TriggersThreadOrderBook: Canceled Opening due to SL ' . $stopLoss . ' Formula A ' . $symbol);
 
-            return [
-                'direction' => 'LONG',
-                'formula' => 'Pivot Sweep - 15m',
-                'profitIncrementPercentage' => $profitIncPer,
-                'stopLoss' => $stopLoss,
-                'targetProfit' => $targetProfit,
-            ];
+                        return [
+                            'direction' => null,
+                            'formula' => 'Pivot Sweep - 15m',
+                            'profitIncrementPercentage' => $profitIncPer,
+                            'stopLoss' => $stopLoss,
+                            'targetProfit' => $targetProfit,
+                        ];
+                    }
+                }
+
+                return [
+                    'direction' => 'LONG',
+                    'formula' => 'Pivot Sweep - 15m - A',
+                    'profitIncrementPercentage' => $profitIncPer,
+                    'stopLoss' => $stopLoss,
+                    'targetProfit' => $targetProfit,
+                ];
+            }
         }
 
 
-        // SHORT Entry (Disabled for now)
-        // if (
-        //     self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
-        // ) {
 
-        //     $sl = self::$highPivots[count(self::$highPivots) - 2];
-        //     $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['high']);
-        //     $atrPercentage = round(($data[$index]['atr14']  / $data[$index]['close']) * 100, 3);
-        //     if ($slPercentage > 3 && $atrPercentage < 0.4) {
-        //         $sl = self::$highPivots[count(self::$highPivots) - 1];
-        //     }
-        //     $bufferSize = 0.5 * $data[$index]['atr14'];
-        //     $profitIncPer = $bufferSize;
 
-        //     $stopLoss = CommonHelpers::getPercentDiff($data[count($data) - 1]['close'], $data[$sl]['high']);
 
-        //     return [
-        //         'direction' => 'SHORT',
-        //         'formula' => 'Pivot Sweep - 15m',
-        //         'profitIncrementPercentage' => $profitIncPer,
-        //         'stopLoss' => $stopLoss,
-        //         'targetProfit' => $targetProfit,
-        //     ];
-        // }
+        // ############################################### Formula B Entries ###############################################
+
+        if (in_array($symbol, self::$formulaBCoins)) {
+
+            if (
+                self::checkConditionSetLong15mB($symbol, $data, $index) === 'LONG'
+            ) {
+
+                $sl = $index;
+                $sl = self::$lowPivotsB[count(self::$lowPivotsB) - 2];
+                $loopIndex = count(self::$lowPivotsB) - 1;
+                while ($loopIndex >= 0 && $data[self::$lowPivotsB[$loopIndex]]['low'] >= $data[$index]['close']) {
+                    $sl = self::$lowPivotsB[$loopIndex];
+                    $loopIndex--;
+                }
+                if ($data[$sl]['low'] >= $data[$index]['close']) {
+                    $stopLoss = 2;
+                } else {
+                    $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']) + 0.7;
+                    if ($stopLoss >= 3) {
+                        Log::info('TriggersThreadOrderBook: Canceled Opening due to SL ' . $stopLoss . ' Formula B ' . $symbol);
+
+                        return [
+                            'direction' => null,
+                            'formula' => 'Pivot Sweep - 15m',
+                            'profitIncrementPercentage' => $profitIncPer,
+                            'stopLoss' => $stopLoss,
+                            'targetProfit' => $targetProfit,
+                        ];
+                    }
+                }
+
+                return [
+                    'direction' => 'LONG',
+                    'formula' => 'Pivot Sweep - 15m - B',
+                    'profitIncrementPercentage' => $profitIncPer,
+                    'stopLoss' => $stopLoss,
+                    'targetProfit' => $targetProfit,
+                ];
+            }
+        }
+
 
         return [
             'direction' => null,
@@ -166,121 +299,32 @@ class OpeningConditionServiceLive
         ];
     }
 
-
-
-    public static function getOpeningOn15mReconcile($symbol, $timestampTrade)
-    {
-
-        $interval = '15m';
-        $cacheKey = "last_checked_for_opening_{$symbol}_{$interval}";
-
-        // if (Cache::get($cacheKey, 0)) {
-        //     return [
-        //         'direction' => null,
-        //         'formula' => 'Pivot Sweep'
-        //     ];
-        // }
-
-        $timestampTest = $timestampTrade - (498 * CommonHelpers::$binanceIntervals[$interval] * 60 * 1000);
-
-        $data =
-            // self::$activeExchange === 'binance' ?
-            BinanceApiService::getCandleStickData($symbol, $interval, 500, $timestampTest,  'FUTURE');
-        // : HyperLiquidApiService::getCandleStickData($symbol, $interval, 500, $timestampTest, 'FUTURE');
-
-
-
-        $index = count($data) - 2;
-
-        // dd($data[$index]);
-        $cacheValue = time() * 1000;
-
-        $now = now();
-        $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
-        $minutesToNextRounded = intval(($intervalToMins - ($now->minute % $intervalToMins)) / 2);
-        $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
-
-        // dd($data[$index],end($data));
-        // Cache::put($cacheKey, $cacheValue, $nextRoundedTime);
-
-        // Check candle closing
-        // if (!CommonHelpers::checkCandleClosing($data, 120)) {
-        //     return [
-        //         'direction' => null,
-        //         'formula' => 'Pivot Sweep - 15m'
-        //     ];
-        // }
-
-        // LONG ENTRY
-        if (
-            self::checkConditionSetLong15m($symbol, $data, $index) === 'LONG'
-        ) {
-            return [
-                'direction' => 'LONG',
-                'formula' => 'Pivot Sweep - 15m'
-            ];
-        }
-
-
-        // SHORT Entry (Disabled for now)
-        if (
-            self::checkConditionSetShort15m($symbol, $data, $index) === 'SHORT'
-        ) {
-            return [
-                'direction' => 'SHORT',
-                'formula' => 'Pivot Sweep - 15m'
-            ];
-        }
-
-        return [
-            'direction' => null,
-            'formula' => 'Pivot Sweep - 15m - Not Found'
-        ];
-    }
-
-
-    public static function  checkConditionSetLong15m($symbol, $data, $index)
+    public static function  checkConditionSetLong15mA($symbol, $data, $index)
     {
 
         $interval = '15m';
 
-        self::$lowPivots = [];
+        self::$lowPivotsA = [];
         for ($i = 10; $i <= ($index - 6); $i++) {
             $p = CommonHelpers::checkPivot($data, $i, 6);
             if ($p === 'low_pivot') {
-                self::$lowPivots[] = $i;
+                self::$lowPivotsA[] = $i;
             }
         }
 
-        $initialSetup = false;
-
-
-
-        // $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'LONG');
-
-
-        // if (!$confirmedTrade) {
-
-
-
-        $lastPivotIndex = count(self::$lowPivots) - 1;
+        $lastPivotIndex = count(self::$lowPivotsA) - 1;
         $checkPreviousCollision = true;
         for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
             if (
-                count(self::$lowPivots) > 3
-                && $data[$i]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.2 / 100))
-                && $data[$i]['close'] >= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0 / 100))
-                // && $data[$i]['close'] <= ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.1 / 100))
+                count(self::$lowPivotsA) > 3
+                && $data[$i]['low'] <=  ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 - 0.2 / 100))
+                && $data[$i]['close'] >= ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 + 0 / 100))
+
             ) {
                 $checkPreviousCollision = false;
                 break;
             }
         }
-
-
-
-
-
         $regularMacdRed = true;
 
         $loopIndex  = $index - 1;
@@ -295,197 +339,61 @@ class OpeningConditionServiceLive
             $loopIndex--;
         }
 
-
-
-
         if (
-            count(self::$lowPivots) > 3
-            && $data[$index]['low'] <=  ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
-            && $data[$index]['close'] > ($data[self::$lowPivots[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+            count(self::$lowPivotsA) > 3
+            && $data[$index]['low'] <=  ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
+            && $data[$index]['close'] > ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
             && $checkPreviousCollision
-            // && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex]]['bb_lower']
-            // && $data[self::$lowPivots[$lastPivotIndex]]['low'] <= $data[self::$lowPivots[$lastPivotIndex - 1]]['low']
             && $regularMacdRed
 
         ) {
-            Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Conditions Detail: ");
-            Log::info("1) Pivots Timestamps:  " . implode(' ', [
-                $data[self::$lowPivots[$lastPivotIndex]]['timestampReadable'],
-            ]));
-            Log::info("2) LONG Current Time: " . $data[$index]['timestampReadable']);
-            Log::info("3) LONG Opening Right Away:! ");
+            Log::info('TriggersThreadOrderBook: Going to open with Formula A ' . $symbol);
+
             return 'LONG';
-
-            // if ($data[$index]['per'] > 0.1 || true) {
-            //     Log::info("3) LONG Opening Right Away:! ");
-            //     return 'LONG';
-            // } else {
-            //     Log::info("3) LONG Opening Delayed! ");
-            //     $initialSetup = true;
-            // }
         }
-        // }
-
-        // $steps = [
-        //     [
-        //         'condition' => (
-        //             $initialSetup
-        //         ),
-        //         'candlesToCheck' => 30,
-        //     ],
-        //     [
-        //         'condition' => (
-        //             $data[$index]['per'] > 0.1
-        //         ),
-        //         'candlesToCheck' => 10,
-        //     ],
-        // ];
-
-        // // Process steps sequentially
-        // foreach ($steps as $stepIndex => $step) {
-
-
-
-        //     if (!$step['condition']) {
-        //         continue;
-        //     }
-
-
-        //     $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'LONG');
-
-        //     $isInitial = $stepIndex == 0;
-        //     // Handle initial step (no existing trade required)
-        //     if ($isInitial && !$confirmedTrade) {
-        //         self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
-        //         continue;
-        //     }
-
-        //     // Handle subsequent steps (existing trade with correct checkpoint required)
-        //     $requiredCheckpoint = ($stepIndex == 0 ? null : ($stepIndex - 1));
-
-        //     if ($confirmedTrade && $confirmedTrade->checkpoints == $requiredCheckpoint) {
-        //         self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'LONG', $step['candlesToCheck']);
-
-        //         // Handle final step
-        //         $isFinal = $stepIndex === count($steps) - 1;
-
-        //         if ($isFinal) {
-        //             self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
-        //             $reconcile = self::checkPreviousTriggerBullish($data, $index, $interval, $confirmedTrade);
-
-        //             if (
-        //                 $reconcile['verifiedIndex'] == $index
-        //             ) {
-        //                 return 'LONG';
-        //             } else {
-        //                 Log::info('TriggersThreadOrderBook ' . $symbol . " LONG Opening Canceled due to reconcilliation error: ");
-        //                 Log::info('TriggersThreadOrderBook ' . $symbol . ": "  . json_encode($reconcile));
-        //             }
-        //         }
-        //     }
-        // }
-
-        return null;
     }
 
-    public static function checkConditionSetShort15m($symbol, $data, $index)
+
+
+
+
+
+    public static function  checkConditionSetLong15mB($symbol, $data, $index)
     {
 
-
         $interval = '15m';
-        for ($i = 10; $i <= ($index - 6); $i++) {
 
-            $p = CommonHelpers::checkPivot($data, $i, 6);
-
-            if ($p === 'high_pivot') {
-                self::$highPivots[] = $i;
+        self::$lowPivotsB = [];
+        for ($i = 10; $i <= ($index - 2); $i++) {
+            $p = CommonHelpers::checkPivot($data, $i, 2);
+            if ($p === 'low_pivot') {
+                self::$lowPivotsB[] = $i;
             }
         }
 
-        $lastPivotIndexHigh = count(self::$highPivots) - 1;
-        $initialSetupShort = false;
+        $numberOfTouchLow = 0;
+        $currentLow = $data[$index]['low'];
+        foreach (self::$lowPivotsB as $lpIndex) {
+            if (
+                $data[$lpIndex]['low'] <= $currentLow * (1 + 0.01 / 100)
+                && $data[$lpIndex]['low'] >= $currentLow * (1 - 0.01 / 100)
+                && $lpIndex < $index
+            ) {
+                $numberOfTouchLow++;
+            }
+        }
         if (
-
-            count(self::$highPivots) > 3
-            && $data[$index]['high'] >=  ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 + 0.05 / 100))
-            && $data[$index]['close'] < ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 - 0.05 / 100))
-            // && $data[$index]['open'] < ($data[self::$highPivots[$lastPivotIndexHigh]]['high'] * (1 - 0.05 / 100))
-            && $data[$index]['histogram'] < $data[$index - 1]['histogram']
-
+            count(self::$lowPivotsB) > 3
+            && $data[$index]['low']  > $data[$index]['ema200']
+            && $data[$index]['bb_middle'] >= $data[$index]['bb_middle']
+            && $numberOfTouchLow >= 2
         ) {
-
-            Log::info('TriggersThreadOrderBook ' . $symbol . " SHORT Opening Conditions Detail: ");
-            Log::info("1) Pivots Timestamps:  " . implode(' ', [
-                $data[self::$highPivots[$lastPivotIndexHigh]]['timestampReadable'],
-            ]));
-            Log::info("2) SHORT Current Time: " . $data[$index]['timestampReadable']);
-            if ($data[$index]['per'] < 0) {
-
-                Log::info("3) SHORT Opening Right Away:! ");
-                return 'SHORT';
-            } else {
-                Log::info("3) SHORT Opening Delayed:! ");
-
-                $initialSetupShort = true;
-            }
+            Log::info('TriggersThreadOrderBook: Going to open with Formula B ' . $symbol);
+            return 'LONG';
         }
-
-        $steps = [
-            [
-                'condition' => (
-                    $initialSetupShort
-                ),
-                'candlesToCheck' => 20,
-            ],
-            [
-                'condition' => (
-                    $data[$index]['per'] < -0.1
-                ),
-                'candlesToCheck' => 10,
-            ],
-
-
-        ];
-
-        // Process steps sequentially
-        foreach ($steps as $stepIndex => $step) {
-
-
-            if (!$step['condition']) {
-                continue;
-            }
-
-
-            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, $interval, 'SHORT');
-
-            $isInitial = $stepIndex == 0;
-            // Handle initial step (no existing trade required)
-            if ($isInitial && !$confirmedTrade) {
-                self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'SHORT', $step['candlesToCheck']);
-                continue;
-            }
-
-            // Handle subsequent steps (existing trade with correct checkpoint required)
-            $requiredCheckpoint = ($stepIndex == 0 ? null : ($stepIndex - 1));
-
-            if ($confirmedTrade && $confirmedTrade->checkpoints == $requiredCheckpoint) {
-                self::updateConfirmTradeCheckpoint($symbol, 'TBD', $data, $index, 'SHORT', $step['candlesToCheck']);
-
-                // Handle final step
-                $isFinal = $stepIndex === count($steps) - 1;
-
-                if ($isFinal) {
-                    self::confirmOpening($symbol, 'TBD', $data, $index, 'SHORT');
-                    if (
-                        true
-                    )
-                        return 'SHORT';
-                }
-            }
-        }
-
         return null;
     }
+
 
     // ######################### MISC Functions #################################
 

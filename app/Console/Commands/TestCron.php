@@ -40,6 +40,8 @@ class TestCron extends Command
     public function handle()
     {
 
+        // check Top Performing coins
+
         $reportDetails = [
             [
                 'formula' => 'Analysis - Current',
@@ -83,9 +85,7 @@ class TestCron extends Command
             //     'includeFiltered' => true,
             // ],
 
-
         ];
-
 
         $workerLimit = 5;
         foreach ($reportDetails as $details) {
@@ -98,6 +98,9 @@ class TestCron extends Command
                 CommonHelpers::filterReportOnWorkerLimit($backtestFormula, $workerLimit);
             }
         }
+
+
+
 
         dd("Completed Schedule");
     }
