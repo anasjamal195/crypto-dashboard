@@ -5,9 +5,7 @@
         <h2>Trade Handler Settings</h2>
 
 
-        @include('components.log-window')
 
-        <br>
 
 
 
@@ -48,7 +46,11 @@
             </a>
         @endif
 
+        <br>
 
+        @include('components.log-window')
+
+        <br>
         <table class="table">
             <thead>
                 <tr>
