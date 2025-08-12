@@ -382,7 +382,7 @@ class BinanceController extends Controller
         $maxSL = 0;
         $minSL = PHP_FLOAT_MAX;
         $sumSL = 0;
-      
+
         $maxLP = 0;
         $minLP = PHP_FLOAT_MAX;
         $sumLP = 0;
@@ -441,7 +441,7 @@ class BinanceController extends Controller
                     $minSL = $buyingCandle['slPer'];
                 }
 
-                if($buyingCandle['slPer'] <= 5){
+                if ($buyingCandle['slPer'] <= 5) {
                     $tradesAbove5perSL++;
                 }
 
@@ -930,7 +930,7 @@ class BinanceController extends Controller
             'maxSL' => count($tradeArr) ? $maxSL : 0,
             'minSL' => count($tradeArr) ? $minSL : 0,
             'avgSL' => count($tradeArr) ? $sumSL / count($tradeArr) : 0,
-            
+
             'maxLP' => count($tradeArr) ? $maxLP : 0,
             'minLP' => count($tradeArr) ? $minLP : 0,
             'avgLP' => count($tradeArr) ? $sumLP / count($tradeArr) : 0,
@@ -1305,110 +1305,6 @@ class BinanceController extends Controller
     {
 
 
-
-        // $formulas = [
-        //     'Analysis - Current - Base - Saturday, July 19, 2025 11:36 PM',
-        //     'Analysis - Bullish - Base - Saturday, July 19, 2025 11:37 PM',
-        //     'Analysis - Slight Bearish - Base - Saturday, July 19, 2025 11:37 PM',
-        //     // 'Analysis - Slight Bullish - Base - Saturday, July 19, 2025 11:38 PM',
-        //     // 'Analysis - Flat - Base - Saturday, July 19, 2025 11:38 PM',
-        //     // 'Analysis - Mixed - Base - Saturday, July 19, 2025 11:38 PM',
-        // ];
-
-
-        // $bestPerformingSymbolsSet = [];
-
-        // $tableName = 'coin_reports';
-
-        // foreach ($formulas as $formula) {
-
-
-        //     $baseQuery = DB::table($tableName)->where('market', $market);
-
-        //     if ($formula) {
-        //         $baseQuery->where('formula', $formula);
-        //     }
-
-        //     // To filter only completed trades
-        //     $baseQuery->whereNotNull('sellingCandle');
-
-        //     // Clone the base query for reuse
-        //     $tradeDataQuery = clone $baseQuery;
-        //     $thresholdPercent = 90;
-        //     // Get aggregated trade data
-        //     $tradeData = $tradeDataQuery->select(
-        //         'symbol',
-        //         'formula',
-        //         'position',
-        //         'interval',
-        //         DB::raw('COUNT(*) as total_entries'),
-        //         DB::raw('SUM(profit) as total_profit'),
-        //         DB::raw('SUM(CASE WHEN profit < 0 THEN 1 ELSE 0 END) as number_of_sl'),
-        //         DB::raw('AVG(profit) as average_profit'),
-        //         DB::raw('AVG(duration) as average_duration'),
-        //         DB::raw('SUM(duration) as total_duration'),
-        //         DB::raw('MAX(profit) as max_profit'),
-        //         DB::raw('MIN(profit) as min_profit'),
-        //         DB::raw('MAX(lowestPricePercentage) as max_lowestPrice'),
-        //         DB::raw('MIN(lowestPricePercentage) as min_lowestPrice'),
-        //         DB::raw('MAX(created_at) as last_updated')
-        //     )
-
-        //         ->groupBy('symbol', 'position', 'formula', 'interval')
-        //         ->orderBy('total_entries', 'DESC')
-        //         ->orderBy('last_updated', 'DESC')
-        //         ->get();
-
-
-
-
-
-        //     foreach ($tradeData as $symbolTrade) {
-
-
-        //         $accuracy = (($symbolTrade->total_entries - $symbolTrade->number_of_sl) / ($symbolTrade->total_entries)) * 100;
-
-        //         if ($accuracy >= $thresholdPercent) {
-
-        //             if (isset($bestPerformingSymbolsSet[$symbolTrade->symbol])) {
-        //                 $bestPerformingSymbolsSet[$symbolTrade->symbol] = $bestPerformingSymbolsSet[$symbolTrade->symbol] + 1;
-        //             } else {
-        //                 $bestPerformingSymbolsSet[$symbolTrade->symbol] = 1;
-        //             }
-        //         }
-        //     }
-        // }
-
-
-
-
-        // arsort($bestPerformingSymbolsSet);
-
-
-        // dd($bestPerformingSymbolsSet);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '15m');
         $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, null, 'FUTURE');
@@ -1442,9 +1338,39 @@ class BinanceController extends Controller
         $lowPivots = [];
         $highPivots = [];
 
+        $demandIndexes = [];
+
+
+        $thresholdPips = 1000;
+
+
+
+
+
+
+        self::setConfig('swingLength', 10);
+        self::setConfig('zoneCount', 'Medium');
+        self::setConfig('obEndMethod', 'Wick');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         foreach ($data as $index => &$candle) {
 
-            if ($index < 200 || $index > count($data) - 100) {
+            if ($index < 200 || $index > count($data) - 10) {
                 continue;
             }
             if ($waitingCandles) {
@@ -1453,197 +1379,35 @@ class BinanceController extends Controller
             }
 
 
-            $pivot = CommonHelpers::checkPivot($data, $index - 6, 6);
+            $zones = $this->getVolumetricOrderBlocks($data, 999);
 
-
-
-
-
-
-            if ($pivot === 'low_pivot') {
-
-                $openingMarkers[] = [
-                    'timestamp_pst' => $data[$index - 6]['timestamp_pst'],
-                    'color' => 'blue',
-                    'text' => 'Low',
-                    'position' => 'belowBar'
-                ];
-                $lowPivots[] = $index - 6;
+            foreach ($zones['bullish_zones'] as $zone) {
+                dd($zone);
             }
 
-            if ($pivot === 'high_pivot') {
+            // $lines[] = [
+            //     'x1' => $data[$zones['demand_index']]['timestamp_pst'], // timestamp for first point
+            //     'y1' => $zones['demand_high'],         // price for first point
+            //     'x2' => $data[$zones['demand_index'] + 2]['timestamp_pst'], // timestamp for second point
+            //     'y2' => $zones['demand_high'],         // price for second point
+            //     'color' => 'green',  // red color
+            //     'thickness' => 2,      // line thickness
+            //     'title' => 'DU'
+            // ];
 
-                $openingMarkers[] = [
-                    'timestamp_pst' => $data[$index - 6]['timestamp_pst'],
-                    'color' => 'orange',
-                    'text' => 'High',
-                    'position' => 'aboveBar'
-                ];
-                $highPivots[] = $index - 6;
-            }
-
-
-            $lastPivotIndex = count($lowPivots) - 1;
-
-            if (
-
-                $pivot === 'low_pivot'
-                && count($lowPivots) > 3
-                && $data[$lowPivots[$lastPivotIndex]]['low'] > $data[$lowPivots[$lastPivotIndex - 1]]['low']
-                && $data[$lowPivots[$lastPivotIndex - 1]]['low'] < $data[$lowPivots[$lastPivotIndex - 2]]['low']
-                && $data[$lowPivots[$lastPivotIndex - 2]]['low'] < $data[$lowPivots[$lastPivotIndex - 3]]['low']
-
-            ) {
+            // $lines[] = [
+            //     'x1' => $data[$zones['demand_index']]['timestamp_pst'], // timestamp for first point
+            //     'y1' => $zones['demand_low'],         // price for first point
+            //     'x2' => $data[$zones['demand_index'] + 2]['timestamp_pst'], // timestamp for second point
+            //     'y2' => $zones['demand_low'],         // price for second point
+            //     'color' => 'red',  // red color
+            //     'thickness' => 2,      // line thickness
+            //     'title' => 'DL'
+            // ];
 
 
-
-                $firstPivotIndex = count($lowPivots) - 3;
-                $firstPivot = $lowPivots[$firstPivotIndex];
-                $lastPivot = $lowPivots[$lastPivotIndex];
-                $highPivots = [];
-                for ($i = $firstPivot; $i <= $lastPivot; $i++) {
-                    $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
-                    if ($minorPivot === 'high_pivot') {
-                        $highPivots[] = $i;
-                        $openingMarkers[] = [
-                            'timestamp_pst' => $data[$i]['timestamp_pst'],
-                            'color' => 'red',
-                            'text' => 'Minor High',
-                            'position' => 'aboveBar'
-                        ];
-                    }
-                }
-
-
-
-
-
-
-                $openingMarkers[] = [
-                    'timestamp_pst' => $candle['timestamp_pst'],
-                    'color' => 'green',
-                    'text' => 'Long',
-                    'position' => 'belowBar'
-                ];
-
-
-                $initialTp = $candle['close'] * (1 + 0.5 / 100);
-                $initialSl = $candle['close'] * (1 - 1 / 100);
-
-
-                $lines[] = [
-                    'x1' => $data[$index - 3]['timestamp_pst'], // timestamp for first point
-                    'y1' => $initialTp,         // price for first point
-                    'x2' => $data[$index + 3]['timestamp_pst'], // timestamp for second point
-                    'y2' => $initialTp,         // price for second point
-                    'color' => 'green',  // red color
-                    'thickness' => 2,      // line thickness
-                    'title' => 'Expected Tp'
-                ];
-
-                $lines[] = [
-                    'x1' => $data[$index - 3]['timestamp_pst'], // timestamp for first point
-                    'y1' => $initialSl,         // price for first point
-                    'x2' => $data[$index + 3]['timestamp_pst'], // timestamp for second point
-                    'y2' => $initialSl,         // price for second point
-                    'color' => 'red',  // red color
-                    'thickness' => 2,      // line thickness
-                    'title' => 'Expected Sl'
-                ];
-            }
-
-
-
-
-
-
-
-
-
-
-            $lastPivotIndexHigh = count($highPivots) - 1;
-
-            if (
-
-                $pivot === 'high_pivot'
-                && count($highPivots) > 3
-                && $data[$highPivots[$lastPivotIndexHigh]]['high'] < $data[$highPivots[$lastPivotIndexHigh - 1]]['high']
-                && $data[$highPivots[$lastPivotIndexHigh - 1]]['high'] > $data[$highPivots[$lastPivotIndexHigh - 2]]['high']
-                && $data[$highPivots[$lastPivotIndexHigh - 2]]['high'] > $data[$highPivots[$lastPivotIndexHigh - 3]]['high']
-
-            ) {
-
-
-
-                $firstPivotIndex = count($highPivots) - 3;
-                $firstPivot = $highPivots[$firstPivotIndex];
-                $lastPivot = $highPivots[$lastPivotIndexHigh];
-                $lowPivots = [];
-                for ($i = $firstPivot; $i <= $lastPivot; $i++) {
-                    $minorPivot = CommonHelpers::checkPivot($data, $i, 6);
-                    if ($minorPivot === 'low_pivot') {
-                        $lowPivots[] = $i;
-                        $openingMarkers[] = [
-                            'timestamp_pst' => $data[$i]['timestamp_pst'],
-                            'color' => 'pink',
-                            'text' => 'Minor Low',
-                            'position' => 'belowBar'
-                        ];
-                    }
-                }
-
-                if (count($lowPivots) >= 2) {
-
-                    $lastLowPivot = count($lowPivots) - 1;
-                    $firstLowPivot = count($lowPivots) - 2;
-                    if (
-                        $data[$lowPivots[$firstLowPivot]]['low'] > $data[$lowPivots[$lastLowPivot]]['low']
-                    ) {
-                        continue;
-                    }
-                }
-
-
-                if (count($lowPivots) == 0) {
-                    continue;
-                }
-
-
-
-                $openingMarkers[] = [
-                    'timestamp_pst' => $candle['timestamp_pst'],
-                    'color' => 'white',
-                    'text' => 'Short',
-                    'position' => 'aboveBar'
-                ];
-
-
-                $initialTp = $candle['close'] * (1 - 0.5 / 100);
-                $initialSl = $candle['close'] * (1 + 1 / 100);
-
-
-                $lines[] = [
-                    'x1' => $data[$index - 3]['timestamp_pst'], // timestamp for first point
-                    'y1' => $initialTp,         // price for first point
-                    'x2' => $data[$index + 3]['timestamp_pst'], // timestamp for second point
-                    'y2' => $initialTp,         // price for second point
-                    'color' => 'green',  // red color
-                    'thickness' => 2,      // line thickness
-                    'title' => 'Expected Tp'
-                ];
-
-                $lines[] = [
-                    'x1' => $data[$index - 3]['timestamp_pst'], // timestamp for first point
-                    'y1' => $initialSl,         // price for first point
-                    'x2' => $data[$index + 3]['timestamp_pst'], // timestamp for second point
-                    'y2' => $initialSl,         // price for second point
-                    'color' => 'red',  // red color
-                    'thickness' => 2,      // line thickness
-                    'title' => 'Expected Sl'
-                ];
-            }
+            continue;
         }
-
 
 
 
@@ -2140,5 +1904,951 @@ class BinanceController extends Controller
                     ->format('d M Y h:i A') : null,
             ],
         ]);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public static function detectConsolidation($data, $index, $options = [])
+    {
+        // Default configuration
+        $config = array_merge([
+            'lookback_period' => 20,           // Number of candles to look back
+            'price_threshold_percent' => 2.0,  // Max price range for consolidation (%)
+            'volume_threshold' => 0.8,         // Volume ratio threshold
+            'min_consolidation_candles' => 5,  // Minimum candles for valid consolidation
+            'atr_threshold' => 0.7,           // ATR ratio threshold
+            'adx_threshold' => 25,            // ADX threshold for trending vs sideways
+            'sensitivity' => 'medium'         // 'low', 'medium', 'high'
+        ], $options);
+
+        // Adjust thresholds based on sensitivity
+        switch ($config['sensitivity']) {
+            case 'low':
+                $config['price_threshold_percent'] *= 0.7;
+                $config['atr_threshold'] *= 0.8;
+                break;
+            case 'high':
+                $config['price_threshold_percent'] *= 1.3;
+                $config['atr_threshold'] *= 1.2;
+                break;
+                // medium uses default values
+        }
+
+        $lookback = $config['lookback_period'];
+        $startIndex = max(0, $index - $lookback);
+        $endIndex = min(count($data) - 1, $index);
+
+        // Validate input
+        if ($index < $lookback || $index >= count($data)) {
+            return [
+                'is_consolidated' => false,
+                'confidence' => 0,
+                'upper_bound' => null,
+                'lower_bound' => null,
+                'error' => 'Insufficient data or invalid index'
+            ];
+        }
+
+        $consolidationScore = 0;
+        $maxScore = 100;
+
+        // 1. Price Range Analysis (30 points)
+        $priceRangeScore = self::analyzePriceRange($data, $startIndex, $endIndex, $config);
+        $consolidationScore += $priceRangeScore;
+
+        // 2. Volatility Analysis using ATR (25 points)
+        $atrScore = self::analyzeVolatility($data, $index, $config);
+        $consolidationScore += $atrScore;
+
+        // 3. Volume Analysis (20 points)
+        $volumeScore = self::analyzeVolume($data, $startIndex, $endIndex, $config);
+        $consolidationScore += $volumeScore;
+
+        // 4. ADX Analysis (15 points)
+        $adxScore = self::analyzeADX($data, $index, $config);
+        $consolidationScore += $adxScore;
+
+        // 5. Bollinger Band Analysis (10 points)
+        $bbScore = self::analyzeBollingerBands($data, $index, $config);
+        $consolidationScore += $bbScore;
+
+        // Calculate consolidation bounds
+        $bounds = self::calculateConsolidationBounds($data, $startIndex, $endIndex);
+
+        // Determine if market is consolidated
+        $confidenceThreshold = 60; // Minimum score for consolidation
+        $isConsolidated = $consolidationScore >= $confidenceThreshold;
+
+        return [
+            'is_consolidated' => $isConsolidated,
+            'confidence' => round($consolidationScore, 2),
+            'upper_bound' => $bounds['upper'],
+            'lower_bound' => $bounds['lower'],
+            'consolidation_range_percent' => $bounds['range_percent'],
+            'duration_candles' => $endIndex - $startIndex + 1,
+            'scores' => [
+                'price_range' => $priceRangeScore,
+                'volatility' => $atrScore,
+                'volume' => $volumeScore,
+                'adx' => $adxScore,
+                'bollinger' => $bbScore
+            ]
+        ];
+    }
+
+    /**
+     * Analyze price range compression
+     */
+    public static function analyzePriceRange($data, $startIndex, $endIndex, $config)
+    {
+        $highs = [];
+        $lows = [];
+        $closes = [];
+
+        for ($i = $startIndex; $i <= $endIndex; $i++) {
+            $highs[] = $data[$i]['high'];
+            $lows[] = $data[$i]['low'];
+            $closes[] = $data[$i]['close'];
+        }
+
+        $highest = max($highs);
+        $lowest = min($lows);
+        $avgClose = array_sum($closes) / count($closes);
+
+        // Calculate range as percentage
+        $rangePercent = (($highest - $lowest) / $avgClose) * 100;
+
+        // Score based on how compressed the range is
+        if ($rangePercent <= $config['price_threshold_percent'] * 0.5) {
+            return 30; // Very tight range
+        } elseif ($rangePercent <= $config['price_threshold_percent'] * 0.75) {
+            return 22; // Tight range
+        } elseif ($rangePercent <= $config['price_threshold_percent']) {
+            return 15; // Moderate range
+        } elseif ($rangePercent <= $config['price_threshold_percent'] * 1.25) {
+            return 8; // Slightly wide range
+        } else {
+            return 0; // Too wide for consolidation
+        }
+    }
+
+    /**
+     * Analyze volatility using available moving averages as ATR proxy
+     */
+    public static function analyzeVolatility($data, $index, $config)
+    {
+        if (!isset($data[$index]['adx'])) {
+            return 0;
+        }
+
+        // Calculate recent volatility using high-low ranges
+        $ranges = [];
+        $lookback = min(14, $index);
+
+        for ($i = max(0, $index - $lookback); $i <= $index; $i++) {
+            $range = (($data[$i]['high'] - $data[$i]['low']) / $data[$i]['close']) * 100;
+            $ranges[] = $range;
+        }
+
+        $currentRange = end($ranges);
+        $avgRange = array_sum($ranges) / count($ranges);
+
+        // Score based on current volatility vs average
+        $volatilityRatio = $currentRange / $avgRange;
+
+        if ($volatilityRatio <= $config['atr_threshold'] * 0.5) {
+            return 25; // Very low volatility
+        } elseif ($volatilityRatio <= $config['atr_threshold'] * 0.75) {
+            return 20; // Low volatility
+        } elseif ($volatilityRatio <= $config['atr_threshold']) {
+            return 15; // Moderate volatility
+        } elseif ($volatilityRatio <= $config['atr_threshold'] * 1.25) {
+            return 8; // Slightly high volatility
+        } else {
+            return 0; // High volatility
+        }
+    }
+
+    /**
+     * Analyze volume patterns
+     */
+    public static function analyzeVolume($data, $startIndex, $endIndex, $config)
+    {
+        $volumes = [];
+
+        for ($i = $startIndex; $i <= $endIndex; $i++) {
+            $volumes[] = $data[$i]['volume'];
+        }
+
+        $avgVolume = array_sum($volumes) / count($volumes);
+
+        // Check if we have volume MA data
+        $currentVolumeMA = isset($data[$endIndex]['volumeMA10']) ? $data[$endIndex]['volumeMA10'] : $avgVolume;
+        $volumeRatio = $avgVolume / $currentVolumeMA;
+
+        // Lower volume during consolidation is typical
+        if ($volumeRatio <= $config['volume_threshold'] * 0.6) {
+            return 20; // Very low volume
+        } elseif ($volumeRatio <= $config['volume_threshold'] * 0.8) {
+            return 15; // Low volume
+        } elseif ($volumeRatio <= $config['volume_threshold']) {
+            return 10; // Moderate volume
+        } else {
+            return 5; // Higher volume (less consolidation-like)
+        }
+    }
+
+    /**
+     * Analyze ADX for trend strength
+     */
+    public static function analyzeADX($data, $index, $config)
+    {
+        if (!isset($data[$index]['adx'])) {
+            return 0;
+        }
+
+        $adx = $data[$index]['adx'];
+
+        // Lower ADX indicates sideways/consolidating market
+        if ($adx <= $config['adx_threshold'] * 0.6) {
+            return 15; // Very weak trend (strong consolidation signal)
+        } elseif ($adx <= $config['adx_threshold'] * 0.8) {
+            return 12; // Weak trend
+        } elseif ($adx <= $config['adx_threshold']) {
+            return 8; // Moderate trend
+        } else {
+            return 0; // Strong trend (not consolidating)
+        }
+    }
+
+    /**
+     * Analyze Bollinger Band width
+     */
+    public static function analyzeBollingerBands($data, $index, $config)
+    {
+        if (!isset($data[$index]['bb_upper']) || !isset($data[$index]['bb_lower']) || !isset($data[$index]['bb_middle'])) {
+            return 0;
+        }
+
+        $upper = $data[$index]['bb_upper'];
+        $lower = $data[$index]['bb_lower'];
+        $middle = $data[$index]['bb_middle'];
+
+        // Calculate band width as percentage
+        $bandWidth = (($upper - $lower) / $middle) * 100;
+
+        // Calculate average band width over recent periods
+        $bandWidths = [];
+        $lookback = min(20, $index);
+
+        for ($i = max(0, $index - $lookback); $i <= $index; $i++) {
+            if (isset($data[$i]['bb_upper']) && isset($data[$i]['bb_lower']) && isset($data[$i]['bb_middle'])) {
+                $bw = (($data[$i]['bb_upper'] - $data[$i]['bb_lower']) / $data[$i]['bb_middle']) * 100;
+                $bandWidths[] = $bw;
+            }
+        }
+
+        if (empty($bandWidths)) {
+            return 0;
+        }
+
+        $avgBandWidth = array_sum($bandWidths) / count($bandWidths);
+        $bandWidthRatio = $bandWidth / $avgBandWidth;
+
+        // Narrow bands indicate consolidation
+        if ($bandWidthRatio <= 0.7) {
+            return 10; // Very narrow bands
+        } elseif ($bandWidthRatio <= 0.85) {
+            return 7; // Narrow bands
+        } elseif ($bandWidthRatio <= 1.0) {
+            return 4; // Moderate bands
+        } else {
+            return 0; // Wide bands
+        }
+    }
+
+    /**
+     * Calculate consolidation bounds
+     */
+    public static function calculateConsolidationBounds($data, $startIndex, $endIndex)
+    {
+        $highs = [];
+        $lows = [];
+        $closes = [];
+
+        for ($i = $startIndex; $i <= $endIndex; $i++) {
+            $highs[] = $data[$i]['high'];
+            $lows[] = $data[$i]['low'];
+            $closes[] = $data[$i]['close'];
+        }
+
+        $upper = max($highs);
+        $lower = min($lows);
+        $avgClose = array_sum($closes) / count($closes);
+
+        $rangePercent = (($upper - $lower) / $avgClose) * 100;
+
+        return [
+            'upper' => round($upper, 6),
+            'lower' => round($lower, 6),
+            'range_percent' => round($rangePercent, 2)
+        ];
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
+     * detect_zones_at_index
+     *
+     * Detects demand & supply zones for a given candle index in a dataset.
+     *
+     * @param array $data  Array of candle data (your provided structure)
+     * @param int   $index Current index of candle to check
+     * @param array $opts  Optional settings
+     * @return array ['supply' => [...], 'demand' => [...]]
+     */
+    public static function detect_zones_at_index(array $data, int $index, array $opts = []): array
+    {
+        $swing_w = $opts['swing_width'] ?? 2;
+        $min_impulse_pct = $opts['min_impulse_pct'] ?? 0.8;
+        $buffer_pct = $opts['buffer_pct'] ?? 0.15;
+
+        $n = count($data);
+        $zones = ['supply' => [], 'demand' => []];
+
+        // Helper: percent change
+        $pct = function ($from, $to) {
+            return $from != 0 ? (($to - $from) / $from) * 100.0 : 0;
+        };
+
+        if ($index < $swing_w || $index >= $n - $swing_w) {
+            return $zones; // not enough candles around
+        }
+
+        $hi = $data[$index]['high'];
+        $lo = $data[$index]['low'];
+        $op = $data[$index]['open'];
+        $cl = $data[$index]['close'];
+
+        // --- SWING HIGH CHECK ---
+        $isSwingHigh = true;
+        for ($k = 1; $k <= $swing_w; $k++) {
+            if ($data[$index - $k]['high'] >= $hi || $data[$index + $k]['high'] >= $hi) {
+                $isSwingHigh = false;
+                break;
+            }
+        }
+        if ($isSwingHigh) {
+            $futureIdx = min($n - 1, $index + $swing_w + 1);
+            $futureClose = $data[$futureIdx]['close'];
+            $movePct = $pct($hi, $futureClose); // should be negative
+            if ($movePct < 0 && abs($movePct) >= $min_impulse_pct) {
+                $bodyHigh = max($op, $cl);
+                $buffer = ($hi - $bodyHigh) * $buffer_pct;
+                $zones['supply'][] = [
+                    'top'         => $hi,
+                    'bottom'      => $bodyHigh + $buffer,
+                    'pivot_index' => $index,
+                    'pivot_time'  => $data[$index]['timestamp'],
+                    'strength_pct' => abs($movePct)
+                ];
+            }
+        }
+
+        // --- SWING LOW CHECK ---
+        $isSwingLow = true;
+        for ($k = 1; $k <= $swing_w; $k++) {
+            if ($data[$index - $k]['low'] <= $lo || $data[$index + $k]['low'] <= $lo) {
+                $isSwingLow = false;
+                break;
+            }
+        }
+        if ($isSwingLow) {
+            $futureIdx = min($n - 1, $index + $swing_w + 1);
+            $futureClose = $data[$futureIdx]['close'];
+            $movePct = $pct($lo, $futureClose); // should be positive
+            if ($movePct > 0 && $movePct >= $min_impulse_pct) {
+                $bodyLow = min($op, $cl);
+                $buffer = ($bodyLow - $lo) * $buffer_pct;
+                $zones['demand'][] = [
+                    'top'         => $bodyLow - $buffer,
+                    'bottom'      => $lo,
+                    'pivot_index' => $index,
+                    'pivot_time'  => $data[$index]['timestamp'],
+                    'strength_pct' => $movePct
+                ];
+            }
+        }
+
+        return $zones;
+    }
+
+
+
+
+
+
+
+
+    //  ############# Volumetric OrderBlock Analysis ####################
+
+
+    // Configuration constants (matching Pine Script)
+    const DEBUG = false;
+    const MAX_BOXES_COUNT = 500;
+    const OVERLAP_THRESHOLD_PERCENTAGE = 0;
+    const MAX_DISTANCE_TO_LAST_BAR = 1750;
+    const MAX_ORDER_BLOCKS = 30;
+
+    // Static variables to maintain state between calls
+    private static $bullishOrderBlocksList = [];
+    private static $bearishOrderBlocksList = [];
+    private static $allOrderBlocksList = [];
+    private static $lastProcessedIndex = -1;
+
+    // Configuration parameters
+    private static $config = [
+        'showInvalidated' => true,
+        'orderBlockVolumetricInfo' => true,
+        'obEndMethod' => 'Wick', // 'Wick' or 'Close'
+        'combineOBs' => true,
+        'maxATRMult' => 3.5,
+        'swingLength' => 10,
+        'zoneCount' => 'Low', // 'High', 'Medium', 'Low', 'One'
+        'bullOrderBlockColor' => '#08998180',
+        'bearOrderBlockColor' => '#f2364680'
+    ];
+
+    public static function setConfig($key, $value)
+    {
+        if (array_key_exists($key, self::$config)) {
+            self::$config[$key] = $value;
+        }
+    }
+
+    public static function getVolumetricOrderBlocks($data, $currentIndex)
+    {
+        // Only process new data
+        if ($currentIndex <= self::$lastProcessedIndex) {
+            return self::getFinalResults();
+        }
+
+        self::$lastProcessedIndex = $currentIndex;
+
+        if ($currentIndex < self::$config['swingLength']) {
+            return self::getFinalResults();
+        }
+
+        // Calculate ATR for size validation
+        $atr = self::calculateATR($data, $currentIndex, 10);
+
+        // Find swings and process order blocks
+        $swings = self::findOBSwings($data, $currentIndex, self::$config['swingLength']);
+
+        if ($swings) {
+            self::processOrderBlocks($data, $currentIndex, $swings, $atr);
+        }
+
+        // Combine overlapping zones if enabled
+        if (self::$config['combineOBs']) {
+            self::combineOBsFunc();
+        }
+
+        return self::getFinalResults();
+    }
+
+    private static function findOBSwings($data, $currentIndex, $len)
+    {
+        static $swingType = 0;
+        static $top = null;
+        static $bottom = null;
+
+        if ($currentIndex < $len) {
+            return null;
+        }
+
+        // Find highest and lowest in swing period
+        $upper = self::getHighest($data, $currentIndex - $len, $len);
+        $lower = self::getLowest($data, $currentIndex - $len, $len);
+
+        $pivotIndex = $currentIndex - $len;
+        $pivotHigh = $data[$pivotIndex]['high'];
+        $pivotLow = $data[$pivotIndex]['low'];
+        $pivotVolume = $data[$pivotIndex]['volume'] ?? 0;
+
+        $newSwingType = $swingType;
+
+        if ($pivotHigh > $upper) {
+            $newSwingType = 0; // Swing high
+        } elseif ($pivotLow < $lower) {
+            $newSwingType = 1; // Swing low
+        }
+
+        $result = null;
+
+        // Detect swing high
+        if ($newSwingType == 0 && $swingType != 0) {
+            $top = [
+                'x' => $pivotIndex,
+                'y' => $pivotHigh,
+                'swingVolume' => $pivotVolume,
+                'crossed' => false
+            ];
+            $result = ['top' => $top, 'bottom' => $bottom];
+        }
+
+        // Detect swing low
+        if ($newSwingType == 1 && $swingType != 1) {
+            $bottom = [
+                'x' => $pivotIndex,
+                'y' => $pivotLow,
+                'swingVolume' => $pivotVolume,
+                'crossed' => false
+            ];
+            $result = ['top' => $top, 'bottom' => $bottom];
+        }
+
+        $swingType = $newSwingType;
+        return $result;
+    }
+
+    private static function processOrderBlocks($data, $currentIndex, $swings, $atr)
+    {
+        $current = $data[$currentIndex];
+        $prev = $data[$currentIndex - 1];
+
+        // Get zone count limits
+        $limits = self::getZoneLimits();
+
+        // Process existing bullish order blocks
+        self::processBullishOrderBlocks($data, $currentIndex, $limits['bullish']);
+
+        // Process existing bearish order blocks
+        self::processBearishOrderBlocks($data, $currentIndex, $limits['bearish']);
+
+        // Check for new bullish order block formation
+        if (isset($swings['top']) && !$swings['top']['crossed']) {
+            if ($current['close'] > $swings['top']['y']) {
+                $swings['top']['crossed'] = true;
+                $newOB = self::createBullishOrderBlock($data, $currentIndex, $swings['top'], $atr);
+                if ($newOB) {
+                    array_unshift(self::$bullishOrderBlocksList, $newOB);
+                    if (count(self::$bullishOrderBlocksList) > self::MAX_ORDER_BLOCKS) {
+                        array_pop(self::$bullishOrderBlocksList);
+                    }
+                }
+            }
+        }
+
+        // Check for new bearish order block formation
+        if (isset($swings['bottom']) && !$swings['bottom']['crossed']) {
+            if ($current['close'] < $swings['bottom']['y']) {
+                $swings['bottom']['crossed'] = true;
+                $newOB = self::createBearishOrderBlock($data, $currentIndex, $swings['bottom'], $atr);
+                if ($newOB) {
+                    array_unshift(self::$bearishOrderBlocksList, $newOB);
+                    if (count(self::$bearishOrderBlocksList) > self::MAX_ORDER_BLOCKS) {
+                        array_pop(self::$bearishOrderBlocksList);
+                    }
+                }
+            }
+        }
+    }
+
+    private static function createBullishOrderBlock($data, $currentIndex, $topSwing, $atr)
+    {
+        $boxBtm = $data[$currentIndex - 1]['high']; // Start with previous high
+        $boxTop = $data[$currentIndex - 1]['low'];   // Start with previous low
+        $boxLoc = $data[$currentIndex - 1]['time'];
+
+        // Look back from current bar to swing point to find the base
+        $swingDistance = $currentIndex - $topSwing['x'];
+
+        for ($i = 1; $i <= $swingDistance - 1; $i++) {
+            $candleIndex = $currentIndex - $i;
+            if ($candleIndex < 0) break;
+
+            $candleLow = $data[$candleIndex]['low'];
+            $candleHigh = $data[$candleIndex]['high'];
+            $candleTime = $data[$candleIndex]['time'];
+
+            if ($candleLow < $boxBtm) {
+                $boxBtm = $candleLow;
+                $boxTop = $candleHigh;
+                $boxLoc = $candleTime;
+            }
+        }
+
+        // Calculate volumes
+        $obVolume = ($data[$currentIndex]['volume'] ?? 0) +
+            ($data[$currentIndex - 1]['volume'] ?? 0) +
+            ($data[$currentIndex - 2]['volume'] ?? 0);
+
+        $obLowVolume = $data[$currentIndex - 2]['volume'] ?? 0;
+        $obHighVolume = ($data[$currentIndex]['volume'] ?? 0) + ($data[$currentIndex - 1]['volume'] ?? 0);
+
+        // Validate size against ATR
+        $obSize = abs($boxTop - $boxBtm);
+        if ($obSize > $atr * self::$config['maxATRMult']) {
+            return null;
+        }
+
+        return [
+            'top' => $boxTop,
+            'bottom' => $boxBtm,
+            'obVolume' => $obVolume,
+            'obType' => 'Bull',
+            'startTime' => $boxLoc,
+            'bbVolume' => null,
+            'obLowVolume' => $obLowVolume,
+            'obHighVolume' => $obHighVolume,
+            'breaker' => false,
+            'breakTime' => null,
+            'timeframeStr' => '',
+            'disabled' => false,
+            'combinedTimeframesStr' => null,
+            'combined' => false,
+            'startIndex' => $currentIndex - $swingDistance + 1
+        ];
+    }
+
+    private static function createBearishOrderBlock($data, $currentIndex, $bottomSwing, $atr)
+    {
+        $boxBtm = $data[$currentIndex - 1]['low'];   // Start with previous low
+        $boxTop = $data[$currentIndex - 1]['high'];  // Start with previous high
+        $boxLoc = $data[$currentIndex - 1]['time'];
+
+        // Look back from current bar to swing point to find the base
+        $swingDistance = $currentIndex - $bottomSwing['x'];
+
+        for ($i = 1; $i <= $swingDistance - 1; $i++) {
+            $candleIndex = $currentIndex - $i;
+            if ($candleIndex < 0) break;
+
+            $candleLow = $data[$candleIndex]['low'];
+            $candleHigh = $data[$candleIndex]['high'];
+            $candleTime = $data[$candleIndex]['time'];
+
+            if ($candleHigh > $boxTop) {
+                $boxTop = $candleHigh;
+                $boxBtm = $candleLow;
+                $boxLoc = $candleTime;
+            }
+        }
+
+        // Calculate volumes
+        $obVolume = ($data[$currentIndex]['volume'] ?? 0) +
+            ($data[$currentIndex - 1]['volume'] ?? 0) +
+            ($data[$currentIndex - 2]['volume'] ?? 0);
+
+        $obLowVolume = ($data[$currentIndex]['volume'] ?? 0) + ($data[$currentIndex - 1]['volume'] ?? 0);
+        $obHighVolume = $data[$currentIndex - 2]['volume'] ?? 0;
+
+        // Validate size against ATR
+        $obSize = abs($boxTop - $boxBtm);
+        if ($obSize > $atr * self::$config['maxATRMult']) {
+            return null;
+        }
+
+        return [
+            'top' => $boxTop,
+            'bottom' => $boxBtm,
+            'obVolume' => $obVolume,
+            'obType' => 'Bear',
+            'startTime' => $boxLoc,
+            'bbVolume' => null,
+            'obLowVolume' => $obLowVolume,
+            'obHighVolume' => $obHighVolume,
+            'breaker' => false,
+            'breakTime' => null,
+            'timeframeStr' => '',
+            'disabled' => false,
+            'combinedTimeframesStr' => null,
+            'combined' => false,
+            'startIndex' => $currentIndex - $swingDistance + 1
+        ];
+    }
+
+    private static function processBullishOrderBlocks($data, $currentIndex, $maxBullish)
+    {
+        $current = $data[$currentIndex];
+
+        for ($i = count(self::$bullishOrderBlocksList) - 1; $i >= 0; $i--) {
+            $ob = &self::$bullishOrderBlocksList[$i];
+
+            if (!$ob['breaker']) {
+                // Check for invalidation
+                $invalidationLevel = self::$config['obEndMethod'] === 'Wick'
+                    ? $current['low']
+                    : min($current['open'], $current['close']);
+
+                if ($invalidationLevel < $ob['bottom']) {
+                    $ob['breaker'] = true;
+                    $ob['breakTime'] = $current['time'];
+                    $ob['bbVolume'] = $current['volume'] ?? 0;
+                }
+            } else {
+                // Remove fully broken zones
+                if ($current['high'] > $ob['top']) {
+                    array_splice(self::$bullishOrderBlocksList, $i, 1);
+                }
+            }
+        }
+    }
+
+    private static function processBearishOrderBlocks($data, $currentIndex, $maxBearish)
+    {
+        $current = $data[$currentIndex];
+
+        for ($i = count(self::$bearishOrderBlocksList) - 1; $i >= 0; $i--) {
+            $ob = &self::$bearishOrderBlocksList[$i];
+
+            if (!$ob['breaker']) {
+                // Check for invalidation
+                $invalidationLevel = self::$config['obEndMethod'] === 'Wick'
+                    ? $current['high']
+                    : max($current['open'], $current['close']);
+
+                if ($invalidationLevel > $ob['top']) {
+                    $ob['breaker'] = true;
+                    $ob['breakTime'] = $current['time'];
+                    $ob['bbVolume'] = $current['volume'] ?? 0;
+                }
+            } else {
+                // Remove fully broken zones
+                if ($current['low'] < $ob['bottom']) {
+                    array_splice(self::$bearishOrderBlocksList, $i, 1);
+                }
+            }
+        }
+    }
+
+    private static function combineOBsFunc()
+    {
+        // Combine all zones into single array for processing
+        $allZones = [];
+
+        foreach (self::$bullishOrderBlocksList as $ob) {
+            if (!$ob['disabled']) {
+                $allZones[] = $ob;
+            }
+        }
+
+        foreach (self::$bearishOrderBlocksList as $ob) {
+            if (!$ob['disabled']) {
+                $allZones[] = $ob;
+            }
+        }
+
+        $lastCombinations = 999;
+        while ($lastCombinations > 0) {
+            $lastCombinations = 0;
+
+            for ($i = 0; $i < count($allZones); $i++) {
+                for ($j = 0; $j < count($allZones); $j++) {
+                    if ($i == $j) continue;
+                    if ($allZones[$i]['disabled'] || $allZones[$j]['disabled']) continue;
+                    if ($allZones[$i]['obType'] !== $allZones[$j]['obType']) continue;
+
+                    if (self::doOBsTouch($allZones[$i], $allZones[$j])) {
+                        $newOB = self::combineOrderBlocks($allZones[$i], $allZones[$j]);
+
+                        // Disable original zones
+                        $allZones[$i]['disabled'] = true;
+                        $allZones[$j]['disabled'] = true;
+
+                        // Add new combined zone
+                        $allZones[] = $newOB;
+                        $lastCombinations++;
+                        break 2; // Exit both loops to restart
+                    }
+                }
+            }
+        }
+
+        // Update the original arrays with valid zones
+        self::updateZoneArraysAfterCombination($allZones);
+    }
+
+    private static function doOBsTouch($ob1, $ob2)
+    {
+        $area1 = self::areaOfOB($ob1);
+        $area2 = self::areaOfOB($ob2);
+
+        // Calculate intersection
+        $intersectionArea = max(0, min($ob1['top'], $ob2['top']) - max($ob1['bottom'], $ob2['bottom']));
+        $unionArea = $area1 + $area2 - $intersectionArea;
+
+        $overlapPercentage = $unionArea > 0 ? ($intersectionArea / $unionArea) * 100.0 : 0;
+
+        return $overlapPercentage > self::OVERLAP_THRESHOLD_PERCENTAGE;
+    }
+
+    private static function areaOfOB($ob)
+    {
+        return abs($ob['top'] - $ob['bottom']);
+    }
+
+    private static function combineOrderBlocks($ob1, $ob2)
+    {
+        return [
+            'top' => max($ob1['top'], $ob2['top']),
+            'bottom' => min($ob1['bottom'], $ob2['bottom']),
+            'obVolume' => $ob1['obVolume'] + $ob2['obVolume'],
+            'obType' => $ob1['obType'],
+            'startTime' => min($ob1['startTime'], $ob2['startTime']),
+            'breakTime' => max($ob1['breakTime'] ?? 0, $ob2['breakTime'] ?? 0) ?: null,
+            'obLowVolume' => $ob1['obLowVolume'] + $ob2['obLowVolume'],
+            'obHighVolume' => $ob1['obHighVolume'] + $ob2['obHighVolume'],
+            'bbVolume' => ($ob1['bbVolume'] ?? 0) + ($ob2['bbVolume'] ?? 0),
+            'breaker' => $ob1['breaker'] || $ob2['breaker'],
+            'timeframeStr' => $ob1['timeframeStr'],
+            'disabled' => false,
+            'combinedTimeframesStr' => null,
+            'combined' => true,
+            'startIndex' => min($ob1['startIndex'] ?? 0, $ob2['startIndex'] ?? 0)
+        ];
+    }
+
+    private static function updateZoneArraysAfterCombination($allZones)
+    {
+        $newBullish = [];
+        $newBearish = [];
+
+        foreach ($allZones as $zone) {
+            if (!$zone['disabled']) {
+                if ($zone['obType'] === 'Bull') {
+                    $newBullish[] = $zone;
+                } else {
+                    $newBearish[] = $zone;
+                }
+            }
+        }
+
+        self::$bullishOrderBlocksList = $newBullish;
+        self::$bearishOrderBlocksList = $newBearish;
+    }
+
+    private static function getZoneLimits()
+    {
+        switch (self::$config['zoneCount']) {
+            case 'One':
+                return ['bullish' => 1, 'bearish' => 1];
+            case 'Low':
+                return ['bullish' => 3, 'bearish' => 3];
+            case 'Medium':
+                return ['bullish' => 5, 'bearish' => 5];
+            case 'High':
+                return ['bullish' => 10, 'bearish' => 10];
+            default:
+                return ['bullish' => 3, 'bearish' => 3];
+        }
+    }
+
+    private static function calculateATR($data, $currentIndex, $period)
+    {
+        if ($currentIndex < $period) return 1.0;
+
+        $trValues = [];
+
+        for ($i = max(1, $currentIndex - $period + 1); $i <= $currentIndex; $i++) {
+            $high = $data[$i]['high'];
+            $low = $data[$i]['low'];
+            $prevClose = $data[$i - 1]['close'];
+
+            $tr = max(
+                $high - $low,
+                abs($high - $prevClose),
+                abs($low - $prevClose)
+            );
+
+            $trValues[] = $tr;
+        }
+
+        return array_sum($trValues) / count($trValues);
+    }
+
+    private static function getHighest($data, $startIndex, $length)
+    {
+        $highest = $data[$startIndex]['high'];
+
+        for ($i = $startIndex; $i < $startIndex + $length && $i < count($data); $i++) {
+            if ($data[$i]['high'] > $highest) {
+                $highest = $data[$i]['high'];
+            }
+        }
+
+        return $highest;
+    }
+
+    private static function getLowest($data, $startIndex, $length)
+    {
+        $lowest = $data[$startIndex]['low'];
+
+        for ($i = $startIndex; $i < $startIndex + $length && $i < count($data); $i++) {
+            if ($data[$i]['low'] < $lowest) {
+                $lowest = $data[$i]['low'];
+            }
+        }
+
+        return $lowest;
+    }
+
+    private static function getFinalResults()
+    {
+        $limits = self::getZoneLimits();
+
+        // Filter and sort zones by strength/recency
+        $validBullish = array_filter(self::$bullishOrderBlocksList, function ($ob) {
+            return !$ob['disabled'] && (self::$config['showInvalidated'] || !$ob['breaker']);
+        });
+
+        $validBearish = array_filter(self::$bearishOrderBlocksList, function ($ob) {
+            return !$ob['disabled'] && (self::$config['showInvalidated'] || !$ob['breaker']);
+        });
+
+        // Limit results
+        $validBullish = array_slice($validBullish, 0, $limits['bullish']);
+        $validBearish = array_slice($validBearish, 0, $limits['bearish']);
+
+        return [
+            'bullish_zones' => $validBullish,
+            'bearish_zones' => $validBearish,
+            'total_zones' => count($validBullish) + count($validBearish)
+        ];
+    }
+
+    public static function reset()
+    {
+        self::$bullishOrderBlocksList = [];
+        self::$bearishOrderBlocksList = [];
+        self::$allOrderBlocksList = [];
+        self::$lastProcessedIndex = -1;
     }
 }
