@@ -13,8 +13,11 @@ use App\Services\InternalTrader\ReportService;
 use App\Services\InternalTrader\ReportServiceSafeMode;
 use App\Services\InternalTrader\ReportServiceSafeModeMacdSwing;
 use App\Services\MarketTrendService;
+use App\Services\OpeningConditionServiceLive;
+use App\Services\OrderBlockService;
 use App\Services\OrderBookStrategy;
 use App\Services\ReportService\LongReportService;
+use App\Services\SmartMoneyConceptsService;
 use App\Services\SupportResistanceAnalyzer;
 use App\Services\TradingGapAnalyzer;
 use Carbon\Carbon;
@@ -25,8 +28,31 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+use function PHPSTORM_META\map;
+
 class BinanceController extends Controller
 {
+
+    private SmartMoneyConceptsService $smcService;
+
+    public function __construct()
+    {
+        // Initialize SMC service with custom configuration
+        $this->smcService = new SmartMoneyConceptsService([
+            'swing_length' => 5,
+            'max_order_blocks' => 5,
+            'max_fvgs' => 5,
+            'swing_limit' => 100,
+            'ob_mitigation_method' => 'close',
+            'fvg_mitigation_method' => 'close',
+            'fvg_threshold' => 0.1,
+            'build_sweeps' => true,
+            'overlap_filter' => true,
+            'atr_length' => 200,
+            'ob_mode' => 'length',
+            'ob_length_multiplier' => 1.0
+        ]);
+    }
 
     public function deleteCoinReport()
     {
@@ -1095,6 +1121,7 @@ class BinanceController extends Controller
         $formula = $request->query('formula');
         $stopLoss = $request->query('stopLoss') ?? 1;
 
+        $lines = [];
         // Fetch the trades for the given symbol
         $trades = DB::table('coin_reports')
             ->where('symbol', $symbol)
@@ -1241,6 +1268,7 @@ class BinanceController extends Controller
 
 
             $buyingCandle = $trade->buyingCandle;
+            $sellingCandle = $trade->sellingCandle;
             // if (isset($buyingCandle->lowPivots)) {
             //     foreach ($buyingCandle->lowPivots as $lpIndex => $lp) {
             //         $lpCount =  $lpIndex + 1;
@@ -1280,6 +1308,51 @@ class BinanceController extends Controller
                     'position' => $trade->position === 'LONG' ? 'belowBar' : 'aboveBar'
                 ];
             }
+
+            $tsAdjustment = 18000000;
+
+            if (isset($buyingCandle->latestBearOb)) {
+                $latestBearOb = $buyingCandle->latestBearOb;
+                $lines[] = [
+                    'x1' => $latestBearOb->timestamp + $tsAdjustment, // timestamp for first point
+                    'y1' => $latestBearOb->top,         // price for first point
+                    'x2' => $sellingCandle->timestamp_pst, // timestamp for second point
+                    'y2' => $latestBearOb->top,         // price for second point
+                    'color' => 'red',  // red color
+                    'thickness' => 2,      // line thickness
+                    'title' => 'Bear OB'
+                ];
+                $lines[] = [
+                    'x1' => $latestBearOb->timestamp + $tsAdjustment, // timestamp for first point
+                    'y1' => $latestBearOb->bottom,         // price for first point
+                    'x2' => $sellingCandle->timestamp_pst, // timestamp for second point
+                    'y2' => $latestBearOb->bottom,         // price for second point
+                    'color' => 'red',  // red color
+                    'thickness' => 2,      // line thickness
+                    'title' => 'Bear OB'
+                ];
+            }
+            if (isset($buyingCandle->latestBullOb)) {
+                $latestBullOb = $buyingCandle->latestBullOb;
+                $lines[] = [
+                    'x1' => $latestBullOb->timestamp + $tsAdjustment, // timestamp for first point
+                    'y1' => $latestBullOb->top,         // price for first point
+                    'x2' => $sellingCandle->timestamp_pst, // timestamp for second point
+                    'y2' => $latestBullOb->top,         // price for second point
+                    'color' => 'green',  // red color
+                    'thickness' => 2,      // line thickness
+                    'title' => 'Bull OB'
+                ];
+                $lines[] = [
+                    'x1' => $latestBullOb->timestamp + $tsAdjustment, // timestamp for first point
+                    'y1' => $latestBullOb->bottom,         // price for first point
+                    'x2' => $sellingCandle->timestamp_pst, // timestamp for second point
+                    'y2' => $latestBullOb->bottom,         // price for second point
+                    'color' => 'green',  // red color
+                    'thickness' => 2,      // line thickness
+                    'title' => 'Bull OB'
+                ];
+            }
         }
 
         return view('CoinReports.coin-report-details', [
@@ -1296,6 +1369,7 @@ class BinanceController extends Controller
             'volumeSignals' => $volumeSignals,
             'liveTradesData' => $liveTradesData,
             'tradeMarkers' => $tradeMarkers,
+            'lines' => $lines,
 
 
         ]);
@@ -1307,7 +1381,7 @@ class BinanceController extends Controller
 
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '15m');
-        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, null, 'FUTURE');
+        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 2000, null, 'FUTURE');
 
         $openingMarkers = [];
         $lines = [];
@@ -1342,17 +1416,10 @@ class BinanceController extends Controller
 
 
         $thresholdPips = 1000;
+        $latestDemand = null;
+        $latestSupply = null;
 
-
-
-
-
-
-        self::setConfig('swingLength', 10);
-        self::setConfig('zoneCount', 'Medium');
-        self::setConfig('obEndMethod', 'Wick');
-
-
+        $lastIndex = count($data) - 1;
 
 
 
@@ -1362,54 +1429,743 @@ class BinanceController extends Controller
 
 
 
+        $orderBlockService = new OrderBlockService(
+            swingLength: 10,      // Default swing length
+            obEndMethod: 'Wick',  // 'Wick' or 'Close'
+            zoneCount: 'Low',     // 'One', 'Low', 'Medium', 'High'
+            combineOBs: true      // Whether to combine overlapping order blocks
+        );
+
+
+        // // Calculate order blocks up to a specific index
+        // $result = $orderBlockService->calculateOrderBlocks($data, $lastIndex);
+
+
+
+
+        // foreach ($result['bullish'] as $bull) {
+
+
+        //     $index = $lastIndex - OpeningConditionServiceLive::getIndexDiffFromTimestamps($bull['startTime'], $data[$lastIndex]['binance_timestamp'], '15m', true);
+        //     $lines[] = [
+        //         'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+        //         'y1' => $bull['top'],         // price for first point
+        //         'x2' => $data[$lastIndex]['timestamp_pst'], // timestamp for second point
+        //         'y2' => $bull['top'],         // price for second point
+        //         'color' => 'green',  // red color
+        //         'thickness' => 2,      // line thickness
+        //         'title' => 'Demand High'
+        //     ];
+
+        //     $lines[] = [
+        //         'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+        //         'y1' => $bull['bottom'],         // price for first point
+        //         'x2' => $data[$lastIndex]['timestamp_pst'], // timestamp for second point
+        //         'y2' => $bull['bottom'],         // price for second point
+        //         'color' => 'green',  // red color
+        //         'thickness' => 2,      // line thickness
+        //         'title' => 'Demand Low'
+        //     ];
+        // }
+
+        // foreach ($result['bearish'] as $bear) {
+        //     $index = $lastIndex - OpeningConditionServiceLive::getIndexDiffFromTimestamps($bear['startTime'], $data[$lastIndex]['binance_timestamp'], '15m', true);
+        //     $lines[] = [
+        //         'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+        //         'y1' => $bear['top'],         // price for first point
+        //         'x2' => $data[$lastIndex]['timestamp_pst'], // timestamp for second point
+        //         'y2' => $bear['top'],         // price for second point
+        //         'color' => 'red',  // red color
+        //         'thickness' => 2,      // line thickness
+        //         'title' => 'Supply High'
+        //     ];
+
+        //     $lines[] = [
+        //         'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+        //         'y1' => $bear['bottom'],         // price for first point
+        //         'x2' => $data[$lastIndex]['timestamp_pst'], // timestamp for second point
+        //         'y2' => $bear['bottom'],         // price for second point
+        //         'color' => 'red',  // red color
+        //         'thickness' => 2,      // line thickness
+        //         'title' => 'Supply Low'
+        //     ];
+        // }
+
+
+        $fvgsIndex = [];
+        $filledFvgsIndex = [];
+
+        $unfilledFVGs = [];
+        $isConsolidated = false;
+
+
+        $openTrade = null;
+        $fibsIndex = [];
 
 
 
 
 
+        $detector = new OrderBlockDetector();
+        $orderBlocks = $detector->getRecentOrderBlocks($data, count($data) - 1, 5);
+
+        // Access bull and bear order blocks
+        $bullOrderBlocks = $orderBlocks['bull'];
+        $bearOrderBlocks = $orderBlocks['bear'];
+
+        foreach ($bullOrderBlocks as $ob) {
+
+            $lastIndex = count($data) - 1;
+            $index = $lastIndex -  OpeningConditionServiceLive::getIndexDiffFromTimestamps($ob['timestamp'], $data[$lastIndex]['binance_timestamp'], '15m', true);
+            $lines[] = [
+                'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+                'y1' => $ob['top'],         // price for first point
+                'x2' => $data[$lastIndex]['timestamp_pst'], // timestamp for second point
+                'y2' => $ob['top'],         // price for second point
+                'color' => 'green',  // red color
+                'thickness' => 2,      // line thickness
+                'title' => 'OBH'
+            ];
+
+            $lines[] = [
+                'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+                'y1' => $ob['bottom'],         // price for first point
+                'x2' => $data[$lastIndex]['timestamp_pst'], // timestamp for second point
+                'y2' => $ob['bottom'],         // price for second point
+                'color' => 'green',  // red color
+                'thickness' => 2,      // line thickness
+                'title' => 'OBL'
+            ];
+        }
+
+
+        foreach ($bearOrderBlocks as $ob) {
+            $lastIndex = count($data) - 1;
+            $index = $lastIndex -  OpeningConditionServiceLive::getIndexDiffFromTimestamps($ob['timestamp'], $data[$lastIndex]['binance_timestamp'], '15m', true);
+            $lines[] = [
+                'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+                'y1' => $ob['top'],         // price for first point
+                'x2' => $data[$lastIndex]['timestamp_pst'], // timestamp for second point
+                'y2' => $ob['top'],         // price for second point
+                'color' => 'red',  // red color
+                'thickness' => 2,      // line thickness
+                'title' => 'OBH'
+            ];
+
+            $lines[] = [
+                'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+                'y1' => $ob['bottom'],         // price for first point
+                'x2' => $data[$lastIndex]['timestamp_pst'], // timestamp for second point
+                'y2' => $ob['bottom'],         // price for second point
+                'color' => 'red',  // red color
+                'thickness' => 2,      // line thickness
+                'title' => 'OBL'
+            ];
+        }
+
+
+
+        $enteredZone = false;
 
         foreach ($data as $index => &$candle) {
+
+
+
 
             if ($index < 200 || $index > count($data) - 10) {
                 continue;
             }
+
             if ($waitingCandles) {
                 $waitingCandles--;
                 continue;
             }
 
 
-            $zones = $this->getVolumetricOrderBlocks($data, 999);
 
-            foreach ($zones['bullish_zones'] as $zone) {
-                dd($zone);
+
+
+
+
+
+            if ($openTrade) {
+
+
+                if ($openTrade['side'] === 'BUY') {
+
+                    if ($data[$index]['high'] >= $openTrade['take_profit']) {
+                        $openingMarkers[] = [
+                            'timestamp_pst' => $data[$index]['timestamp_pst'],
+                            'color' => 'green',
+                            'text' => 'Buy Close',
+                            'position' =>  'aboveBar',
+                        ];
+
+                        $openTrade = null;
+                    } else if ($data[$index]['low'] <= $openTrade['stop_loss']) {
+
+                        $openingMarkers[] = [
+                            'timestamp_pst' => $data[$index]['timestamp_pst'],
+                            'color' => 'orange',
+                            'text' => 'Buy Close',
+                            'position' =>  'belowBar',
+                        ];
+                        $openTrade = null;
+                    }
+                } else {
+                    if ($data[$index]['low'] <= $openTrade['take_profit']) {
+                        $openingMarkers[] = [
+                            'timestamp_pst' => $data[$index]['timestamp_pst'],
+                            'color' => 'red',
+                            'text' => 'Sell Close',
+                            'position' =>  'belowBar',
+                        ];
+
+                        $openTrade = null;
+                    } else if ($data[$index]['high'] >= $openTrade['stop_loss']) {
+
+                        $openingMarkers[] = [
+                            'timestamp_pst' => $data[$index]['timestamp_pst'],
+                            'color' => 'orange',
+                            'text' => 'Sell Close',
+                            'position' =>  'aboveBar',
+                        ];
+                        $openTrade = null;
+                    }
+                }
+                continue;
             }
 
-            // $lines[] = [
-            //     'x1' => $data[$zones['demand_index']]['timestamp_pst'], // timestamp for first point
-            //     'y1' => $zones['demand_high'],         // price for first point
-            //     'x2' => $data[$zones['demand_index'] + 2]['timestamp_pst'], // timestamp for second point
-            //     'y2' => $zones['demand_high'],         // price for second point
-            //     'color' => 'green',  // red color
-            //     'thickness' => 2,      // line thickness
-            //     'title' => 'DU'
-            // ];
-
-            // $lines[] = [
-            //     'x1' => $data[$zones['demand_index']]['timestamp_pst'], // timestamp for first point
-            //     'y1' => $zones['demand_low'],         // price for first point
-            //     'x2' => $data[$zones['demand_index'] + 2]['timestamp_pst'], // timestamp for second point
-            //     'y2' => $zones['demand_low'],         // price for second point
-            //     'color' => 'red',  // red color
-            //     'thickness' => 2,      // line thickness
-            //     'title' => 'DL'
-            // ];
 
 
-            continue;
+
+            $detector = new OrderBlockDetector();
+            $orderBlocks = $detector->getRecentOrderBlocks($data, $index, 5);
+
+
+
+
+
+            if (count($orderBlocks['bear'])) {
+                $latestZone = $orderBlocks['bear'][0];
+
+                // $lines[] = [
+                //     'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+                //     'y1' => $latestZone['top'],         // price for first point
+                //     'x2' => $data[$index + 1]['timestamp_pst'], // timestamp for second point
+                //     'y2' => $latestZone['top'],         // price for second point
+                //     'color' => 'red',  // red color
+                //     'thickness' => 2,      // line thickness
+                //     'title' => 'OBH'
+                // ];
+
+                // $lines[] = [
+                //     'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+                //     'y1' => $latestZone['bottom'],         // price for first point
+                //     'x2' => $data[$index + 1]['timestamp_pst'], // timestamp for second point
+                //     'y2' => $latestZone['bottom'],         // price for second point
+                //     'color' => 'red',  // red color
+                //     'thickness' => 2,      // line thickness
+                //     'title' => 'OBL'
+                // ];
+
+
+                if (!$enteredZone) {
+                    // If entered zone
+                    if (
+                        $data[$index]['close'] <= $latestZone['top']
+                        && $data[$index]['close'] >= $latestZone['bottom']
+                    ) {
+                        // $openingMarkers[] = [
+                        //     'timestamp_pst' => $data[$index]['timestamp_pst'],
+                        //     'color' => 'pink',
+                        //     'text' => 'Entered Zone',
+                        //     'position' =>  'belowBar',
+                        // ];
+                        $enteredZone = true;
+                    }
+                } else {
+                    if (
+                        $data[$index]['close'] > $latestZone['top']
+                        && $data[$index]['open'] < $latestZone['top']
+                    ) {
+                        $enteredZone = false;
+                        $stopLoss = $latestZone['bottom'];
+
+                        $minLow = min($data[$index]['low'], $data[$index - 1]['low'], $data[$index - 2]['low']);
+
+                        if (
+                            $minLow <  $latestZone['bottom']
+                        ) {
+                            $stopLoss = $minLow;
+                        }
+                        $openTrade = [
+                            'side' =>  'BUY',
+                            'entry_price' =>  $data[$index]['close'],
+                            'stop_loss' =>  $stopLoss,
+                            'take_profit' =>   $data[$index]['close'] * 1.005,
+                        ];
+
+                        $openingMarkers[] = [
+                            'timestamp_pst' => $data[$index]['timestamp_pst'],
+                            'color' => 'green',
+                            'text' => 'Buy ',
+                            'position' =>  'belowBar',
+                        ];
+                    } else  if (
+                        $data[$index]['close'] < $latestZone['bottom']
+                        && $data[$index]['open'] > $latestZone['bottom']
+                    ) {
+                        $enteredZone = false;
+                    }
+                }
+            }
+
+
+
+
+
+
+
+
+            // $analysis = $this->analyzeMarket($data, $index);
+
+            // if (
+            //     $analysis['trading_recommendation']['action'] === 'SELL'
+            // ) {
+
+            //     $openingMarkers[] = [
+            //         'timestamp_pst' => $data[$index]['timestamp_pst'],
+            //         'color' => 'red',
+            //         'text' => 'Sell ',
+            //         'position' =>  'aboveBar',
+            //     ];
+
+
+            //     $ob = $analysis['smc_analysis']['order_blocks']['bearish'][0];
+
+            //     $lines[] = [
+            //         'x1' => $data[$index - 20]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $ob['top'],         // price for first point
+            //         'x2' => $data[$index ]['timestamp_pst'], // timestamp for second point
+            //         'y2' =>$ob['top'],         // price for second point
+            //         'color' => 'green',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'OBH'
+            //     ];
+
+            //     $lines[] = [
+            //         'x1' => $data[$index - 20]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $ob['bottom'],         // price for first point
+            //         'x2' => $data[$index ]['timestamp_pst'], // timestamp for second point
+            //         'y2' =>$ob['bottom'],         // price for second point
+            //         'color' => 'green',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'OBH'
+            //     ];
+
+
+            // }
+
+
+
+
+
+
+            // if (
+            //     $analysis['trading_recommendation']['action'] === 'BUY'
+            // ) {
+
+            //     $openingMarkers[] = [
+            //         'timestamp_pst' => $data[$index]['timestamp_pst'],
+            //         'color' => 'green',
+            //         'text' => 'Buy ',
+            //         'position' =>  'belowBar',
+            //     ];
+
+
+            //     $ob = $analysis['smc_analysis']['order_blocks']['bullish'][0];
+
+            //     $lines[] = [
+            //         'x1' => $data[$index - 20]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $ob['top'],         // price for first point
+            //         'x2' => $data[$index ]['timestamp_pst'], // timestamp for second point
+            //         'y2' =>$ob['top'],         // price for second point
+            //         'color' => 'red',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'OBH'
+            //     ];
+
+            //     $lines[] = [
+            //         'x1' => $data[$index - 20]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $ob['bottom'],         // price for first point
+            //         'x2' => $data[$index ]['timestamp_pst'], // timestamp for second point
+            //         'y2' =>$ob['bottom'],         // price for second point
+            //         'color' => 'red',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'OBH'
+            //     ];
+
+
+            // }
+            //     if (
+            //         $analysis['trading_recommendation']['action'] === 'BUY'
+            //         && $analysis['trading_recommendation']['risk_reward_ratio'] >= 1
+            //     ) {
+
+            //         $openingMarkers[] = [
+            //             'timestamp_pst' => $data[$index]['timestamp_pst'],
+            //             'color' => 'green',
+            //             'text' => 'Buy ',
+            //             'position' =>  'belowBar',
+            //         ];
+            //         $openTrade = [
+            //             'side' =>  $analysis['trading_recommendation']['action'],
+            //             'entry_price' =>  $analysis['trading_recommendation']['entry_price'],
+            //             'stop_loss' =>  $analysis['trading_recommendation']['stop_loss'],
+            //             'take_profit' =>   $analysis['trading_recommendation']['entry_price'] * 1.01,
+            //         ];
+
+
+            //         $lines[] = [
+            //             'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+            //             'y1' => $openTrade['take_profit'],         // price for first point
+            //             'x2' => $data[count($data) - 1]['timestamp_pst'], // timestamp for second point
+            //             'y2' => $openTrade['take_profit'],         // price for second point
+            //             'color' => 'green',  // red color
+            //             'thickness' => 2,      // line thickness
+            //             'title' => 'TP'
+            //         ];
+            //         $lines[] = [
+            //             'x1' => $data[$index]['timestamp_pst'], // timestamp for first point
+            //             'y1' => $openTrade['stop_loss'],         // price for first point
+            //             'x2' => $data[count($data) - 1]['timestamp_pst'], // timestamp for second point
+            //             'y2' => $openTrade['stop_loss'],         // price for second point
+            //             'color' => 'red',  // red color
+            //             'thickness' => 2,      // line thickness
+            //             'title' => 'SL'
+            //         ];
+            //     }
+            // }
+
+            // continue;
+
+
+
+
+            // $fvg = self::getLatestFVGatIndex($data, $index, 'body');
+
+            // if ($fvg && $fvg['filledIndex']) {
+
+            //     if (!in_array($fvg['index'], $fvgsIndex)) {
+            //         $fvgsIndex[] = $fvg['index'];
+            //         $fillIndex = $fvg['filledIndex'];
+            //         $openingMarkers[] = [
+            //             'timestamp_pst' => $data[$fillIndex]['timestamp_pst'],
+            //             'color' => 'green',
+            //             'text' => 'FVG Filled ',
+            //             'position' =>  $fvg['type'] === 'bullish' ? 'belowBar' : 'aboveBar',
+            //         ];
+            //         $lines[] = [
+            //             'x1' => $data[$fvg['index']]['timestamp_pst'], // timestamp for first point
+            //             'y1' => $fvg['top'],         // price for first point
+            //             'x2' => $data[$fillIndex]['timestamp_pst'], // timestamp for second point
+            //             'y2' => $fvg['top'],         // price for second point
+            //             'color' => 'orange',  // red color
+            //             'thickness' => 2,      // line thickness
+            //             'title' => 'FVG High'
+            //         ];
+            //         $lines[] = [
+            //             'x1' => $data[$fvg['index']]['timestamp_pst'], // timestamp for first point
+            //             'y1' => $fvg['bottom'],         // price for first point
+            //             'x2' => $data[$fillIndex]['timestamp_pst'], // timestamp for second point
+            //             'y2' => $fvg['bottom'],         // price for second point
+            //             'color' => 'red',  // red color
+            //             'thickness' => 2,      // line thickness
+            //             'title' => 'FVG Low'
+            //         ];
+
+            //         unset($unfilledFVGs[$fvg['index']]);
+            //     }
+            // } else if ($fvg) {
+            //     if (!isset($unfilledFVGs[$fvg['index']])) {
+            //         $unfilledFVGs[$fvg['index']] = $fvg;
+            //     }
+            // }
+
+
+
+
+
+            // $fibZone = self::getLatestFibZone($data, $index);
+
+            // if ($fibZone && $fibZone['percent_gain'] >= 1 && !in_array($fibZone['start_index'], $fibsIndex)) {
+
+
+
+            //     $fibsIndex[] = $fibZone['start_index'];
+            //     $openingMarkers[] = [
+            //         'timestamp_pst' => $data[$fibZone['h_pivot']]['timestamp_pst'],
+            //         'color' => 'lightblue',
+            //         'text' => 'FIB Top ',
+            //         'position' =>  'aboveBar',
+            //     ];
+            //     $openingMarkers[] = [
+            //         'timestamp_pst' => $data[$fibZone['l_pivot']]['timestamp_pst'],
+            //         'color' => 'lightblue',
+            //         'text' => 'FIB Bottom ',
+            //         'position' =>  'belowBar',
+            //     ];
+
+
+
+            //     $lines[] = [
+            //         'x1' => $data[$fibZone['start_index']]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $fibZone['upper'],         // price for first point
+            //         'x2' => $data[$fibZone['h_pivot']]['timestamp_pst'], // timestamp for second point
+            //         'y2' => $fibZone['upper'],         // price for second point
+            //         'color' => 'teal',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'FIB High'
+            //     ];
+            //     $lines[] = [
+            //         'x1' => $data[$fibZone['start_index']]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $fibZone['lower'],         // price for first point
+            //         'x2' => $data[$fibZone['h_pivot']]['timestamp_pst'], // timestamp for second point
+            //         'y2' => $fibZone['lower'],         // price for second point
+            //         'color' => 'teal',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'FIB Low'
+            //     ];
+            //     $lines[] = [
+            //         'x1' => $data[$fibZone['l_pivot']]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $fibZone['l_value'],         // price for first point
+            //         'x2' => $data[$fibZone['h_pivot']]['timestamp_pst'], // timestamp for second point
+            //         'y2' => $fibZone['h_value'],         // price for second point
+            //         'color' => 'teal',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'FIB High'
+            //     ];
+            // }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            // Calculate order blocks up to a specific index
+            // $result = $orderBlockService->calculateOrderBlocks($data, $index);
+
+
+
+            // if (count($result['bullish'])) {
+            //     $demandIndex =  $index - OpeningConditionServiceLive::getIndexDiffFromTimestamps($result['bullish'][0]['startTime'], $data[$index]['binance_timestamp'], '15m', true);
+            //     if (($latestDemand && $latestDemand['index'] < $demandIndex) || !$latestDemand) {
+            //         $latestDemand = $result['bullish'][0];
+            //         $latestDemand['index'] = $demandIndex;
+            //     }
+            // }
+
+            // if (count($result['bearish'])) {
+            //     $supplyIndex =  $index - OpeningConditionServiceLive::getIndexDiffFromTimestamps($result['bearish'][0]['startTime'], $data[$index]['binance_timestamp'], '15m', true);
+            //     if (($latestSupply && $latestSupply['index'] < $supplyIndex) || !$latestSupply) {
+
+            //         $latestSupply = $result['bearish'][0];
+            //         $latestSupply['index'] =  $supplyIndex;
+            //     }
+            // }
+
+
+
+
+
+
+
+
+
+            // if ($latestDemand) {
+            //     $lines[] = [
+            //         'x1' => $data[$index - 2]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $latestDemand['top'],         // price for first point
+            //         'x2' => $data[$index + 2]['timestamp_pst'], // timestamp for second point
+            //         'y2' => $latestDemand['top'],         // price for second point
+            //         'color' => 'green',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'Demand High'
+            //     ];
+            //     $lines[] = [
+            //         'x1' => $data[$index - 2]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $latestDemand['bottom'],         // price for first point
+            //         'x2' => $data[$index + 2]['timestamp_pst'], // timestamp for second point
+            //         'y2' => $latestDemand['bottom'],         // price for second point
+            //         'color' => 'green',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'Demand Low'
+            //     ];
+            // }
+
+
+            // // Logic to detect trendlines
+
+            // $lows = [];
+
+
+            // $loopIndex = $index - 6;
+            // while ($loopIndex > 10) {
+            //     $pivot = CommonHelpers::checkPivot($data, $loopIndex, 3);
+
+
+            //     if (count($lows) >= 2) {
+            //         $firstIndex = $lows[count($lows) - 1];
+            //         $secondIndex = $lows[count($lows) - 2];
+            //         $lastIndex = $lows[0];
+
+            //         if ($data[$firstIndex]['low'] >= $data[$secondIndex]['low']) {
+            //             unset($lows[count($lows) - 1]);
+            //             break;
+            //         }
+            //     }
+
+            //     if ($pivot === 'low_pivot') {
+            //         $lows[] = $loopIndex;
+            //     }
+            //     $loopIndex--;
+            // }
+
+
+
+
+
+            // if (count($lows) > 2) {
+
+            //     $startIndex = $lows[count($lows) - 1];
+            //     $endIndex = $lows[0];
+            //     $lines[] = [
+            //         'x1' => $data[$startIndex]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $data[$startIndex]['low'],         // price for first point
+            //         'x2' => $data[$endIndex]['timestamp_pst'], // timestamp for second point
+            //         'y2' => $data[$endIndex]['low'],         // price for second point
+            //         'color' => 'purple',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'T Line'
+            //     ];
+            // }
+
+
+
+            // // Check Market Consolidation
+
+
+
+            // $min = min($data[$index]['close'], $data[$index]['open']);
+            // $max = max($data[$index]['close'], $data[$index]['open']);
+
+
+
+            // if ($latestDemand) {
+            //     if (!$isConsolidated) {
+            //         if (
+            //             $min < $latestDemand['top']
+            //             &&
+            //             $min > $latestDemand['bottom']
+            //         ) {
+            //             $isConsolidated = true;
+            //         }
+            //     } else {
+            //         if (
+            //             $data[$index]['histogram'] > 0
+            //             && $data[$index]['close'] > $latestDemand['top']
+
+            //         ) {
+            //             // Buy Potential Trigger
+            //             $openingMarkers[] = [
+            //                 'timestamp_pst' => $data[$index]['timestamp_pst'],
+            //                 'color' => 'green',
+            //                 'text' => 'Open ',
+            //                 'position' =>  'belowBar'
+            //             ];
+            //             $isConsolidated = false;
+            //         }
+
+            //         if (
+            //             $data[$index]['histogram'] > 0
+            //             && $data[$index]['close'] < $latestDemand['bottom']
+            //         ) {
+            //             $isConsolidated = false;
+            //         }
+            //     }
+            // }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            // if ($latestSupply) {
+            //     $lines[] = [
+            //         'x1' => $data[$index - 2]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $latestSupply['top'],         // price for first point
+            //         'x2' => $data[$index + 2]['timestamp_pst'], // timestamp for second point
+            //         'y2' => $latestSupply['top'],         // price for second point
+            //         'color' => 'red',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'Supply High'
+            //     ];
+            //     $lines[] = [
+            //         'x1' => $data[$index - 2]['timestamp_pst'], // timestamp for first point
+            //         'y1' => $latestSupply['bottom'],         // price for first point
+            //         'x2' => $data[$index + 2]['timestamp_pst'], // timestamp for second point
+            //         'y2' => $latestSupply['bottom'],         // price for second point
+            //         'color' => 'red',  // red color
+            //         'thickness' => 2,      // line thickness
+            //         'title' => 'Supply Low'
+            //     ];
+            // }
+
         }
 
 
+
+
+        // foreach ($unfilledFVGs as $fvgIndex => $ufvg) {
+        //     $lines[] = [
+        //         'x1' => $data[$ufvg['index']]['timestamp_pst'], // timestamp for first point
+        //         'y1' => $ufvg['top'],         // price for first point
+        //         'x2' => $data[$ufvg['index'] + 5]['timestamp_pst'], // timestamp for second point
+        //         'y2' => $ufvg['top'],         // price for second point
+        //         'color' => 'orange',  // red color
+        //         'thickness' => 2,      // line thickness
+        //         'title' => 'FVG High'
+        //     ];
+        //     $lines[] = [
+        //         'x1' => $data[$ufvg['index']]['timestamp_pst'], // timestamp for first point
+        //         'y1' => $ufvg['bottom'],         // price for first point
+        //         'x2' => $data[$ufvg['index'] + 5]['timestamp_pst'], // timestamp for second point
+        //         'y2' => $ufvg['bottom'],         // price for second point
+        //         'color' => 'red',  // red color
+        //         'thickness' => 2,      // line thickness
+        //         'title' => 'FVG Low'
+        //     ];
+        // }
 
         return view('MarketTrends.index', ['data' => $data, 'pageSlug' => 'MarketTrends' . $market, 'openingMarkers' => $openingMarkers, 'lines' => $lines, 'equations' => $equations, 'symbol' => $symbol, 'interval' => $interval]);
     }
@@ -2850,5 +3606,860 @@ class BinanceController extends Controller
         self::$bearishOrderBlocksList = [];
         self::$allOrderBlocksList = [];
         self::$lastProcessedIndex = -1;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // FVG Calculation
+
+
+    public static function getLatestFVGatIndex($data, $index, $fillMethod = 'wick')
+    {
+
+
+
+
+        $loopIndex = $index - 1;
+
+        $fvg = null;
+        while ($loopIndex > 10) {
+
+
+            if ($data[$loopIndex]['per'] > 0) {
+                $gapDistance = CommonHelpers::getPercentDiff($data[$loopIndex - 1]['high'], $data[$loopIndex + 1]['low'], true);
+
+                if ($gapDistance >= 0.2) {
+
+                    $fvg = [
+                        'type' => 'bullish',
+                        'index' => $loopIndex,
+                        'distance' => $gapDistance,
+                        'top' => $data[$loopIndex + 1]['low'],
+                        'bottom' => $data[$loopIndex - 1]['high'],
+                    ];
+
+
+                    break;
+                }
+            } else if ($data[$loopIndex - 1]['per'] < 0) {
+                $gapDistance = CommonHelpers::getPercentDiff($data[$loopIndex + 1]['high'], $data[$loopIndex - 1]['low'], true);
+
+                if ($gapDistance >= 0.2) {
+
+                    $fvg = [
+                        'type' => 'bearish',
+                        'index' => $loopIndex,
+                        'distance' => $gapDistance,
+                        'top' => $data[$loopIndex - 1]['low'],
+                        'bottom' => $data[$loopIndex + 1]['high'],
+                    ];
+
+
+                    break;
+                }
+            }
+
+            $loopIndex--;
+        }
+
+
+        if ($fvg) {
+            $fvg['filledIndex'] = null;
+            $fvg['filledMethod'] = null;
+            $fvg['fillPercent'] = null;
+            for ($i = $fvg['index'] + 1; $i <= $index; $i++) {
+
+
+                $top = $fvg['top'];
+                $bottom = $fvg['bottom'];
+
+                if ($fvg['type'] === 'bullish') {
+                    $value = $fillMethod === 'wick' ? $data[$i]['low'] : min($data[$i]['close'], $data[$i]['open']);
+                    $percent = 100 - (($value - $bottom) / ($top - $bottom) * 100);
+                    if ($percent >= 50) {
+                        $fvg['filledIndex'] = $i;
+                        $fvg['filledMethod'] = $fillMethod;
+                        $fvg['fillPercent'] = $percent;
+                        break;
+                    }
+                } else   if ($fvg['type'] === 'bearish') {
+                    $value = $fillMethod === 'wick' ? $data[$i]['high'] : max($data[$i]['close'], $data[$i]['open']);
+                    $percent =  (($value - $bottom) / ($top - $bottom) * 100);
+                    if ($percent >= 50) {
+                        $fvg['filledIndex'] = $i;
+                        $fvg['filledMethod'] = $fillMethod;
+                        $fvg['fillPercent'] = $percent;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Check FVG Filling
+
+
+
+        return $fvg;
+    }
+
+
+
+
+
+
+
+    public static function getLatestFibZone($data, $index, $type = 'bullish')
+    {
+
+
+        $loopIndex = $index - 3;
+        $fibZone = null;
+        $hPivotIndex = null;
+        $lPivotIndex = null;
+
+        if ($type === 'bullish') {
+            while ($loopIndex > 10) {
+                $pivot = CommonHelpers::checkPivot($data, $loopIndex, 3);
+
+
+                if (!$hPivotIndex) {
+                    if ($pivot === 'high_pivot') {
+                        $hPivotIndex = $loopIndex;
+                    }
+                } else {
+                    if ($pivot === 'low_pivot') {
+                        $lPivotIndex = $loopIndex;
+                        break;
+                    }
+                }
+                $loopIndex--;
+            }
+
+
+
+
+            if ($lPivotIndex && $hPivotIndex) {
+
+
+                $diff = $data[$hPivotIndex]['high'] - $data[$lPivotIndex]['low'];
+
+                $zoneUpper = $data[$hPivotIndex]['high'] - ($diff * 0.5);   // 50% retracement
+                $zoneLower = $data[$hPivotIndex]['high'] - ($diff * 0.618); // 61.8% retracement
+                $fibZone = [
+                    'start_index' => $lPivotIndex,
+                    'type' => $type,
+                    'l_pivot' => $lPivotIndex,
+                    'h_pivot' => $hPivotIndex,
+                    'l_value' => $data[$lPivotIndex]['low'],
+                    'h_value' => $data[$hPivotIndex]['high'],
+                    'upper' => $zoneUpper,
+                    'lower' => $zoneLower,
+                    'percent_gain' => CommonHelpers::getPercentDiff($data[$lPivotIndex]['low'], $data[$hPivotIndex]['high'], true),
+                ];
+            }
+        }
+        return $fibZone;
+    }
+
+
+
+
+
+
+
+
+
+
+
+    // ############ SMC SERVICE METHODS #####################
+    /**
+     * Main analysis method for your trading bot
+     */
+    public function analyzeMarket(array $candlestickData, int $currentIndex): array
+    {
+        // Analyze using SMC
+        $smcAnalysis = $this->smcService->analyze($candlestickData, $currentIndex);
+
+        // Get trading signals
+        $signals = $this->smcService->getSignals($candlestickData, $currentIndex);
+
+        // Get current price levels
+        $currentPrice = $candlestickData[$currentIndex]['close'];
+        $tradingLevels = $this->smcService->getTradingLevels($currentPrice);
+
+        // Get nearest important levels
+        $nearestLevels = $this->smcService->getNearestLevels($currentPrice, 3);
+
+        return [
+            'smc_analysis' => $smcAnalysis,
+            'signals' => $signals,
+            'trading_levels' => $tradingLevels,
+            'nearest_levels' => $nearestLevels,
+            'trading_recommendation' => $this->generateTradingRecommendation(
+                $smcAnalysis,
+                $signals,
+                $tradingLevels,
+                $currentPrice
+            )
+        ];
+    }
+
+    /**
+     * Generate trading recommendations based on SMC analysis
+     */
+    private function generateTradingRecommendation(
+        array $smcAnalysis,
+        array $signals,
+        array $tradingLevels,
+        float $currentPrice
+    ): array {
+        $recommendation = [
+            'action' => 'HOLD',
+            'confidence' => 0,
+            'entry_price' => null,
+            'stop_loss' => null,
+            'take_profit' => null,
+            'risk_reward_ratio' => null,
+            'reasoning' => []
+        ];
+
+        $bullishSignals = 0;
+        $bearishSignals = 0;
+        $totalStrength = 0;
+
+        // Analyze signals
+        foreach ($signals as $signal) {
+            if ($signal['direction'] === 'bullish') {
+                $bullishSignals++;
+                $totalStrength += $signal['strength'];
+            } else {
+                $bearishSignals++;
+                $totalStrength += $signal['strength'];
+            }
+            $recommendation['reasoning'][] = $signal['description'];
+        }
+
+        // Market structure bias
+        $trend = $smcAnalysis['market_structure']['trend'];
+        if ($trend == 1) {
+            $bullishSignals += 0.5;
+            $recommendation['reasoning'][] = 'Market structure is bullish';
+        } elseif ($trend == -1) {
+            $bearishSignals += 0.5;
+            $recommendation['reasoning'][] = 'Market structure is bearish';
+        }
+
+        // Determine action based on signal balance
+        if ($bullishSignals > $bearishSignals && $totalStrength > 1.0) {
+            $recommendation['action'] = 'BUY';
+            $recommendation['confidence'] = min(90, ($bullishSignals / ($bullishSignals + $bearishSignals)) * 100);
+
+            // Set levels for buy signal
+            $this->setBuyLevels($recommendation, $tradingLevels, $currentPrice);
+        } elseif ($bearishSignals > $bullishSignals && $totalStrength > 1.0) {
+            $recommendation['action'] = 'SELL';
+            $recommendation['confidence'] = min(90, ($bearishSignals / ($bullishSignals + $bearishSignals)) * 100);
+
+            // Set levels for sell signal
+            $this->setSellLevels($recommendation, $tradingLevels, $currentPrice);
+        }
+
+        return $recommendation;
+    }
+
+    private function setBuyLevels(array &$recommendation, array $tradingLevels, float $currentPrice): void
+    {
+        $recommendation['entry_price'] = $currentPrice;
+
+        // Find nearest support for stop loss
+        if (isset($tradingLevels['support']) && !empty($tradingLevels['support'])) {
+            $nearestSupport = $tradingLevels['support'][0];
+            $recommendation['stop_loss'] = $nearestSupport['bottom'] * 0.998; // Small buffer
+        } else {
+            $recommendation['stop_loss'] = $currentPrice * 0.98; // 2% stop loss
+        }
+
+        // Find nearest resistance for take profit
+        if (isset($tradingLevels['resistance']) && !empty($tradingLevels['resistance'])) {
+            $nearestResistance = $tradingLevels['resistance'][0];
+            $recommendation['take_profit'] = $nearestResistance['top'] * 0.998; // Small buffer
+        } else {
+            $recommendation['take_profit'] = $currentPrice * 1.06; // 6% take profit
+        }
+
+        // Calculate risk-reward ratio
+        $risk = $currentPrice - $recommendation['stop_loss'];
+        $reward = $recommendation['take_profit'] - $currentPrice;
+        $recommendation['risk_reward_ratio'] = $risk > 0 ? round($reward / $risk, 2) : null;
+    }
+
+    private function setSellLevels(array &$recommendation, array $tradingLevels, float $currentPrice): void
+    {
+        $recommendation['entry_price'] = $currentPrice;
+
+        // Find nearest resistance for stop loss
+        if (isset($tradingLevels['resistance']) && !empty($tradingLevels['resistance'])) {
+            $nearestResistance = $tradingLevels['resistance'][0];
+            $recommendation['stop_loss'] = $nearestResistance['top'] * 1.002; // Small buffer
+        } else {
+            $recommendation['stop_loss'] = $currentPrice * 1.02; // 2% stop loss
+        }
+
+        // Find nearest support for take profit
+        if (isset($tradingLevels['support']) && !empty($tradingLevels['support'])) {
+            $nearestSupport = $tradingLevels['support'][0];
+            $recommendation['take_profit'] = $nearestSupport['bottom'] * 1.002; // Small buffer
+        } else {
+            $recommendation['take_profit'] = $currentPrice * 0.94; // 6% take profit
+        }
+
+        // Calculate risk-reward ratio
+        $risk = $recommendation['stop_loss'] - $currentPrice;
+        $reward = $currentPrice - $recommendation['take_profit'];
+        $recommendation['risk_reward_ratio'] = $risk > 0 ? round($reward / $risk, 2) : null;
+    }
+
+    /**
+     * Check if current price is at a significant level
+     */
+    public function isAtSignificantLevel(array $candlestickData, int $currentIndex, float $threshold = 0.001): array
+    {
+        $currentPrice = $candlestickData[$currentIndex]['close'];
+        $result = [
+            'is_at_level' => false,
+            'level_type' => null,
+            'level_data' => null,
+            'action_suggestion' => 'HOLD'
+        ];
+
+        // Check order blocks
+        $obLevel = $this->smcService->isInOrderBlock($currentPrice);
+        if ($obLevel) {
+            $result['is_at_level'] = true;
+            $result['level_type'] = 'order_block';
+            $result['level_data'] = $obLevel;
+            $result['action_suggestion'] = $obLevel['is_bullish'] ? 'CONSIDER_BUY' : 'CONSIDER_SELL';
+            return $result;
+        }
+
+        // Check FVGs
+        $fvgLevel = $this->smcService->isInFVG($currentPrice);
+        if ($fvgLevel) {
+            $result['is_at_level'] = true;
+            $result['level_type'] = 'fair_value_gap';
+            $result['level_data'] = $fvgLevel;
+            $result['action_suggestion'] = $fvgLevel['is_bullish'] ? 'CONSIDER_BUY' : 'CONSIDER_SELL';
+            return $result;
+        }
+
+        // Check proximity to significant levels
+        $nearestLevels = $this->smcService->getNearestLevels($currentPrice, 1);
+        if (!empty($nearestLevels)) {
+            $nearest = $nearestLevels[0];
+            $priceDistance = abs($currentPrice - $nearest['price']) / $currentPrice;
+
+            if ($priceDistance <= $threshold) {
+                $result['is_at_level'] = true;
+                $result['level_type'] = $nearest['type'];
+                $result['level_data'] = $nearest;
+                $result['action_suggestion'] = strpos($nearest['type'], 'bullish') !== false ? 'CONSIDER_BUY' : 'CONSIDER_SELL';
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get market sentiment based on SMC analysis
+     */
+    public function getMarketSentiment(array $candlestickData, int $currentIndex): array
+    {
+        $analysis = $this->smcService->analyze($candlestickData, $currentIndex);
+        $signals = $this->smcService->getSignals($candlestickData, $currentIndex);
+
+        $sentiment = [
+            'overall' => 'NEUTRAL',
+            'strength' => 0,
+            'short_term' => 'NEUTRAL',
+            'medium_term' => 'NEUTRAL',
+            'key_factors' => []
+        ];
+
+        // Analyze trend
+        $trend = $analysis['market_structure']['trend'];
+        if ($trend == 1) {
+            $sentiment['medium_term'] = 'BULLISH';
+            $sentiment['key_factors'][] = 'Market structure shows bullish trend';
+        } elseif ($trend == -1) {
+            $sentiment['medium_term'] = 'BEARISH';
+            $sentiment['key_factors'][] = 'Market structure shows bearish trend';
+        }
+
+        // Analyze recent signals
+        $bullishSignals = 0;
+        $bearishSignals = 0;
+
+        foreach ($signals as $signal) {
+            if ($signal['direction'] === 'bullish') {
+                $bullishSignals += $signal['strength'];
+            } else {
+                $bearishSignals += $signal['strength'];
+            }
+        }
+
+        if ($bullishSignals > $bearishSignals) {
+            $sentiment['short_term'] = 'BULLISH';
+            $sentiment['strength'] = min(100, ($bullishSignals / ($bullishSignals + $bearishSignals)) * 100);
+        } elseif ($bearishSignals > $bullishSignals) {
+            $sentiment['short_term'] = 'BEARISH';
+            $sentiment['strength'] = min(100, ($bearishSignals / ($bullishSignals + $bearishSignals)) * 100);
+        }
+
+        // Overall sentiment
+        if ($sentiment['short_term'] === $sentiment['medium_term'] && $sentiment['short_term'] !== 'NEUTRAL') {
+            $sentiment['overall'] = $sentiment['short_term'];
+        } elseif ($sentiment['short_term'] !== 'NEUTRAL') {
+            $sentiment['overall'] = $sentiment['short_term'];
+        } elseif ($sentiment['medium_term'] !== 'NEUTRAL') {
+            $sentiment['overall'] = $sentiment['medium_term'];
+        }
+
+        return $sentiment;
+    }
+}
+
+
+
+
+
+
+
+
+
+class OrderBlockDetector
+{
+    private $mslen = 5; // Market structure length (equivalent to mslen in Pine Script)
+    private $atrPeriod = 200; // ATR calculation period
+    private $obmode = "Length"; // "Length" or "Full"
+    private $len = 5; // Length parameter for order block construction
+
+    public function __construct($mslen = 5, $atrPeriod = 200, $obmode = "Length", $len = 5)
+    {
+        $this->mslen = $mslen;
+        $this->atrPeriod = $atrPeriod;
+        $this->obmode = $obmode;
+        $this->len = $len;
+    }
+
+    /**
+     * Get recent order blocks up to the specified candle index
+     * 
+     * @param array $data - Array of candlestick data
+     * @param int $index - Current index to analyze up to
+     * @param int $maxOrderBlocks - Maximum number of order blocks to return (default: 5)
+     * @return array - Array of order blocks with bull/bear classification
+     */
+    public function getRecentOrderBlocks($data, $index, $maxOrderBlocks = 5)
+    {
+        if ($index < $this->mslen * 2 + $this->atrPeriod) {
+            return ['bull' => [], 'bear' => []]; // Not enough data
+        }
+
+        // Initialize market structure state
+        $ms = $this->initializeMarketStructure($data, $index);
+
+        // Calculate ATR for order block positioning
+        $atr = $this->calculateATR($data, $index);
+
+        // Find order blocks
+        $bullOrderBlocks = [];
+        $bearOrderBlocks = [];
+
+        // Track market structure changes and identify order block formation points
+        $structureChanges = $this->findStructureChanges($data, $index);
+
+        foreach ($structureChanges as $change) {
+            if ($change['type'] === 'choch_bull_to_bear') {
+                // Bullish order block formed
+                $ob = $this->createBullOrderBlock($data, $change, $atr);
+                if ($ob) {
+                    $bullOrderBlocks[] = $ob;
+                }
+            } elseif ($change['type'] === 'choch_bear_to_bull') {
+                // Bearish order block formed  
+                $ob = $this->createBearOrderBlock($data, $change, $atr);
+                if ($ob) {
+                    $bearOrderBlocks[] = $ob;
+                }
+            }
+        }
+
+        // Sort by recency and limit results
+        usort($bullOrderBlocks, function ($a, $b) {
+            return $b['loc'] - $a['loc']; // Most recent first
+        });
+
+        usort($bearOrderBlocks, function ($a, $b) {
+            return $b['loc'] - $a['loc']; // Most recent first
+        });
+
+
+        $bullZone = [];
+        $bearZone = [];
+        foreach (array_slice($bullOrderBlocks, 0, $maxOrderBlocks)  as $zone) {
+
+
+            $startIndex = (count($data) - 1) - OpeningConditionServiceLive::getIndexDiffFromTimestamps($zone['timestamp'], $data[count($data) - 1]['binance_timestamp'], '15m');
+
+            if (
+                (min($data[$startIndex]['open'], $data[$startIndex]['close']) <= $zone['top']
+                    && min($data[$startIndex]['open'], $data[$startIndex]['close']) >= $zone['bottom']
+
+                    &&  min($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) <= $zone['top']
+                    && min($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) >= $zone['bottom']
+
+
+                    &&  min($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) <= $zone['top']
+                    && min($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) >= $zone['bottom']
+                )
+                ||
+                (max($data[$startIndex]['open'], $data[$startIndex]['close']) <= $zone['top']
+                    && max($data[$startIndex]['open'], $data[$startIndex]['close']) >= $zone['bottom']
+
+                    &&  max($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) <= $zone['top']
+                    && max($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) >= $zone['bottom']
+
+
+                    &&  max($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) <= $zone['top']
+                    && max($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) >= $zone['bottom']
+                )
+
+            ) {
+                $bullZone[] = $zone;
+            }
+        }
+
+        foreach (array_slice($bearOrderBlocks, 0, $maxOrderBlocks)  as $zone) {
+
+
+            $startIndex = (count($data) - 1) - OpeningConditionServiceLive::getIndexDiffFromTimestamps($zone['timestamp'], $data[count($data) - 1]['binance_timestamp'], '15m');
+
+            if (
+                (min($data[$startIndex]['open'], $data[$startIndex]['close']) <= $zone['top']
+                    && min($data[$startIndex]['open'], $data[$startIndex]['close']) >= $zone['bottom']
+
+                    &&  min($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) <= $zone['top']
+                    && min($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) >= $zone['bottom']
+
+
+                    &&  min($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) <= $zone['top']
+                    && min($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) >= $zone['bottom']
+                )
+                ||
+                (max($data[$startIndex]['open'], $data[$startIndex]['close']) <= $zone['top']
+                    && max($data[$startIndex]['open'], $data[$startIndex]['close']) >= $zone['bottom']
+
+                    &&  max($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) <= $zone['top']
+                    && max($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) >= $zone['bottom']
+
+
+                    &&  max($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) <= $zone['top']
+                    && max($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) >= $zone['bottom']
+                )
+
+            ) {
+                $bearZone[] = $zone;
+            }
+        }
+
+        return [
+            'bull' => $bullZone,
+            'bear' => $bearZone
+        ];
+    }
+
+    private function initializeMarketStructure($data, $index)
+    {
+        return [
+            'trend' => 0, // 1 for uptrend, -1 for downtrend, 0 for initial
+            'start' => 0, // Market structure state
+            'choch' => null, // Change of character level
+            'bos' => null, // Break of structure level
+            'main' => null, // Current main level being tracked
+            'loc' => 0, // Location of last structure change
+            'temp' => 0, // Temporary location tracker
+        ];
+    }
+
+    private function calculateATR($data, $index, $period = null)
+    {
+        if ($period === null) {
+            $period = min($this->atrPeriod, $index);
+        }
+
+        $trValues = [];
+        $startIdx = max(1, $index - $period + 1);
+
+        for ($i = $startIdx; $i <= $index; $i++) {
+            $high = $data[$i]['high'];
+            $low = $data[$i]['low'];
+            $prevClose = $data[$i - 1]['close'];
+
+            $tr = max(
+                $high - $low,
+                abs($high - $prevClose),
+                abs($low - $prevClose)
+            );
+            $trValues[] = $tr;
+        }
+
+        return array_sum($trValues) / count($trValues);
+    }
+
+    private function findStructureChanges($data, $index)
+    {
+        $changes = [];
+        $ms = $this->initializeMarketStructure($data, $index);
+
+        // Find pivot highs and lows
+        $pivots = $this->findPivots($data, $index);
+
+        // Analyze structure changes
+        $trend = 0; // 0 = initial, 1 = up, -1 = down
+        $lastHigh = null;
+        $lastLow = null;
+
+        for ($i = $this->mslen; $i <= $index - $this->mslen; $i++) {
+            $current = $data[$i];
+
+            // Check for pivot highs and lows
+            if ($this->isPivotHigh($data, $i)) {
+                if ($lastHigh !== null && $current['high'] < $lastHigh) {
+                    // Lower high - potential trend change to bearish
+                    if ($trend === 1) {
+                        $changes[] = [
+                            'type' => 'choch_bull_to_bear',
+                            'index' => $i,
+                            'price' => $current['high'],
+                            'timestamp' => $current['timestamp'],
+                            'prev_high' => $lastHigh
+                        ];
+                        $trend = -1;
+                    }
+                } elseif ($lastHigh !== null && $current['high'] > $lastHigh) {
+                    // Higher high - continuation or new bullish trend
+                    if ($trend !== 1) {
+                        $trend = 1;
+                    }
+                }
+                $lastHigh = $current['high'];
+            }
+
+            if ($this->isPivotLow($data, $i)) {
+                if ($lastLow !== null && $current['low'] > $lastLow) {
+                    // Higher low - potential trend change to bullish
+                    if ($trend === -1) {
+                        $changes[] = [
+                            'type' => 'choch_bear_to_bull',
+                            'index' => $i,
+                            'price' => $current['low'],
+                            'timestamp' => $current['timestamp'],
+                            'prev_low' => $lastLow
+                        ];
+                        $trend = 1;
+                    }
+                } elseif ($lastLow !== null && $current['low'] < $lastLow) {
+                    // Lower low - continuation or new bearish trend
+                    if ($trend !== -1) {
+                        $trend = -1;
+                    }
+                }
+                $lastLow = $current['low'];
+            }
+        }
+
+        return $changes;
+    }
+
+    private function findPivots($data, $index)
+    {
+        $pivots = ['highs' => [], 'lows' => []];
+
+        for ($i = $this->mslen; $i <= $index - $this->mslen; $i++) {
+            if ($this->isPivotHigh($data, $i)) {
+                $pivots['highs'][] = ['index' => $i, 'price' => $data[$i]['high']];
+            }
+            if ($this->isPivotLow($data, $i)) {
+                $pivots['lows'][] = ['index' => $i, 'price' => $data[$i]['low']];
+            }
+        }
+
+        return $pivots;
+    }
+
+    private function isPivotHigh($data, $index)
+    {
+        if ($index < $this->mslen || $index >= count($data) - $this->mslen) {
+            return false;
+        }
+
+        $currentHigh = $data[$index]['high'];
+
+        // Check left side
+        for ($i = $index - $this->mslen; $i < $index; $i++) {
+            if ($data[$i]['high'] >= $currentHigh) {
+                return false;
+            }
+        }
+
+        // Check right side  
+        for ($i = $index + 1; $i <= $index + $this->mslen; $i++) {
+            if ($data[$i]['high'] >= $currentHigh) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isPivotLow($data, $index)
+    {
+        if ($index < $this->mslen || $index >= count($data) - $this->mslen) {
+            return false;
+        }
+
+        $currentLow = $data[$index]['low'];
+
+        // Check left side
+        for ($i = $index - $this->mslen; $i < $index; $i++) {
+            if ($data[$i]['low'] <= $currentLow) {
+                return false;
+            }
+        }
+
+        // Check right side
+        for ($i = $index + 1; $i <= $index + $this->mslen; $i++) {
+            if ($data[$i]['low'] <= $currentLow) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function createBullOrderBlock($data, $change, $atr)
+    {
+        $idx = $change['index'];
+        if ($idx >= count($data)) return null;
+
+        // Find the highest point before the structure change
+        $highestIdx = $this->findHighest($data, max(0, $idx - 20), $idx);
+        if ($highestIdx === null) return null;
+
+        $candle = $data[$highestIdx];
+        $top = $candle['high'];
+        $bottom = $candle['low'];
+
+        // Adjust bottom based on mode
+        if ($this->obmode === "Length") {
+            $adjustedBottom = $candle['low'] + ($atr / (5 / $this->len));
+            $bottom = min($adjustedBottom, $candle['high']) > $candle['low'] ? $candle['low'] : $adjustedBottom;
+        }
+
+        return [
+            'type' => 'bull',
+            'top' => $top,
+            'bottom' => $bottom,
+            'avg' => ($top + $bottom) / 2,
+            'loc' => $highestIdx,
+            'timestamp' => $candle['timestamp'],
+            'volume' => $candle['volume'],
+            'isBreaker' => false,
+            'active' => true
+        ];
+    }
+
+    private function createBearOrderBlock($data, $change, $atr)
+    {
+        $idx = $change['index'];
+        if ($idx >= count($data)) return null;
+
+        // Find the lowest point before the structure change  
+        $lowestIdx = $this->findLowest($data, max(0, $idx - 20), $idx);
+        if ($lowestIdx === null) return null;
+
+        $candle = $data[$lowestIdx];
+        $top = $candle['high'];
+        $bottom = $candle['low'];
+
+        // Adjust top based on mode
+        if ($this->obmode === "Length") {
+            $adjustedTop = $candle['high'] - ($atr / (5 / $this->len));
+            $top = max($adjustedTop, $candle['low']) < $candle['high'] ? $candle['high'] : $adjustedTop;
+        }
+
+        return [
+            'type' => 'bear',
+            'top' => $top,
+            'bottom' => $bottom,
+            'avg' => ($top + $bottom) / 2,
+            'loc' => $lowestIdx,
+            'timestamp' => $candle['timestamp'],
+            'volume' => $candle['volume'],
+            'isBreaker' => false,
+            'active' => true
+        ];
+    }
+
+    private function findHighest($data, $startIdx, $endIdx)
+    {
+        $highest = null;
+        $highestIdx = null;
+
+        for ($i = $startIdx; $i <= $endIdx; $i++) {
+            if ($i >= count($data)) break;
+            if ($highest === null || $data[$i]['high'] > $highest) {
+                $highest = $data[$i]['high'];
+                $highestIdx = $i;
+            }
+        }
+
+        return $highestIdx;
+    }
+
+    private function findLowest($data, $startIdx, $endIdx)
+    {
+        $lowest = null;
+        $lowestIdx = null;
+
+        for ($i = $startIdx; $i <= $endIdx; $i++) {
+            if ($i >= count($data)) break;
+            if ($lowest === null || $data[$i]['low'] < $lowest) {
+                $lowest = $data[$i]['low'];
+                $lowestIdx = $i;
+            }
+        }
+
+        return $lowestIdx;
     }
 }

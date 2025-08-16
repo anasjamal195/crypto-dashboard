@@ -28,119 +28,131 @@ class OpeningConditionServiceLive
     public static $highPivotsB = [];
 
     public static $formulaACoins = [
-        'BNBUSDT',
+
+        'BTCUSDT',
+        'ETHUSDT',
         'SOLUSDT',
-        'ADAUSDT',
-        'DOGEUSDT',
-        'LTCUSDT',
-        'LINKUSDT',
-        'ATOMUSDT',
-        'NEARUSDT',
-        'RUNEUSDT',
-        'UNIUSDT',
-        'AAVEUSDT',
-        'ALGOUSDT',
-        'FILUSDT',
-        'VETUSDT',
-        'ICPUSDT',
-        'SANDUSDT',
-        'MANAUSDT',
-        'AXSUSDT',
-
-
-        // Major Altcoins
+        'BNBUSDT',
+        'ARBUSDT',
         'AVAXUSDT',
-        'DOTUSDT',
-        'TRXUSDT',
-        // 'SHIBUSDT',
-        'XRPUSDT',
+        'LINKUSDT',
+        'TONUSDT',
+        'TAOUSDT'
 
-        // DeFi/Layer 1 Tokens
-        'FTMUSDT',
-        'ONEUSDT',
-        'EGLDUSDT',
-        'ZILUSDT',
-        'WAVESUSDT',
 
-        // Gaming/Metaverse
-        'ENJUSDT',
-        'CHZUSDT',
-        'GALAUSDT',
+        // 'BNBUSDT',
+        // 'SOLUSDT',
+        // 'ADAUSDT',
+        // 'DOGEUSDT',
+        // 'LTCUSDT',
+        // 'LINKUSDT',
+        // 'ATOMUSDT',
+        // 'NEARUSDT',
+        // 'RUNEUSDT',
+        // 'UNIUSDT',
+        // 'AAVEUSDT',
+        // 'ALGOUSDT',
+        // 'FILUSDT',
+        // 'VETUSDT',
+        // 'ICPUSDT',
+        // 'SANDUSDT',
+        // 'MANAUSDT',
+        // 'AXSUSDT',
 
-        // Established Altcoins
-        'XLMUSDT',
-        'EOSUSDT',
-        'ETCUSDT',
-        'BCHUSDT',
 
-        // Mid-caps with good patterns
-        'CRVUSDT',
-        'COMPUSDT',
-        'MKRUSDT',
-        'YFIUSDT'
+        // // Major Altcoins
+        // 'AVAXUSDT',
+        // 'DOTUSDT',
+        // 'TRXUSDT',
+        // // 'SHIBUSDT',
+        // 'XRPUSDT',
+
+        // // DeFi/Layer 1 Tokens
+        // 'FTMUSDT',
+        // 'ONEUSDT',
+        // 'EGLDUSDT',
+        // 'ZILUSDT',
+        // 'WAVESUSDT',
+
+        // // Gaming/Metaverse
+        // 'ENJUSDT',
+        // 'CHZUSDT',
+        // 'GALAUSDT',
+
+        // // Established Altcoins
+        // 'XLMUSDT',
+        // 'EOSUSDT',
+        // 'ETCUSDT',
+        // 'BCHUSDT',
+
+        // // Mid-caps with good patterns
+        // 'CRVUSDT',
+        // 'COMPUSDT',
+        // 'MKRUSDT',
+        // 'YFIUSDT'
     ];
 
     public static $formulaBCoins = [
-        'BNBUSDT',      // Binance ecosystem - appeared in all tests
-        'AVAXUSDT',     // Layer 1 - appeared in all tests  
-        'VETUSDT',      // Supply chain - appeared in all tests
-        'LTCUSDT',      // Established alt - appeared in 3 tests
-        'SANDUSDT',     // Gaming/Metaverse - appeared in 3 tests
-        'ADAUSDT',      // Major Layer 1 - appeared in 3 tests
-        'MKRUSDT',      // DeFi governance - appeared in 3 tests
-        'COMPUSDT',     // DeFi lending - appeared in 3 tests
+        // 'BNBUSDT',      // Binance ecosystem - appeared in all tests
+        // 'AVAXUSDT',     // Layer 1 - appeared in all tests  
+        // 'VETUSDT',      // Supply chain - appeared in all tests
+        // 'LTCUSDT',      // Established alt - appeared in 3 tests
+        // 'SANDUSDT',     // Gaming/Metaverse - appeared in 3 tests
+        // 'ADAUSDT',      // Major Layer 1 - appeared in 3 tests
+        // 'MKRUSDT',      // DeFi governance - appeared in 3 tests
+        // 'COMPUSDT',     // DeFi lending - appeared in 3 tests
 
 
-        // TIER 2: STRONG CANDIDATES (appeared in 2+ tests)
-        'SOLUSDT',      // Major Layer 1
-        'ATOMUSDT',     // Cosmos ecosystem
-        'NEARUSDT',     // Layer 1 protocol
-        'DOGEUSDT',     // High volume meme coin
-        'AAVEUSDT',     // DeFi lending
-        'FILUSDT',      // Decentralized storage
-        'ETCUSDT',      // Ethereum Classic
-        'CHZUSDT',      // Sports tokens
-        'ICPUSDT',      // Internet Computer
-        'EGLDUSDT',     // MultiversX
-        'XRPUSDT',      // Payment token
-        'TRXUSDT',      // Established blockchain
-        'UNIUSDT',      // Leading DEX
-        'BCHUSDT',      // Bitcoin fork
-        'CRVUSDT',      // DeFi yield farming
-        'ALGOUSDT',     // Pure proof-of-stake
-        'MANAUSDT',     // Metaverse
-        'GALAUSDT',     // Gaming
+        // // TIER 2: STRONG CANDIDATES (appeared in 2+ tests)
+        // 'SOLUSDT',      // Major Layer 1
+        // 'ATOMUSDT',     // Cosmos ecosystem
+        // 'NEARUSDT',     // Layer 1 protocol
+        // 'DOGEUSDT',     // High volume meme coin
+        // 'AAVEUSDT',     // DeFi lending
+        // 'FILUSDT',      // Decentralized storage
+        // 'ETCUSDT',      // Ethereum Classic
+        // 'CHZUSDT',      // Sports tokens
+        // 'ICPUSDT',      // Internet Computer
+        // 'EGLDUSDT',     // MultiversX
+        // 'XRPUSDT',      // Payment token
+        // 'TRXUSDT',      // Established blockchain
+        // 'UNIUSDT',      // Leading DEX
+        // 'BCHUSDT',      // Bitcoin fork
+        // 'CRVUSDT',      // DeFi yield farming
+        // 'ALGOUSDT',     // Pure proof-of-stake
+        // 'MANAUSDT',     // Metaverse
+        // 'GALAUSDT',     // Gaming
 
 
-        // TIER 3: ADDITIONAL HIGH-POTENTIAL COINS
-        // Based on similar characteristics
+        // // TIER 3: ADDITIONAL HIGH-POTENTIAL COINS
+        // // Based on similar characteristics
 
-        // Layer 1 & Infrastructure (similar to AVAX, SOL, ADA patterns)
-        'DOTUSDT',      // Polkadot - Multi-chain protocol
-        'MATICUSDT',    // Polygon - Ethereum scaling
-        'FTMUSDT',      // Fantom - High-speed blockchain
-        'HBARUSDT',     // Hedera - Enterprise blockchain
-        'FLOWUSDT',     // Flow - NFT-focused blockchain
-        'APTUSDT',      // Aptos - High-performance L1
-        'SUIUSDT',      // Sui - Next-gen L1
-        'SEIUSDT',      // Sei - Trading-focused L1
+        // // Layer 1 & Infrastructure (similar to AVAX, SOL, ADA patterns)
+        // 'DOTUSDT',      // Polkadot - Multi-chain protocol
+        // 'MATICUSDT',    // Polygon - Ethereum scaling
+        // 'FTMUSDT',      // Fantom - High-speed blockchain
+        // 'HBARUSDT',     // Hedera - Enterprise blockchain
+        // 'FLOWUSDT',     // Flow - NFT-focused blockchain
+        // 'APTUSDT',      // Aptos - High-performance L1
+        // 'SUIUSDT',      // Sui - Next-gen L1
+        // 'SEIUSDT',      // Sei - Trading-focused L1
 
-        // DeFi Tokens (similar to AAVE, UNI, CRV patterns)
-        'LINKUSDT',     // Chainlink - Oracle network
-        'SUSHIUSDT',    // SushiSwap - DEX
-        'CAKEUSDT',     // PancakeSwap - BSC DEX
-        '1INCHUSDT',    // 1inch - DEX aggregator
-        'SNXUSDT',      // Synthetix - Synthetic assets
-        'GMXUSDT',      // GMX - Perpetual trading
-        'RDNTUSDT',     // Radiant - Cross-chain lending
+        // // DeFi Tokens (similar to AAVE, UNI, CRV patterns)
+        // 'LINKUSDT',     // Chainlink - Oracle network
+        // 'SUSHIUSDT',    // SushiSwap - DEX
+        // 'CAKEUSDT',     // PancakeSwap - BSC DEX
+        // '1INCHUSDT',    // 1inch - DEX aggregator
+        // 'SNXUSDT',      // Synthetix - Synthetic assets
+        // 'GMXUSDT',      // GMX - Perpetual trading
+        // 'RDNTUSDT',     // Radiant - Cross-chain lending
 
 
-        // // Gaming/Metaverse (similar to SAND, MANA, GALA patterns)
-        'AXSUSDT',      // Axie Infinity - P2E gaming
-        'ENJUSDT',      // Enjin - Gaming platform
-        'IMXUSDT',      // Immutable X - Gaming L2
-        'RONINUSDT',    // Ronin - Gaming sidechain
-        'MAGICUSDT'    // Magic - Gaming ecosystem
+        // // // Gaming/Metaverse (similar to SAND, MANA, GALA patterns)
+        // 'AXSUSDT',      // Axie Infinity - P2E gaming
+        // 'ENJUSDT',      // Enjin - Gaming platform
+        // 'IMXUSDT',      // Immutable X - Gaming L2
+        // 'RONINUSDT',    // Ronin - Gaming sidechain
+        // 'MAGICUSDT'    // Magic - Gaming ecosystem
     ];
 
 
@@ -188,7 +200,7 @@ class OpeningConditionServiceLive
 
         $data =
             // self::$activeExchange === 'binance' ?
-            BinanceApiService::getCandleStickData($symbol, $interval, 500, null,  'FUTURE');
+            BinanceApiService::getCandleStickData($symbol, $interval, 700, null,  'FUTURE');
         // : HyperLiquidApiService::getCandleStickData($symbol, $interval, 500, $timestampTest, 'FUTURE');
 
 
@@ -208,28 +220,23 @@ class OpeningConditionServiceLive
                 self::checkConditionSetLong15mA($symbol, $data, $index) === 'LONG'
             ) {
 
-                $sl = $index;
-                $sl = self::$lowPivotsA[count(self::$lowPivotsA) - 2];
-                $loopIndex = count(self::$lowPivotsA) - 1;
-                while ($loopIndex >= 0 && $data[self::$lowPivotsA[$loopIndex]]['low'] >= $data[$index]['close']) {
-                    $sl = self::$lowPivotsA[$loopIndex];
-                    $loopIndex--;
-                }
-                if ($data[$sl]['low'] >= $data[$index]['close']) {
-                    $stopLoss = 2;
-                } else {
-                    $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']) + 0.7;
-                    if ($stopLoss >= 3) {
-                        Log::info('TriggersThreadOrderBook: Canceled Opening due to SL ' . $stopLoss . ' Formula A ' . $symbol);
 
-                        return [
-                            'direction' => null,
-                            'formula' => 'Pivot Sweep - 15m',
-                            'profitIncrementPercentage' => $profitIncPer,
-                            'stopLoss' => $stopLoss,
-                            'targetProfit' => $targetProfit,
-                        ];
+                $detector = new OrderBlockDetector();
+                $orderBlocks = $detector->getRecentOrderBlocks($data, $index, 5);
+                if (count($orderBlocks['bear'])) {
+                    $latestZone = $orderBlocks['bear'][0];
+
+                    $stopLoss = $latestZone['bottom'];
+                    $minLow = min($data[$index]['low'], $data[$index - 1]['low'], $data[$index - 2]['low']);
+                    if (
+                        $minLow <  $latestZone['bottom']
+                    ) {
+                        $stopLoss = $minLow;
                     }
+
+                    $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $stopLoss);
+                    $dynamicTP = $data[$index]['close'] + (($data[$index]['close'] - $stopLoss) * 1.5);
+                    $targetProfit = CommonHelpers::getPercentDiff($data[$index]['close'], $dynamicTP);
                 }
 
                 return [
@@ -248,45 +255,45 @@ class OpeningConditionServiceLive
 
         // ############################################### Formula B Entries ###############################################
 
-        if (in_array($symbol, self::$formulaBCoins)) {
+        // if (in_array($symbol, self::$formulaBCoins)) {
 
-            if (
-                self::checkConditionSetLong15mB($symbol, $data, $index) === 'LONG'
-            ) {
+        //     if (
+        //         self::checkConditionSetLong15mB($symbol, $data, $index) === 'LONG'
+        //     ) {
 
-                $sl = $index;
-                $sl = self::$lowPivotsB[count(self::$lowPivotsB) - 2];
-                $loopIndex = count(self::$lowPivotsB) - 1;
-                while ($loopIndex >= 0 && $data[self::$lowPivotsB[$loopIndex]]['low'] >= $data[$index]['close']) {
-                    $sl = self::$lowPivotsB[$loopIndex];
-                    $loopIndex--;
-                }
-                if ($data[$sl]['low'] >= $data[$index]['close']) {
-                    $stopLoss = 2;
-                } else {
-                    $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']) + 0.7;
-                    if ($stopLoss >= 3) {
-                        Log::info('TriggersThreadOrderBook: Canceled Opening due to SL ' . $stopLoss . ' Formula B ' . $symbol);
+        //         $sl = $index;
+        //         $sl = self::$lowPivotsB[count(self::$lowPivotsB) - 2];
+        //         $loopIndex = count(self::$lowPivotsB) - 1;
+        //         while ($loopIndex >= 0 && $data[self::$lowPivotsB[$loopIndex]]['low'] >= $data[$index]['close']) {
+        //             $sl = self::$lowPivotsB[$loopIndex];
+        //             $loopIndex--;
+        //         }
+        //         if ($data[$sl]['low'] >= $data[$index]['close']) {
+        //             $stopLoss = 2;
+        //         } else {
+        //             $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']) + 0.7;
+        //             if ($stopLoss >= 3) {
+        //                 Log::info('TriggersThreadOrderBook: Canceled Opening due to SL ' . $stopLoss . ' Formula B ' . $symbol);
 
-                        return [
-                            'direction' => null,
-                            'formula' => 'Pivot Sweep - 15m',
-                            'profitIncrementPercentage' => $profitIncPer,
-                            'stopLoss' => $stopLoss,
-                            'targetProfit' => $targetProfit,
-                        ];
-                    }
-                }
+        //                 return [
+        //                     'direction' => null,
+        //                     'formula' => 'Pivot Sweep - 15m',
+        //                     'profitIncrementPercentage' => $profitIncPer,
+        //                     'stopLoss' => $stopLoss,
+        //                     'targetProfit' => $targetProfit,
+        //                 ];
+        //             }
+        //         }
 
-                return [
-                    'direction' => 'LONG',
-                    'formula' => 'Pivot Sweep - 15m - B',
-                    'profitIncrementPercentage' => $profitIncPer,
-                    'stopLoss' => $stopLoss,
-                    'targetProfit' => $targetProfit,
-                ];
-            }
-        }
+        //         return [
+        //             'direction' => 'LONG',
+        //             'formula' => 'Pivot Sweep - 15m - B',
+        //             'profitIncrementPercentage' => $profitIncPer,
+        //             'stopLoss' => $stopLoss,
+        //             'targetProfit' => $targetProfit,
+        //         ];
+        //     }
+        // }
 
 
         return [
@@ -303,53 +310,91 @@ class OpeningConditionServiceLive
 
         $interval = '15m';
 
-        self::$lowPivotsA = [];
-        for ($i = 10; $i <= ($index - 6); $i++) {
-            $p = CommonHelpers::checkPivot($data, $i, 6);
-            if ($p === 'low_pivot') {
-                self::$lowPivotsA[] = $i;
+
+
+        $detector = new OrderBlockDetector();
+        $orderBlocks = $detector->getRecentOrderBlocks($data, $index, 5);
+
+
+
+
+        if (count($orderBlocks['bear'])) {
+            $latestZone = $orderBlocks['bear'][0];
+            $confirmedTrade = self::checkConfirmTradeValidity($symbol, 'TBD', $data, $index, '15m', 'LONG');
+            if (!$confirmedTrade) {
+                // If entered zone
+                if (
+                    $data[$index]['close'] <= $latestZone['top']
+                    && $data[$index]['close'] >= $latestZone['bottom']
+                ) {
+                    self::insertConfirmBasicTradeEntry($symbol, 'TBD', $data, $index, 'LONG');
+                }
+            } else {
+                if (
+                    $data[$index]['close'] > $latestZone['top']
+                    && $data[$index]['open'] < $latestZone['top']
+                    && $data[$index]['close'] > $data[$index]['ma99']
+                ) {
+                    self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+
+                    return 'LONG';
+                } else  if (
+                    $data[$index]['close'] < $latestZone['bottom']
+                    && $data[$index]['open'] > $latestZone['bottom']
+                ) {
+                    self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
+                }
             }
         }
 
-        $lastPivotIndex = count(self::$lowPivotsA) - 1;
-        $checkPreviousCollision = true;
-        for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
-            if (
-                count(self::$lowPivotsA) > 3
-                && $data[$i]['low'] <=  ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 - 0.2 / 100))
-                && $data[$i]['close'] >= ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 + 0 / 100))
 
-            ) {
-                $checkPreviousCollision = false;
-                break;
-            }
-        }
-        $regularMacdRed = true;
+        // self::$lowPivotsA = [];
+        // for ($i = 10; $i <= ($index - 6); $i++) {
+        //     $p = CommonHelpers::checkPivot($data, $i, 6);
+        //     if ($p === 'low_pivot') {
+        //         self::$lowPivotsA[] = $i;
+        //     }
+        // }
 
-        $loopIndex  = $index - 1;
-        while ($loopIndex >= 3 && $data[$loopIndex]['histogram'] < 0) {
-            if (
-                $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] // dark candle
-                && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] // light candle
-            ) {
-                $regularMacdRed = false;
-                break;
-            }
-            $loopIndex--;
-        }
+        // $lastPivotIndex = count(self::$lowPivotsA) - 1;
+        // $checkPreviousCollision = true;
+        // for ($i = $lastPivotIndex; $i < $index - 2; $i++) {
+        //     if (
+        //         count(self::$lowPivotsA) > 3
+        //         && $data[$i]['low'] <=  ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 - 0.2 / 100))
+        //         && $data[$i]['close'] >= ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 + 0 / 100))
 
-        if (
-            count(self::$lowPivotsA) > 3
-            && $data[$index]['low'] <=  ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
-            && $data[$index]['close'] > ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
-            && $checkPreviousCollision
-            && $regularMacdRed
+        //     ) {
+        //         $checkPreviousCollision = false;
+        //         break;
+        //     }
+        // }
+        // $regularMacdRed = true;
 
-        ) {
-            Log::info('TriggersThreadOrderBook: Going to open with Formula A ' . $symbol);
+        // $loopIndex  = $index - 1;
+        // while ($loopIndex >= 3 && $data[$loopIndex]['histogram'] < 0) {
+        //     if (
+        //         $data[$loopIndex]['histogram'] < $data[$loopIndex - 1]['histogram'] // dark candle
+        //         && $data[$loopIndex - 1]['histogram'] > $data[$loopIndex - 2]['histogram'] // light candle
+        //     ) {
+        //         $regularMacdRed = false;
+        //         break;
+        //     }
+        //     $loopIndex--;
+        // }
 
-            return 'LONG';
-        }
+        // if (
+        //     count(self::$lowPivotsA) > 3
+        //     && $data[$index]['low'] <=  ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 - 0.1 / 100))
+        //     && $data[$index]['close'] > ($data[self::$lowPivotsA[$lastPivotIndex]]['low'] * (1 + 0.05 / 100))
+        //     && $checkPreviousCollision
+        //     && $regularMacdRed
+
+        // ) {
+        //     Log::info('TriggersThreadOrderBook: Going to open with Formula A ' . $symbol);
+
+        //     return 'LONG';
+        // }
     }
 
 

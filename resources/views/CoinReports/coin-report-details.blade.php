@@ -84,7 +84,7 @@
                         // 'mfi',
                         // 'adx',
                         // 'sar',
-                    ]" :markers="$tradeMarkers" />
+                    ]" :markers="$tradeMarkers" :lines="$lines" />
 
         </div>
     </div>

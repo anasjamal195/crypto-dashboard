@@ -97,7 +97,7 @@ class ReportService
 
     public static $dynamicTPSLgap = 0.2;
 
-    public static $initialTpPercent = 1;
+    public static $initialTpPercent = 0.6;
     public static $initialSlPercent = 2;
 
 
@@ -136,6 +136,7 @@ class ReportService
     public static $formulaType = null;
 
 
+    public static $enteredZone = false;
 
 
 
@@ -143,120 +144,130 @@ class ReportService
 
 
     public static $formulaACoins = [
-        'BNBUSDT',
+
+        'BTCUSDT',
+        'ETHUSDT',
         'SOLUSDT',
-        'ADAUSDT',
-        'DOGEUSDT',
-        'LTCUSDT',
-        'LINKUSDT',
-        'ATOMUSDT',
-        'NEARUSDT',
-        'RUNEUSDT',
-        'UNIUSDT',
-        'AAVEUSDT',
-        'ALGOUSDT',
-        'FILUSDT',
-        'VETUSDT',
-        'ICPUSDT',
-        'SANDUSDT',
-        'MANAUSDT',
-        'AXSUSDT',
-
-
-        // Major Altcoins
+        'BNBUSDT',
+        'ARBUSDT',
         'AVAXUSDT',
-        'DOTUSDT',
-        'TRXUSDT',
-        // 'SHIBUSDT',
-        'XRPUSDT',
+        'LINKUSDT',
+        'TONUSDT',
+        'TAOUSDT',
+        // 'BNBUSDT',
+        // 'SOLUSDT',
+        // 'ADAUSDT',
+        // 'DOGEUSDT',
+        // 'LTCUSDT',
+        // 'LINKUSDT',
+        // 'ATOMUSDT',
+        // 'NEARUSDT',
+        // 'RUNEUSDT',
+        // 'UNIUSDT',
+        // 'AAVEUSDT',
+        // 'ALGOUSDT',
+        // 'FILUSDT',
+        // 'VETUSDT',
+        // 'ICPUSDT',
+        // 'SANDUSDT',
+        // 'MANAUSDT',
+        // 'AXSUSDT',
 
-        // DeFi/Layer 1 Tokens
-        'FTMUSDT',
-        'ONEUSDT',
-        'EGLDUSDT',
-        'ZILUSDT',
-        'WAVESUSDT',
 
-        // Gaming/Metaverse
-        'ENJUSDT',
-        'CHZUSDT',
-        'GALAUSDT',
+        // // Major Altcoins
+        // 'AVAXUSDT',
+        // 'DOTUSDT',
+        // 'TRXUSDT',
+        // // 'SHIBUSDT',
+        // 'XRPUSDT',
 
-        // Established Altcoins
-        'XLMUSDT',
-        'EOSUSDT',
-        'ETCUSDT',
-        'BCHUSDT',
+        // // DeFi/Layer 1 Tokens
+        // 'FTMUSDT',
+        // 'ONEUSDT',
+        // 'EGLDUSDT',
+        // 'ZILUSDT',
+        // 'WAVESUSDT',
 
-        // Mid-caps with good patterns
-        'CRVUSDT',
-        'COMPUSDT',
-        'MKRUSDT',
-        'YFIUSDT'
+        // // Gaming/Metaverse
+        // 'ENJUSDT',
+        // 'CHZUSDT',
+        // 'GALAUSDT',
+
+        // // Established Altcoins
+        // 'XLMUSDT',
+        // 'EOSUSDT',
+        // 'ETCUSDT',
+        // 'BCHUSDT',
+
+        // // Mid-caps with good patterns
+        // 'CRVUSDT',
+        // 'COMPUSDT',
+        // 'MKRUSDT',
+        // 'YFIUSDT'
     ];
 
     public static $formulaBCoins = [
-        'BNBUSDT',      // Binance ecosystem - appeared in all tests
-        'AVAXUSDT',     // Layer 1 - appeared in all tests  
-        'VETUSDT',      // Supply chain - appeared in all tests
-        'LTCUSDT',      // Established alt - appeared in 3 tests
-        'SANDUSDT',     // Gaming/Metaverse - appeared in 3 tests
-        'ADAUSDT',      // Major Layer 1 - appeared in 3 tests
-        'MKRUSDT',      // DeFi governance - appeared in 3 tests
-        'COMPUSDT',     // DeFi lending - appeared in 3 tests
+        // 'BNBUSDT',      // Binance ecosystem - appeared in all tests
+        // 'AVAXUSDT',     // Layer 1 - appeared in all tests  
+        // 'VETUSDT',      // Supply chain - appeared in all tests
+        // 'LTCUSDT',      // Established alt - appeared in 3 tests
+        // 'SANDUSDT',     // Gaming/Metaverse - appeared in 3 tests
+        // 'ADAUSDT',      // Major Layer 1 - appeared in 3 tests
+        // 'MKRUSDT',      // DeFi governance - appeared in 3 tests
+        // 'COMPUSDT',     // DeFi lending - appeared in 3 tests
 
 
-        // TIER 2: STRONG CANDIDATES (appeared in 2+ tests)
-        'SOLUSDT',      // Major Layer 1
-        'ATOMUSDT',     // Cosmos ecosystem
-        'NEARUSDT',     // Layer 1 protocol
-        'DOGEUSDT',     // High volume meme coin
-        'AAVEUSDT',     // DeFi lending
-        'FILUSDT',      // Decentralized storage
-        'ETCUSDT',      // Ethereum Classic
-        'CHZUSDT',      // Sports tokens
-        'ICPUSDT',      // Internet Computer
-        'EGLDUSDT',     // MultiversX
-        'XRPUSDT',      // Payment token
-        'TRXUSDT',      // Established blockchain
-        'UNIUSDT',      // Leading DEX
-        'BCHUSDT',      // Bitcoin fork
-        'CRVUSDT',      // DeFi yield farming
-        'ALGOUSDT',     // Pure proof-of-stake
-        'MANAUSDT',     // Metaverse
-        'GALAUSDT',     // Gaming
+        // // TIER 2: STRONG CANDIDATES (appeared in 2+ tests)
+        // 'SOLUSDT',      // Major Layer 1
+        // 'ATOMUSDT',     // Cosmos ecosystem
+        // 'NEARUSDT',     // Layer 1 protocol
+        // 'DOGEUSDT',     // High volume meme coin
+        // 'AAVEUSDT',     // DeFi lending
+        // 'FILUSDT',      // Decentralized storage
+        // 'ETCUSDT',      // Ethereum Classic
+        // 'CHZUSDT',      // Sports tokens
+        // 'ICPUSDT',      // Internet Computer
+        // 'EGLDUSDT',     // MultiversX
+        // 'XRPUSDT',      // Payment token
+        // 'TRXUSDT',      // Established blockchain
+        // 'UNIUSDT',      // Leading DEX
+        // 'BCHUSDT',      // Bitcoin fork
+        // 'CRVUSDT',      // DeFi yield farming
+        // 'ALGOUSDT',     // Pure proof-of-stake
+        // 'MANAUSDT',     // Metaverse
+        // 'GALAUSDT',     // Gaming
 
 
-        // TIER 3: ADDITIONAL HIGH-POTENTIAL COINS
-        // Based on similar characteristics
+        // // TIER 3: ADDITIONAL HIGH-POTENTIAL COINS
+        // // Based on similar characteristics
 
-        // Layer 1 & Infrastructure (similar to AVAX, SOL, ADA patterns)
-        'DOTUSDT',      // Polkadot - Multi-chain protocol
-        'MATICUSDT',    // Polygon - Ethereum scaling
-        'FTMUSDT',      // Fantom - High-speed blockchain
-        'HBARUSDT',     // Hedera - Enterprise blockchain
-        'FLOWUSDT',     // Flow - NFT-focused blockchain
-        'APTUSDT',      // Aptos - High-performance L1
-        'SUIUSDT',      // Sui - Next-gen L1
-        'SEIUSDT',      // Sei - Trading-focused L1
+        // // Layer 1 & Infrastructure (similar to AVAX, SOL, ADA patterns)
+        // 'DOTUSDT',      // Polkadot - Multi-chain protocol
+        // 'MATICUSDT',    // Polygon - Ethereum scaling
+        // 'FTMUSDT',      // Fantom - High-speed blockchain
+        // 'HBARUSDT',     // Hedera - Enterprise blockchain
+        // 'FLOWUSDT',     // Flow - NFT-focused blockchain
+        // 'APTUSDT',      // Aptos - High-performance L1
+        // 'SUIUSDT',      // Sui - Next-gen L1
+        // 'SEIUSDT',      // Sei - Trading-focused L1
 
-        // DeFi Tokens (similar to AAVE, UNI, CRV patterns)
-        'LINKUSDT',     // Chainlink - Oracle network
-        'SUSHIUSDT',    // SushiSwap - DEX
-        'CAKEUSDT',     // PancakeSwap - BSC DEX
-        '1INCHUSDT',    // 1inch - DEX aggregator
-        'SNXUSDT',      // Synthetix - Synthetic assets
-        'GMXUSDT',      // GMX - Perpetual trading
-        'RDNTUSDT',     // Radiant - Cross-chain lending
-        'PEPEUSDT',     // High volume meme token
+        // // DeFi Tokens (similar to AAVE, UNI, CRV patterns)
+        // 'LINKUSDT',     // Chainlink - Oracle network
+        // 'SUSHIUSDT',    // SushiSwap - DEX
+        // 'CAKEUSDT',     // PancakeSwap - BSC DEX
+        // '1INCHUSDT',    // 1inch - DEX aggregator
+        // 'SNXUSDT',      // Synthetix - Synthetic assets
+        // 'GMXUSDT',      // GMX - Perpetual trading
+        // 'RDNTUSDT',     // Radiant - Cross-chain lending
+        // 'PEPEUSDT',     // High volume meme token
 
-        // // Gaming/Metaverse (similar to SAND, MANA, GALA patterns)
-        'AXSUSDT',      // Axie Infinity - P2E gaming
-        'ENJUSDT',      // Enjin - Gaming platform
-        'IMXUSDT',      // Immutable X - Gaming L2
-        'BEAMUSDT',     // Beam - Gaming blockchain
-        'RONINUSDT',    // Ronin - Gaming sidechain
-        'MAGICUSDT'    // Magic - Gaming ecosystem
+        // // // Gaming/Metaverse (similar to SAND, MANA, GALA patterns)
+        // 'AXSUSDT',      // Axie Infinity - P2E gaming
+        // 'ENJUSDT',      // Enjin - Gaming platform
+        // 'IMXUSDT',      // Immutable X - Gaming L2
+        // 'BEAMUSDT',     // Beam - Gaming blockchain
+        // 'RONINUSDT',    // Ronin - Gaming sidechain
+        // 'MAGICUSDT'    // Magic - Gaming ecosystem
     ];
 
 
@@ -326,7 +337,7 @@ class ReportService
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                // dd($e);
+                dd($e);
                 $cmd->error('Error Occured: ', $e->getMessage());
                 Log::error("Failed to update coin reports: " . $e->getMessage());
             }
@@ -599,6 +610,8 @@ class ReportService
 
         self::$lowPivotsB = [];
         self::$highPivotsB = [];
+
+        self::$enteredZone = false;
         foreach ($data as $index => $candle) {
 
 
@@ -714,6 +727,26 @@ class ReportService
                     if (self::$lpIndex)
                         $candle['lpIndex'] = $data[self::$lpIndex]['timestamp_pst'];
 
+
+
+                    $detector = new OrderBlockDetector();
+                    $orderBlocks = $detector->getRecentOrderBlocks($data, $index, 5);
+
+
+
+
+                    if (count($orderBlocks['bear'])) {
+                        $latestZone = $orderBlocks['bear'][0];
+                        $candle['latestBearOb'] = $latestZone;
+                    }
+                    if (count($orderBlocks['bull'])) {
+                        $latestZone = $orderBlocks['bull'][0];
+                        $candle['latestBullOb'] = $latestZone;
+                    }
+
+
+
+
                     // if (count(self::$lowPivots) >= 3)
                     //     $candle['lowPivots'] = [
                     //         $data[self::$lowPivots[count(self::$lowPivots) - 3]]['timestamp_pst'],
@@ -762,36 +795,36 @@ class ReportService
 
 
                         if ($data[$sl]['low'] >= $data[$index]['close']) {
-                            self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
+                            // self::$dynamicSL = $data[$index]['close'] * (1 - self::$initialSlPercent / 100);
                         } else {
                             $slPercentage = CommonHelpers::getPercentDiff($data[$index]['close'], $data[$sl]['low']);
-                            self::$dynamicSL = $data[$sl]['low'] * (1 - 0.7 / 100);
+                            // self::$dynamicSL = $data[$sl]['low'] * (1 - 0.7 / 100);
 
-                            if ($slPercentage >= 3) {
-                                $extremePrice = 0;
-                                $currentTrade = [];
-                                $open_price = 0;
-                                $tradeType = null;
-                                self::$waitingCandles = 4;
-                                $openingIndex = 0;
+                            // if ($slPercentage >= 3) {
+                            //     $extremePrice = 0;
+                            //     $currentTrade = [];
+                            //     $open_price = 0;
+                            //     $tradeType = null;
+                            //     self::$waitingCandles = 4;
+                            //     $openingIndex = 0;
 
-                                self::$dynamicTP = 0;
-                                self::$dynamicSL = 0;
-                                self::$candlesToCheck = 1000;
+                            //     self::$dynamicTP = 0;
+                            //     self::$dynamicSL = 0;
+                            //     self::$candlesToCheck = 1000;
 
-                                self::$tLineCoordHigh = null;
-                                self::$lastPivotLow = null;
+                            //     self::$tLineCoordHigh = null;
+                            //     self::$lastPivotLow = null;
 
-                                self::$tLineCoordLow = null;
-                                self::$lastPivotHigh = null;
-                                self::$confirmedTradeIndex = null;
-                                self::$lpIndex = null;
-                                continue;
-                            }
+                            //     self::$tLineCoordLow = null;
+                            //     self::$lastPivotHigh = null;
+                            //     self::$confirmedTradeIndex = null;
+                            //     self::$lpIndex = null;
+                            //     continue;
+                            // }
                         }
 
 
-                        self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
+                        // self::$dynamicTP = $data[$index]['close'] * (1 + self::$initialTpPercent / 100);
 
                         $candle['slPer'] = CommonHelpers::getPercentDiff($open_price, self::$dynamicSL);
                         $candle['tpSlBuffer'] = self::$dynamicTPSLgap;
@@ -921,24 +954,71 @@ class ReportService
 
 
 
-        if (in_array($symbol, self::$formulaACoins)) {
-            $openingA = self::checkOpeningConditionA($symbol, $data, $index);
-            if ($openingA) {
-                $tagName = 'Formula-A';
-                self::$formulaType = 'A';
-                return $openingA;
+
+
+        $detector = new OrderBlockDetector();
+        $orderBlocks = $detector->getRecentOrderBlocks($data, $index, 5);
+
+
+
+
+        if (count($orderBlocks['bear'])) {
+            $latestZone = $orderBlocks['bear'][0];
+            if (!self::$enteredZone) {
+                // If entered zone
+                if (
+                    $data[$index]['close'] <= $latestZone['top']
+                    && $data[$index]['close'] >= $latestZone['bottom']
+                ) {
+                    self::$enteredZone = true;
+                }
+            } else {
+                if (
+                    $data[$index]['close'] > $latestZone['top']
+                    && $data[$index]['open'] < $latestZone['top']
+                    && $data[$index]['close'] > $data[$index]['ma99']
+                ) {
+                    self::$enteredZone = false;
+                    $stopLoss = $latestZone['bottom'];
+                    $minLow = min($data[$index]['low'], $data[$index - 1]['low'], $data[$index - 2]['low']);
+                    if (
+                        $minLow <  $latestZone['bottom']
+                    ) {
+                        $stopLoss = $minLow;
+                    }
+
+                    self::$dynamicSL = $stopLoss;
+                    self::$dynamicTP = $data[$index]['close'] + (($data[$index]['close'] - $stopLoss) * 1.5);
+                    return 'LONG';
+                } else  if (
+                    $data[$index]['close'] < $latestZone['bottom']
+                    && $data[$index]['open'] > $latestZone['bottom']
+                ) {
+                    self::$enteredZone = false;
+                }
             }
         }
 
 
-        if (in_array($symbol, self::$formulaBCoins)) {
-            $openingB = self::checkOpeningConditionB($symbol, $data, $index);
-            if ($openingB) {
-                $tagName = 'Formula-B';
-                self::$formulaType = 'B';
-                return $openingB;
-            }
-        }
+
+        // if (in_array($symbol, self::$formulaACoins)) {
+        //     $openingA = self::checkOpeningConditionA($symbol, $data, $index);
+        //     if ($openingA) {
+        //         $tagName = 'Formula-A';
+        //         self::$formulaType = 'A';
+        //         return $openingA;
+        //     }
+        // }
+
+
+        // if (in_array($symbol, self::$formulaBCoins)) {
+        //     $openingB = self::checkOpeningConditionB($symbol, $data, $index);
+        //     if ($openingB) {
+        //         $tagName = 'Formula-B';
+        //         self::$formulaType = 'B';
+        //         return $openingB;
+        //     }
+        // }
 
         return null;
     }
@@ -1222,18 +1302,20 @@ class ReportService
             }
 
             // // If Sl is trigggerd
-            else if ($data[$index]['close'] < self::$dynamicSL) {
+            else if ($data[$index]['low'] < self::$dynamicSL) {
                 $closingPrice = self::$dynamicSL;
-            } else if (
-
-                $data[$index]['histogram'] < $data[$index - 1]['histogram']
-                && $data[$index]['close'] < $data[$index]['ma99']
-                && $data[$index]['per'] < 0
-                // && CommonHelpers::getPercentDiff($data[$openingIndex]['close'], self::$dynamicSL, true) <= -2
-                && CommonHelpers::getPercentDiff($data[$openingIndex]['close'], $data[$index]['close'], true) <= -1
-            ) {
-                $closingPrice = $data[$index]['close'];
             }
+
+            // else if (
+
+            //     $data[$index]['histogram'] < $data[$index - 1]['histogram']
+            //     && $data[$index]['close'] < $data[$index]['ma99']
+            //     && $data[$index]['per'] < 0
+            //     // && CommonHelpers::getPercentDiff($data[$openingIndex]['close'], self::$dynamicSL, true) <= -2
+            //     && CommonHelpers::getPercentDiff($data[$openingIndex]['close'], $data[$index]['close'], true) <= -1
+            // ) {
+            //     $closingPrice = $data[$index]['close'];
+            // }
         } else {
             // If TP is triggered
             if ($data[$index]['close'] <= self::$dynamicTP) {
@@ -2478,5 +2560,419 @@ class ReportService
             'numberOfCandlesPast' => $index - $verifiedIndex,
             'diffInMins' => ($data[$index]['binance_timestamp'] - $data[$verifiedIndex]['binance_timestamp']) / (1000 * 60),
         ];
+    }
+}
+
+
+
+
+
+
+
+class OrderBlockDetector
+{
+    private $mslen = 5; // Market structure length (equivalent to mslen in Pine Script)
+    private $atrPeriod = 200; // ATR calculation period
+    private $obmode = "Length"; // "Length" or "Full"
+    private $len = 5; // Length parameter for order block construction
+
+    public function __construct($mslen = 5, $atrPeriod = 200, $obmode = "Length", $len = 5)
+    {
+        $this->mslen = $mslen;
+        $this->atrPeriod = $atrPeriod;
+        $this->obmode = $obmode;
+        $this->len = $len;
+    }
+
+    /**
+     * Get recent order blocks up to the specified candle index
+     * 
+     * @param array $data - Array of candlestick data
+     * @param int $index - Current index to analyze up to
+     * @param int $maxOrderBlocks - Maximum number of order blocks to return (default: 5)
+     * @return array - Array of order blocks with bull/bear classification
+     */
+    public function getRecentOrderBlocks($data, $index, $maxOrderBlocks = 5)
+    {
+        if ($index < $this->mslen * 2 + $this->atrPeriod) {
+            return ['bull' => [], 'bear' => []]; // Not enough data
+        }
+
+        // Initialize market structure state
+        $ms = $this->initializeMarketStructure($data, $index);
+
+        // Calculate ATR for order block positioning
+        $atr = $this->calculateATR($data, $index);
+
+        // Find order blocks
+        $bullOrderBlocks = [];
+        $bearOrderBlocks = [];
+
+        // Track market structure changes and identify order block formation points
+        $structureChanges = $this->findStructureChanges($data, $index);
+
+        foreach ($structureChanges as $change) {
+            if ($change['type'] === 'choch_bull_to_bear') {
+                // Bullish order block formed
+                $ob = $this->createBullOrderBlock($data, $change, $atr);
+                if ($ob) {
+                    $bullOrderBlocks[] = $ob;
+                }
+            } elseif ($change['type'] === 'choch_bear_to_bull') {
+                // Bearish order block formed  
+                $ob = $this->createBearOrderBlock($data, $change, $atr);
+                if ($ob) {
+                    $bearOrderBlocks[] = $ob;
+                }
+            }
+        }
+
+        // Sort by recency and limit results
+        usort($bullOrderBlocks, function ($a, $b) {
+            return $b['loc'] - $a['loc']; // Most recent first
+        });
+
+        usort($bearOrderBlocks, function ($a, $b) {
+            return $b['loc'] - $a['loc']; // Most recent first
+        });
+
+
+        $bullZone = [];
+        $bearZone = [];
+        foreach (array_slice($bullOrderBlocks, 0, $maxOrderBlocks)  as $zone) {
+
+
+            $startIndex = (count($data) - 1) - OpeningConditionServiceLive::getIndexDiffFromTimestamps($zone['timestamp'], $data[count($data) - 1]['binance_timestamp'], '15m');
+
+            if (
+                (min($data[$startIndex]['open'], $data[$startIndex]['close']) <= $zone['top']
+                    && min($data[$startIndex]['open'], $data[$startIndex]['close']) >= $zone['bottom']
+
+                    &&  min($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) <= $zone['top']
+                    && min($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) >= $zone['bottom']
+
+
+                    &&  min($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) <= $zone['top']
+                    && min($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) >= $zone['bottom']
+                )
+                ||
+                (max($data[$startIndex]['open'], $data[$startIndex]['close']) <= $zone['top']
+                    && max($data[$startIndex]['open'], $data[$startIndex]['close']) >= $zone['bottom']
+
+                    &&  max($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) <= $zone['top']
+                    && max($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) >= $zone['bottom']
+
+
+                    &&  max($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) <= $zone['top']
+                    && max($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) >= $zone['bottom']
+                )
+
+            ) {
+                $bullZone[] = $zone;
+            }
+        }
+
+        foreach (array_slice($bearOrderBlocks, 0, $maxOrderBlocks)  as $zone) {
+
+
+            $startIndex = (count($data) - 1) - OpeningConditionServiceLive::getIndexDiffFromTimestamps($zone['timestamp'], $data[count($data) - 1]['binance_timestamp'], '15m');
+
+            if (
+                (min($data[$startIndex]['open'], $data[$startIndex]['close']) <= $zone['top']
+                    && min($data[$startIndex]['open'], $data[$startIndex]['close']) >= $zone['bottom']
+
+                    &&  min($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) <= $zone['top']
+                    && min($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) >= $zone['bottom']
+
+
+                    &&  min($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) <= $zone['top']
+                    && min($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) >= $zone['bottom']
+                )
+                ||
+                (max($data[$startIndex]['open'], $data[$startIndex]['close']) <= $zone['top']
+                    && max($data[$startIndex]['open'], $data[$startIndex]['close']) >= $zone['bottom']
+
+                    &&  max($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) <= $zone['top']
+                    && max($data[$startIndex + 1]['open'], $data[$startIndex + 1]['close']) >= $zone['bottom']
+
+
+                    &&  max($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) <= $zone['top']
+                    && max($data[$startIndex + 2]['open'], $data[$startIndex + 2]['close']) >= $zone['bottom']
+                )
+
+            ) {
+                $bearZone[] = $zone;
+            }
+        }
+
+        return [
+            'bull' => $bullZone,
+            'bear' => $bearZone
+        ];
+    }
+
+    private function initializeMarketStructure($data, $index)
+    {
+        return [
+            'trend' => 0, // 1 for uptrend, -1 for downtrend, 0 for initial
+            'start' => 0, // Market structure state
+            'choch' => null, // Change of character level
+            'bos' => null, // Break of structure level
+            'main' => null, // Current main level being tracked
+            'loc' => 0, // Location of last structure change
+            'temp' => 0, // Temporary location tracker
+        ];
+    }
+
+    private function calculateATR($data, $index, $period = null)
+    {
+        if ($period === null) {
+            $period = min($this->atrPeriod, $index);
+        }
+
+        $trValues = [];
+        $startIdx = max(1, $index - $period + 1);
+
+        for ($i = $startIdx; $i <= $index; $i++) {
+            $high = $data[$i]['high'];
+            $low = $data[$i]['low'];
+            $prevClose = $data[$i - 1]['close'];
+
+            $tr = max(
+                $high - $low,
+                abs($high - $prevClose),
+                abs($low - $prevClose)
+            );
+            $trValues[] = $tr;
+        }
+
+        return array_sum($trValues) / count($trValues);
+    }
+
+    private function findStructureChanges($data, $index)
+    {
+        $changes = [];
+        $ms = $this->initializeMarketStructure($data, $index);
+
+        // Find pivot highs and lows
+        $pivots = $this->findPivots($data, $index);
+
+        // Analyze structure changes
+        $trend = 0; // 0 = initial, 1 = up, -1 = down
+        $lastHigh = null;
+        $lastLow = null;
+
+        for ($i = $this->mslen; $i <= $index - $this->mslen; $i++) {
+            $current = $data[$i];
+
+            // Check for pivot highs and lows
+            if ($this->isPivotHigh($data, $i)) {
+                if ($lastHigh !== null && $current['high'] < $lastHigh) {
+                    // Lower high - potential trend change to bearish
+                    if ($trend === 1) {
+                        $changes[] = [
+                            'type' => 'choch_bull_to_bear',
+                            'index' => $i,
+                            'price' => $current['high'],
+                            'timestamp' => $current['timestamp'],
+                            'prev_high' => $lastHigh
+                        ];
+                        $trend = -1;
+                    }
+                } elseif ($lastHigh !== null && $current['high'] > $lastHigh) {
+                    // Higher high - continuation or new bullish trend
+                    if ($trend !== 1) {
+                        $trend = 1;
+                    }
+                }
+                $lastHigh = $current['high'];
+            }
+
+            if ($this->isPivotLow($data, $i)) {
+                if ($lastLow !== null && $current['low'] > $lastLow) {
+                    // Higher low - potential trend change to bullish
+                    if ($trend === -1) {
+                        $changes[] = [
+                            'type' => 'choch_bear_to_bull',
+                            'index' => $i,
+                            'price' => $current['low'],
+                            'timestamp' => $current['timestamp'],
+                            'prev_low' => $lastLow
+                        ];
+                        $trend = 1;
+                    }
+                } elseif ($lastLow !== null && $current['low'] < $lastLow) {
+                    // Lower low - continuation or new bearish trend
+                    if ($trend !== -1) {
+                        $trend = -1;
+                    }
+                }
+                $lastLow = $current['low'];
+            }
+        }
+
+        return $changes;
+    }
+
+    private function findPivots($data, $index)
+    {
+        $pivots = ['highs' => [], 'lows' => []];
+
+        for ($i = $this->mslen; $i <= $index - $this->mslen; $i++) {
+            if ($this->isPivotHigh($data, $i)) {
+                $pivots['highs'][] = ['index' => $i, 'price' => $data[$i]['high']];
+            }
+            if ($this->isPivotLow($data, $i)) {
+                $pivots['lows'][] = ['index' => $i, 'price' => $data[$i]['low']];
+            }
+        }
+
+        return $pivots;
+    }
+
+    private function isPivotHigh($data, $index)
+    {
+        if ($index < $this->mslen || $index >= count($data) - $this->mslen) {
+            return false;
+        }
+
+        $currentHigh = $data[$index]['high'];
+
+        // Check left side
+        for ($i = $index - $this->mslen; $i < $index; $i++) {
+            if ($data[$i]['high'] >= $currentHigh) {
+                return false;
+            }
+        }
+
+        // Check right side  
+        for ($i = $index + 1; $i <= $index + $this->mslen; $i++) {
+            if ($data[$i]['high'] >= $currentHigh) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isPivotLow($data, $index)
+    {
+        if ($index < $this->mslen || $index >= count($data) - $this->mslen) {
+            return false;
+        }
+
+        $currentLow = $data[$index]['low'];
+
+        // Check left side
+        for ($i = $index - $this->mslen; $i < $index; $i++) {
+            if ($data[$i]['low'] <= $currentLow) {
+                return false;
+            }
+        }
+
+        // Check right side
+        for ($i = $index + 1; $i <= $index + $this->mslen; $i++) {
+            if ($data[$i]['low'] <= $currentLow) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function createBullOrderBlock($data, $change, $atr)
+    {
+        $idx = $change['index'];
+        if ($idx >= count($data)) return null;
+
+        // Find the highest point before the structure change
+        $highestIdx = $this->findHighest($data, max(0, $idx - 20), $idx);
+        if ($highestIdx === null) return null;
+
+        $candle = $data[$highestIdx];
+        $top = $candle['high'];
+        $bottom = $candle['low'];
+
+        // Adjust bottom based on mode
+        if ($this->obmode === "Length") {
+            $adjustedBottom = $candle['low'] + ($atr / (5 / $this->len));
+            $bottom = min($adjustedBottom, $candle['high']) > $candle['low'] ? $candle['low'] : $adjustedBottom;
+        }
+
+        return [
+            'type' => 'bull',
+            'top' => $top,
+            'bottom' => $bottom,
+            'avg' => ($top + $bottom) / 2,
+            'loc' => $highestIdx,
+            'timestamp' => $candle['binance_timestamp'],
+            'volume' => $candle['volume'],
+            'isBreaker' => false,
+            'active' => true
+        ];
+    }
+
+    private function createBearOrderBlock($data, $change, $atr)
+    {
+        $idx = $change['index'];
+        if ($idx >= count($data)) return null;
+
+        // Find the lowest point before the structure change  
+        $lowestIdx = $this->findLowest($data, max(0, $idx - 20), $idx);
+        if ($lowestIdx === null) return null;
+
+        $candle = $data[$lowestIdx];
+        $top = $candle['high'];
+        $bottom = $candle['low'];
+
+        // Adjust top based on mode
+        if ($this->obmode === "Length") {
+            $adjustedTop = $candle['high'] - ($atr / (5 / $this->len));
+            $top = max($adjustedTop, $candle['low']) < $candle['high'] ? $candle['high'] : $adjustedTop;
+        }
+
+        return [
+            'type' => 'bear',
+            'top' => $top,
+            'bottom' => $bottom,
+            'avg' => ($top + $bottom) / 2,
+            'loc' => $lowestIdx,
+            'timestamp' => $candle['binance_timestamp'],
+            'volume' => $candle['volume'],
+            'isBreaker' => false,
+            'active' => true
+        ];
+    }
+
+    private function findHighest($data, $startIdx, $endIdx)
+    {
+        $highest = null;
+        $highestIdx = null;
+
+        for ($i = $startIdx; $i <= $endIdx; $i++) {
+            if ($i >= count($data)) break;
+            if ($highest === null || $data[$i]['high'] > $highest) {
+                $highest = $data[$i]['high'];
+                $highestIdx = $i;
+            }
+        }
+
+        return $highestIdx;
+    }
+
+    private function findLowest($data, $startIdx, $endIdx)
+    {
+        $lowest = null;
+        $lowestIdx = null;
+
+        for ($i = $startIdx; $i <= $endIdx; $i++) {
+            if ($i >= count($data)) break;
+            if ($lowest === null || $data[$i]['low'] < $lowest) {
+                $lowest = $data[$i]['low'];
+                $lowestIdx = $i;
+            }
+        }
+
+        return $lowestIdx;
     }
 }
