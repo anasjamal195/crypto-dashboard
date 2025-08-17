@@ -234,9 +234,19 @@ class OpeningConditionServiceLive
                         $stopLoss = $minLow;
                     }
 
-                    $stopLoss = CommonHelpers::getPercentDiff($data[$index]['close'], $stopLoss);
-                    $dynamicTP = $data[$index]['close'] + (($data[$index]['close'] - $stopLoss) * 1.5);
+
+
+                    $stopLossPercent = CommonHelpers::getPercentDiff($data[$index]['close'], $stopLoss);
+
+                    if ($stopLossPercent > 1) {
+                        $dynamicTP = $data[$index]['close'] + (($data[$index]['close'] - $stopLoss) * 1.1);
+                    } else {
+                        $dynamicTP = $data[$index]['close'] + (($data[$index]['close'] - $stopLoss) * 1.5);
+                    }
+
                     $targetProfit = CommonHelpers::getPercentDiff($data[$index]['close'], $dynamicTP);
+
+                    $stopLoss = $stopLossPercent;
                 }
 
                 return [
