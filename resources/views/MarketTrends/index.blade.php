@@ -18,6 +18,7 @@
             // 'sar',
         ]"
             :markers="$openingMarkers" 
+            :trades="$trades" 
             :lines="$lines" />
     </div>
 @endsection

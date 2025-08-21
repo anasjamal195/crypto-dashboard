@@ -872,6 +872,358 @@ class CommonHelpers
     }
 
 
+    public static function filterCandlestickData(array $data, ?int $startTimestamp, ?int $endTimestamp): array
+    {
+        $filtered = array_filter($data, function ($candle) use ($startTimestamp, $endTimestamp) {
+            if (!isset($candle['binance_timestamp'])) {
+                return false;
+            }
+
+            $ts = $candle['binance_timestamp'];
+
+            if ($startTimestamp !== null && $ts < $startTimestamp) {
+                return false;
+            }
+            if ($endTimestamp !== null && $ts > $endTimestamp) {
+                return false;
+            }
+
+            return true;
+        });
+
+        // reindex to 0..n
+        return array_values($filtered);
+    }
+
+
+    // FVG Calculation
+
+    public static function getLatestFVGatIndex($data, $index, $fillMethod = 'body')
+    {
+        if ($index <= 10) {
+            return null;
+        }
+
+        $loopIndex = $index - 1;
+        $latestFVG = null;
+
+        while ($loopIndex > 10) {
+            $fvg = null;
+
+            // --- Detect Bullish FVG ---
+            if ($data[$loopIndex]['per'] > 0 && isset($data[$loopIndex - 1], $data[$loopIndex + 1])) {
+                $gapDistance = CommonHelpers::getPercentDiff($data[$loopIndex - 1]['high'], $data[$loopIndex + 1]['low'], true);
+
+                if ($gapDistance >= 0.2) {
+                    $fvg = [
+                        'type' => 'bullish',
+                        'index' => $loopIndex,
+                        'distance' => $gapDistance,
+                        'top' => $data[$loopIndex + 1]['low'],
+                        'bottom' => $data[$loopIndex - 1]['high'],
+                        'timestamp' => $data[$loopIndex]['binance_timestamp'],
+                        'timestamp_pst' => $data[$loopIndex]['timestamp_pst'],
+                        'timestampReadable' => $data[$loopIndex]['timestampReadable'],
+                    ];
+                }
+            }
+            // --- Detect Bearish FVG ---
+            else if ($data[$loopIndex - 1]['per'] < 0 && isset($data[$loopIndex - 1], $data[$loopIndex + 1])) {
+                $gapDistance = CommonHelpers::getPercentDiff($data[$loopIndex + 1]['high'], $data[$loopIndex - 1]['low'], true);
+
+                if ($gapDistance >= 0.2) {
+                    $fvg = [
+                        'type' => 'bearish',
+                        'index' => $loopIndex,
+                        'distance' => $gapDistance,
+                        'top' => $data[$loopIndex - 1]['low'],
+                        'bottom' => $data[$loopIndex + 1]['high'],
+                        'timestamp' => $data[$loopIndex]['binance_timestamp'],
+                        'timestamp_pst' => $data[$loopIndex]['timestamp_pst'],
+                        'timestampReadable' => $data[$loopIndex]['timestampReadable'],
+                    ];
+                }
+            }
+
+            // --- If FVG found, validate it ---
+            if ($fvg) {
+                $fvg['filledIndex'] = null;
+                $fvg['filledMethod'] = null;
+                $fvg['fillPercent'] = null;
+                $isInvalidated = false;
+
+                for ($i = $fvg['index'] + 1; $i <= $index; $i++) {
+                    if (!isset($data[$i])) {
+                        break;
+                    }
+
+                    $top = $fvg['top'];
+                    $bottom = $fvg['bottom'];
+
+                    // --- Bullish Check ---
+                    if ($fvg['type'] === 'bullish') {
+                        // invalidation: close below bottom
+                        if (max($data[$i]['close'], $data[$i]['open']) < $bottom) {
+                            $isInvalidated = true;
+                            break;
+                        }
+
+                        // fill check
+                        $value = $fillMethod === 'wick' ? $data[$i]['low'] : min($data[$i]['close'], $data[$i]['open']);
+                        $percent = 100 - (($value - $bottom) / ($top - $bottom) * 100);
+                        if ($percent >= 100) {
+                            $fvg['filledIndex'] = $i;
+                            $fvg['filledMethod'] = $fillMethod;
+                            $fvg['fillPercent'] = $percent;
+                            break;
+                        }
+                    }
+                    // --- Bearish Check ---
+                    else if ($fvg['type'] === 'bearish') {
+                        // invalidation: close above top
+                        if (min($data[$i]['close'], $data[$i]['open']) > $top) {
+                            $isInvalidated = true;
+                            break;
+                        }
+
+                        // fill check
+                        $value = $fillMethod === 'wick' ? $data[$i]['high'] : max($data[$i]['close'], $data[$i]['open']);
+                        $percent = (($value - $bottom) / ($top - $bottom) * 100);
+                        if ($percent >= 100) {
+                            $fvg['filledIndex'] = $i;
+                            $fvg['filledMethod'] = $fillMethod;
+                            $fvg['fillPercent'] = $percent;
+                            break;
+                        }
+                    }
+                }
+
+                // --- Final decision ---
+                if (!$isInvalidated && !$fvg['filledIndex']) {
+                    $latestFVG = $fvg;
+                    break; // stop at the first active, unfilled FVG
+                }
+            }
+
+            $loopIndex--;
+        }
+
+        return $latestFVG;
+    }
+
+
+
+
+
+    public static function getLatestFibZone($data, $index, $type = 'bullish')
+    {
+
+
+        $loopIndex = $index - 3;
+        $fibZone = null;
+        $hPivotIndex = null;
+        $lPivotIndex = null;
+
+        if ($type === 'bullish') {
+            while ($loopIndex > 10) {
+                $pivot = CommonHelpers::checkPivot($data, $loopIndex, 3);
+
+
+                if (!$hPivotIndex) {
+                    if ($pivot === 'high_pivot') {
+                        $hPivotIndex = $loopIndex;
+                    }
+                } else {
+                    if ($pivot === 'low_pivot') {
+                        $lPivotIndex = $loopIndex;
+                        break;
+                    }
+                }
+                $loopIndex--;
+            }
+
+
+
+
+            if ($lPivotIndex && $hPivotIndex) {
+
+
+                $diff = $data[$hPivotIndex]['high'] - $data[$lPivotIndex]['low'];
+
+                $zoneUpper = $data[$hPivotIndex]['high'] - ($diff * 0.5);   // 50% retracement
+                $zoneLower = $data[$hPivotIndex]['high'] - ($diff * 0.618); // 61.8% retracement
+                $fibZone = [
+                    'start_index' => $lPivotIndex,
+                    'type' => $type,
+                    'l_pivot' => $lPivotIndex,
+                    'h_pivot' => $hPivotIndex,
+                    'l_value' => $data[$lPivotIndex]['low'],
+                    'h_value' => $data[$hPivotIndex]['high'],
+                    'upper' => $zoneUpper,
+                    'lower' => $zoneLower,
+                    'percent_gain' => CommonHelpers::getPercentDiff($data[$lPivotIndex]['low'], $data[$hPivotIndex]['high'], true),
+                ];
+            }
+        }
+        return $fibZone;
+    }
+
+
+    public static function getProgressionDetails($formula, $position, $binance_timestamp, $tagName = null)
+    {
+
+
+        $rawData = DB::table('coin_reports')
+            ->selectRaw("
+                    JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp')) as buying_timestamp,
+                    symbol,
+                    COUNT(*) as total_trades,
+                    SUM(profit) as profit,
+                    SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as profitable_trades,
+                    SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as loss_trades,
+                    ROUND((SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as accuracy
+                ")
+            ->where('formula', $formula);
+
+
+        if ($tagName) {
+            $rawData->where('tagName', $tagName);
+        }
+
+        $rawData = $rawData->where('position', $position)
+            ->whereNotNull('sellingCandle')
+            ->whereRaw("JSON_EXTRACT(sellingCandle, '$.binance_timestamp') <= ?", [$binance_timestamp])
+            ->groupBy(
+                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(buyingCandle, '$.binance_timestamp'))"),
+                'symbol'
+            )
+            ->orderBy('buying_timestamp', 'ASC')
+            ->get();
+        $grouped = [];
+
+        foreach ($rawData as $row) {
+            $timestamp = $row->buying_timestamp;
+
+            if (!isset($grouped[$timestamp])) {
+                $grouped[$timestamp] = [
+                    'timestamp' => $timestamp,
+                    'total_profit' => 0,
+                    'total_loss' => 0,
+                    'profit' => 0,
+                    'accuracy' => 0,
+                    'high_accuracy_symbols' => [],
+                ];
+            }
+
+            $grouped[$timestamp]['total_profit'] += $row->profitable_trades;
+            $grouped[$timestamp]['total_loss'] += $row->loss_trades;
+            $grouped[$timestamp]['profit'] += $row->profit;
+
+            if ($row->accuracy > 90) {
+                $grouped[$timestamp]['high_accuracy_symbols'][] = $row->symbol;
+            }
+        }
+
+        // Now calculate overall accuracy per timestamp
+        foreach ($grouped as &$item) {
+            $totalTrades = $item['total_profit'] + $item['total_loss'];
+            $item['accuracy'] = $totalTrades > 0
+                ? round(($item['total_profit'] / $totalTrades) * 100, 2)
+                : 0;
+        }
+
+
+        return $grouped;
+    }
+
+
+
+
+    public static function parseFrequency($grouped, $endTime, $hours = null)
+    {
+
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+            }
+        }
+
+
+
+        $totalTrades = $totalProfits + $totalLosses;
+        return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
+    }
+
+
+
+
+    public static function parseAccuracy($grouped, $endTime, $hours = null)
+    {
+
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+            }
+        }
+
+
+
+
+        $totalTrades = $totalProfits + $totalLosses;
+        return $totalTrades != 0 ? ($totalProfits / $totalTrades) * 100 : -1;
+    }
+    public static function parseProfit($grouped, $endTime, $hours = null)
+    {
+
+        $filterHoursStartTime = $endTime - ($hours * 60 * 60 * 1000);
+
+
+        if (!$hours) {
+            $filterHoursStartTime = 0;
+        }
+
+        $totalProfits = 0;
+        $totalLosses = 0;
+        $netProfit = 0;
+
+        foreach ($grouped as $timestamp => $data) {
+            if ($timestamp <= $endTime && $timestamp >= $filterHoursStartTime) {
+                $totalLosses += $data['total_loss'];
+                $totalProfits += $data['total_profit'];
+                $netProfit += $data['profit'];
+            }
+        }
+
+
+
+
+        return $netProfit;
+    }
+
+
     public static function checkCompleteMACDShort($data, $index, $symbol)
     {
 
@@ -2913,7 +3265,7 @@ class CommonHelpers
     }
 
 
-      public static function checkPivotIndicator($data, $index, $n = 2, $maxIndex = null,$key = 'ma7')
+    public static function checkPivotIndicator($data, $index, $n = 2, $maxIndex = null, $key = 'ma7')
     {
         $total = count($data);
 

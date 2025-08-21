@@ -48,6 +48,7 @@ class TestCron extends Command
                 'timestamp' => null,
                 'includeFiltered' => true,
             ],
+
             // [
             //     'formula' => 'Analysis - Bullish',
             //     'timestamp' => 1746126000000,
@@ -92,11 +93,11 @@ class TestCron extends Command
 
             $formula = $details['formula'] . ' - Base';
             $timestamp = $details['timestamp'];
-            $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
+            $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp);
 
-            if ($details['includeFiltered']) {
-                CommonHelpers::filterReportOnWorkerLimit($backtestFormula, $workerLimit);
-            }
+            // if ($details['includeFiltered']) {
+            //     CommonHelpers::filterReportOnWorkerLimit($backtestFormula, $workerLimit);
+            // }
         }
 
 

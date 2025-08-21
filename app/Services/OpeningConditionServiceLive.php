@@ -243,12 +243,10 @@ class OpeningConditionServiceLive
                     } else {
                         $dynamicTP = $data[$index]['close'] + (($data[$index]['close'] - $stopLoss) * 1.5);
                     }
-
                     $targetProfit = CommonHelpers::getPercentDiff($data[$index]['close'], $dynamicTP);
 
                     $stopLoss = $stopLossPercent;
                 }
-
                 return [
                     'direction' => 'LONG',
                     'formula' => 'Pivot Sweep - 15m - A',

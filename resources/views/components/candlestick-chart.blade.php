@@ -7,6 +7,7 @@
     'markers' => [],
     'lines' => [], // NEW: Array of line objects [{x1, y1, x2, y2, color, thickness}]
     'equations' => [], // NEW: Array of equation objects [{equation, color, thickness, domain}]
+    'trades' => [],
 ])
 
 
@@ -278,6 +279,7 @@
             const markers = @json($markers); // Get markers from the props
             const lines = @json($lines);
             const equations = @json($equations);
+            const trades = @json($trades);
             // Color scheme for dark theme
             const colors = {
                 background: '#0d1421',
@@ -345,6 +347,146 @@
                     console.error('Error evaluating equation:', equation, error);
                     return null;
                 }
+            }
+
+            function createTradeRegions() {
+                trades.forEach((trade, index) => {
+                    const startTime = convertTime(trade.startTimestamp);
+                    const endTime = convertTime(trade.endTimestamp);
+                    const isLong = String(trade.type).toUpperCase() === 'LONG';
+
+                    // ensure numbers
+                    const entry = Number(trade.entryPrice);
+                    const tp = Number(trade.tp);
+                    const sl = Number(trade.sl);
+
+                    // collect time range
+                    const times = [];
+                    for (const c of candles) {
+                        if (c.time >= startTime && c.time <= endTime) times.push(c.time);
+                    }
+                    if (times.length === 0) return;
+
+                    // helper: make a shaded band between [low, high] using BaselineSeries
+                    const makeBand = (low, high, rgba, title) => {
+                        const s = chart.addBaselineSeries({
+                            baseValue: {
+                                type: 'price',
+                                price: Math.max(low, high)
+                            }, // upper bound
+                            // fill only the area below the baseline (between base and value)
+                            topFillColor1: 'rgba(0,0,0,0)',
+                            topFillColor2: 'rgba(0,0,0,0)',
+                            bottomFillColor1: rgba,
+                            bottomFillColor2: rgba,
+                            topLineColor: 'transparent',
+                            bottomLineColor: 'transparent',
+                            lineVisible: false,
+                            priceLineVisible: false,
+                            lastValueVisible: false,
+                            crosshairMarkerVisible: false,
+                            title,
+                        });
+                        s.setData(times.map(t => ({
+                            time: t,
+                            value: Math.min(low, high)
+                        })));
+                        return s;
+                    };
+
+                    // TP zone (band between entry and tp)
+                    makeBand(entry, tp, trade.tpColor || 'rgba(0, 255, 0, 0.3)',
+                        `${trade.type} TP Zone ${index + 1}`);
+
+                    // SL zone (band between entry and sl)
+                    makeBand(entry, sl, trade.slColor || 'rgba(255, 0, 0, 0.3)',
+                        `${trade.type} SL Zone ${index + 1}`);
+
+                    // border lines
+                    const entryLine = chart.addLineSeries({
+                        color: isLong ? '#4ECDC4' : '#FF6B6B',
+                        lineWidth: 2,
+                        lineStyle: 1,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: true,
+                        title: `${trade.type} Entry ${index + 1}`,
+                    });
+                    const tpLine = chart.addLineSeries({
+                        color: '#00FF00',
+                        lineWidth: 1,
+                        lineStyle: 2,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: true,
+                        title: `${trade.type} TP ${index + 1}`,
+                    });
+                    const slLine = chart.addLineSeries({
+                        color: '#FF0000',
+                        lineWidth: 1,
+                        lineStyle: 2,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: true,
+                        title: `${trade.type} SL ${index + 1}`,
+                    });
+
+                    const mk = (v) => times.map(t => ({
+                        time: t,
+                        value: v
+                    }));
+                    entryLine.setData(mk(entry));
+                    tpLine.setData(mk(tp));
+                    slLine.setData(mk(sl));
+
+                    // keep refs if you need to remove/update later
+                    tradeSeries.push({
+                        entryLineSeries: entryLine,
+                        tpLineSeries: tpLine,
+                        slLineSeries: slLine,
+                        trade,
+                    });
+                });
+            }
+
+            // Function to add trade entry/exit markers
+            function createTradeMarkers() {
+                const tradeMarkers = [];
+
+                trades.forEach((trade, index) => {
+                    const isLong = trade.type.toUpperCase() === 'LONG';
+                    const startTime = convertTime(trade.startTimestamp);
+                    const endTime = convertTime(trade.endTimestamp);
+
+                    const enable_markers = trade.markers ?? true;
+                    // Entry marker
+
+                    if (enable_markers) {
+                        tradeMarkers.push({
+                            time: startTime,
+                            position: 'belowBar',
+                            shape: 'arrowUp',
+                            color: isLong ? '#00ff00' : '#ff0000',
+                            size: 2,
+                            text: `${trade.type} Entry`
+                        });
+
+                        // Exit marker
+                        tradeMarkers.push({
+                            time: endTime,
+                            position: 'aboveBar',
+                            shape: 'arrowDown',
+                            color: isLong ? '#ff0000' : '#00ff00',
+                            size: 2,
+                            text: `${trade.type} Exit${trade.profit != null ? ` (${Number(trade.profit).toFixed(2)} %)` : ''}`
+
+
+                        });
+
+                    }
+                });
+
+                return tradeMarkers;
             }
             // Parse all data series
             const candles = chartData.map(c => ({
@@ -451,7 +593,7 @@
                         0) // Use whichever field name you have in your data
                 })),
             };
-            
+
             // Create chart with professional styling
             const chart = LightweightCharts.createChart(document.getElementById(chartId), {
                 layout: {
@@ -554,6 +696,8 @@
                 customLineSeries.push(lineSeries);
             });
 
+            const tradeSeries = [];
+
             // Create equation series
             const equationSeries = [];
             equations.forEach((eq, index) => {
@@ -603,7 +747,11 @@
             }));
 
             // Add markers to the candlestick series
-            candleSeries.setMarkers(formattedMarkers);
+            const tradeMarkers = createTradeMarkers();
+            const allMarkers = [...formattedMarkers, ...tradeMarkers];
+            candleSeries.setMarkers(allMarkers);
+
+            createTradeRegions();
 
 
             // Volume series with proper scaling
@@ -1059,6 +1207,26 @@
                     equationSeries.push(eqSeries);
                 });
             }
+
+            function updateTradeRegions() {
+                // Remove existing trade series
+                tradeSeries.forEach(({
+                    tpSeries,
+                    slSeries
+                }) => {
+                    chart.removeSeries(tpSeries);
+                    chart.removeSeries(slSeries);
+                });
+                tradeSeries.length = 0;
+
+                // Recreate trade regions
+                createTradeRegions();
+
+                // Update markers
+                const tradeMarkers = createTradeMarkers();
+                const allMarkers = [...formattedMarkers, ...tradeMarkers];
+                candleSeries.setMarkers(allMarkers);
+            }
             // Initialize chart
             updateChart();
 
@@ -1470,6 +1638,64 @@
         border-radius: 50%;
         display: inline-block;
         background: linear-gradient(120deg, #54a0ff 33%, #02c076 33%, #02c076 66%, #f84960 66%);
+    }
+
+    .trade-controls {
+        background: rgba(43, 49, 57, 0.4);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #2b3139;
+    }
+
+    .trade-controls h4 {
+        color: #ffffff;
+        margin: 0 0 0.75rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        border-bottom: 1px solid #2b3139;
+        padding-bottom: 0.5rem;
+    }
+
+    .trade-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .trade-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+        font-size: 0.8rem;
+        color: #ffffff;
+    }
+
+    .trade-color-box {
+        width: 16px;
+        height: 12px;
+        border-radius: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .long-entry {
+        background: rgba(0, 255, 0, 0.3);
+    }
+
+    .short-entry {
+        background: rgba(255, 0, 0, 0.3);
+    }
+
+    .tp-region {
+        background: rgba(0, 255, 0, 0.2);
+    }
+
+    .sl-region {
+        background: rgba(255, 0, 0, 0.2);
     }
 
     /* Responsive design */
