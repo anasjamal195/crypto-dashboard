@@ -5,6 +5,7 @@ namespace App\Jobs\LiveTrader;
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
 use App\Services\HyperLiquidApiService;
+use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -134,9 +135,21 @@ class ExecuteTrade implements ShouldQueue
                             break;
                         }
 
+                        $tableName = $open_order['market'] === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
+
                         $currentPrice = BinanceApiService::getCurrentPrice($symbol, self::$isSpot ? 'SPOT' : 'FUTURE');
                         $closingType  = null;
 
+                        $currentProfit = ($position === 'SHORT' ? -1 : 1)  * CommonHelpers::getPercentDiff($open_order['price'], $currentPrice, true);
+                        $targetProfit = ($position === 'SHORT' ? -1 : 1)  * CommonHelpers::getPercentDiff($open_order['price'], $tp, true);
+                        DB::table($tableName)->where('orderId', $open_order['orderId'])->update([
+                            'previousPrice' => $open_order['currentPrice'],
+                            'currentPrice' => $currentPrice,
+                            'currentProfit' => $currentProfit,
+                            'targetProfit' => $targetProfit,
+                            'updated_at' => Carbon::now()->toDateTimeString(),
+
+                        ]);
                         if (($position === 'LONG' && $currentPrice >= $tp) ||
                             ($position === 'SHORT' && $currentPrice <= $tp)
                         ) {

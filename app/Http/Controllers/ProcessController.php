@@ -56,15 +56,17 @@ class ProcessController extends Controller
             // Prepare Processes for start sequence
             // Start Sequence
             $processes = [
-                // 'laravel_saftey_worker',
-                'laravel_future_coin_dumper',
-                // 'laravel_order_book_signals_worker',
+                // // 'laravel_saftey_worker',
+                // 'laravel_future_coin_dumper',
+                // // 'laravel_order_book_signals_worker',
+                'laravel_candle_iterator',
+                'laravel_opening_observer'
             ];
 
             foreach ($threads as $index => $thread) {
                 $processes[] = 'laravel_thread_workers:laravel_thread_workers_' . sprintf("%02d", $index);
             }
-            $processes[] = 'acc_2_order_book_long_worker';
+            // $processes[] = 'acc_2_order_book_long_worker';
 
             // ===================================
 
@@ -75,9 +77,9 @@ class ProcessController extends Controller
 
             // Dispatch All threads
             Artisan::call('queue:flush');
-            foreach ($threads as $workerId) {
-                TriggersThread::dispatch($workerId, auth()->user()->id, null);
-            }
+            // foreach ($threads as $workerId) {
+            //     TriggersThread::dispatch($workerId, auth()->user()->id, null);
+            // }
             return redirect()->back()->withSuccess('Action ' . 'Multithread Started');
         } catch (\Throwable $th) {
             return redirect()->back()->withError('Failed to Perform Multithread Restart ');
