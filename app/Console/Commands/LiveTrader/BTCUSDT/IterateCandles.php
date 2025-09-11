@@ -24,16 +24,16 @@ class IterateCandles extends Command
         while (true) {
             $boundary = CommonHelpers::checkCandleBoundaries();
 
-            // if ($boundary['1m']) {
-            //     $this->info('1m candle closed at: ' . now('UTC')->toDateTimeString());
-            // }
-            // if ($boundary['3m']) {
-            //     $this->info('3m candle closed at: ' . now('UTC')->toDateTimeString());
-            // }
+            if ($boundary['1m']) {
+                $this->info('1m candle closed at: ' . now('UTC')->toDateTimeString());
+            }
+            if ($boundary['3m']) {
+                $this->info('3m candle closed at: ' . now('UTC')->toDateTimeString());
+            }
 
-            // if ($boundary['5m']) {
-            //     $this->info('5m candle closed at: ' . now('UTC')->toDateTimeString());
-            // }
+            if ($boundary['5m']) {
+                $this->info('5m candle closed at: ' . now('UTC')->toDateTimeString());
+            }
 
             if ($boundary['15m']) {
                 // LOGIC for BTCUSDT handling 
