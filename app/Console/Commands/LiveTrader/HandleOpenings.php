@@ -60,6 +60,8 @@ class HandleOpenings extends Command
                             'current_zone'     => json_decode($setup->current_zone ?? '[]', true),
                             'account_id'       => $setup->account_id,
                             'setup_id'         => $setup->id,
+                            'strategy_name'     => $setup->strategy_name
+
                         ];
                     } elseif ($setup->opening_rule === 'waiting_till_next_touch') {
                         $currentPrice = BinanceApiService::getCurrentPrice($setup->symbol, 'FUTURE');
@@ -85,6 +87,7 @@ class HandleOpenings extends Command
                                 'current_zone'     => json_decode($setup->current_zone ?? '[]', true),
                                 'account_id'       => $setup->account_id,
                                 'setup_id'         => $setup->id,
+                                'strategy_name'     => $setup->strategy_name
                             ];
                         }
 
