@@ -2557,6 +2557,7 @@ class BinanceApiService
 
 
         $tpSlOrders = self::placeTpSlOrders($symbol, $trader, $takeProfitPrice, $stopLoss, $response['orderId']);
+
         self::insertTradeDetails($response['orderId'], $takeProfitPrice, $stopLoss, $tpSlOrders['takeProfit']['orderId'], $tpSlOrders['stopLoss']['orderId'], 'PENDING');
 
 
@@ -2778,7 +2779,7 @@ class BinanceApiService
         MailerService::sendFutureTradeDynamicEmail($data);
 
         // Temporarily Disabled
-        CommonHelpers::updateLiveTradeSession($trader);
+        // CommonHelpers::updateLiveTradeSession($trader);
 
 
         self::cancelExistingStopOrders($openOrderId);
@@ -3336,6 +3337,47 @@ class BinanceApiService
 
         return json_decode($response, true);
     }
+    public static function cancelAllStopOrders($symbol, $trader)
+    {
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+
+        $timestamp = round(microtime(true) * 1000);
+        $queryString = "symbol=$symbol&timestamp=$timestamp";
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+        $queryString .= "&signature=$signature";
+
+        $url = "https://fapi.binance.com/fapi/v1/openOrders?$queryString";
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "X-MBX-APIKEY: $apiKey"
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        $orders = json_decode($response, true);
+
+        if (!is_array($orders)) {
+            return ['error' => true, 'message' => 'Invalid response from Binance', 'raw' => $response];
+        }
+
+        $results = [];
+        foreach ($orders as $order) {
+            if (in_array($order['type'], ['STOP_MARKET', 'STOP', 'STOP_LOSS', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT', 'TAKE_PROFIT_MARKET', 'TAKE_PROFIT_LIMIT'])) {
+                $results[] = self::cancelOrder($symbol, $trader, $order['orderId']);
+            }
+        }
+
+        return $results;
+    }
+
 
     private static function getLastCloseOrder($symbol, $trader)
     {
@@ -3723,7 +3765,7 @@ class BinanceApiService
         $data['supportResistanceChange'] = null;
         $data['subject'] = 'Type: SPOT Open ' . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
 
-        CommonHelpers::updateLiveTradeSession($trader);
+        // CommonHelpers::updateLiveTradeSession($trader);
         MailerService::sendFutureTradeDynamicEmail($data);
 
         return $data;
@@ -3885,7 +3927,7 @@ class BinanceApiService
             'realizedPnl' => $realizedPnl,
         ]);
         $data['subject'] = 'Type: SPOT Close ' . ' '  . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . ' ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
-        CommonHelpers::updateLiveTradeSession($trader);
+        // CommonHelpers::updateLiveTradeSession($trader);
         MailerService::sendFutureTradeDynamicEmail($data);
         return $data;
     }
