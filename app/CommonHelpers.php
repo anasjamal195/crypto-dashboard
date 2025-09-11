@@ -896,12 +896,13 @@ class CommonHelpers
         return array_values($filtered);
     }
 
-    public static function createOrUpdateZone($symbol, $type, $top, $bottom, $timestampInitial, $timestampConfirmed = null, $status = 'active', $name = 'default')
+    public static function createOrUpdateZone($symbol, $interval, $type, $top, $bottom, $timestampInitial, $timestampConfirmed = null, $status = 'active', $name = 'default')
     {
         // Check if zone already exists for this symbol + timestamp
         $existingZone = DB::table('sd_zones')
             ->where('timestamp_initial', $timestampInitial)
             ->where('symbol', $symbol)
+            ->where('interval', $interval)
             ->first();
 
         if ($existingZone) {
@@ -922,6 +923,7 @@ class CommonHelpers
         // Insert new zone
         return DB::table('sd_zones')->insertGetId([
             'symbol' => $symbol,
+            'interval' => $interval,
             'type' => $type,
             'top' => $top,
             'bottom' => $bottom,
@@ -930,6 +932,51 @@ class CommonHelpers
             'timestamp_confirmed' => $timestampConfirmed,
             'status' => $status,
         ]);
+    }
+
+    /**
+     * Calculate or validate the Risk-to-Reward (R:R) ratio for a trade.
+     *
+     * Formula:
+     *   R:R = |Entry - TP| ÷ |Entry - SL|
+     *
+     * Example:
+     *   Entry = 100, TP = 110, SL = 95
+     *   R:R = (110 - 100) / (100 - 95) = 10 / 5 = 2.0
+     *
+     * Notes:
+     * - If Entry == SL → division by zero risk. Returns INF (infinite) if TP != Entry,
+     *   or 0 if TP == Entry (no reward).
+     *
+     * @param float      $entry     The trade entry price.
+     * @param float      $tp        The target (take-profit) price.
+     * @param float      $sl        The stop-loss price.
+     * @param float|null $threshold Optional. If provided, returns a boolean
+     *                              indicating whether R:R meets/exceeds the threshold.
+     *
+     * @return float|bool The calculated R:R ratio (if $threshold is null),
+     *                    or a boolean result (true/false) if $threshold is set.
+     */
+    public static function checkRR(float $entry, float $tp, float $sl, float $threshold = null): float|bool
+    {
+        $risk = abs($entry - $sl);
+        $reward = abs($entry - $tp);
+
+        // 🛑 Handle zero-risk (entry == SL)
+        if ($risk == 0.0) {
+            // If TP also equals entry → no reward, return 0
+            $ratio = ($reward == 0.0) ? 0.0 : INF;
+        } else {
+            $ratio = $reward / $risk;
+        }
+
+        // If threshold provided → return boolean validation
+        if ($threshold !== null) {
+            return $ratio >= $threshold;
+        }
+
+        // Otherwise → return numeric R:R value
+        return $ratio;
     }
 
 
@@ -5222,5 +5269,77 @@ class CommonHelpers
             'success' => true,
             'message' => trim($output)
         ];
+    }
+    /**
+     * Check which intervals just closed a candle.
+     * Ensures no candle is missed, even if loop is delayed.
+     *
+     * @return array [
+     *   '1m'  => bool,
+     *   '3m'  => bool,
+     *   '5m'  => bool,
+     *   '15m' => bool,
+     *   '30m' => bool,
+     *   '1h'  => bool,
+     *   '4h'  => bool,
+     *   '1d'  => bool
+     * ]
+     */
+    public static function checkCandleBoundaries(): array
+    {
+        static $lastTriggered = [];
+        $intervals = [
+            '1m'  => 60,
+            '3m'  => 180,
+            '5m'  => 300,
+            '15m' => 900,
+            '30m' => 1800,
+            '1h'  => 3600,
+            '4h'  => 14400,
+            '1d'  => 86400,
+        ];
+
+        $nowMs  = (int) round(microtime(true) * 1000); // current UTC in ms
+        $nowSec = intdiv($nowMs, 1000);
+        $results = [];
+
+        foreach ($intervals as $interval => $seconds) {
+            if ($interval === '4h') {
+                $validHours = [1, 5, 9, 13, 17, 21];
+                $current = \Carbon\Carbon::createFromTimestamp($nowSec, 'UTC');
+
+                $latestBoundary = null;
+                foreach (array_reverse($validHours) as $h) {
+                    $candidate = $current->copy()->hour($h)->minute(0)->second(0);
+                    if ($candidate->lessThanOrEqualTo($current)) {
+                        $latestBoundary = $candidate;
+                        break;
+                    }
+                }
+                if (!$latestBoundary) {
+                    $latestBoundary = $current->copy()->subDay()->hour(21)->minute(0)->second(0);
+                }
+                $boundaryTs = $latestBoundary->timestamp;
+            } else {
+                $boundaryTs = intdiv($nowSec, $seconds) * $seconds;
+            }
+
+            // 👇 Warm-up logic: if first run, initialize but don't trigger
+            if (!isset($lastTriggered[$interval])) {
+                $lastTriggered[$interval] = $boundaryTs;
+                $results[$interval] = false;
+                continue;
+            }
+
+            // Normal trigger check
+            if ($lastTriggered[$interval] !== $boundaryTs && $nowMs >= ($boundaryTs * 1000 + 100)) {
+                $results[$interval] = true;
+                $lastTriggered[$interval] = $boundaryTs;
+            } else {
+                $results[$interval] = false;
+            }
+        }
+
+        return $results;
     }
 }
