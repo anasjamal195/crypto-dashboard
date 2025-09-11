@@ -2241,7 +2241,7 @@ class HyperLiquidApiService
 
 
     // Future Api's
-    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false, $stopLossPercentage = 0.5, $targetProfit = 0.5)
+    public static function openMarketPositionLiveTrader($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance = null, $turnoverPoint = null, $isDummy = false, $stopLossPercentage = 0.5, $targetProfit = 0.5)
     {
 
         $market = 'FUTURE';
@@ -2305,24 +2305,22 @@ class HyperLiquidApiService
             'trade_acc' => $trader,
             'targetProfit' => $targetProfit,
             'formula' => $formula,
-            'turnoverPoint' => $turnoverPoint,
+            'turnoverPoint' => null,
             'liqPrice' => $liquidationPrice,
-            'currentSupport' => $supportResistance['support'],
+            'currentSupport' => null,
             'exchange' => 'hyperliquid',
-            'currentResistance' => $supportResistance['resistance'],
+            'currentResistance' => null,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
         DB::table('live_trades_future_results')->insert(
             $data
         );
-        $data['support'] = $supportResistance['support'];
-        $data['resistance'] = $supportResistance['resistance'];
-        if ($position === 'BUY') {
-            $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
-        } else if ($position === 'SELL') {
-            $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
-        }
+        $data['support'] = null;
+        $data['resistance'] = null;
+
+        $data['supportResistanceChange'] = null;
+
         $data['subject'] = 'FUTURE:' . $data['type'] . ' ' . $data['position'] . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
         MailerService::sendFutureTradeDynamicEmail($data);
 
@@ -3144,7 +3142,7 @@ class HyperLiquidApiService
     // SPOT Buy and Sell
 
 
-    public static function placeBuyOrderSpot($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance, $turnoverPoint, $isDummy = false, $stopLossPercentage = 0.5, $targetProfit = 0.5)
+    public static function placeBuyOrderSpot($symbol, $tradeAmount, $position = 'BUY', $leverage, $trader, $formula = '', $supportResistance = null, $turnoverPoint = null, $isDummy = false, $stopLossPercentage = 0.5, $targetProfit = 0.5)
     {
 
         $current_price = self::getCurrentPrice($symbol);
@@ -3239,23 +3237,20 @@ class HyperLiquidApiService
             'trade_acc' => $trader,
             'targetProfit' => $targetProfit,
             'formula' => $formula,
-            'turnoverPoint' => $turnoverPoint,
+            'turnoverPoint' => 0,
             'liqPrice' => 0,
-            'currentSupport' => $supportResistance['support'],
-            'currentResistance' => $supportResistance['resistance'],
+            'currentSupport' => null,
+            'currentResistance' => null,
             'created_at' => Carbon::now('Asia/Karachi'),
         ];
 
         DB::table('live_trades_spot_results')->insert(
             $data
         );
-        $data['support'] = $supportResistance['support'];
-        $data['resistance'] = $supportResistance['resistance'];
-        if ($position === 'BUY') {
-            $data['supportResistanceChange'] = (($current_price - $data['resistance']) / $data['resistance']) * 100;
-        } else if ($position === 'SELL') {
-            $data['supportResistanceChange'] = (($current_price - $data['support']) / $data['support']) * 100;
-        }
+        $data['support'] = null;
+        $data['resistance'] = null;
+        $data['supportResistanceChange'] = null;
+
         $data['subject'] = 'Type: SPOT Open ' . ' ' . $symbol . ' :: Account ' . User::find($data['trade_acc'])->name . ' Amount: ' . $data['amount'] . '$';
 
         CommonHelpers::updateLiveTradeSession($trader);

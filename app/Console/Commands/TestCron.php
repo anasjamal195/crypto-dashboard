@@ -76,16 +76,6 @@ class TestCron extends Command
             //     'includeFiltered' => true,
             // ],
 
-
-
-
-
-            // [
-            //     'formula' => 'Analysis Bearish',
-            //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => true,
-            // ],
-
         ];
 
         $workerLimit = 5;

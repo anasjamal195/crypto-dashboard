@@ -7,6 +7,7 @@ use App\Services\BinanceApiService;
 use App\Services\BinanceVolumeIndicatorsService;
 use App\Services\HyperLiquidApiService;
 use App\Services\MailerService;
+use App\Services\OpeningConditionServiceLive;
 use App\Services\SupervisorService;
 use Carbon\Carbon;
 use GuzzleHttp\Exception\RequestException;
@@ -895,10 +896,305 @@ class CommonHelpers
         return array_values($filtered);
     }
 
+    public static function createOrUpdateZone($symbol, $type, $top, $bottom, $timestampInitial, $timestampConfirmed = null, $status = 'active', $name = 'default')
+    {
+        // Check if zone already exists for this symbol + timestamp
+        $existingZone = DB::table('sd_zones')
+            ->where('timestamp_initial', $timestampInitial)
+            ->where('symbol', $symbol)
+            ->first();
+
+        if ($existingZone) {
+            // Update existing zone
+            DB::table('sd_zones')
+                ->where('id', $existingZone->id)
+                ->update([
+                    'type' => $type,
+                    'top' => $top,
+                    'bottom' => $bottom,
+                    'timestamp_confirmed' => $timestampConfirmed,
+                    'status' => $status,
+                ]);
+
+            return $existingZone->id;
+        }
+
+        // Insert new zone
+        return DB::table('sd_zones')->insertGetId([
+            'symbol' => $symbol,
+            'type' => $type,
+            'top' => $top,
+            'bottom' => $bottom,
+            'name' => $name,
+            'timestamp_initial' => $timestampInitial,
+            'timestamp_confirmed' => $timestampConfirmed,
+            'status' => $status,
+        ]);
+    }
+
+
+    public static function getZoneByTimestampAndType($symbol, $timestampInitial)
+    {
+        return DB::table('sd_zones')
+            ->where('timestamp_initial', $timestampInitial)
+            ->where('symbol', $symbol)
+            ->first();
+    }
+    public static function addZoneActivity($zoneId, $activity, $timestamp, $action)
+    {
+        return DB::table('sd_zones_activities')->insertGetId([
+            'zone_id' => $zoneId,
+            'activity' => $activity,
+            'timestamp' => $timestamp,
+            'action' => $action,
+        ]);
+    }
+    public static function flushZones($symbol = null)
+    {
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+        // if ($symbol) {
+        //     DB::table('sd_zones')->where('symbol', $symbol)->delete();
+        //     DB::table('sd_zones_activities')->where('symbol', $symbol)->delete();
+        // } else {
+        DB::table('sd_zones')->truncate();
+        DB::table('sd_zones_activities')->truncate();
+        // }
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+    }
+
+
+
+    /**
+     * Generate a label/marker plot for chart annotations.
+     *
+     * @param int    $timestamp   Base timestamp (Unix ms)
+     * @param string $color       Label color (default 'orange')
+     * @param string $text        Label text
+     * @param string $position    Label position: 'aboveBar' | 'belowBar'
+     * @param string $timezone    Timezone for adjustment ('pst' or 'utc'), default = 'pst'
+     *
+     * @return array
+     */
+    public static function generateLabelPlot(
+        int $timestamp,
+        string $color = 'orange',
+        string $text = '',
+        string $position = 'aboveBar',
+        string $timezone = 'binance'
+    ) {
+        // timezone adjustment: PST offset (in ms) = 5 hours = 18,000,000 ms
+        $tsAdjustment = $timezone === 'binance' ? 18000000 : 0;
+
+        return [
+            'timestamp_pst' => $timestamp + $tsAdjustment,
+            'color'         => $color,
+            'text'          => $text,
+            'position'      => $position
+        ];
+    }
+
+    /**
+     * Generate a structured trade plot array for charting.
+     *
+     * @param string $position   Trade direction: 'LONG' or 'SHORT'
+     * @param int    $startTime  Trade entry timestamp (Unix ms)
+     * @param int    $endTime    Trade exit timestamp (Unix ms)
+     * @param float  $entryPrice Entry price of trade
+     * @param float  $tp         Take profit level
+     * @param float  $sl         Stop loss level
+     * @param float  $profit     Profit/loss value for trade
+     * @param string $timezone   Timezone for adjustment ('pst' or 'utc'), default = 'pst'
+     *
+     * @return array Formatted trade plot structure
+     */
+    public static function generateTradePlot(
+        string $position,
+        int $startTime,
+        int $endTime,
+        float $entryPrice,
+        float $tp,
+        float $sl,
+        float $profit = 0,
+        string $timezone = 'binance'
+    ) {
+        // timezone adjustment: PST offset (in ms) = 5 hours = 18,000,000 ms
+        $tsAdjustment = $timezone === 'binance' ? 18000000 : 0;
+
+        return [
+            'type'          => strtoupper($position), // LONG / SHORT
+            'startTimestamp' => $startTime + $tsAdjustment,
+            'endTimestamp'  => $endTime + $tsAdjustment,
+            'entryPrice'    => $entryPrice,
+            'tp'            => $tp,
+            'sl'            => $sl,
+            'tpColor'       => 'rgba(0, 255, 0, 0.3)',   // green for TP
+            'slColor'       => 'rgba(255, 0, 0, 0.3)',   // red for SL
+            'profit'        => $profit,
+        ];
+    }
+
+    public static function plotZones($activeZone, $supplyZone, $demandZone, $endTime, &$trades, $startTime = null)
+    {
+        $topLevel = $supplyZone;
+        $bottomLevel = $demandZone;
+        $activeLevel = $activeZone;
+        if ($topLevel) {
+            $trades[] = CommonHelpers::generateZonePlot(
+                $topLevel['top'],
+                $topLevel['bottom'],
+                $startTime ?? $topLevel['timestamp_initial'],
+                $endTime,
+                'red',
+                'binance'
+            );
+        }
+        if ($bottomLevel) {
+
+            $trades[] = CommonHelpers::generateZonePlot(
+                $bottomLevel['top'],
+                $bottomLevel['bottom'],
+                $startTime ?? $bottomLevel['timestamp_initial'],
+                $endTime,
+                'green',
+                'binance'
+            );
+        }
+        if ($activeLevel) {
+
+            $trades[] = CommonHelpers::generateZonePlot(
+                $activeLevel['top'],
+                $activeLevel['bottom'],
+                $startTime ?? $activeLevel['timestamp_initial'],
+                $endTime,
+
+                'blue',
+                'binance'
+            );
+        }
+    }
+    /**
+     * Generate a Zone Plot array for chart visualization
+     *
+     * @param float  $top       The upper boundary of the zone (e.g., resistance level).
+     * @param float  $bottom    The lower boundary of the zone (e.g., support level).
+     * @param int    $startTime Start timestamp in milliseconds (Unix ms).
+     * @param int    $endTime   End timestamp in milliseconds (Unix ms).
+     * @param string $color     Zone highlight color name (yellow, blue, green, red, purple, orange). Default: yellow.
+     * @param string $timezone  Timezone for adjustment ('pst' adds +5h offset). Default: 'pst'.
+     *
+     * @return array Zone plot data structure
+     */
+    public static function generateZonePlot(
+        float $top,
+        float $bottom,
+        int $startTime,
+        int $endTime,
+        string $color = 'yellow',
+        string $timezone = 'binance'
+    ): array {
+        // Apply timezone adjustment (PST = +5 hours in ms)
+        $tsAdjustment = ($timezone === 'binance') ? 18000000 : 0;
+
+        // Define color map with RGBA (opacity 0.3)
+        $colorMap = [
+            'yellow' => 'rgba(255, 255, 0, 0.2)',
+            'blue'   => 'rgba(0, 0, 255, 0.2)',
+            'green'  => 'rgba(0, 255, 0, 0.2)',
+            'red'    => 'rgba(255, 0, 0, 0.2)',
+            'purple' => 'rgba(128, 0, 128, 0.2)',
+            'orange' => 'rgba(255, 165, 0, 0.2)',
+        ];
+
+        // Fallback to yellow if color not found
+        $color = $colorMap[$color] ?? $colorMap['yellow'];
+
+        return [
+            'type'          => 'LONG',
+            'startTimestamp' => $startTime + $tsAdjustment, // Unix ms
+            'endTimestamp'  => $endTime +  $tsAdjustment,
+            'entryPrice'    => $bottom,
+            'tp'            => $top,
+            'sl'            => $bottom,
+            'tpColor'       => $color,
+            'slColor'       => 'rgba(255, 0, 0, 0)', // invisible
+            'markers'       => false,
+            'profit'        => 0,
+        ];
+    }
+    /**
+     * Check if two price ranges intersect
+     *
+     * @param float $low       Lower bound of first range
+     * @param float $high      Upper bound of first range
+     * @param float $zoneLow   Lower bound of second range
+     * @param float $zoneHigh  Upper bound of second range
+     *
+     * @return bool True if ranges intersect, false otherwise
+     */
+    public static function rangesIntersect(float $low, float $high, float $zoneLow, float $zoneHigh): bool
+    {
+        return max($low, $zoneLow) <= min($high, $zoneHigh);
+    }
+    /**
+     * Generate a Line Plot array for chart visualization
+     *
+     * @param int    $startTime  Start timestamp in milliseconds (Unix ms).
+     * @param float  $startValue Y-axis value (price) at the start timestamp.
+     * @param int    $endTime    End timestamp in milliseconds (Unix ms).
+     * @param float  $endValue   Y-axis value (price) at the end timestamp.
+     * @param string $color      Line color name (yellow, blue, green, red, purple, orange, black). Default: yellow.
+     * @param string $timezone   Timezone for adjustment ('pst' adds +5h offset). Default: 'pst'.
+     * @param string|null $title Optional label/title for the line (e.g., "Trendline", "Support").
+     * @param int    $thickness  Line thickness in pixels. Default: 2.
+     *
+     * @return array Line plot data structure for chart rendering
+     */
+    public static function generateLinePlot(
+        int $startTime,
+        float $startValue,
+        int $endTime,
+        float $endValue,
+        string $color = 'yellow',
+        string $timezone = 'pst',
+        ?string $title = null,
+        int $thickness = 2
+    ): array {
+        // Apply timezone adjustment (PST = +5 hours in ms)
+        $tsAdjustment = $timezone === 'pst' ? 18000000 : 0;
+
+        // Define supported colors (using solid hex for lines)
+        $colorMap = [
+            'yellow' => '#FFD700',
+            'blue'   => '#0000FF',
+            'green'  => '#00FF00',
+            'red'    => '#FF0000',
+            'purple' => '#800080',
+            'orange' => '#FFA500',
+            'black'  => '#000000',
+        ];
+
+        // Fallback to yellow if color not found
+        $color = $colorMap[$color] ?? $colorMap['yellow'];
+
+        return [
+            'x1'        => $startTime + $tsAdjustment, // timestamp for first point
+            'y1'        => $startValue,                // price for first point
+            'x2'        => $endTime + $tsAdjustment,   // timestamp for second point
+            'y2'        => $endValue,                  // price for second point
+            'color'     => $color,                     // line color
+            'thickness' => $thickness,                 // line thickness
+            'title'     => $title ?? ''                // optional label
+        ];
+    }
+
+
 
     // FVG Calculation
 
-    public static function getLatestFVGatIndex($data, $index, $fillMethod = 'body')
+    public static function getLatestFVGatIndex($data, $index, $fillMethod = 'body', float $gapThreshold = 0.6, $fillPercent = 50)
     {
         if ($index <= 10) {
             return null;
@@ -911,10 +1207,21 @@ class CommonHelpers
             $fvg = null;
 
             // --- Detect Bullish FVG ---
-            if ($data[$loopIndex]['per'] > 0 && isset($data[$loopIndex - 1], $data[$loopIndex + 1])) {
-                $gapDistance = CommonHelpers::getPercentDiff($data[$loopIndex - 1]['high'], $data[$loopIndex + 1]['low'], true);
+            if (
+                $data[$loopIndex]['per'] > 0
+                // && $data[$loopIndex + 1]['per'] > 0 
+                // &&  $data[$loopIndex - 1]['per'] > 0 
+                && isset($data[$loopIndex - 1], $data[$loopIndex + 1])
+            ) {
+                $gapDistance = CommonHelpers::getPercentDiff(
+                    $data[$loopIndex - 1]['high'],
+                    $data[$loopIndex + 1]['low'],
+                    true
+                );
 
-                if ($gapDistance >= 0.2) {
+                if (
+                    $gapDistance >= $gapThreshold
+                ) {
                     $fvg = [
                         'type' => 'bullish',
                         'index' => $loopIndex,
@@ -928,10 +1235,19 @@ class CommonHelpers
                 }
             }
             // --- Detect Bearish FVG ---
-            else if ($data[$loopIndex - 1]['per'] < 0 && isset($data[$loopIndex - 1], $data[$loopIndex + 1])) {
-                $gapDistance = CommonHelpers::getPercentDiff($data[$loopIndex + 1]['high'], $data[$loopIndex - 1]['low'], true);
+            else if (
+                $data[$loopIndex - 1]['per'] < 0
+                // && $data[$loopIndex + 1]['per'] < 0 
+                // &&  $data[$loopIndex - 1]['per'] < 0 
+                && isset($data[$loopIndex - 1], $data[$loopIndex + 1])
+            ) {
+                $gapDistance = CommonHelpers::getPercentDiff(
+                    $data[$loopIndex + 1]['high'],
+                    $data[$loopIndex - 1]['low'],
+                    true
+                );
 
-                if ($gapDistance >= 0.2) {
+                if ($gapDistance >= $gapThreshold) {
                     $fvg = [
                         'type' => 'bearish',
                         'index' => $loopIndex,
@@ -971,7 +1287,7 @@ class CommonHelpers
                         // fill check
                         $value = $fillMethod === 'wick' ? $data[$i]['low'] : min($data[$i]['close'], $data[$i]['open']);
                         $percent = 100 - (($value - $bottom) / ($top - $bottom) * 100);
-                        if ($percent >= 100) {
+                        if ($percent >= $fillPercent) {
                             $fvg['filledIndex'] = $i;
                             $fvg['filledMethod'] = $fillMethod;
                             $fvg['fillPercent'] = $percent;
@@ -989,7 +1305,7 @@ class CommonHelpers
                         // fill check
                         $value = $fillMethod === 'wick' ? $data[$i]['high'] : max($data[$i]['close'], $data[$i]['open']);
                         $percent = (($value - $bottom) / ($top - $bottom) * 100);
-                        if ($percent >= 100) {
+                        if ($percent >= $fillPercent) {
                             $fvg['filledIndex'] = $i;
                             $fvg['filledMethod'] = $fillMethod;
                             $fvg['fillPercent'] = $percent;
@@ -1010,6 +1326,7 @@ class CommonHelpers
 
         return $latestFVG;
     }
+
 
 
 
@@ -2167,6 +2484,30 @@ class CommonHelpers
             ]
         ];
     }
+
+
+    public static function findIndexFromTimestamp($data, $index, $timestamp, $interval = '15m')
+    {
+
+        return $index - OpeningConditionServiceLive::getIndexDiffFromTimestamps($timestamp, $data[$index]['binance_timestamp'], $interval);
+    }
+    public static function buildDateTime($hh, $min, $sec = null, $dd, $mm, $yyyy)
+    {
+        // If $sec not provided, default to 0
+        $sec = $sec ?? 0;
+
+        // Create a UNIX timestamp
+        $timestamp = mktime($hh, $min, $sec, $mm, $dd, $yyyy);
+
+        // Format as MySQL-style datetime string
+        return date("Y-m-d H:i:s", $timestamp);
+    }
+    public static function compareCandlestickTime($hh, $min, $sec = null, $dd, $mm, $yyyy, $candle)
+    {
+        return $candle['timestampReadable'] === CommonHelpers::buildDateTime($hh, $min, $sec, $dd, $mm, $yyyy);
+    }
+
+
     /**
      * Detect market trend using multiple technical indicators
      * 
@@ -3220,8 +3561,9 @@ class CommonHelpers
 
         // Calculate available indexes on the right side
         $availableRight = $maxIndex - $index;
-
-        // If no indexes available on right, return not_enough_data
+        if ($availableRight < 0) {
+            dd("Test");
+        }
         if ($availableRight < 1) {
             return 'not_enough_data';
         }
@@ -3229,29 +3571,50 @@ class CommonHelpers
         // Use minimum of requested $n and available right indexes
         $rightIndexes = min($n, $availableRight);
 
+        // Ensure current candle exists
+        if (!isset($data[$index]['high'], $data[$index]['low'])) {
+            return null;
+        }
+
         $isHighPivot = true;
         $isLowPivot = true;
 
         $currentHigh = $data[$index]['high'];
         $currentLow = $data[$index]['low'];
 
-        // Check left side (full $n indexes)
+        // Check left side
         for ($i = 1; $i <= $n; $i++) {
+            if (!isset($data[$index - $i]['high'], $data[$index - $i]['low'])) {
+                return null; // missing candle, bail
+            }
+
             if ($currentHigh < $data[$index - $i]['high']) {
                 $isHighPivot = false;
             }
             if ($currentLow > $data[$index - $i]['low']) {
                 $isLowPivot = false;
             }
+
+            if (!$isHighPivot && !$isLowPivot) {
+                break; // no need to continue
+            }
         }
 
-        // Check right side (dynamic number of indexes - could be 1, 2, 3, 4, or more)
+        // Check right side
         for ($i = 1; $i <= $rightIndexes; $i++) {
+            if (!isset($data[$index + $i]['high'], $data[$index + $i]['low'])) {
+                return null; // missing candle, bail
+            }
+
             if ($currentHigh < $data[$index + $i]['high']) {
                 $isHighPivot = false;
             }
             if ($currentLow > $data[$index + $i]['low']) {
                 $isLowPivot = false;
+            }
+
+            if (!$isHighPivot && !$isLowPivot) {
+                break;
             }
         }
 

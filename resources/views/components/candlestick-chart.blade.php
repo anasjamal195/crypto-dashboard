@@ -396,39 +396,39 @@
 
                     // TP zone (band between entry and tp)
                     makeBand(entry, tp, trade.tpColor || 'rgba(0, 255, 0, 0.3)',
-                        `${trade.type} TP Zone ${index + 1}`);
+                        ``);
 
                     // SL zone (band between entry and sl)
                     makeBand(entry, sl, trade.slColor || 'rgba(255, 0, 0, 0.3)',
-                        `${trade.type} SL Zone ${index + 1}`);
+                        ``);
 
                     // border lines
                     const entryLine = chart.addLineSeries({
-                        color: isLong ? '#4ECDC4' : '#FF6B6B',
-                        lineWidth: 2,
+                        color: 'rgba(255,255,255,0.3)',
+                        lineWidth: 1,
                         lineStyle: 1,
                         priceLineVisible: false,
                         lastValueVisible: false,
                         crosshairMarkerVisible: true,
-                        title: `${trade.type} Entry ${index + 1}`,
+                        title: ``,
                     });
                     const tpLine = chart.addLineSeries({
-                        color: '#00FF00',
+                        color: 'rgba(255,255,255,0.3)',
                         lineWidth: 1,
-                        lineStyle: 2,
+                        lineStyle: 1,
                         priceLineVisible: false,
                         lastValueVisible: false,
                         crosshairMarkerVisible: true,
-                        title: `${trade.type} TP ${index + 1}`,
+                        title: ``,
                     });
                     const slLine = chart.addLineSeries({
-                        color: '#FF0000',
+                        color: 'rgba(255,255,255,0.3)',
                         lineWidth: 1,
-                        lineStyle: 2,
+                        lineStyle: 1,
                         priceLineVisible: false,
                         lastValueVisible: false,
                         crosshairMarkerVisible: true,
-                        title: `${trade.type} SL ${index + 1}`,
+                        title: ``,
                     });
 
                     const mk = (v) => times.map(t => ({
