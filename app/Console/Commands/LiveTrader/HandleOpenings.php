@@ -49,6 +49,7 @@ class HandleOpenings extends Command
                         Log::info("Immediate opening triggered.", $context);
 
                         $openTrade = [
+                            'symbol' => $setup->symbol,
                             'openingPrice'     => $setup->trigger_price,
                             'tp'               => $setup->tp,
                             'sl'               => $setup->sl,
@@ -76,6 +77,7 @@ class HandleOpenings extends Command
                             Log::info("Opening triggered by price touch.", array_merge($context, ['price' => $currentPrice]));
 
                             $openTrade = [
+                                'symbol' => $setup->symbol,
                                 'openingPrice'     => $currentPrice,
                                 'tp'               => $setup->tp,
                                 'sl'               => $setup->sl,
@@ -113,6 +115,11 @@ class HandleOpenings extends Command
                     // Dispatch trade execution
                     if ($openTrade) {
                         Log::info("✅ Dispatching trade execution job.", $context);
+                        DB::table('trade_setup_details')
+                            ->where('id', $setup->id)
+                            ->update([
+                                'status'         => 'PROCESSING'
+                            ]);
                         ExecuteTrade::dispatch($openTrade);
                     }
                 } catch (\Throwable $e) {

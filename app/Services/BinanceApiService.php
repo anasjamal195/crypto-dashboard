@@ -2437,6 +2437,7 @@ class BinanceApiService
 
         // Step 3: Calculate position quantity
         $positionSize = $tradeAmount * $leverage; // Total position size with leverage
+
         $quantity = $positionSize / $current_price;      // Contract quantity based on the price
 
         // Adjust quantity to match LOT_SIZE step size
@@ -2466,7 +2467,12 @@ class BinanceApiService
         $queryString .= '&signature=' . $signature;
 
 
-
+        Log::info('Position Details: ', [
+            'positionSize' => $positionSize,
+            'currentPrice' => $current_price,
+            'lotSize' => $lotSize,
+            'quantity' => $quantity,
+        ]);
 
         $response = self::getHttpClient()->withHeaders([
             'X-MBX-APIKEY' => $apiKey,
