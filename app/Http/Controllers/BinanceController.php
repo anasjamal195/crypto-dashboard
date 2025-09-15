@@ -1392,7 +1392,6 @@ class BinanceController extends Controller
     public function showTrends($market, Request $request)
     {
 
-
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '15m');
         $timestamp = request('timestamp', null);
@@ -1434,14 +1433,108 @@ class BinanceController extends Controller
             'break_out',
             'break_down',
         ];
+        $pivotDepth = 3;
+        $pivotsLow = [];
+        $lowPivot = [];
+        $lastTrendlineIndex = null;
+        $dataPoints = [];
 
         foreach ($data as $index => $candle) {
-
-
-            if ($index < 10) {
+            if ($index < 10 || $index >= (count($data) - $pivotDepth - 50)) {
                 continue;
             }
 
+            $pivot = CommonHelpers::checkPivotIndicator($data, $index, $pivotDepth, null, 'low');
+
+            if ($pivot === 'low_pivot') {
+                $openingMarkers[] = CommonHelpers::generateLabelPlot($data[$index]['binance_timestamp'], 'orange', 'low', 'belowBar');
+                $minBody = $data[$index]['body_min'];
+
+
+
+                if (count($lowPivot) == 0) {
+                    // store pivot as [index, price]
+                    $lowPivot[] = [
+                        'index' => $index,
+                        'x' => $data[$index]['binance_timestamp'],
+                        'y' => $data[$index]['low'],
+                        'price' => $data[$index]['low']
+                    ];
+                } else {
+                    $lastPivot = $lowPivot[count($lowPivot) - 1];
+
+                    if ($lastPivot['price'] < $data[$index]['low']) {
+                        $lowPivot[] = [
+                            'index' => $index,
+                            'x' => $data[$index]['binance_timestamp'],
+                            'y' => $data[$index]['low'],
+                            'price' => $data[$index]['low']
+                        ];
+                    } else {
+
+                        if (count($lowPivot) > 5) {
+
+                            $p1 = $lowPivot[0];
+                            $p3 = $lowPivot[count($lowPivot) - 1];
+
+                            $x1 = $data[$p1['index']]['binance_timestamp'];
+                            $y1 = $data[$p1['index']]['low'];
+                            $x2 = $data[$p3['index']]['binance_timestamp'];
+                            $y2 = $data[$p3['index']]['low'];
+
+                            $m = $c = null;
+
+                            $regression = CommonHelpers::linearRegression($lowPivot);
+
+
+                            $m = $regression['m'];
+                            $c = $regression['c'];
+
+
+
+                            $y1 = ($m * $x1) + $c;
+                            $y2 = ($m * $x2) + $c;
+
+
+
+
+
+
+
+
+                            $lines[] = CommonHelpers::generateLinePlot(
+                                $x1,
+                                $y1,
+                                $x2,
+                                $y2
+
+                            );
+                            break;
+                        }
+
+
+                        $lowPivot = [];
+                    }
+                }
+            }
+
+
+
+
+
+
+
+
+            continue;
+
+
+
+
+
+
+
+
+            // continue;
             self::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, '1h', $symbol);
             $act = self::getCurrentActivity($symbol, $data, $index);
 
@@ -1744,7 +1837,7 @@ class BinanceController extends Controller
                         $tradeSetupDetails = [
                             'direction' => 'SHORT',
                             'tp' => $tp,
-                            'sl' => $sl,    
+                            'sl' => $sl,
                             'triggerPrice' => $breakoutValue,
                             'opening_rule' => 'waiting_till_next_touch',
                             'top_zone' => $topZone,
@@ -1846,6 +1939,7 @@ class BinanceController extends Controller
                     }
                 }
             }
+
 
 
             // FVG ENTRIES SETUP
@@ -1995,6 +2089,7 @@ class BinanceController extends Controller
                     }
                 }
             }
+
 
 
             // LOGIC WHEN ZONE IS ACTIVE

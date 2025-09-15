@@ -4441,6 +4441,89 @@ class CommonHelpers
         return null;
     }
 
+    public static function getLineEquation($x1, $y1, $x2, $y2)
+    {
+        // Handle vertical line case
+        if ($x1 == $x2) {
+            return [
+                'm' => INF,
+                'c' => null,
+                'angle_deg' => 90,
+                'equation' => "x = {$x1}"
+            ];
+        }
+
+        // Calculate slope (m)
+        $m = ($y2 - $y1) / ($x2 - $x1);
+
+        // Calculate intercept (c)
+        $c = $y1 - ($m * $x1);
+
+        // Normalize angle between 0°–90°
+        $angle = abs(rad2deg(atan($m)));
+
+        return [
+            'm' => $m,
+            'c' => $c,
+            'angle_deg' => $angle,
+            'equation' => "y = {$m}x + {$c}"
+        ];
+    }
+
+    /**
+     * Perform linear regression on an array of (x, y) points.
+     *
+     * @param array $points Array of ['x' => value, 'y' => value]
+     * @return array|null ['m' => slope, 'c' => intercept, 'r2' => accuracy, 'equation' => string]
+     */
+    public static function linearRegression(array $points)
+    {
+        $n = count($points);
+        if ($n < 2) {
+            return null; // Need at least 2 points
+        }
+
+        $sumX = 0;
+        $sumY = 0;
+        $sumXY = 0;
+        $sumXX = 0;
+        foreach ($points as $p) {
+            $x = $p['x'];
+            $y = $p['y'];
+            $sumX += $x;
+            $sumY += $y;
+            $sumXY += $x * $y;
+            $sumXX += $x * $x;
+        }
+
+        $den = ($n * $sumXX - $sumX * $sumX);
+        if ($den == 0) {
+            return null; // vertical line case
+        }
+
+        // Regression coefficients
+        $m = ($n * $sumXY - $sumX * $sumY) / $den;
+        $c = ($sumY - $m * $sumX) / $n;
+
+        // Compute R² (goodness of fit)
+        $meanY = $sumY / $n;
+        $ssTot = 0;
+        $ssRes = 0;
+        foreach ($points as $p) {
+            $yPred = $m * $p['x'] + $c;
+            $ssTot += pow($p['y'] - $meanY, 2);
+            $ssRes += pow($p['y'] - $yPred, 2);
+        }
+        $r2 = ($ssTot == 0) ? 1 : 1 - ($ssRes / $ssTot);
+
+        return [
+            'm' => $m,
+            'c' => $c,
+            'r2' => $r2,
+            'equation' => "y = {$m}x + {$c}"
+        ];
+    }
+
     public static function estimateLine($x, $x1, $y1, $x2, $y2)
     {
         if ($x2 - $x1 == 0) {

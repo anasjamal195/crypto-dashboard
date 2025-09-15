@@ -25,8 +25,8 @@ class ExecuteTrade implements ShouldQueue
     // STATIC CONFIGS
     public static $isSpot = false;
     public static $activeExchange = 'binance';
-    public static $buyPrice = 15; // USD
-    public static $leverage = 10;
+    public static $buyPrice = 25; // USD
+    public static $leverage = 5;
 
     public function __construct($trade)
     {
@@ -133,7 +133,7 @@ class ExecuteTrade implements ShouldQueue
                                 $tp = $setup->tp;
                             }
 
-                            
+
                             $open_order = self::$isSpot && $tradeType === 'LONG'
                                 ? CommonHelpers::checkOpenOrder($symbol, $position, 'SPOT', $tradeAccount)
                                 : CommonHelpers::checkOpenOrder($symbol, $position, 'FUTURE', $tradeAccount);
