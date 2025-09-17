@@ -67,6 +67,7 @@ Route::put('/live-trader-settings-update', 'App\Http\Controllers\SettingsControl
 
 
 
+Route::get('/live-trades-charts/{symbol}', 'App\Http\Controllers\BinanceController@showLiveCharts')->name('live.trades.charts')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/live-trades-results/{market}', 'App\Http\Controllers\BinanceController@liveTradeResults')->name('live.trades.result')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/live-trades-coins/{market}', 'App\Http\Controllers\BinanceController@liveTradeCoins')->name('live.trades.coins')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/live-trades-details/{interval}/{market}/{symbol}', 'App\Http\Controllers\BinanceController@liveTradeDetails')->name('live.trades.details')->middleware(['auth', AnalystRoleRedirect::class]);
