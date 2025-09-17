@@ -12,6 +12,7 @@ use App\Services\IdealTradeService;
 use App\Services\InternalTrader\ReportService;
 use App\Services\InternalTrader\ReportServiceSafeMode;
 use App\Services\InternalTrader\ReportServiceSafeModeMacdSwing;
+use App\Services\LiveTrader\BTCUSDT;
 use App\Services\MarketTrendService;
 use App\Services\OpeningConditionServiceLive;
 use App\Services\OrderBlockService;
@@ -1390,6 +1391,78 @@ class BinanceController extends Controller
         return 'HOLD';
     }
 
+    public function showLiveCharts($symbol, Request $request)
+    {
+
+        $interval = request('interval', '15m');
+        $timestamp = request('timestamp', null);
+        $market = 'FUTURE';
+        $labelPlots = [];
+        $zonePlots = [];
+        $linePlots = [];
+        $equationPlots = [];
+        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, $market);
+
+
+
+        $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
+        $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
+        $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
+
+        $currentTimestamp = $data[count($data) - 1]['binance_timestamp'];
+
+        CommonHelpers::plotZones($middleZone, $topZone, $bottomZone, $currentTimestamp, $zonePlots);
+
+        $allActivities = DB::table('sd_zones_activities')->where('symbol', $symbol)->where('interval', $interval)->get();
+        foreach ($allActivities as $act) {
+            $labelPlots[] = CommonHelpers::generateLabelPlot($act->timestamp, 'orange', $act->activity);
+        }
+
+        $recentTrendlines = BTCUSDT::getRecentTrendlines($data, count($data) - 1, 3);
+        if ($recentTrendlines['resistanceTrendline']) {
+            $trendlineResistance = $recentTrendlines['resistanceTrendline'];
+            $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
+            $x2 = $data[count($data) - 1]['binance_timestamp'];
+            $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
+            $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, count($data) - 1, $trendlineResistance);
+
+            $linePlots[] = CommonHelpers::generateLinePlot(
+                $x1,
+                $y1,
+                $x2,
+                $y2,
+                'red'
+            );
+        }
+        if ($recentTrendlines['supportTrendline']) {
+            $trendlineSupport = $recentTrendlines['supportTrendline'];
+            $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
+            $x2 = $data[count($data) - 1]['binance_timestamp'];
+            $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
+            $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, count($data) - 1, $trendlineSupport);
+
+            $linePlots[] = CommonHelpers::generateLinePlot(
+                $x1,
+                $y1,
+                $x2,
+                $y2,
+                'green'
+            );
+        }
+        return view(
+            'live-chart.index',
+            [
+                'data' => $data,
+                'pageSlug' => 'MarketTrends' . $market,
+                'labelPlots' => $labelPlots,
+                'linePlots' => $linePlots,
+                'zonePlots' => $zonePlots,
+                'equationPlots' => $equationPlots,
+                'symbol' => $symbol,
+                'interval' => $interval
+            ]
+        );
+    }
     public function showTrends($market, Request $request)
     {
 
@@ -1407,56 +1480,26 @@ class BinanceController extends Controller
         $trades = [];
 
         $openTrade = null;
-        $allLevels = null;
-
-        $activeZone = null;
-        $demandZone = null;
-        $supplyZone = null;
-        $isFirstZone = true;
         $tradeCount = 0;
         $minAllowedRatio = 1;
-        $activation_details = null;
         $tradeSetupDetails = null;
 
         $allTrades = [];
         $openingMarkers[] = CommonHelpers::generateLabelPlot($data[10]['binance_timestamp'], 'blue', 'Init');
+
         CommonHelpers::flushZones($symbol);
-        $usedFVGs = [];
-        $zoneHistory = null;
-        $recentFVG = null;
-        $allowedActivitesPlot = [
-            'low',
-            'high',
-            'low_break_down',
-            'high_break_out',
-            'entry',
-            'new_entry',
-            'break_out',
-            'break_down',
-        ];
-        $pivotDepth = 3;
+        DB::table('trade_setup_details')->truncate();
 
-        $lowPivot = [];
-        $highPivot = [];
 
-        $regression = null;
-
-        $recentTrendLineSupport = null;
-        $recentTrendLineResistance = null;
 
         foreach ($data as $index => $candle) {
 
-            if ($index < 10 || $index >= (count($data) - $pivotDepth - 50)) {
+            if ($index < 10 || $index > (count($data) - 1 - 53)) {
                 continue;
             }
 
-            // self::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
-            // $trendlines = self::getRecentTrendlines($data, $index, $pivotDepth);
-            // $recentTrendLineResistance = $trendlines['resistanceTrendline'];
-            // $recentTrendLineSupport = $trendlines['supportTrendline'];
+            BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
 
-
-            // continue;
             if ($openTrade) {
                 $closingPrice = null;
 
@@ -1484,8 +1527,7 @@ class BinanceController extends Controller
 
                     $tradeCount++;
                     $profit = null;
-                    $closingCandle = $data[$index];
-                    $currentPrice = $data[$index]['close'];
+
 
                     if ($openTrade['direction'] === 'LONG') {
                         $profit = CommonHelpers::getPercentDiff($openTrade['openingPrice'], $closingPrice, true);
@@ -1598,470 +1640,23 @@ class BinanceController extends Controller
             }
 
 
-            // // TRENDLINES ENTRIES SETUP
-            if (!$tradeSetupDetails) {
-                // Check for trend line break
+            // TESTMODE
+            $testModeOptions = [
+                'data' => $data,
+                'index' => $index,
+                'data1hRaw' => $data1hRaw,
+                'data4hRaw' => $data4hRaw,
+                'zoneProcessing' => false,
+                'enabledStrategies' => [
+                    'TRENDLINE',
+                    'DOUBLE_BREAKOUTS',
+                    'FVG',
+                ]
+            ];
+
+            if (!$tradeSetupDetails)
+                $tradeSetupDetails = BTCUSDT::runTrader($testModeOptions);
 
-                $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
-                $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
-                $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
-
-
-
-                if ($recentTrendLineSupport) {
-
-
-                    $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineSupport);
-
-                    if (
-                        $data[$index]['close'] < $breakoutPrice
-                        && $data[$index]['open'] > $breakoutPrice
-                    ) {
-
-
-                        $sl = null;
-                        $tp = null;
-
-                        $entryPrice = $data[$index]['close'];
-
-                        // Search for recent pivot high
-                        $recentHighPivot = CommonHelpers::getRecentPivot($data, $index, 'high', 1, 'wick');
-
-                        if ($recentHighPivot) {
-
-                            $sl = $recentHighPivot['value'];
-                            $tp = $entryPrice - abs($entryPrice - $sl) * 1.5;
-                        }
-
-                        if (
-                            CommonHelpers::getPercentDiff($entryPrice, $tp) <= 0.5
-
-                            ||
-                            ($recentTrendLineResistance && $recentTrendLineSupport)
-                        ) {
-                            continue;
-                        }
-
-
-
-                        $tradeSetupDetails = [
-                            'direction' => 'SHORT',
-                            'tp' => $tp,
-                            'sl' => $sl,
-                            'triggerPrice' => $entryPrice,
-                            'opening_rule' => 'immidiate_opening',
-                            'top_zone' => null,
-                            'middle_zone' => null,
-                            'bottom_zone' => null,
-                            'top_zone' => $topZone,
-                            'middle_zone' => $middleZone,
-                            'bottom_zone' => $bottomZone,
-                            'trendline' => [
-                                'resistance' => $recentTrendLineResistance,
-                                'support' => $recentTrendLineSupport,
-                            ]
-                        ];
-                    }
-                }
-
-                if ($recentTrendLineResistance) {
-
-
-                    $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineResistance);
-
-                    if (
-                        $data[$index]['close'] > $breakoutPrice
-                        && $data[$index]['open'] < $breakoutPrice
-                    ) {
-
-
-                        $sl = null;
-                        $tp = null;
-
-                        $entryPrice = $data[$index]['close'];
-
-                        // Search for recent pivot high
-                        $recentLowPivot = CommonHelpers::getRecentPivot($data, $index, 'low', 1, 'wick');
-
-                        if ($recentLowPivot) {
-
-                            $sl = $recentLowPivot['value'];
-                            $tp = $entryPrice + abs($entryPrice - $sl) * 1.5;
-                        }
-
-                        if (
-                            CommonHelpers::getPercentDiff($entryPrice, $tp) <= 0.5
-                            ||
-                            ($recentTrendLineResistance && $recentTrendLineSupport)
-                        ) {
-                            continue;
-                        }
-
-                        $tradeSetupDetails = [
-                            'direction' => 'LONG',
-                            'tp' => $tp,
-                            'sl' => $sl,
-                            'triggerPrice' => $entryPrice,
-                            'opening_rule' => 'immidiate_opening',
-                            'top_zone' => null,
-                            'middle_zone' => null,
-                            'bottom_zone' => null,
-                            'top_zone' => $topZone,
-                            'middle_zone' => $middleZone,
-                            'bottom_zone' => $bottomZone,
-                            'trendline' => [
-                                'resistance' => $recentTrendLineResistance,
-                                'support' => $recentTrendLineSupport,
-                            ]
-                        ];
-                    }
-                }
-            }
-            // DOUBLE BREAKOUT SETUP
-            if (!$tradeSetupDetails) {
-
-                // Opening Handler Logic
-                $currentActivity = self::getCurrentActivity($symbol, $interval, $data, $index);
-
-                if ($currentActivity) {
-                    $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
-                    $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
-                    $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
-                    $currentZone = DB::table('sd_zones')->where('id', $currentActivity->zone_id)->first();
-
-
-                    if ($currentActivity->activity === 'low_break_down') {
-
-                        // SHORT opening Safe entry
-
-                        $breakoutValue = $currentActivity->value;
-
-
-                        $sl = null;
-                        $tp = null;
-
-
-
-
-
-                        $low = self::getRecentActivity($symbol, $interval, $data, $index, 'low');
-
-
-                        $lowIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $low->timestamp);
-
-
-                        $recentHigh = $data[$lowIndex]['high'];
-
-                        for ($i = $index - 1; $i >= $lowIndex; $i--) {
-
-                            $pivot = CommonHelpers::checkPivot($data, $i, 1);
-
-                            if ($pivot === 'high_pivot') {
-                                $recentHigh = $data[$i]['high'];
-                                break;
-                            }
-                            // if ($recentHigh < $data[$i]['high']) {
-                            //     $recentHigh = $data[$i]['high'];
-                            // }
-                        }
-
-
-                        $zoneTop = $currentZone->top;
-                        $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
-                        $zoneBottom = $currentZone->bottom;
-
-                        $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
-
-
-
-
-                        if ($zoneSizePercent < 1) {
-                            $sl = $zoneTop;
-                        } else {
-                            $sl = $zoneMid;
-                        }
-
-
-                        $tp3rr = $breakoutValue - abs($sl - $breakoutValue) * 3;
-
-
-                        $nextZone = DB::table('sd_zones')->where('top', '<=', $breakoutValue)->orderBy('top', 'DESC')->first();
-
-
-                        $tpNextZone = ($nextZone->top + $nextZone->bottom) / 2;
-
-
-                        $tp = $tpNextZone;
-
-
-
-
-
-                        // Check opening position
-                        $interzoneMid = ($currentZone->top + $breakoutValue) / 2;
-
-
-
-                        // if ($currentZone->bottom > $interzoneMid) {
-                        //     continue;
-                        // }
-
-                        if (!isset($tp)) {
-                            continue;
-                        }
-
-                        $tradeSetupDetails = [
-                            'direction' => 'SHORT',
-                            'tp' => $tp,
-                            'sl' => $sl,
-                            'triggerPrice' => $breakoutValue,
-                            'opening_rule' => 'waiting_till_next_touch',
-                            'top_zone' => $topZone,
-                            'middle_zone' => $middleZone,
-                            'bottom_zone' => $bottomZone,
-                            'signal_timestamp' => $data[$index]['binance_timestamp'],
-                            'current_zone_id' => $currentZone->id
-                        ];
-                    } else if ($currentActivity->activity === 'high_break_out') {
-
-                        // SHORT opening Safe entry
-
-                        $breakoutValue = $currentActivity->value;
-
-
-                        $sl = null;
-                        $tp = null;
-
-
-                        // Find First Breakout Candle
-
-
-
-                        $high = self::getRecentActivity($symbol, $interval, $data, $index, 'high');
-
-
-                        $highIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $high->timestamp);
-
-
-                        $recentLow = $data[$highIndex]['low'];
-
-                        for ($i = $index - 1; $i >= $highIndex; $i--) {
-
-
-                            $pivot = CommonHelpers::checkPivot($data, $i, 1);
-
-                            if ($pivot === 'low_pivot') {
-                                $recentLow = $data[$i]['low'];
-                                break;
-                            }
-                        }
-
-
-
-                        $zoneTop = $currentZone->top;
-                        $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
-                        $zoneBottom = $currentZone->bottom;
-
-                        $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
-
-
-
-
-                        if ($zoneSizePercent < 1) {
-                            $sl = $zoneBottom;
-                        } else {
-                            $sl = $zoneMid;
-                        }
-                        $tp3rr = $breakoutValue + abs($sl - $breakoutValue) * 3;
-
-
-                        $nextZone = DB::table('sd_zones')->where('bottom', '>', $breakoutValue)->orderBy('bottom', 'ASC')->first();
-
-
-                        $tpNextZone = ($nextZone->bottom + $nextZone->top) / 2;
-
-
-                        $tp = $tpNextZone;
-
-
-                        // Check opening position
-                        $interzoneMid = ($currentZone->bottom + $breakoutValue) / 2;
-
-
-                        // if ($currentZone->top < $interzoneMid) {
-                        //     continue;
-                        // }
-
-
-                        if (!isset($tp)) {
-                            continue;
-                        }
-
-
-
-                        $tradeSetupDetails = [
-                            'direction' => 'LONG',
-                            'tp' => $tp,
-                            'sl' => $sl,
-                            'triggerPrice' => $breakoutValue,
-                            'opening_rule' => 'waiting_till_next_touch',
-                            'top_zone' => $topZone,
-                            'middle_zone' => $middleZone,
-                            'bottom_zone' => $bottomZone,
-                            'signal_timestamp' => $data[$index]['binance_timestamp'],
-                            'current_zone_id' => $currentZone->id
-
-                        ];
-                    }
-                }
-            }
-            // // FVG ENTRIES SETUP
-            if (!$tradeSetupDetails) {
-
-                $fvg = CommonHelpers::getLatestFVGatIndex($data, $index, 'body', 0.6, 50);
-                $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
-                $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
-                $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
-
-
-                if ($fvg) {
-
-
-                    $rangeIntersectCount = 0;
-                    $fvgCandle = $data[CommonHelpers::findIndexFromTimestamp($data, $index, $fvg['timestamp'])];
-
-                    if (
-                        ($topZone && $bottomZone && $middleZone)
-                    ) {
-
-                        if (CommonHelpers::rangesIntersect($fvgCandle['low'], $fvgCandle['high'], $topZone['bottom'], $topZone['top']))
-                            $rangeIntersectCount++;
-                        if (CommonHelpers::rangesIntersect($fvgCandle['low'], $fvgCandle['high'], $middleZone['bottom'], $middleZone['top']))
-                            $rangeIntersectCount++;
-                        if (CommonHelpers::rangesIntersect($fvgCandle['low'], $fvgCandle['high'], $bottomZone['bottom'], $bottomZone['top']))
-                            $rangeIntersectCount++;
-                    }
-                    if (
-                        ($topZone && $bottomZone && $middleZone)
-                        &&
-                        !in_array($fvg['timestamp'], $usedFVGs)
-
-                        && CommonHelpers::getPercentDiff($fvg['bottom'], $fvg['top'], true) < 1.5
-                        && $rangeIntersectCount <= 1
-                        // &&
-                        // !(
-                        //     CommonHelpers::rangesIntersect($fvg['bottom'], $fvg['top'], $topZone['bottom'], $topZone['top'])
-                        //     || CommonHelpers::rangesIntersect($fvg['bottom'], $fvg['top'], $bottomZone['bottom'], $bottomZone['top'])
-                        //     || CommonHelpers::rangesIntersect($fvg['bottom'], $fvg['top'], $middleZone['bottom'], $middleZone['top'])
-                        // )
-
-                    ) {
-
-
-
-                        // Confirmed FVG
-
-
-                        if ($fvg['type'] === 'bullish') {
-
-                            if ((
-                                $data[$index]['low'] < $fvg['top']
-                                && $data[$index]['body_min'] > $fvg['top']
-                                && $data[$index]['lower_wick'] > $data[$index]['upper_wick']
-                            )) {
-                                $entryPrice = $fvg['top'];
-                                $sl = $fvg['bottom'] * (1 - 0.05 / 100);
-                                $tp = $entryPrice + abs($entryPrice - $sl) * 2;
-                                $tradeSetupDetails = [
-                                    'direction' => 'LONG',
-                                    'tp' => $tp,
-                                    'sl' => $sl,
-                                    'triggerPrice' => $entryPrice,
-                                    'opening_rule' => 'waiting_till_next_touch',
-                                    'top_zone' => $topZone,
-                                    'middle_zone' => $middleZone,
-                                    'bottom_zone' => $bottomZone,
-                                    'signal_timestamp' => $data[$index]['binance_timestamp'],
-                                    'fvg' => $fvg,
-
-                                ];
-                            } else if (
-                                (
-                                    $data[$index]['open'] < $fvg['top']
-                                    && $data[$index]['close'] > $fvg['top']
-                                )
-                            ) {
-                                // LONG OPENING LOGIC
-
-                                $entryPrice = $data[$index]['close'];
-                                $sl = $fvg['bottom'] * (1 - 0.05 / 100);
-                                $tp = $entryPrice + abs($entryPrice - $sl) * 2;
-                                $tradeSetupDetails = [
-                                    'direction' => 'LONG',
-                                    'tp' => $tp,
-                                    'sl' => $sl,
-                                    'triggerPrice' => $entryPrice,
-                                    'opening_rule' => 'immidiate_opening',
-                                    'top_zone' => $topZone,
-                                    'middle_zone' => $middleZone,
-                                    'bottom_zone' => $bottomZone,
-                                    'signal_timestamp' => $data[$index]['binance_timestamp'],
-                                    'fvg' => $fvg,
-
-                                ];
-                            }
-                        }
-                        if ($fvg['type'] === 'bearish') {
-
-                            if (
-                                (
-                                    $data[$index]['high'] > $fvg['bottom']
-                                    && $data[$index]['body_max'] < $fvg['bottom']
-                                )
-                            ) {
-                                $entryPrice = $fvg['bottom'];
-                                $sl = $fvg['top'] * (1 + 0.05 / 100);
-                                $tp = $entryPrice - abs($entryPrice - $sl) * 2;
-                                $tradeSetupDetails = [
-                                    'direction' => 'SHORT',
-                                    'tp' => $tp,
-                                    'sl' => $sl,
-                                    'triggerPrice' => $entryPrice,
-                                    'opening_rule' => 'waiting_till_next_touch',
-                                    'top_zone' => $topZone,
-                                    'middle_zone' => $middleZone,
-                                    'bottom_zone' => $bottomZone,
-                                    'signal_timestamp' => $data[$index]['binance_timestamp'],
-                                    'fvg' => $fvg,
-                                ];
-                            } else if (
-                                (
-                                    $data[$index]['open'] > $fvg['bottom']
-                                    && $data[$index]['close'] < $fvg['bottom']
-                                )
-                            ) {
-
-                                // SHORT OPENING LOGIC
-                                $entryPrice = $data[$index]['close'];
-                                $sl = $fvg['top'] * (1 + 0.05 / 100);
-                                $tp = $entryPrice - abs($entryPrice - $sl) * 2;
-                                $tradeSetupDetails = [
-                                    'direction' => 'SHORT',
-                                    'tp' => $tp,
-                                    'sl' => $sl,
-                                    'triggerPrice' => $entryPrice,
-                                    'opening_rule' => 'immidiate_opening',
-                                    'top_zone' => $topZone,
-                                    'middle_zone' => $middleZone,
-                                    'bottom_zone' => $bottomZone,
-                                    'signal_timestamp' => $data[$index]['binance_timestamp'],
-                                    'fvg' => $fvg,
-                                ];
-                            }
-                        }
-                    }
-                }
-            }
 
 
 
@@ -2070,14 +1665,14 @@ class BinanceController extends Controller
 
                 if ($tradeSetupDetails['opening_rule'] === 'waiting_till_next_touch' && $tradeSetupDetails['signal_timestamp'] !== $data[$index]['binance_timestamp']) {
                     if (
-                        $data[$index]['low'] <= $tradeSetupDetails['triggerPrice']
+                        $data[$index]['low'] <= $tradeSetupDetails['trigger_price']
                         && $tradeSetupDetails['direction'] === 'LONG'
 
                     ) {
 
                         $tp = $tradeSetupDetails['tp'];
                         $sl = $tradeSetupDetails['sl'];
-                        $entryPrice = $tradeSetupDetails['triggerPrice'];
+                        $entryPrice = $tradeSetupDetails['trigger_price'];
 
                         $openTrade = [
                             'openingPrice' => $entryPrice,
@@ -2096,13 +1691,13 @@ class BinanceController extends Controller
                         ];
                     }
                     if (
-                        $data[$index]['high'] >= $tradeSetupDetails['triggerPrice']
+                        $data[$index]['high'] >= $tradeSetupDetails['trigger_price']
                         && $tradeSetupDetails['direction'] === 'SHORT'
                     ) {
 
                         $tp = $tradeSetupDetails['tp'];
                         $sl = $tradeSetupDetails['sl'];
-                        $entryPrice = $tradeSetupDetails['triggerPrice'];
+                        $entryPrice = $tradeSetupDetails['trigger_price'];
 
                         $openTrade = [
                             'openingPrice' => $entryPrice,
@@ -2124,7 +1719,7 @@ class BinanceController extends Controller
 
                     $tp = $tradeSetupDetails['tp'];
                     $sl = $tradeSetupDetails['sl'];
-                    $entryPrice = $tradeSetupDetails['triggerPrice'];
+                    $entryPrice = $tradeSetupDetails['trigger_price'];
 
                     $openTrade = [
                         'openingPrice' => $entryPrice,
@@ -2148,8 +1743,6 @@ class BinanceController extends Controller
                 // CHECK For Ratio confirmation
                 if ($openTrade) {
 
-
-
                     $tradeSetupDetails = null;
                     $ratio = abs($openTrade['openingPrice'] - $openTrade['tp']) / abs($openTrade['openingPrice'] - $openTrade['sl']);
 
@@ -2165,18 +1758,11 @@ class BinanceController extends Controller
                             $ratio < $minAllowedRatio
                         )
                             $openingMarkers[] = CommonHelpers::generateLabelPlot($data[$index]['binance_timestamp'], 'purple', 'Ratio');
-                      
+
                         continue;
-                    }
-
-
-                    if (isset($openTrade['fvg'])) {
-                        $usedFVGs[] = $openTrade['fvg']['timestamp'];
                     }
                 }
             }
-
-
             // Recover trade loop if Opening doesnt met
             if ($tradeSetupDetails) {
                 $currentZone = DB::table('sd_zones')->where('status', 'active')->first();
@@ -2188,10 +1774,6 @@ class BinanceController extends Controller
                 }
             }
         }
-
-
-
-
 
         $stats = [
             'total_trades' => null,
@@ -2244,1300 +1826,8 @@ class BinanceController extends Controller
         }
 
 
-
-
-
         return view('MarketTrends.index', ['data' => $data, 'stats' => $stats, 'pageSlug' => 'MarketTrends' . $market, 'openingMarkers' => $openingMarkers, 'lines' => $lines, 'trades' => $trades, 'equations' => $equations, 'symbol' => $symbol, 'interval' => $interval]);
     }
-
-
-
-    public static function getRecentTrendlines($data, $indexLast, $pivotDepth = 3)
-    {
-        $index = $pivotDepth;
-        $lowPivot = [];
-        $highPivot = [];
-
-        $recentTrendLineResistance = null;
-        $recentTrendLineSupport = null;
-
-        while ($index <= $indexLast) {
-
-            $pivot = CommonHelpers::checkPivotIndicator($data, $index - $pivotDepth, $pivotDepth, null, 'low');
-
-            if ($pivot === 'low_pivot') {
-
-                if (count($lowPivot) == 0) {
-                    // store pivot as [index, price]
-                    $lowPivot[] = [
-                        'index' => $index - $pivotDepth,
-                        'x' => $data[$index - $pivotDepth]['binance_timestamp'],
-                        'y' => $data[$index - $pivotDepth]['low'],
-                        'price' => $data[$index - $pivotDepth]['low']
-                    ];
-                } else {
-
-                    $lastPivot = $lowPivot[count($lowPivot) - 1];
-
-                    if ($lastPivot['price'] < $data[$index - $pivotDepth]['low']) {
-                        $lowPivot[] = [
-                            'index' => $index - $pivotDepth,
-                            'x' => $data[$index - $pivotDepth]['binance_timestamp'],
-                            'y' => $data[$index - $pivotDepth]['low'],
-                            'price' => $data[$index - $pivotDepth]['low']
-                        ];
-
-                        $regression = CommonHelpers::linearRegression($lowPivot);
-                        $m = $regression['m'];
-                        $c = $regression['c'];
-                        $recentTrendLineSupport = [
-                            'm' => $m,
-                            'c' => $c,
-                            'startIndex' => $lowPivot[0]['index'],
-                            'endIndex' => $lowPivot[count($lowPivot) - 1]['index'],
-                        ];
-                        // dd($regression);
-                    } else {
-
-                        $recentTrendLineSupport = null;
-                        $lowPivot = [];
-                    }
-                }
-            } else if ($pivot === 'high_pivot') {
-
-                if (count($highPivot) == 0) {
-                    // store pivot as [index, price]
-                    $highPivot[] = [
-                        'index' => $index - $pivotDepth,
-                        'x' => $data[$index - $pivotDepth]['binance_timestamp'],
-                        'y' => $data[$index - $pivotDepth]['high'],
-                        'price' => $data[$index - $pivotDepth]['high']
-                    ];
-                } else {
-
-                    $lastPivot = $highPivot[count($highPivot) - 1];
-
-                    if ($lastPivot['price'] > $data[$index - $pivotDepth]['low']) {
-                        $highPivot[] = [
-                            'index' => $index - $pivotDepth,
-                            'x' => $data[$index - $pivotDepth]['binance_timestamp'],
-                            'y' => $data[$index - $pivotDepth]['high'],
-                            'price' => $data[$index - $pivotDepth]['high']
-                        ];
-
-                        $regression = CommonHelpers::linearRegression($highPivot);
-                        $m = $regression['m'];
-                        $c = $regression['c'];
-                        $recentTrendLineResistance = [
-                            'm' => $m,
-                            'c' => $c,
-                            'startIndex' => $highPivot[0]['index'],
-                            'endIndex' => $highPivot[count($highPivot) - 1]['index'],
-                        ];
-                        // dd($regression);
-                    } else {
-                        $recentTrendLineResistance = null;
-                        $highPivot = [];
-                    }
-                }
-            }
-
-            $index++;
-        }
-
-
-        return [
-            'supportTrendline' => $recentTrendLineSupport,
-            'resistanceTrendline' => $recentTrendLineResistance,
-        ];
-    }
-
-
-
-
-    public static function updateZonesInDb($data, $index, $dataHigherRaw, $dataHigherFilterZoneRaw, $interval, $symbol)
-    {
-
-
-        $allLevels = self::findZonesOn1h($dataHigherFilterZoneRaw, $dataHigherRaw, $data[$index], false);
-        $candle15m = $data[$index];
-        $currentPrice = $data[$index]['close'];
-
-
-        $topZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first();
-        $bottomZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first();
-        $middleZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first();
-
-
-        if ($topZone && $bottomZone && $middleZone) {
-
-
-            // Check which zone is currently active
-
-            $activeZone = null;
-
-
-            if (
-                $currentPrice >= $topZone->bottom
-                && $currentPrice <= $topZone->top
-            ) {
-                $activeZone = $topZone;
-            }
-            if (
-                $currentPrice >= $bottomZone->bottom
-                && $currentPrice <= $bottomZone->top
-            ) {
-                $activeZone = $bottomZone;
-            }
-
-            if (
-                $currentPrice >= $middleZone->bottom
-                && $currentPrice <= $middleZone->top
-            ) {
-                $activeZone = $middleZone;
-            }
-
-
-
-
-            // Check activities on active zone 
-            if ($activeZone) {
-
-                // Update in DB
-                DB::table('sd_zones')->where('id', $activeZone->id)->update(
-                    ['status' => 'active']
-                );
-                DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('id', '!=', $activeZone->id)->update(
-                    ['status' => 'inactive']
-                );
-                if ($activeZone->aggressive_count == 0) {
-                    DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('id', '!=', $activeZone->id)->update(
-                        ['aggressive_count' => 0]
-                    );
-                }
-                // New Zone is activated, add reentry activitiy
-                if (
-                    $data[$index]['open'] > $activeZone->top
-                    ||
-                    $data[$index]['open'] < $activeZone->bottom
-                ) {
-
-                    // Entry Confirmed
-
-
-                    $entry_type = 'entry';
-
-                    $recentActivity = self::getRecentActivity($symbol, self::$interval, $data, $index, null, ['lower_wick', 'upper_wick']);
-
-
-                    if ($recentActivity && $recentActivity->zone_id != $activeZone->id) {
-                        $entry_type = 'new_entry';
-                    }
-
-
-                    DB::table('sd_zones_activities')->insert(
-                        [
-                            'symbol' => $symbol,
-                            'interval' => $interval,
-                            'zone_id' => $activeZone->id,
-                            'activity' => $entry_type,
-                            'timestamp' => $data[$index]['binance_timestamp'],
-                            'action' => 'none',
-                        ]
-                    );
-
-
-
-
-
-                    $entry = self::getCurrentActivity($symbol, self::$interval, $data, $index, 'entry');
-
-
-                    // CHECK FOR HIGH FORMATION
-
-
-                    $sequence = [
-                        'entry',
-                        'break_out'
-                    ];
-                    if (self::verifyActivitySequence($symbol, $data, $index, $entry, $sequence)) {
-
-                        // Validate this HIGH point
-
-                        $firstEntry = self::getRecentActivity($symbol, self::$interval, $data, $index, 'new_entry');
-
-                        if ($firstEntry) {
-                            $breakout = self::getRecentActivity($symbol, self::$interval, $data, $index, 'break_out');
-
-                            $entryIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $entry->timestamp);
-                            $breakoutIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $breakout->timestamp);
-
-
-                            $high = $data[$breakoutIndex]['body_max'];
-                            $highIndex = $breakoutIndex;
-                            for ($i = $breakoutIndex; $i <= $entryIndex; $i++) {
-                                if ($high < $data[$i]['body_max']) {
-                                    $high = $data[$i]['body_max'];
-                                    $highIndex = $i;
-                                }
-                            }
-
-
-                            $firstEntryIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $firstEntry->timestamp);
-
-
-                            $isValid = true;
-                            // Problematic part
-                            if ($firstEntryIndex >= 0) {
-                                for ($i = $firstEntryIndex; $i <= $index; $i++) {
-                                    $actCurrent = self::getCurrentActivity($symbol, self::$interval, $data, $i, 'high');
-                                    if ($actCurrent) {
-                                        $isValid = false;
-                                        break;
-                                    }
-                                }
-                            } else {
-                                $isValid = false;
-                            }
-
-                            if ($isValid) {
-                                DB::table('sd_zones_activities')->insert(
-                                    [
-                                        'symbol' => $symbol,
-                                        'interval' => $interval,
-                                        'zone_id' => $activeZone->id,
-                                        'activity' => 'high',
-                                        'value' => $high,
-                                        'timestamp' => $data[$highIndex]['binance_timestamp'],
-                                        'action' => 'none',
-                                    ]
-                                );
-                            }
-                        }
-                    }
-
-
-
-
-                    // // CHECK FOR LOW FORMATION
-
-                    $sequence = [
-                        'entry',
-                        'break_down'
-                    ];
-
-
-
-                    if (self::verifyActivitySequence($symbol, $data, $index, $entry, $sequence)) {
-
-                        // Validate this low point
-
-                        $firstEntry = self::getRecentActivity($symbol, self::$interval, $data, $index, 'new_entry');
-
-                        if ($firstEntry) {
-                            $breakdown = self::getRecentActivity($symbol, self::$interval, $data, $index, 'break_down');
-
-                            $entryIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $entry->timestamp);
-                            $breakdownIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $breakdown->timestamp);
-
-
-                            $low = $data[$breakdownIndex]['body_min'];
-                            $lowIndex = $breakdownIndex;
-                            for ($i = $breakdownIndex; $i <= $entryIndex; $i++) {
-                                if ($low > $data[$i]['body_min']) {
-                                    $low = $data[$i]['body_min'];
-                                    $lowIndex = $i;
-                                }
-                            }
-
-
-                            $firstEntryIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $firstEntry->timestamp);
-
-
-
-                            $isValid = true;
-
-                            if ($firstEntryIndex >= 0) {
-                                for ($i = $firstEntryIndex; $i <= $index; $i++) {
-                                    $actCurrent = self::getCurrentActivity($symbol, self::$interval, $data, $i, 'low');
-                                    if ($actCurrent) {
-                                        $isValid = false;
-                                        break;
-                                    }
-                                }
-                            } else {
-                                $isValid = false;
-                            }
-
-                            if ($isValid) {
-                                DB::table('sd_zones_activities')->insert(
-                                    [
-                                        'symbol' => $symbol,
-                                        'interval' => $interval,
-                                        'zone_id' => $activeZone->id,
-                                        'activity' => 'low',
-                                        'value' => $low,
-                                        'timestamp' => $data[$lowIndex]['binance_timestamp'],
-                                        'action' => 'none',
-                                    ]
-                                );
-                            }
-                        }
-                    }
-                }
-                // CommonHelpers::flushZones($symbol);
-
-            } else {
-
-                // Make Alll ZOnes inactive
-                DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->update(
-                    ['status' => 'inactive']
-                );
-
-
-
-
-                // Confirm for exit activity
-
-                $openPrice = $data[$index]['open'];
-
-
-
-                $recentZone = null;
-                if (
-                    $openPrice >= $topZone->bottom
-                    && $openPrice <= $topZone->top
-                ) {
-                    $recentZone = $topZone;
-                }
-                if (
-                    $openPrice >= $bottomZone->bottom
-                    && $openPrice <= $bottomZone->top
-                ) {
-                    $recentZone = $bottomZone;
-                }
-
-                if (
-                    $openPrice >= $middleZone->bottom
-                    && $openPrice <= $middleZone->top
-                ) {
-                    $recentZone = $middleZone;
-                }
-
-
-                if ($recentZone) {
-
-                    DB::table('sd_zones_activities')->insert(
-                        [
-                            'symbol' => $symbol,
-                            'interval' => $interval,
-                            'zone_id' => $recentZone->id,
-                            'activity' => $data[$index]['per'] > 0 ? 'break_out' : 'break_down',
-                            'timestamp' => $data[$index]['binance_timestamp'],
-                            'action' => 'none',
-                        ]
-                    );
-
-                    // If breakout happens above top zone than reset top zone and delete very last zone
-                    if ($data[$index]['per'] > 0 && $recentZone->id === $topZone->id) {
-                        // Now Delete the bottom zone and find new top and rename zones
-                        DB::table('sd_zones_activities')->where('zone_id', $bottomZone->id)->delete();
-                        DB::table('sd_zones')->where('id', $bottomZone->id)->delete();
-
-
-                        // Renaming existing zones
-
-                        DB::table('sd_zones')->where('id', $middleZone->id)->update(
-                            ['name' => 'bottom_zone']
-                        );
-                        DB::table('sd_zones')->where('id', $topZone->id)->update(
-                            ['name' => 'middle_zone']
-                        );
-
-                        $activeZone = json_decode(json_encode($topZone), true);
-                        $supplyZone =  self::findValidSupplyBlock($allLevels, $activeZone);
-                        CommonHelpers::createOrUpdateZone($symbol, $interval, $supplyZone['type'], $supplyZone['top'], $supplyZone['bottom'], $supplyZone['timestamp_initial'], $supplyZone['timestamp_confirmed'], 'inactive', 'top_zone');
-                    }
-
-
-                    // If breakdown happens below bottom zone than reset bottom zone and delete very last zone
-
-                    if ($data[$index]['per'] < 0 && $recentZone->id === $bottomZone->id) {
-                        // Now Delete the bottom zone and find new top and rename zones
-                        DB::table('sd_zones_activities')->where('zone_id', $bottomZone->id)->delete();
-                        DB::table('sd_zones')->where('id', $bottomZone->id)->delete();
-
-
-                        // Renaming existing zones
-
-                        DB::table('sd_zones')->where('id', $middleZone->id)->update(
-                            ['name' => 'top_zone']
-                        );
-                        DB::table('sd_zones')->where('id', $bottomZone->id)->update(
-                            ['name' => 'middle_zone']
-                        );
-
-                        $activeZone = json_decode(json_encode($bottomZone), true);
-                        $demandZone =  self::findValidSupplyBlock($allLevels, $activeZone);
-                        CommonHelpers::createOrUpdateZone($symbol, $interval, $demandZone['type'], $demandZone['top'], $demandZone['bottom'], $demandZone['timestamp_initial'], $demandZone['timestamp_confirmed'], 'inactive', 'bottom_zone');
-                    }
-                } else {
-
-                    // If no recent zone is detected, check for engulf
-
-                    $engulfTop = self::setEngulfType($symbol, $topZone, $data, $index);
-
-                    if ($engulfTop === 'engulf_break_out') {
-                        // Now Delete the bottom zone and find new top and rename zones
-                        DB::table('sd_zones_activities')->where('zone_id', $bottomZone->id)->delete();
-                        DB::table('sd_zones')->where('id', $bottomZone->id)->delete();
-
-
-                        // Renaming existing zones
-
-                        DB::table('sd_zones')->where('id', $middleZone->id)->update(
-                            ['name' => 'bottom_zone']
-                        );
-                        DB::table('sd_zones')->where('id', $topZone->id)->update(
-                            ['name' => 'middle_zone']
-                        );
-
-                        $activeZone = json_decode(json_encode($topZone), true);
-                        $supplyZone =  self::findValidSupplyBlock($allLevels, $activeZone);
-                        CommonHelpers::createOrUpdateZone($symbol, $interval, $supplyZone['type'], $supplyZone['top'], $supplyZone['bottom'], $supplyZone['timestamp_initial'], $supplyZone['timestamp_confirmed'], 'inactive', 'top_zone');
-                    }
-
-
-                    self::setEngulfType($symbol, $middleZone, $data, $index);
-
-                    $engulfBottom = self::setEngulfType($symbol, $bottomZone, $data, $index);
-
-
-                    if ($engulfBottom === 'engulf_break_down') {
-                        // Now Delete the bottom zone and find new top and rename zones
-                        DB::table('sd_zones_activities')->where('zone_id', $bottomZone->id)->delete();
-                        DB::table('sd_zones')->where('id', $bottomZone->id)->delete();
-
-
-                        // Renaming existing zones
-
-                        DB::table('sd_zones')->where('id', $middleZone->id)->update(
-                            ['name' => 'top_zone']
-                        );
-                        DB::table('sd_zones')->where('id', $bottomZone->id)->update(
-                            ['name' => 'middle_zone']
-                        );
-
-                        $activeZone = json_decode(json_encode($bottomZone), true);
-                        $demandZone =  self::findValidSupplyBlock($allLevels, $activeZone);
-                        CommonHelpers::createOrUpdateZone($symbol, $interval, $demandZone['type'], $demandZone['top'], $demandZone['bottom'], $demandZone['timestamp_initial'], $demandZone['timestamp_confirmed'], 'inactive', 'bottom_zone');
-                    }
-                    // Also Check for wick events
-                    self::setWickType($symbol, $topZone, $data, $index);
-                    self::setWickType($symbol, $middleZone, $data, $index);
-                    self::setWickType($symbol, $bottomZone, $data, $index);
-                }
-
-                // Check for previous High Low Break
-
-                self::setBreakoutsHigh($symbol, $data, $index);
-                self::setBreakdownLow($symbol, $data, $index);
-            }
-        } else {
-
-            CommonHelpers::flushZones($symbol);
-            // Add Zones for first time only
-            $activeZone = null;
-            $demandZone = null;
-            $supplyZone = null;
-
-            foreach ($allLevels as $level) {
-
-                if ($level['type'] === 'demand' && $level['bottom'] < $currentPrice) {
-                    $demandZone = $level;
-                }
-                if ($level['type'] === 'supply' && $level['top'] > $currentPrice) {
-                    $supplyZone = $level;
-                }
-
-                if ($demandZone && $supplyZone) {
-                    break;
-                }
-            }
-
-
-            if (!($demandZone && $supplyZone)) {
-                $demandZone = null;
-                $supplyZone = null;
-                $activeZone = null;
-                return null;
-            }
-
-
-            // Check for any zone activation
-            if (
-                $currentPrice >= $demandZone['bottom']
-                && $currentPrice <= $demandZone['top']
-            ) {
-                $activeZone = $demandZone;
-            }
-
-            if (
-                $currentPrice >= $supplyZone['bottom']
-                && $currentPrice <= $supplyZone['top']
-            ) {
-                $activeZone = $supplyZone;
-            }
-
-
-            // If no active zone found
-            if (!$activeZone) {
-                return null;
-            }
-
-
-            $demandZone = self::findValidDemandBlock($allLevels, $activeZone);
-            $supplyZone = self::findValidSupplyBlock($allLevels, $activeZone);
-
-
-
-            // dd($activeZone, $demandZone, $supplyZone, $allLevels);
-            // dd($activeZone, $demandZone, $supplyZone, $allLevels);
-
-            // If No new demand supply formed
-            if (!($demandZone && $supplyZone)) {
-                $demandZone = null;
-                $supplyZone = null;
-                $activeZone = null;
-                return null;
-            }
-
-
-
-            $activeZoneId = CommonHelpers::createOrUpdateZone($symbol, $interval, $activeZone['type'], $activeZone['top'], $activeZone['bottom'], $activeZone['timestamp_initial'], $activeZone['timestamp_confirmed'], 'active', 'middle_zone');
-
-            DB::table('sd_zones_activities')->insert(
-                [
-                    'symbol' => $symbol,
-                    'interval' => $interval,
-                    'zone_id' => $activeZoneId,
-                    'activity' => 'new_entry',
-                    'timestamp' => $data[$index]['binance_timestamp'],
-                    'action' => 'none',
-                ]
-            );
-            CommonHelpers::createOrUpdateZone($symbol, $interval, $supplyZone['type'], $supplyZone['top'], $supplyZone['bottom'], $supplyZone['timestamp_initial'], $supplyZone['timestamp_confirmed'], 'inactive', 'top_zone');
-            CommonHelpers::createOrUpdateZone($symbol, $interval, $demandZone['type'], $demandZone['top'], $demandZone['bottom'], $demandZone['timestamp_initial'], $demandZone['timestamp_confirmed'], 'inactive', 'bottom_zone');
-
-
-            return true;
-        }
-    }
-    public static function getCurrentActivity($symbol, $interval, $data, $index, $activity = null)
-    {
-
-        if ($activity) {
-            $activity = DB::table('sd_zones_activities')->where('symbol', $symbol)->where('interval', $interval)->where('timestamp', $data[$index]['binance_timestamp'])->where('activity', $activity)->orderBy('timestamp', 'DESC')->first();
-            return $activity;
-        } else {
-            $activity = DB::table('sd_zones_activities')->where('symbol', $symbol)->where('interval', $interval)->where('timestamp', $data[$index]['binance_timestamp'])->orderBy('timestamp', 'DESC')->first();
-            return $activity;
-        }
-    }
-    public static function getRecentActivity($symbol, $interval, $data, $index, $activity = null, $exceptions = [])
-    {
-        if ($activity) {
-            $activity = DB::table('sd_zones_activities')->where('symbol', $symbol)->where('interval', $interval)->where('timestamp', '<=', $data[$index]['binance_timestamp'])->where('activity', $activity)->whereNotIn('activity', $exceptions)->orderBy('timestamp', 'DESC')->first();
-            return $activity;
-        } else {
-            $activity = DB::table('sd_zones_activities')->where('symbol', $symbol)->where('interval', $interval)->where('timestamp', '<=', $data[$index]['binance_timestamp'])->whereNotIn('activity', $exceptions)->orderBy('timestamp', 'DESC')->first();
-            return $activity;
-        }
-    }
-    public static function verifyActivitySequence($symbol, $data, $index, $activity, $sequenceArr = [])
-    {
-
-
-
-        if (empty($sequenceArr)) {
-            return false;
-        }
-        if (!$activity) {
-            return false;
-        }
-        $activityIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $activity->timestamp, self::$interval);
-
-        foreach ($sequenceArr as $sequenceIndex => $sequence) {
-            $recentActivity = self::getRecentActivity($symbol, self::$interval, $data, $activityIndex);
-
-            if (!$recentActivity || $recentActivity->activity !== $sequence) {
-                return false;
-            }
-
-            $activityIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $recentActivity->timestamp, self::$interval)  - 1;
-        }
-
-        return true;
-    }
-    public static function getCandle4h($data1hRaw, $candle15m)
-    {
-        $data = CommonHelpers::filterCandlestickData($data1hRaw, null, $candle15m['binance_timestamp']);
-        $index = count($data) - 2;
-        return $data[$index];
-    }
-    public static function setBreakoutsHigh($symbol,  $data, $index)
-    {
-
-        $recentHigh = self::getRecentActivity($symbol, self::$interval, $data, $index, 'high');
-
-
-        $firstEntry  = self::getRecentActivity($symbol, self::$interval, $data, $index, 'new_entry');
-
-        if ($firstEntry && $recentHigh) {
-            $validation = true;
-            $entryIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $firstEntry->timestamp);
-            for ($i = $entryIndex; $i <= $index; $i++) {
-                $actCurrent = self::getCurrentActivity($symbol, self::$interval, $data, $i, 'high_break_out');
-                if ($actCurrent) {
-                    $validation = false;
-                    break;
-                }
-            }
-
-            if ($validation && $recentHigh->timestamp >= $firstEntry->timestamp) {
-                if ($data[$index]['close'] > $recentHigh->value && $data[$index]['open'] < $recentHigh->value) {
-                    DB::table('sd_zones_activities')->insert(
-                        [
-                            'symbol' => $symbol,
-                            'interval' => self::$interval,
-                            'zone_id' => $recentHigh->zone_id,
-                            'activity' => 'high_break_out',
-                            'value' => $recentHigh->value,
-                            'timestamp' => $data[$index]['binance_timestamp'],
-                            'action' => 'none',
-                        ]
-                    );
-                }
-            }
-        }
-    }
-    public static function setBreakdownLow($symbol,  $data, $index)
-    {
-
-
-        $recentLow = self::getRecentActivity($symbol, self::$interval, $data, $index, 'low');
-
-
-        $firstEntry  = self::getRecentActivity($symbol, self::$interval, $data, $index, 'new_entry');
-
-        if ($firstEntry && $recentLow) {
-            $validation = true;
-            $entryIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $firstEntry->timestamp);
-            for ($i = $entryIndex; $i <= $index; $i++) {
-                $actCurrent = self::getCurrentActivity($symbol, self::$interval, $data, $i, 'low_break_down');
-                if ($actCurrent) {
-                    $validation = false;
-                    break;
-                }
-            }
-
-
-            if ($validation && $recentLow->timestamp >= $firstEntry->timestamp) {
-                if ($data[$index]['close'] < $recentLow->value && $data[$index]['open'] > $recentLow->value) {
-                    DB::table('sd_zones_activities')->insert(
-                        [
-                            'symbol' => $symbol,
-                            'interval' => self::$interval,
-                            'zone_id' => $recentLow->zone_id,
-                            'activity' => 'low_break_down',
-                            'value' => $recentLow->value,
-                            'timestamp' => $data[$index]['binance_timestamp'],
-                            'action' => 'none',
-                        ]
-                    );
-                }
-            }
-        }
-    }
-    public static function setWickType($symbol, $zone, $data, $index)
-    {
-
-
-
-        $recentActivity = self::getRecentActivity($symbol, self::$interval, $data, $index - 1);
-
-
-
-        if (
-            $data[$index]['body_max'] < $zone->bottom
-            && $data[$index]['high'] > $zone->bottom
-        ) {
-            if (
-                $recentActivity
-                && $recentActivity->activity === 'upper_wick'
-                && $zone->id === $recentActivity->zone_id
-            ) {
-                return null;
-            }
-            DB::table('sd_zones_activities')->insert(
-                [
-                    'symbol' => $symbol,
-                    'interval' => self::$interval,
-                    'zone_id' => $zone->id,
-                    'activity' => 'upper_wick',
-                    'timestamp' => $data[$index]['binance_timestamp'],
-                    'action' => 'none',
-                ]
-            );
-
-            if ($zone->aggressive_count == 0) {
-                DB::table('sd_zones')->where('symbol', $symbol)->where('interval', self::$interval)->where('id', '!=', $zone->id)->update(
-                    ['aggressive_count' => 0]
-                );
-            }
-
-
-
-            return 'upper_wick';
-        }
-        if (
-            $data[$index]['body_min'] > $zone->top
-            && $data[$index]['low'] < $zone->top
-
-        ) {
-            if (
-                $recentActivity
-                && $recentActivity->activity === 'lower_wick'
-            ) {
-                return null;
-            }
-            DB::table('sd_zones_activities')->insert(
-                [
-                    'symbol' => $symbol,
-                    'interval' => self::$interval,
-                    'zone_id' => $zone->id,
-                    'activity' => 'lower_wick',
-                    'timestamp' => $data[$index]['binance_timestamp'],
-                    'action' => 'none',
-                ]
-            );
-
-            if ($zone->aggressive_count == 0) {
-                DB::table('sd_zones')->where('symbol', $symbol)->where('interval', self::$interval)->where('id', '!=', $zone->id)->update(
-                    ['aggressive_count' => 0]
-                );
-            }
-
-
-            return 'lower_wick';
-        }
-    }
-    public static function setEngulfType($symbol, $zone, $data, $index)
-    {
-        if (
-            (
-                $data[$index]['open'] > $zone->top
-                && $data[$index]['close'] < $zone->bottom)
-
-            ||
-            (
-                $data[$index]['close'] > $zone->top
-                && $data[$index]['open'] < $zone->bottom
-            )
-
-        ) {
-            DB::table('sd_zones_activities')->insert(
-                [
-                    'symbol' => $symbol,
-                    'interval' => self::$interval,
-                    'zone_id' => $zone->id,
-                    'activity' => $data[$index]['per'] > 0 ? 'engulf_break_out' : 'engulf_break_down',
-                    'timestamp' => $data[$index]['binance_timestamp'],
-                    'action' => 'none',
-                ]
-            );
-
-            return $data[$index]['per'] > 0 ? 'engulf_break_out' : 'engulf_break_down';
-        }
-    }
-    public static function findValidSupplyBlock($allLevels, $activeZone, $paddingMarginPercent = 0.2)
-    {
-
-
-        $paddingMargin = $activeZone['top'] * ($paddingMarginPercent / 100);
-
-        $topLim = $activeZone['top'];
-        $bottomLim = $activeZone['bottom'];
-
-        $supplyZone = null;
-        foreach ($allLevels as $index => $level) {
-
-            if ($index >= (count($allLevels) - 2)) {
-                break;
-            }
-            if (
-                $level['bottom'] >= ($topLim + $paddingMargin)
-                && $level['timestamp_initial'] !== $activeZone['timestamp_initial']
-            ) {
-
-
-
-
-                // If Zone found, validate it
-                $prevLevel = $allLevels[$index + 1];
-
-                $levelLow = $level['bottom'] - $paddingMargin;
-                $levelHigh = $level['top'] + $paddingMargin;
-                if (
-                    $prevLevel['top'] < $levelLow
-                    ||
-                    $prevLevel['bottom'] > $levelHigh
-                ) {
-                    // Level is valid
-                    $supplyZone = $level;
-                    break;
-                } else {
-                    continue;
-                }
-            }
-        }
-
-
-        if (!$supplyZone) {
-            $supplyZone = [
-                'type' => 'supply',
-                'top' =>  $activeZone['top'] * (1 + 0.1 / 100),
-                'bottom' => $activeZone['top'] * (1 + 0.5 / 100),
-                'timestamp_initial' => $activeZone['timestamp_confirmed'],
-                'timestamp_confirmed' => $activeZone['timestamp_confirmed'],
-                'is_imaginary' => true,
-            ];
-        }
-
-        return $supplyZone;
-    }
-    public static function findValidDemandBlock($allLevels, $activeZone, $paddingMarginPercent = 0.2)
-    {
-
-        $paddingMargin = $activeZone['top'] * ($paddingMarginPercent / 100);
-        $topLim = $activeZone['top'];
-        $bottomLim = $activeZone['bottom'];
-
-        $demandZone = null;
-        foreach ($allLevels as $index => $level) {
-
-            if ($index >= (count($allLevels) - 2)) {
-                break;
-            }
-            if (
-                $level['top'] <= ($bottomLim - $paddingMargin)
-                && $level['timestamp_initial'] !== $activeZone['timestamp_initial']
-            ) {
-
-
-                // If Zone found, validate it
-                $prevLevel = $allLevels[$index + 1];
-
-                $levelLow = $level['bottom'] - $paddingMargin;
-                $levelHigh = $level['top'] + $paddingMargin;
-                if (
-
-                    $prevLevel['top'] < $levelLow
-                    ||
-                    $prevLevel['bottom'] > $levelHigh
-
-                ) {
-                    // Level is valid
-                    $demandZone = $level;
-                    break;
-                } else {
-                    continue;
-                }
-            }
-        }
-
-        if (!$demandZone) {
-            $demandZone = [
-                'type' => 'demand',
-                'top' =>  $activeZone['bottom'] * (1 - 0.1 / 100),
-                'bottom' => $activeZone['bottom'] * (1 - 0.5 / 100),
-                'timestamp_initial' => $activeZone['timestamp_confirmed'],
-                'timestamp_confirmed' => $activeZone['timestamp_confirmed'],
-                'is_imaginary' => true,
-            ];
-        }
-        return $demandZone;
-    }
-    public static function findZonesOn1h($data4hRaw, $data1hRaw, $candle15m, $filterOnHigher = true)
-    {
-
-        $data = CommonHelpers::filterCandlestickData($data1hRaw, null, $candle15m['binance_timestamp']);
-        $index = count($data) - 2;
-
-        // Get All 4h Levels in timestamp ASC order
-        $allLevels = [];
-
-
-        $loopIndex = $index - 4;
-        $demandZone = 0;
-        $supplyCount = 0;
-
-        $dataLength = count($data);
-        while ($loopIndex > 4) {
-            $pivot = CommonHelpers::checkPivot($data, $loopIndex, 4);
-
-            if ($pivot === 'high_pivot') {
-
-
-                $bottom = null;
-
-                $wickSize = $data[$loopIndex]['high'] - max($data[$loopIndex]['close'], $data[$loopIndex]['open']);
-                $bodySize = max($data[$loopIndex]['close'], $data[$loopIndex]['open']) - min($data[$loopIndex]['close'], $data[$loopIndex]['open']);
-
-
-
-                if ($wickSize > $bodySize) {
-                    $bottom = max($data[$loopIndex]['close'], $data[$loopIndex]['open']);
-                } else if ($wickSize <= $bodySize) {
-                    $bottom = min($data[$loopIndex]['close'], $data[$loopIndex]['open']);
-                }
-
-                $zoneSizePercent = CommonHelpers::getPercentDiff($bottom, $data[$loopIndex]['high']);
-
-                if ($zoneSizePercent >= 2) {
-                    $loopIndex--;
-
-                    continue;
-                }
-
-
-                $allLevels[] = [
-                    'type' => 'supply',
-                    'top' => $data[$loopIndex]['high'],
-                    'bottom' =>  $bottom,
-                    'timestamp_initial' => $data[$loopIndex]['binance_timestamp'],
-                    'timestamp_confirmed' => $data[$loopIndex + 4]['binance_timestamp'],
-                ];
-            }
-
-            if ($pivot === 'low_pivot') {
-
-                $top = null;
-
-
-                $wickSize = min($data[$loopIndex]['close'], $data[$loopIndex]['open']) - $data[$loopIndex]['low'];
-                $bodySize = max($data[$loopIndex]['close'], $data[$loopIndex]['open']) - min($data[$loopIndex]['close'], $data[$loopIndex]['open']);
-
-
-                if ($wickSize > $bodySize) {
-                    $top = min($data[$loopIndex]['close'], $data[$loopIndex]['open']);
-                } else if ($wickSize <= $bodySize) {
-                    $top = max($data[$loopIndex]['close'], $data[$loopIndex]['open']);
-                }
-
-
-                $zoneSizePercent = CommonHelpers::getPercentDiff($data[$loopIndex]['low'], $top);
-
-                if ($zoneSizePercent >= 2) {
-                    $loopIndex--;
-
-                    continue;
-                }
-
-
-                $allLevels[] = [
-                    'type' => 'demand',
-                    'top' =>  $top,
-                    'bottom' => $data[$loopIndex]['low'],
-                    'timestamp_initial' => $data[$loopIndex]['binance_timestamp'],
-                    'timestamp_confirmed' => $data[$loopIndex + 4]['binance_timestamp'],
-                ];
-            }
-            $loopIndex--;
-        }
-
-
-
-
-
-
-        // Filter these zones wrt 4h zones
-
-        if ($filterOnHigher) {
-
-            $allLevels4h = self::findZonesOn4h($data4hRaw, $candle15m);
-            $filteredLevels1h = [];
-
-            foreach ($allLevels as $level1h) {
-
-                foreach ($allLevels4h as $level4h) {
-
-                    $endTime = $level4h['timestamp_confirmed'];
-                    $startTime =  $level4h['timestamp_initial'] - ($level4h['timestamp_confirmed'] - $level4h['timestamp_initial']);
-
-
-                    if (
-                        $level1h['timestamp_initial'] >= $startTime
-                        && $level1h['timestamp_initial'] <= $endTime
-                        && $level1h['top'] <= $level4h['top']
-                        && $level1h['bottom'] >= $level4h['bottom']
-
-                    ) {
-                        $filteredLevels1h[] = $level1h;
-                        break;
-                    }
-                }
-            }
-        } else {
-            return $allLevels;
-        }
-
-        return $filteredLevels1h;
-    }
-    public static function findZonesOn4h($data4hRaw, $candle15m)
-    {
-
-        $data = CommonHelpers::filterCandlestickData($data4hRaw, null, $candle15m['binance_timestamp']);
-        $index = count($data) - 2;
-
-        // Get All 4h Levels in timestamp ASC order
-        $allLevels = [];
-
-
-        $loopIndex = $index - 4;
-        $demandZone = 0;
-        $supplyCount = 0;
-        while ($loopIndex > 4) {
-            $pivot = CommonHelpers::checkPivot($data, $loopIndex, 4);
-
-
-
-            if ($pivot === 'high_pivot') {
-
-
-                $bottom = max($data[$loopIndex]['body_max'], $data[$loopIndex - 1]['body_max'], $data[$loopIndex + 1]['body_max']);
-
-
-                $allLevels[] = [
-                    'type' => 'supply',
-                    'top' => $data[$loopIndex]['high'],
-                    'bottom' =>  $bottom,
-                    'timestamp_initial' => $data[$loopIndex]['binance_timestamp'],
-                    'timestamp_confirmed' => $data[$loopIndex + 4]['binance_timestamp'],
-                ];
-            }
-
-            if ($pivot === 'low_pivot') {
-
-                $top = min($data[$loopIndex]['body_min'], $data[$loopIndex - 1]['body_min'], $data[$loopIndex + 1]['body_min']);;
-
-
-                $allLevels[] = [
-                    'type' => 'demand',
-                    'top' =>  $top,
-                    'bottom' => $data[$loopIndex]['low'],
-                    'timestamp_initial' => $data[$loopIndex]['binance_timestamp'],
-                    'timestamp_confirmed' => $data[$loopIndex + 4]['binance_timestamp'],
-                ];
-            }
-            $loopIndex--;
-        }
-
-        return $allLevels;
-    }
-
-
-
-
-
-
-
-
-
-
-    public function analyzePivots($pivots)
-    {
-        // Separate highs and lows
-        $highs = [];
-        $lows = [];
-
-        foreach ($pivots as $pivot) {
-            if ($pivot['type'] === 'high_pivot') {
-                $highs[] = $pivot;
-            } else {
-                $lows[] = $pivot;
-            }
-        }
-
-        // Sort by index to ensure chronological order
-        usort($highs, function ($a, $b) {
-            return $a['index'] - $b['index'];
-        });
-
-        usort($lows, function ($a, $b) {
-            return $a['index'] - $b['index'];
-        });
-
-        return [
-            'highs' => $highs,
-            'lows' => $lows,
-            'high_trendlines' => $this->calculateTrendlines($highs),
-            'low_trendlines' => $this->calculateTrendlines($lows),
-            'zones' => $this->findConcentrationZones($pivots)
-        ];
-    }
-
-    private function calculateTrendlines($pivots)
-    {
-        $trendlines = [];
-
-        if (count($pivots) < 2) {
-            return $trendlines;
-        }
-
-        // Find major trendlines by connecting significant pivots
-        for ($i = 0; $i < count($pivots) - 1; $i++) {
-            for ($j = $i + 1; $j < count($pivots); $j++) {
-                $start = $pivots[$i];
-                $end = $pivots[$j];
-
-                // Calculate trendline strength (more pivots touching = stronger)
-                $strength = $this->calculateTrendlineStrength($start, $end, $pivots);
-
-                if ($strength >= 2) { // At least 2 touching points
-                    $trendlines[] = [
-                        'start' => [
-                            'index' => $start['index'],
-                            'price' => $start['price']
-                        ],
-                        'end' => [
-                            'index' => $end['index'],
-                            'price' => $end['price']
-                        ],
-                        'strength' => $strength,
-                        'slope' => ($end['price'] - $start['price']) / ($end['index'] - $start['index'])
-                    ];
-                }
-            }
-        }
-
-        // Sort by strength (strongest first)
-        usort($trendlines, function ($a, $b) {
-            return $b['strength'] - $a['strength'];
-        });
-
-        return array_slice($trendlines, 0, 5); // Return top 5 trendlines
-    }
-
-    private function calculateTrendlineStrength($start, $end, $pivots)
-    {
-        $strength = 0;
-        $tolerance = 0.001; // 0.1% tolerance for price touching trendline
-
-        foreach ($pivots as $pivot) {
-            if ($pivot['index'] >= $start['index'] && $pivot['index'] <= $end['index']) {
-                // Calculate expected price at this index on the trendline
-                $expectedPrice = $start['price'] +
-                    (($pivot['index'] - $start['index']) / ($end['index'] - $start['index'])) *
-                    ($end['price'] - $start['price']);
-
-                // Check if pivot price is close to trendline
-                if (abs($pivot['price'] - $expectedPrice) / $expectedPrice < $tolerance) {
-                    $strength++;
-                }
-            }
-        }
-
-        return $strength;
-    }
-
-    private function findConcentrationZones($pivots)
-    {
-        $zones = [];
-        $priceRanges = [];
-
-        // Group pivots by price ranges (bins)
-        foreach ($pivots as $pivot) {
-            $priceLevel = round($pivot['price'] / 100) * 100; // 100-point bins
-
-            if (!isset($priceRanges[$priceLevel])) {
-                $priceRanges[$priceLevel] = [];
-            }
-
-            $priceRanges[$priceLevel][] = $pivot;
-        }
-
-        // Find zones with most pivots
-        foreach ($priceRanges as $level => $pivots) {
-            if (count($pivots) >= 3) { // At least 3 pivots in zone
-                $zones[] = [
-                    'price_level' => $level,
-                    'pivot_count' => count($pivots),
-                    'min_price' => min(array_column($pivots, 'price')),
-                    'max_price' => max(array_column($pivots, 'price')),
-                    'pivots' => $pivots
-                ];
-            }
-        }
-
-        // Sort by pivot count (highest concentration first)
-        usort($zones, function ($a, $b) {
-            return $b['pivot_count'] - $a['pivot_count'];
-        });
-
-        return $zones;
-    }
-
-    public function formatForChart($analysis)
-    {
-        $chartData = [
-            'high_trendlines' => [],
-            'low_trendlines' => [],
-            'zones' => []
-        ];
-
-        // Format high trendlines for charting
-        foreach ($analysis['high_trendlines'] as $line) {
-            $chartData['high_trendlines'][] = [
-                'x1' => $line['start']['index'],
-                'y1' => $line['start']['price'],
-                'x2' => $line['end']['index'],
-                'y2' => $line['end']['price'],
-                'strength' => $line['strength']
-            ];
-        }
-
-        // Format low trendlines for charting
-        foreach ($analysis['low_trendlines'] as $line) {
-            $chartData['low_trendlines'][] = [
-                'x1' => $line['start']['index'],
-                'y1' => $line['start']['price'],
-                'x2' => $line['end']['index'],
-                'y2' => $line['end']['price'],
-                'strength' => $line['strength']
-            ];
-        }
-
-        // Format zones
-        $chartData['zones'] = $analysis['zones'];
-
-        return $chartData;
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     public function getAvailableBalance(Request $request)
     {
