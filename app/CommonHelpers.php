@@ -1205,12 +1205,12 @@ class CommonHelpers
         int $endTime,
         float $endValue,
         string $color = 'yellow',
-        string $timezone = 'pst',
+        string $timezone = 'binance',
         ?string $title = null,
         int $thickness = 2
     ): array {
         // Apply timezone adjustment (PST = +5 hours in ms)
-        $tsAdjustment = $timezone === 'pst' ? 18000000 : 0;
+        $tsAdjustment = $timezone === 'binance' ? 18000000 : 0;
 
         // Define supported colors (using solid hex for lines)
         $colorMap = [
@@ -4470,11 +4470,77 @@ class CommonHelpers
         ];
     }
 
+    public static function getRecentPivot($data, $index, $pivotType = 'high', $pivotWidth = 3, $pivotMode = 'wick')
+    {
+        if ($pivotType === 'high') {
+
+            $loopIndex = $index - $pivotWidth;
+
+            while ($loopIndex > $pivotWidth) {
+                $pivotModeName = $pivotMode === 'wick' ? 'high' : $pivotMode;
+
+                $pivot = CommonHelpers::checkPivotIndicator($data, $loopIndex, $pivotWidth, null, $pivotModeName);
+
+
+
+                if ($pivot === 'high_pivot') {
+                    return [
+                        'index' => $loopIndex,
+                        'mode' => $pivotMode,
+                        'width' => $pivotWidth,
+                        'type' => 'high',
+                        'value' => $data[$loopIndex][$pivotModeName],
+
+                    ];
+                }
+
+                $loopIndex--;
+            }
+        } else if ($pivotType === 'low') {
+            $loopIndex = $index - $pivotWidth;
+
+            while ($loopIndex > $pivotWidth) {
+                $pivotModeName = $pivotMode === 'wick' ? 'low' : $pivotMode;
+
+                $pivot = CommonHelpers::checkPivotIndicator($data, $loopIndex, $pivotWidth, null, $pivotModeName);
+
+
+
+                if ($pivot === 'low_pivot') {
+                    return [
+                        'index' => $loopIndex,
+                        'mode' => $pivotMode,
+                        'width' => $pivotWidth,
+                        'type' => 'low',
+                        'value' => $data[$loopIndex][$pivotModeName],
+                    ];
+                }
+
+                $loopIndex--;
+            }
+        }
+
+        return null;
+    }
+    public static function getBreakoutPriceFromTrendLine($data, $index, $recentTrendline)
+    {
+        if (
+            !$recentTrendline
+            ||
+            !isset($recentTrendline['m'])
+            ||
+            !isset($recentTrendline['c'])
+        ) {
+            return null;
+        }
+
+        return ($recentTrendline['m'] * $data[$index]['binance_timestamp'] + $recentTrendline['c']);
+    }
     /**
      * Perform linear regression on an array of (x, y) points.
      *
      * @param array $points Array of ['x' => value, 'y' => value]
-     * @return array|null ['m' => slope, 'c' => intercept, 'r2' => accuracy, 'equation' => string]
+     * @return array|null ['m' => slope, 'c' => intercept, 'r2' => accuracy, 'angle_deg' => angle in degrees, 'equation' => string]
      */
     public static function linearRegression(array $points)
     {
@@ -4516,13 +4582,18 @@ class CommonHelpers
         }
         $r2 = ($ssTot == 0) ? 1 : 1 - ($ssRes / $ssTot);
 
+        // Angle in degrees (normalized 0–90)
+        $angle = abs(rad2deg(atan($m)));
+
         return [
             'm' => $m,
             'c' => $c,
             'r2' => $r2,
+            'angle_deg' => $angle,
             'equation' => "y = {$m}x + {$c}"
         ];
     }
+
 
     public static function estimateLine($x, $x1, $y1, $x2, $y2)
     {
