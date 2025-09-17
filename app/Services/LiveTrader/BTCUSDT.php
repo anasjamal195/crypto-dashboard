@@ -66,11 +66,7 @@ class BTCUSDT
 
 
 
-
         self::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
-
-
-
 
 
         $tradeSetupDetails = DB::table('trade_setup_details')->where('symbol', $symbol)->where('interval', $interval)->first();
@@ -533,6 +529,7 @@ class BTCUSDT
             DB::table('trade_setup_details')->insert($tradeSetupDetails);
             return $tradeSetupDetails;
         }
+        return null;
     }
 
 

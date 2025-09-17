@@ -1390,51 +1390,6 @@ class BinanceController extends Controller
         return 'HOLD';
     }
 
-
-    public function showLiveCharts($symbol, Request $request)
-    {
-
-        $interval = request('interval', '15m');
-        $timestamp = request('timestamp', null);
-        $market = 'FUTURE';
-        $labelPlots = [];
-        $zonePlots = [];
-        $linePlots = [];
-        $equationPlots = [];
-        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, $market);
-
-
-
-        $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
-        $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
-        $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
-
-        $currentTimestamp = $data[count($data) - 1]['binance_timestamp'];
-
-        CommonHelpers::plotZones($middleZone,$topZone,$bottomZone,$currentTimestamp,$zonePlots);
-        
-        $allActivities = DB::table('sd_zones_activities')->where('symbol',$symbol)->where('interval',$interval)->get();
-        foreach($allActivities as $act){
-            $labelPlots[] = CommonHelpers::generateLabelPlot($act->timestamp,'orange',$act->activity);
-        }
-
-
-
-
-        return view(
-            'live-chart.index',
-            [
-                'data' => $data,
-                'pageSlug' => 'MarketTrends' . $market,
-                'labelPlots' => $labelPlots,
-                'linePlots' => $linePlots,
-                'zonePlots' => $zonePlots,
-                'equationPlots' => $equationPlots,
-                'symbol' => $symbol,
-                'interval' => $interval
-            ]
-        );
-    }
     public function showTrends($market, Request $request)
     {
 
@@ -1488,202 +1443,17 @@ class BinanceController extends Controller
 
         $recentTrendLineSupport = null;
         $recentTrendLineResistance = null;
+
         foreach ($data as $index => $candle) {
 
             if ($index < 10 || $index >= (count($data) - $pivotDepth - 50)) {
                 continue;
             }
 
-
-            $pivot = CommonHelpers::checkPivotIndicator($data, $index - $pivotDepth, $pivotDepth, null, 'low');
-
-            if ($pivot === 'low_pivot') {
-                $openingMarkers[] = CommonHelpers::generateLabelPlot($data[$index - $pivotDepth]['binance_timestamp'], 'orange', 'low', 'belowBar');
-                $minBody = $data[$index]['body_min'];
-
-
-
-                if (count($lowPivot) == 0) {
-                    // store pivot as [index, price]
-                    $lowPivot[] = [
-                        'index' => $index - $pivotDepth,
-                        'x' => $data[$index - $pivotDepth]['binance_timestamp'],
-                        'y' => $data[$index - $pivotDepth]['low'],
-                        'price' => $data[$index - $pivotDepth]['low']
-                    ];
-                } else {
-
-                    $lastPivot = $lowPivot[count($lowPivot) - 1];
-
-                    if ($lastPivot['price'] < $data[$index - $pivotDepth]['low']) {
-                        $lowPivot[] = [
-                            'index' => $index - $pivotDepth,
-                            'x' => $data[$index - $pivotDepth]['binance_timestamp'],
-                            'y' => $data[$index - $pivotDepth]['low'],
-                            'price' => $data[$index - $pivotDepth]['low']
-                        ];
-
-                        $regression = CommonHelpers::linearRegression($lowPivot);
-                        $m = $regression['m'];
-                        $c = $regression['c'];
-                        $recentTrendLineSupport = [
-                            'm' => $m,
-                            'c' => $c,
-                            'startIndex' => $lowPivot[0]['index'],
-                            'endIndex' => $lowPivot[count($lowPivot) - 1]['index'],
-                        ];
-                        // dd($regression);
-                    } else {
-
-                        $recentTrendLineSupport = null;
-                        $lowPivot = [];
-                    }
-                }
-            } else if ($pivot === 'high_pivot') {
-                $openingMarkers[] = CommonHelpers::generateLabelPlot($data[$index - $pivotDepth]['binance_timestamp'], 'red', 'high', 'aboveBar');
-
-
-
-                if (count($highPivot) == 0) {
-                    // store pivot as [index, price]
-                    $highPivot[] = [
-                        'index' => $index - $pivotDepth,
-                        'x' => $data[$index - $pivotDepth]['binance_timestamp'],
-                        'y' => $data[$index - $pivotDepth]['high'],
-                        'price' => $data[$index - $pivotDepth]['high']
-                    ];
-                } else {
-
-                    $lastPivot = $highPivot[count($highPivot) - 1];
-
-                    if ($lastPivot['price'] > $data[$index - $pivotDepth]['low']) {
-                        $highPivot[] = [
-                            'index' => $index - $pivotDepth,
-                            'x' => $data[$index - $pivotDepth]['binance_timestamp'],
-                            'y' => $data[$index - $pivotDepth]['high'],
-                            'price' => $data[$index - $pivotDepth]['high']
-                        ];
-
-                        $regression = CommonHelpers::linearRegression($highPivot);
-                        $m = $regression['m'];
-                        $c = $regression['c'];
-                        $recentTrendLineResistance = [
-                            'm' => $m,
-                            'c' => $c,
-                            'startIndex' => $highPivot[0]['index'],
-                            'endIndex' => $highPivot[count($highPivot) - 1]['index'],
-                        ];
-                        // dd($regression);
-                    } else {
-
-                        $recentTrendLineResistance = null;
-                        $highPivot = [];
-                    }
-                }
-            }
-
-            // continue;
-
-            // continue;
-            self::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
-            $act = self::getCurrentActivity($symbol, $interval, $data, $index);
-
-
-
-            // ##############################################################
-            //                      ACTIVITY PLOTS
-            // ##############################################################
-
-            // if ($act) {
-
-            //     if (in_array($act->activity, $allowedActivitesPlot)) {
-            //         $openingMarkers[] = CommonHelpers::generateLabelPlot(
-            //             $data[$index]['binance_timestamp'],
-            //             'pink',
-            //             $act->activity
-            //         );
-            //     }
-
-
-
-            //     // Pairs of activities to check
-            //     $activityPairs = [
-            //         ['trigger' => 'high', 'breaker' => 'break_out'],
-            //         ['trigger' => 'low',  'breaker' => 'break_down'],
-            //     ];
-
-            //     foreach ($activityPairs as $pair) {
-            //         $recentTrigger  = self::getRecentActivity($symbol, $data, $index, $pair['trigger']);
-            //         $recentBreaker  = self::getRecentActivity($symbol, $data, $index, $pair['breaker']);
-
-            //         if (
-            //             $recentTrigger && $recentBreaker &&
-            //             $recentTrigger->timestamp >= $recentBreaker->timestamp &&
-            //             $act->activity === 'entry'
-            //         ) {
-            //             if (in_array($recentTrigger->activity, $allowedActivitesPlot)) {
-            //                 $openingMarkers[] = CommonHelpers::generateLabelPlot(
-            //                     $recentTrigger->timestamp,
-            //                     'pink',
-            //                     $recentTrigger->activity
-            //                 );
-            //             }
-            //         }
-            //     }
-
-
-            //     // if ($act->activity === 'high_break_out' || $act->activity === 'low_break_down') {
-            //     //     $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('name', 'top_zone')->first()), true);
-            //     //     $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('name', 'middle_zone')->first()), true);
-            //     //     $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('name', 'bottom_zone')->first()), true);
-            //     //     CommonHelpers::plotZones($middleZone, $topZone, $bottomZone, $data[$index]['binance_timestamp'], $trades);
-
-            //     //     // break;
-            //     // }
-            // }
-
-            // ##############################################################
-
-
-            // continue;
-
-
-            // if ($act) {
-
-            //     $sequenceHigh = [
-            //         'entry',
-            //         'high',
-            //         'break_out'
-            //     ];
-            //     $sequenceLow = [
-            //         'entry',
-            //         'low',
-            //         'break_down'
-            //     ];
-
-
-
-            //     if (
-            //         self::verifyActivitySequence($symbol, $data, $index, $act, $sequenceHigh)
-            //         || self::verifyActivitySequence($symbol, $data, $index, $act, $sequenceLow)
-            //     ) {
-
-
-            //         $firstEntry = self::getRecentActivity($symbol, $data, $index, 'new_entry');
-            //         if ($firstEntry)
-            //             $openingMarkers[] = CommonHelpers::generateLabelPlot($firstEntry->timestamp, 'green', 'First Entry');
-
-
-            //         $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('name', 'top_zone')->first()), true);
-            //         $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('name', 'middle_zone')->first()), true);
-            //         $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('name', 'bottom_zone')->first()), true);
-            //         CommonHelpers::plotZones($middleZone, $topZone, $bottomZone, $data[$index]['binance_timestamp'], $trades);
-            //     }
-            // }
-
-
-            // continue;
-
+            // self::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+            // $trendlines = self::getRecentTrendlines($data, $index, $pivotDepth);
+            // $recentTrendLineResistance = $trendlines['resistanceTrendline'];
+            // $recentTrendLineSupport = $trendlines['supportTrendline'];
 
 
             // continue;
@@ -1828,8 +1598,7 @@ class BinanceController extends Controller
             }
 
 
-
-            // TRENDLINES ENTRIES SETUP
+            // // TRENDLINES ENTRIES SETUP
             if (!$tradeSetupDetails) {
                 // Check for trend line break
 
@@ -2299,10 +2068,6 @@ class BinanceController extends Controller
             // LOGIC WHEN ZONE IS ACTIVE
             if ($tradeSetupDetails) {
 
-                // if ($tradeCount === 1) {
-                //     dd($tradeSetupDetails);
-                // }
-
                 if ($tradeSetupDetails['opening_rule'] === 'waiting_till_next_touch' && $tradeSetupDetails['signal_timestamp'] !== $data[$index]['binance_timestamp']) {
                     if (
                         $data[$index]['low'] <= $tradeSetupDetails['triggerPrice']
@@ -2388,86 +2153,19 @@ class BinanceController extends Controller
                     $tradeSetupDetails = null;
                     $ratio = abs($openTrade['openingPrice'] - $openTrade['tp']) / abs($openTrade['openingPrice'] - $openTrade['sl']);
 
-
-
-
-                    $fvgSkipCondition = false;
-
-
-                    if (isset($openTrade['fvg'])) {
-                        // $minAllowedRatio = 1;
-
-                        // $activeZone = DB::table('sd_zones')->where('symbol', $symbol)->where('top', '>=', $openTrade['openingPrice'])->where('bottom', '<=', $openTrade['openingPrice'])->first();
-                        // if ($activeZone) {
-                        //     $fvgSkipCondition = true;
-                        // }
-
-
-
-                        // if (
-                        //     CommonHelpers::rangesIntersect($openTrade['fvg']['bottom'], $openTrade['fvg']['top'], $openTrade['zones']['top_zone']['bottom'], $openTrade['zones']['top_zone']['top'])
-                        //     || CommonHelpers::rangesIntersect($openTrade['fvg']['bottom'], $openTrade['fvg']['top'], $openTrade['zones']['middle_zone']['bottom'], $openTrade['zones']['middle_zone']['top'])
-                        //     || CommonHelpers::rangesIntersect($openTrade['fvg']['bottom'], $openTrade['fvg']['top'], $openTrade['zones']['bottom_zone']['bottom'], $openTrade['zones']['bottom_zone']['top'])
-                        // ) {
-                        //     $fvgSkipCondition = true;
-                        // }
-
-                        // if (in_array($openTrade['fvg']['timestamp'], $usedFVGs)) {
-                        //     $fvgSkipCondition = true;
-                        // }
-                    }
-
-
-
-
-                    $maCheck = false;
-
-
-
-
-
                     $skippingConditions = (
                         $ratio < $minAllowedRatio
-                        || $fvgSkipCondition
-
                     );
 
 
-
-
-                    // $rr = 1;
-                    // $sl = $openTrade['sl'];
-                    // $tp = $openTrade['tp'];
-                    // $entryPrice = $openTrade['openingPrice'];
-                    // if ($openTrade['direction'] === 'LONG') {
-                    //     $tp = $entryPrice + (($entryPrice - $sl) * $rr);
-                    // } else {
-                    //     $tp = $entryPrice - (($sl - $entryPrice) * $rr);
-                    // }
-                    // $openTrade['tp'] = $tp;
-
-
-                    //  if($tradeCount == 4){
-                    //     dd($openTrade,$skippingConditions);
-                    // }
-
                     if ($skippingConditions) {
-
-                        $activeZone = null;
                         $openTrade = null;
-                        $demandZone = null;
-                        $supplyZone = null;
-                        $allLevels = null;
-                        $activation_details = null;
                         $tradeSetupDetails = null;
                         if (
                             $ratio < $minAllowedRatio
                         )
                             $openingMarkers[] = CommonHelpers::generateLabelPlot($data[$index]['binance_timestamp'], 'purple', 'Ratio');
-                        if (
-                            $fvgSkipCondition
-                        )
-                            $openingMarkers[] = CommonHelpers::generateLabelPlot($data[$index]['binance_timestamp'], 'purple', 'FVG');
+                      
                         continue;
                     }
 
@@ -2550,6 +2248,108 @@ class BinanceController extends Controller
 
 
         return view('MarketTrends.index', ['data' => $data, 'stats' => $stats, 'pageSlug' => 'MarketTrends' . $market, 'openingMarkers' => $openingMarkers, 'lines' => $lines, 'trades' => $trades, 'equations' => $equations, 'symbol' => $symbol, 'interval' => $interval]);
+    }
+
+
+
+    public static function getRecentTrendlines($data, $indexLast, $pivotDepth = 3)
+    {
+        $index = $pivotDepth;
+        $lowPivot = [];
+        $highPivot = [];
+
+        $recentTrendLineResistance = null;
+        $recentTrendLineSupport = null;
+
+        while ($index <= $indexLast) {
+
+            $pivot = CommonHelpers::checkPivotIndicator($data, $index - $pivotDepth, $pivotDepth, null, 'low');
+
+            if ($pivot === 'low_pivot') {
+
+                if (count($lowPivot) == 0) {
+                    // store pivot as [index, price]
+                    $lowPivot[] = [
+                        'index' => $index - $pivotDepth,
+                        'x' => $data[$index - $pivotDepth]['binance_timestamp'],
+                        'y' => $data[$index - $pivotDepth]['low'],
+                        'price' => $data[$index - $pivotDepth]['low']
+                    ];
+                } else {
+
+                    $lastPivot = $lowPivot[count($lowPivot) - 1];
+
+                    if ($lastPivot['price'] < $data[$index - $pivotDepth]['low']) {
+                        $lowPivot[] = [
+                            'index' => $index - $pivotDepth,
+                            'x' => $data[$index - $pivotDepth]['binance_timestamp'],
+                            'y' => $data[$index - $pivotDepth]['low'],
+                            'price' => $data[$index - $pivotDepth]['low']
+                        ];
+
+                        $regression = CommonHelpers::linearRegression($lowPivot);
+                        $m = $regression['m'];
+                        $c = $regression['c'];
+                        $recentTrendLineSupport = [
+                            'm' => $m,
+                            'c' => $c,
+                            'startIndex' => $lowPivot[0]['index'],
+                            'endIndex' => $lowPivot[count($lowPivot) - 1]['index'],
+                        ];
+                        // dd($regression);
+                    } else {
+
+                        $recentTrendLineSupport = null;
+                        $lowPivot = [];
+                    }
+                }
+            } else if ($pivot === 'high_pivot') {
+
+                if (count($highPivot) == 0) {
+                    // store pivot as [index, price]
+                    $highPivot[] = [
+                        'index' => $index - $pivotDepth,
+                        'x' => $data[$index - $pivotDepth]['binance_timestamp'],
+                        'y' => $data[$index - $pivotDepth]['high'],
+                        'price' => $data[$index - $pivotDepth]['high']
+                    ];
+                } else {
+
+                    $lastPivot = $highPivot[count($highPivot) - 1];
+
+                    if ($lastPivot['price'] > $data[$index - $pivotDepth]['low']) {
+                        $highPivot[] = [
+                            'index' => $index - $pivotDepth,
+                            'x' => $data[$index - $pivotDepth]['binance_timestamp'],
+                            'y' => $data[$index - $pivotDepth]['high'],
+                            'price' => $data[$index - $pivotDepth]['high']
+                        ];
+
+                        $regression = CommonHelpers::linearRegression($highPivot);
+                        $m = $regression['m'];
+                        $c = $regression['c'];
+                        $recentTrendLineResistance = [
+                            'm' => $m,
+                            'c' => $c,
+                            'startIndex' => $highPivot[0]['index'],
+                            'endIndex' => $highPivot[count($highPivot) - 1]['index'],
+                        ];
+                        // dd($regression);
+                    } else {
+                        $recentTrendLineResistance = null;
+                        $highPivot = [];
+                    }
+                }
+            }
+
+            $index++;
+        }
+
+
+        return [
+            'supportTrendline' => $recentTrendLineSupport,
+            'resistanceTrendline' => $recentTrendLineResistance,
+        ];
     }
 
 
