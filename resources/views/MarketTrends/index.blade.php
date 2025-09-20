@@ -12,19 +12,31 @@
                 <div class="card-header bg-transparent">
                     <h5 class="card-title mb-0">Strategy Legends</h5>
                 </div>
-                <div class="card-body d-flex flex-wrap gap-4">
+                <div class="card-body d-flex flex-wrap gap-3">
                     @foreach ($colors as $strategy => $c)
-                        <div class="d-flex align-items-center gap-2">
-                            <div style="width:18px;height:18px;background:{{ $c['tp'] }};border:1px solid #444;"></div>
-                            <small class="me-2">TP</small>
-                            <div style="width:18px;height:18px;background:{{ $c['sl'] }};border:1px solid #444;"></div>
-                            <small class="me-2">SL</small>
-                            <span class="fw-semibold">{{ $strategy }}</span>
+                        <div class="p-3 rounded bg-secondary d-flex flex-column align-items-center"
+                            style="{{ $strategy === 'DEFAULT' ? 'border:2px solid #0dcaf0;' : 'border:1px solid #444;' }}">
+                            <div class="d-flex gap-3 mb-2">
+                                <div class="text-center">
+                                    <div
+                                        style="width:20px;height:20px;background:{{ $c['tp'] }};border-radius:4px;border:1px solid #333;">
+                                    </div>
+                                    <small class="text-muted">TP</small>
+                                </div>
+                                <div class="text-center">
+                                    <div
+                                        style="width:20px;height:20px;background:{{ $c['sl'] }};border-radius:4px;border:1px solid #333;">
+                                    </div>
+                                    <small class="text-muted">SL</small>
+                                </div>
+                            </div>
+                            <span class="fw-semibold small text-uppercase">{{ $strategy }}</span>
                         </div>
                     @endforeach
                 </div>
             </div>
         </div>
+
 
         {{-- Candlestick Chart --}}
         <x-candlestick-chart :data="$data" symbol="{{ $symbol }}" interval="{{ $interval }}" :indicators="[]"
