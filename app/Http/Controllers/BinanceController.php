@@ -1630,7 +1630,6 @@ class BinanceController extends Controller
         // Add TOTAL (all trades)
         $strategyStats['TOTAL'] = $calculateStats($allTrades);
 
-        dd($strategyStats);
         return view('MarketTrends.index', [
             'data' => $data,
             'stats' => $strategyStats,
