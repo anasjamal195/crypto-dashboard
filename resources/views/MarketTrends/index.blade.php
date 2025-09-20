@@ -9,28 +9,31 @@
         {{-- Strategy Legends --}}
         <div class="mb-4">
             <div class="card bg-dark text-light shadow-sm border-0" data-bs-theme="dark">
-                <div class="card-header bg-transparent">
+                <div class="card-header bg-transparent border-0">
                     <h5 class="card-title mb-0">Strategy Legends</h5>
                 </div>
                 <div class="card-body d-flex flex-wrap gap-3">
                     @foreach ($colors as $strategy => $c)
-                        <div class="p-3 rounded bg-secondary d-flex flex-column align-items-center"
-                            style="{{ $strategy === 'DEFAULT' ? 'border:2px solid #0dcaf0;' : 'border:1px solid #444;' }}">
-                            <div class="d-flex gap-3 mb-2">
+                        <div class="legend-card p-3 rounded shadow-sm d-flex flex-column align-items-center 
+                            {{ $strategy === 'DEFAULT' ? 'border border-info' : 'border border-secondary' }}"
+                            style="min-width: 120px;">
+
+                            <div class="d-flex justify-content-center gap-3 mb-2">
                                 <div class="text-center">
-                                    <div
-                                        style="width:20px;height:20px;background:{{ $c['tp'] }};border-radius:4px;border:1px solid #333;">
+                                    <div class="rounded"
+                                        style="width:22px;height:22px;background-color:{{ $c['tp'] }};border:1px solid #666;">
                                     </div>
                                     <small class="text-muted">TP</small>
                                 </div>
                                 <div class="text-center">
-                                    <div
-                                        style="width:20px;height:20px;background:{{ $c['sl'] }};border-radius:4px;border:1px solid #333;">
+                                    <div class="rounded"
+                                        style="width:22px;height:22px;background-color:{{ $c['sl'] }};border:1px solid #666;">
                                     </div>
                                     <small class="text-muted">SL</small>
                                 </div>
                             </div>
-                            <span class="fw-semibold small text-uppercase">{{ $strategy }}</span>
+
+                            <span class="fw-semibold text-uppercase small">{{ $strategy }}</span>
                         </div>
                     @endforeach
                 </div>
