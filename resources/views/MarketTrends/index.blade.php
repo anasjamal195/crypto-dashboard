@@ -3,6 +3,27 @@
 @section('content')
     <div class="container-fluid">
 
+        {{-- Strategy Legends --}}
+        <div class="mb-4">
+            <div class="card bg-dark text-light shadow-sm border-0" data-bs-theme="dark">
+                <div class="card-header bg-transparent">
+                    <h5 class="card-title mb-0">Strategy Legends</h5>
+                </div>
+                <div class="card-body d-flex flex-wrap gap-4">
+                    @foreach ($colors as $strategy => $c)
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:18px;height:18px;background:{{ $c['tp'] }};border:1px solid #444;"></div>
+                            <small class="me-2">TP</small>
+                            <div style="width:18px;height:18px;background:{{ $c['sl'] }};border:1px solid #444;"></div>
+                            <small class="me-2">SL</small>
+                            <span class="fw-semibold">{{ $strategy }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        {{-- Candlestick Chart --}}
         <x-candlestick-chart 
             :data="$data" 
             symbol="{{ $symbol }}" 
@@ -17,6 +38,7 @@
             $fmt = fn($v, $dec = 2) => is_numeric($v) ? number_format($v, $dec) : $v;
         @endphp
 
+        {{-- Strategy Stats --}}
         <div class="row my-5">
             @foreach ($stats as $strategy => $s)
                 @php
