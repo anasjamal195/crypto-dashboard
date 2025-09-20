@@ -84,6 +84,30 @@ class CommonHelpers
         'timestampReadable' => 'Time',
 
     ];
+    public static $tpSlcolors = [
+        'FVG' => [
+            'tp' => 'rgba(0, 128, 255, 0.3)',   // blue
+            'sl' => 'rgba(255, 0, 0, 0.3)',     // red
+        ],
+        'DOUBLE_BREAKOUTS' => [
+            'tp' => 'rgba(255, 165, 0, 0.3)',   // orange
+            'sl' => 'rgba(255, 0, 0, 0.3)',     // red
+        ],
+        'TRENDLINE' => [
+            'tp' => 'rgba(128, 0, 128, 0.3)',   // purple
+            'sl' => 'rgba(255, 0, 0, 0.3)',     // red
+        ],
+        'AGGRESSIVE' => [
+            'tp' => 'rgba(0, 200, 150, 0.3)',   // teal
+            'sl' => 'rgba(255, 0, 0, 0.3)',     // red
+        ],
+        'DEFAULT' => [
+            'tp' => 'rgba(0, 255, 0, 0.3)',     // green (original)
+            'sl' => 'rgba(255, 0, 0, 0.3)',     // red (original)
+        ],
+    ];
+
+
     /**
      * Create a new class instance.
      */
@@ -1065,6 +1089,10 @@ class CommonHelpers
         float $tp,
         float $sl,
         float $profit = 0,
+        array $colors = [
+            'tp' => 'rgba(0, 255, 0, 0.3)',
+            'sl' => 'rgba(255, 0, 0, 0.3)'
+        ],
         string $timezone = 'binance'
     ) {
         // timezone adjustment: PST offset (in ms) = 5 hours = 18,000,000 ms
@@ -1077,8 +1105,8 @@ class CommonHelpers
             'entryPrice'    => $entryPrice,
             'tp'            => $tp,
             'sl'            => $sl,
-            'tpColor'       => 'rgba(0, 255, 0, 0.3)',   // green for TP
-            'slColor'       => 'rgba(255, 0, 0, 0.3)',   // red for SL
+            'tpColor'       => $colors['tp'],   // green for TP
+            'slColor'       => $colors['sl'],   // red for SL
             'profit'        => $profit,
         ];
     }

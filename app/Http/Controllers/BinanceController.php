@@ -1465,12 +1465,12 @@ class BinanceController extends Controller
     }
     public function showTrends($market, Request $request)
     {
+        $symbol = 'BTCUSDT';
+        $interval = '15m';
+        $timestamp = null;
 
-        $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '15m');
-        $timestamp = request('timestamp', null);
+        // Get candle data
         $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
-
         $data1hRaw = BinanceApiService::getCandleStickDataPast($symbol, '1h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
         $data4hRaw = BinanceApiService::getCandleStickDataPast($symbol, '4h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
 
@@ -1478,356 +1478,172 @@ class BinanceController extends Controller
         $lines = [];
         $equations = [];
         $trades = [];
-
-        $openTrade = null;
-        $tradeCount = 0;
-        $minAllowedRatio = 1;
-        $tradeSetupDetails = null;
-
         $allTrades = [];
-        $openingMarkers[] = CommonHelpers::generateLabelPlot($data[10]['binance_timestamp'], 'blue', 'Init');
 
-        CommonHelpers::flushZones($symbol);
-        DB::table('trade_setup_details')->truncate();
+        $withPlots = request('additionalPlots', 'yes');
+        $allTradesDB = DB::table('opened_trades')
+            ->where('symbol', $symbol)
+            ->where('interval', $interval)
+            ->get();
 
+        // Parse trades
+        foreach ($allTradesDB as $trade) {
+            $openTrade = json_decode(json_encode($trade), true);
+            $openTrade['zones'] = json_decode($trade->zones, true);
+            $openTrade['fvg'] = json_decode($trade->fvg, true);
+            $openTrade['trendline'] = json_decode($trade->trendline, true);
+            $openTrade['profit_percent'] = $openTrade['profit'];
+            $allTrades[] = $openTrade;
 
+            $index = CommonHelpers::findIndexFromTimestamp($data, count($data) - 1, $trade->closingTimestamp, $trade->interval);
 
-        foreach ($data as $index => $candle) {
+            $color = $openTrade['strategy_name']
+                ? CommonHelpers::$tpSlcolors[$openTrade['strategy_name']]
+                : CommonHelpers::$tpSlcolors['DEFAULT'];
 
-            if ($index < 10 || $index > (count($data) - 1 - 53)) {
-                continue;
-            }
+            $trades[] = CommonHelpers::generateTradePlot(
+                $openTrade['direction'],
+                $openTrade['openingTimestamp'],
+                $data[$index]['binance_timestamp'],
+                $openTrade['openingPrice'],
+                $openTrade['tp'],
+                $openTrade['sl'],
+                $openTrade['profit'],
+                $color
+            );
 
-            BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+            if ($withPlots === 'yes') {
+                $topLevel = $openTrade['zones']['top_zone'] ?? null;
+                $bottomLevel = $openTrade['zones']['bottom_zone'] ?? null;
+                $activeLevel = $openTrade['zones']['middle_zone'] ?? null;
+                $fvgZone = $openTrade['fvg'] ?? null;
+                $trendlineSupport = $openTrade['trendline']['support'] ?? null;
+                $trendlineResistance = $openTrade['trendline']['resistance'] ?? null;
 
-            if ($openTrade) {
-                $closingPrice = null;
-
-                if ($openTrade['direction'] === 'LONG') {
-                    if ($data[$index]['high'] >=  $openTrade['tp']) {
-                        $closingPrice = $openTrade['tp'];
-                    }
-                    if ($data[$index]['low'] <  $openTrade['sl']) {
-                        $closingPrice = $openTrade['sl'];
-                    }
-                } else if ($openTrade['direction'] === 'SHORT') {
-                    if ($data[$index]['low'] <=  $openTrade['tp']) {
-                        $closingPrice = $openTrade['tp'];
-                    }
-                    if ($data[$index]['high'] >  $openTrade['sl']) {
-                        $closingPrice = $openTrade['sl'];
-                    }
-                }
-
-
-
-
-                // Trade Closed final, resetting params and plotting
-                if ($closingPrice) {
-
-                    $tradeCount++;
-                    $profit = null;
-
-
-                    if ($openTrade['direction'] === 'LONG') {
-                        $profit = CommonHelpers::getPercentDiff($openTrade['openingPrice'], $closingPrice, true);
-                    } else {
-                        $profit = -1 *  CommonHelpers::getPercentDiff($openTrade['openingPrice'], $closingPrice, true);
-                    }
-
-
-                    $trades[] = CommonHelpers::generateTradePlot($openTrade['direction'], $openTrade['openingTimestamp'], $data[$index]['binance_timestamp'], $openTrade['openingPrice'], $openTrade['tp'], $openTrade['sl'], $profit);
-
-                    $allTrades[] = [
-                        'openingTime' => $openTrade['openingTimestamp'],
-                        'closingTime' => $data[$index]['binance_timestamp'],
-                        'duration_in_mins' => ($data[$index]['binance_timestamp'] - $openTrade['openingTimestamp']) / (1000 * 60),
-                        'direction' => $openTrade['direction'],
-                        'profit_percent' => $profit,
-                    ];
-
-
-
-                    $topLevel = $openTrade['zones']['top_zone'];
-                    $bottomLevel = $openTrade['zones']['bottom_zone'];
-                    $activeLevel = $openTrade['zones']['middle_zone'];
-                    $fvgZone = isset($openTrade['fvg']) ? $openTrade['fvg'] : null;
-                    $trendlineSupport = isset($openTrade['trendline']) ? $openTrade['trendline']['support'] : null;
-                    $trendlineResistance = isset($openTrade['trendline']) ? $openTrade['trendline']['resistance'] : null;
-
-
-
-                    if ($topLevel) {
-                        $trades[] = CommonHelpers::generateZonePlot(
-                            $topLevel['top'],
-                            $topLevel['bottom'],
-                            $topLevel['timestamp_initial'],
-                            $data[$index]['binance_timestamp'],
-                            'red',
-                            'binance'
-                        );
-                    }
-                    if ($bottomLevel) {
-
-
-                        $trades[] = CommonHelpers::generateZonePlot(
-                            $bottomLevel['top'],
-                            $bottomLevel['bottom'],
-                            $bottomLevel['timestamp_initial'],
-                            $data[$index]['binance_timestamp'],
-                            'green',
-                            'binance'
-                        );
-                    }
-
-                    if ($activeLevel) {
-                        $trades[] = CommonHelpers::generateZonePlot(
-                            $activeLevel['top'],
-                            $activeLevel['bottom'],
-                            $activeLevel['timestamp_initial'],
-                            $data[$index]['binance_timestamp'],
-                            'blue',
-                            'binance'
-                        );
-                    }
-
-                    if ($trendlineSupport) {
-                        $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
-                        $x2 = $data[$index]['binance_timestamp'];
-                        $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
-                        $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $trendlineSupport);
-
-                        $lines[] = CommonHelpers::generateLinePlot(
-                            $x1,
-                            $y1,
-                            $x2,
-                            $y2
-                        );
-                    }
-                    if ($trendlineResistance) {
-                        $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
-                        $x2 = $data[$index]['binance_timestamp'];
-                        $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
-                        $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $trendlineResistance);
-
-                        $lines[] = CommonHelpers::generateLinePlot(
-                            $x1,
-                            $y1,
-                            $x2,
-                            $y2,
-                            'red'
-                        );
-                    }
-
-                    if ($fvgZone) {
-                        $trades[] = CommonHelpers::generateZonePlot(
-                            $fvgZone['top'],
-                            $fvgZone['bottom'],
-                            $fvgZone['timestamp'],
-                            $data[$index]['binance_timestamp'],
-                            'orange',
-                            'binance'
-                        );
-                    }
-
-                    // if($tradeCount >= 2){
-                    //     break;
-                    // }
-                    $openTrade = null;
-                } else {
-                    continue;
-                }
-            }
-
-
-            // TESTMODE
-            $testModeOptions = [
-                'data' => $data,
-                'index' => $index,
-                'data1hRaw' => $data1hRaw,
-                'data4hRaw' => $data4hRaw,
-                'zoneProcessing' => false,
-                'enabledStrategies' => [
-                    'TRENDLINE',
-                    'DOUBLE_BREAKOUTS',
-                    'FVG',
-                ]
-            ];
-
-            if (!$tradeSetupDetails)
-                $tradeSetupDetails = BTCUSDT::runTrader($testModeOptions);
-
-
-
-
-            // LOGIC WHEN ZONE IS ACTIVE
-            if ($tradeSetupDetails) {
-
-                if ($tradeSetupDetails['opening_rule'] === 'waiting_till_next_touch' && $tradeSetupDetails['signal_timestamp'] !== $data[$index]['binance_timestamp']) {
-                    if (
-                        $data[$index]['low'] <= $tradeSetupDetails['trigger_price']
-                        && $tradeSetupDetails['direction'] === 'LONG'
-
-                    ) {
-
-                        $tp = $tradeSetupDetails['tp'];
-                        $sl = $tradeSetupDetails['sl'];
-                        $entryPrice = $tradeSetupDetails['trigger_price'];
-
-                        $openTrade = [
-                            'openingPrice' => $entryPrice,
-                            'tp' => $tp,
-                            'sl' => $sl,
-                            'direction' => 'LONG',
-                            'openingTimestamp' => $data[$index]['binance_timestamp'],
-                            'zones' => [
-                                'top_zone' => $tradeSetupDetails['top_zone'],
-                                'middle_zone' => $tradeSetupDetails['middle_zone'],
-                                'bottom_zone' => $tradeSetupDetails['bottom_zone'],
-                            ],
-                            'fvg' => isset($tradeSetupDetails['fvg']) ? $tradeSetupDetails['fvg'] : null,
-                            'trendline' => isset($tradeSetupDetails['trendline']) ? $tradeSetupDetails['trendline'] : null,
-
-                        ];
-                    }
-                    if (
-                        $data[$index]['high'] >= $tradeSetupDetails['trigger_price']
-                        && $tradeSetupDetails['direction'] === 'SHORT'
-                    ) {
-
-                        $tp = $tradeSetupDetails['tp'];
-                        $sl = $tradeSetupDetails['sl'];
-                        $entryPrice = $tradeSetupDetails['trigger_price'];
-
-                        $openTrade = [
-                            'openingPrice' => $entryPrice,
-                            'tp' => $tp,
-                            'sl' => $sl,
-                            'direction' => 'SHORT',
-                            'openingTimestamp' => $data[$index]['binance_timestamp'],
-                            'zones' => [
-                                'top_zone' => $tradeSetupDetails['top_zone'],
-                                'middle_zone' => $tradeSetupDetails['middle_zone'],
-                                'bottom_zone' => $tradeSetupDetails['bottom_zone'],
-                            ],
-                            'fvg' => isset($tradeSetupDetails['fvg']) ? $tradeSetupDetails['fvg'] : null,
-                            'trendline' => isset($tradeSetupDetails['trendline']) ? $tradeSetupDetails['trendline'] : null,
-
-                        ];
-                    }
-                } else if ($tradeSetupDetails['opening_rule'] === 'immidiate_opening') {
-
-                    $tp = $tradeSetupDetails['tp'];
-                    $sl = $tradeSetupDetails['sl'];
-                    $entryPrice = $tradeSetupDetails['trigger_price'];
-
-                    $openTrade = [
-                        'openingPrice' => $entryPrice,
-                        'tp' => $tp,
-                        'sl' => $sl,
-                        'direction' => $tradeSetupDetails['direction'],
-                        'openingTimestamp' => $data[$index]['binance_timestamp'],
-                        'zones' => [
-                            'top_zone' => $tradeSetupDetails['top_zone'],
-                            'middle_zone' => $tradeSetupDetails['middle_zone'],
-                            'bottom_zone' => $tradeSetupDetails['bottom_zone'],
-                        ],
-                        'fvg' => isset($tradeSetupDetails['fvg']) ? $tradeSetupDetails['fvg'] : null,
-                        'trendline' => isset($tradeSetupDetails['trendline']) ? $tradeSetupDetails['trendline'] : null,
-
-
-                    ];
-                }
-
-
-                // CHECK For Ratio confirmation
-                if ($openTrade) {
-
-                    $tradeSetupDetails = null;
-                    $ratio = abs($openTrade['openingPrice'] - $openTrade['tp']) / abs($openTrade['openingPrice'] - $openTrade['sl']);
-
-                    $skippingConditions = (
-                        $ratio < $minAllowedRatio
+                if ($topLevel) {
+                    $trades[] = CommonHelpers::generateZonePlot(
+                        $topLevel['top'],
+                        $topLevel['bottom'],
+                        $topLevel['timestamp_initial'],
+                        $data[$index]['binance_timestamp'],
+                        'red',
+                        'binance'
                     );
-
-
-                    if ($skippingConditions) {
-                        $openTrade = null;
-                        $tradeSetupDetails = null;
-                        if (
-                            $ratio < $minAllowedRatio
-                        )
-                            $openingMarkers[] = CommonHelpers::generateLabelPlot($data[$index]['binance_timestamp'], 'purple', 'Ratio');
-
-                        continue;
-                    }
                 }
-            }
-            // Recover trade loop if Opening doesnt met
-            if ($tradeSetupDetails) {
-                $currentZone = DB::table('sd_zones')->where('status', 'active')->first();
+                if ($bottomLevel) {
+                    $trades[] = CommonHelpers::generateZonePlot(
+                        $bottomLevel['top'],
+                        $bottomLevel['bottom'],
+                        $bottomLevel['timestamp_initial'],
+                        $data[$index]['binance_timestamp'],
+                        'green',
+                        'binance'
+                    );
+                }
+                if ($activeLevel) {
+                    $trades[] = CommonHelpers::generateZonePlot(
+                        $activeLevel['top'],
+                        $activeLevel['bottom'],
+                        $activeLevel['timestamp_initial'],
+                        $data[$index]['binance_timestamp'],
+                        'blue',
+                        'binance'
+                    );
+                }
 
-                if ($currentZone) {
-                    if (isset($tradeSetupDetails['current_zone_id']) && $tradeSetupDetails['current_zone_id'] !== $currentZone->id) {
-                        $tradeSetupDetails = null;
-                    }
+                if ($trendlineSupport) {
+                    $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
+                    $x2 = $data[$index]['binance_timestamp'];
+                    $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
+                    $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $trendlineSupport);
+
+                    $lines[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2);
+                }
+                if ($trendlineResistance) {
+                    $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
+                    $x2 = $data[$index]['binance_timestamp'];
+                    $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
+                    $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $trendlineResistance);
+
+                    $lines[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2, 'red');
+                }
+
+                if ($fvgZone) {
+                    $trades[] = CommonHelpers::generateZonePlot(
+                        $fvgZone['top'],
+                        $fvgZone['bottom'],
+                        $fvgZone['timestamp'],
+                        $data[$index]['binance_timestamp'],
+                        'orange',
+                        'binance'
+                    );
                 }
             }
         }
 
-        $stats = [
-            'total_trades' => null,
-            'total_long' => null,
-            'total_short' => null,
-            'total_profit' => null,
-            'total_loss' => null,
-            'total_pnl' => null,
-            'total_fee' => null,
-            'net_pnl' => null,
-        ];
+        /**
+         * === Strategy-wise Stats Calculation ===
+         */
+        $strategies = ['FVG', 'TRENDLINE', 'DOUBLE_BREAKOUTS', 'AGGRESSIVE'];
 
-        if (count($allTrades)) {
+        $calculateStats = function ($trades) {
+            if (!count($trades)) {
+                return [
+                    'total_trades' => 0,
+                    'total_long' => 0,
+                    'total_short' => 0,
+                    'total_profit' => 0,
+                    'total_loss' => 0,
+                    'total_pnl' => 0,
+                    'total_fee' => 0,
+                    'net_pnl' => 0,
+                    'win_rate' => 0,
+                ];
+            }
 
-            $long = array_filter($allTrades, function ($trade) {
-                return $trade['direction'] === 'LONG';
-            });
-            $short = array_filter($allTrades, function ($trade) {
-                return $trade['direction'] === 'SHORT';
-            });
+            $long = array_filter($trades, fn($trade) => $trade['direction'] === 'LONG');
+            $short = array_filter($trades, fn($trade) => $trade['direction'] === 'SHORT');
 
+            $totalProfit = array_sum(array_column(array_filter($trades, fn($trade) => $trade['profit_percent'] > 0), 'profit_percent'));
+            $totalLoss   = array_sum(array_column(array_filter($trades, fn($trade) => $trade['profit_percent'] < 0), 'profit_percent'));
 
+            $profitCount = array_filter($trades, fn($trade) => $trade['profit_percent'] > 0);
 
-            $totalProfit = array_sum(array_column(array_filter($allTrades, function ($trade) {
-                return $trade['profit_percent'] > 0;
-            }), 'profit_percent'));
-            $totalLoss = array_sum(array_column(array_filter($allTrades, function ($trade) {
-                return $trade['profit_percent'] < 0;
-            }), 'profit_percent'));
-
-
-            $profitCount = array_column(array_filter($allTrades, function ($trade) {
-                return $trade['profit_percent'] > 0;
-            }), 'profit_percent');
-            $lossCount = array_column(array_filter($allTrades, function ($trade) {
-                return $trade['profit_percent'] < 0;
-            }), 'profit_percent');
-
-            $stats = [
-                'total_trades' => count($allTrades),
+            return [
+                'total_trades' => count($trades),
                 'total_long' => count($long),
                 'total_short' => count($short),
                 'total_profit' => $totalProfit,
                 'total_loss' => abs($totalLoss),
                 'total_pnl' => $totalProfit - abs($totalLoss),
-                'total_fee' => count($allTrades) * 0.15,
-                'net_pnl' => $totalProfit - abs($totalLoss) - count($allTrades) * 0.15,
-                'win_rate' => (count($profitCount) / count($allTrades)) * 100,
+                'total_fee' => count($trades) * 0.15,
+                'net_pnl' => $totalProfit - abs($totalLoss) - count($trades) * 0.15,
+                'win_rate' => (count($profitCount) / count($trades)) * 100,
             ];
+        };
+
+        $strategyStats = [];
+        foreach ($strategies as $strategy) {
+            $strategyTrades = array_filter($allTrades, fn($trade) => $trade['strategy_name'] === $strategy);
+            $strategyStats[$strategy] = $calculateStats($strategyTrades);
         }
+        // Add TOTAL (all trades)
+        $strategyStats['TOTAL'] = $calculateStats($allTrades);
 
-
-        return view('MarketTrends.index', ['data' => $data, 'stats' => $stats, 'pageSlug' => 'MarketTrends' . $market, 'openingMarkers' => $openingMarkers, 'lines' => $lines, 'trades' => $trades, 'equations' => $equations, 'symbol' => $symbol, 'interval' => $interval]);
+        dd($strategyStats);
+        return view('MarketTrends.index', [
+            'data' => $data,
+            'stats' => $strategyStats,
+            'pageSlug' => 'MarketTrends' . $market,
+            'openingMarkers' => $openingMarkers,
+            'lines' => $lines,
+            'trades' => $trades,
+            'equations' => $equations,
+            'symbol' => $symbol,
+            'interval' => $interval
+        ]);
     }
+
 
     public function getAvailableBalance(Request $request)
     {
