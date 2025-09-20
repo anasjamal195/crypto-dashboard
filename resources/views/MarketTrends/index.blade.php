@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $colors = \App\CommonHelpers::$tpSlcolors;
+    @endphp
     <div class="container-fluid">
 
         {{-- Strategy Legends --}}
@@ -24,15 +27,8 @@
         </div>
 
         {{-- Candlestick Chart --}}
-        <x-candlestick-chart 
-            :data="$data" 
-            symbol="{{ $symbol }}" 
-            interval="{{ $interval }}" 
-            :indicators="[]"
-            :markers="$openingMarkers" 
-            :trades="$trades" 
-            :lines="$lines" 
-        />
+        <x-candlestick-chart :data="$data" symbol="{{ $symbol }}" interval="{{ $interval }}" :indicators="[]"
+            :markers="$openingMarkers" :trades="$trades" :lines="$lines" />
 
         @php
             $fmt = fn($v, $dec = 2) => is_numeric($v) ? number_format($v, $dec) : $v;
@@ -43,7 +39,7 @@
             @foreach ($stats as $strategy => $s)
                 @php
                     $grossPnl = (float) ($s['total_pnl'] ?? 0);
-                    $netPnl   = (float) ($s['net_pnl'] ?? 0);
+                    $netPnl = (float) ($s['net_pnl'] ?? 0);
                 @endphp
 
                 <div class="col-md-6 col-lg-4 mb-4">
