@@ -3,6 +3,7 @@
 namespace App\Console\Commands\LiveTrader\BTCUSDT;
 
 use App\CommonHelpers;
+use App\Services\BinanceApiService;
 use App\Services\LiveTrader\BTCUSDT;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
@@ -19,6 +20,19 @@ class IterateCandles extends Command
         CommonHelpers::flushZones();
 
         $this->info("🚀 Flushed all zones...");
+
+        // Backtracing zones
+        $data = BinanceApiService::getCandleStickData('BTCUSDT', '15m', 1000, null, 'FUTURE');
+        $data1hRaw = BinanceApiService::getCandleStickData('BTCUSDT', '1h', 1000, null, 'FUTURE');
+        $data4hRaw = BinanceApiService::getCandleStickData('BTCUSDT', '4h', 1000, null, 'FUTURE');
+        foreach ($data as $index => $candle) {
+            if ($index >= (count($data) - 1)) {
+                continue;
+            }
+            BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, '15m', 'BTCUSDT');
+        }
+        $this->info('Previous Zones updated upto: ' . $data[count($data) - 2]['timestampReadable']);
+
 
 
         while (true) {
