@@ -74,6 +74,16 @@ class ExecuteTrade implements ShouldQueue
                 ]);
             }
 
+
+            if (!CommonHelpers::getMetaValue($tradeAccount, 'enable_' . strtolower($position) . '_multithread', 0)) {
+                $failureReasons['opening_disabled'] = 'Already opened order detected for this symbol and account.';
+                Log::warning("[ExecuteTrade] Skipping trade - Opening Disabled for " . $position, [
+                    'setup_id' => $setup_id,
+                    'symbol'   => $symbol,
+                    'open_order' => $this->trade,
+                ]);
+            }
+
             // ========== PLACE ORDER ==========
             $response = null;
             if (empty($failureReasons)) {
