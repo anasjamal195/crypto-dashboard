@@ -7,6 +7,7 @@ use App\Services\BinanceApiService;
 use App\Services\LiveTrader\BTCUSDT;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class IterateCandles extends Command
 {
@@ -27,12 +28,11 @@ class IterateCandles extends Command
         $data4hRaw = BinanceApiService::getCandleStickData('BTCUSDT', '4h', 1000, null, 'FUTURE');
         foreach ($data as $index => $candle) {
             if ($index >= (count($data) - 1)) {
-                continue;
+                break;
             }
             BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, '15m', 'BTCUSDT');
         }
         $this->info('Previous Zones updated upto: ' . $data[count($data) - 2]['timestampReadable']);
-
 
 
         while (true) {
