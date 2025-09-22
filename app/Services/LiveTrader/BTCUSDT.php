@@ -521,150 +521,151 @@ class BTCUSDT
                 }
             }
         }
-        // AGGRESSIVE ENTRIES SETUP
-        if (!$tradeSetupDetails && in_array('AGGRESSIVE', $enabledStrategies)) {
+        // // AGGRESSIVE ENTRIES SETUP
 
-            $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
-            $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
-            $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
+        // if (!$tradeSetupDetails && in_array('AGGRESSIVE', $enabledStrategies)) {
 
-
-            $currentActivity = self::getCurrentActivity($symbol, $interval, $data, $index);
+        //     $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
+        //     $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
+        //     $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
 
 
-            if ($currentActivity) {
+        //     $currentActivity = self::getCurrentActivity($symbol, $interval, $data, $index);
 
 
-                $currentZone = DB::table('sd_zones')->where('id', $currentActivity->zone_id)->first();
-                $prevActivity = self::getRecentActivity($symbol, $interval, $data, $index - 1);
-                if ($prevActivity && $currentActivity->zone_id !== $prevActivity->zone_id) {
-                    DB::table('sd_zones')->where('id', $currentZone->id)->update([
-                        'safe_count' => 0,
-                    ]);
-                }
-                if ($currentActivity->activity === 'break_out' && $currentZone->safe_count === 0) {
+        //     if ($currentActivity) {
 
 
-                    $sl = null;
-                    $tp = null;
-                    $entryPrice = $data[$index]['close'];
-                    $zoneTop = $currentZone->top;
-                    $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
-                    $zoneBottom = $currentZone->bottom;
-                    $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
-                    if ($zoneSizePercent < 1) {
-                        $sl = $zoneBottom;
-                    } else {
-                        $sl = $zoneMid;
-                    }
-                    $sl = $sl * (1 - 0.2 / 100);
-
-                    $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('bottom', '>', $entryPrice)->orderBy('bottom', 'ASC')->first();
-
-                    if (!$nextZone) {
-                        $tp = $entryPrice + abs($entryPrice - $sl) * 1;
-                    } else {
-                        $tpNextZone = ($nextZone->bottom + $nextZone->top) / 2;
-                        $tp = $tpNextZone;
-                    }
+        //         $currentZone = DB::table('sd_zones')->where('id', $currentActivity->zone_id)->first();
+        //         $prevActivity = self::getRecentActivity($symbol, $interval, $data, $index - 1);
+        //         if ($prevActivity && $currentActivity->zone_id !== $prevActivity->zone_id) {
+        //             DB::table('sd_zones')->where('id', $currentZone->id)->update([
+        //                 'safe_count' => 0,
+        //             ]);
+        //         }
+        //         if ($currentActivity->activity === 'break_out' && $currentZone->safe_count === 0) {
 
 
-                    // LONG Entry
-                    if (
-                        CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio)
-                        && $data[$index]['close'] < $data[$index]['ma99']
-                        && $zoneSizePercent >= 0.3
-                    ) {
-                        $tradeSetupDetails = [
-                            'symbol' => $symbol,
-                            'interval' => $interval,
-                            'direction' => 'LONG',
-                            'tp' => $tp,
-                            'sl' => $sl,
-                            'trigger_price' => $entryPrice,
-                            'opening_rule' => 'immidiate_opening',
-                            'zones' => json_encode([
-                                'top_zone' => $topZone,
-                                'middle_zone' => $middleZone,
-                                'bottom_zone' => $bottomZone
-                            ]),
-                            'fvg' => null,
-                            'current_zone' => $currentZone ? json_encode($currentZone) : null,
-                            'status' => 'WAITING',
-                            'account_id' => $account_id,
-                            'candle_timestamp' => $data[$index]['binance_timestamp'],
-                            'timestamp' => $current_system_time,
-                            'strategy_name' => 'AGGRESSIVE',
-                            'trendline' => null,
-                        ];
-                        DB::table('sd_zones')->where('id', $currentZone->id)->update([
-                            'safe_count' => $currentZone->safe_count + 1,
-                        ]);
-                    }
-                }
+        //             $sl = null;
+        //             $tp = null;
+        //             $entryPrice = $data[$index]['close'];
+        //             $zoneTop = $currentZone->top;
+        //             $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
+        //             $zoneBottom = $currentZone->bottom;
+        //             $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
+        //             if ($zoneSizePercent < 1) {
+        //                 $sl = $zoneBottom;
+        //             } else {
+        //                 $sl = $zoneMid;
+        //             }
+        //             $sl = $sl * (1 - 0.2 / 100);
 
-                if ($currentActivity->activity === 'break_down' && $currentZone->safe_count === 0) {
+        //             $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('bottom', '>', $entryPrice)->orderBy('bottom', 'ASC')->first();
+
+        //             if (!$nextZone) {
+        //                 $tp = $entryPrice + abs($entryPrice - $sl) * 1;
+        //             } else {
+        //                 $tpNextZone = ($nextZone->bottom + $nextZone->top) / 2;
+        //                 $tp = $tpNextZone;
+        //             }
 
 
-                    $sl = null;
-                    $tp = null;
-                    $entryPrice = $data[$index]['close'];
-                    $zoneTop = $currentZone->top;
-                    $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
-                    $zoneBottom = $currentZone->bottom;
-                    $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
-                    if ($zoneSizePercent < 1) {
-                        $sl = $zoneTop;
-                    } else {
-                        $sl = $zoneMid;
-                    }
-                    $sl = $sl * (1 + 0.2 / 100);
-                    $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('top', '<=', $entryPrice)->orderBy('top', 'DESC')->first();
+        //             // LONG Entry
+        //             if (
+        //                 CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio)
+        //                 && $data[$index]['close'] < $data[$index]['ma99']
+        //                 && $zoneSizePercent >= 0.3
+        //             ) {
+        //                 $tradeSetupDetails = [
+        //                     'symbol' => $symbol,
+        //                     'interval' => $interval,
+        //                     'direction' => 'LONG',
+        //                     'tp' => $tp,
+        //                     'sl' => $sl,
+        //                     'trigger_price' => $entryPrice,
+        //                     'opening_rule' => 'immidiate_opening',
+        //                     'zones' => json_encode([
+        //                         'top_zone' => $topZone,
+        //                         'middle_zone' => $middleZone,
+        //                         'bottom_zone' => $bottomZone
+        //                     ]),
+        //                     'fvg' => null,
+        //                     'current_zone' => $currentZone ? json_encode($currentZone) : null,
+        //                     'status' => 'WAITING',
+        //                     'account_id' => $account_id,
+        //                     'candle_timestamp' => $data[$index]['binance_timestamp'],
+        //                     'timestamp' => $current_system_time,
+        //                     'strategy_name' => 'AGGRESSIVE',
+        //                     'trendline' => null,
+        //                 ];
+        //                 DB::table('sd_zones')->where('id', $currentZone->id)->update([
+        //                     'safe_count' => $currentZone->safe_count + 1,
+        //                 ]);
+        //             }
+        //         }
 
-                    if (!$nextZone) {
-                        $tp = $entryPrice - abs($entryPrice - $sl) * 1;
-                    } else {
-
-                        $tpNextZone = ($nextZone->top + $nextZone->bottom) / 2;
-                        $tp = $tpNextZone;
-                    }
+        //         if ($currentActivity->activity === 'break_down' && $currentZone->safe_count === 0) {
 
 
-                    // SHORT Entry
-                    if (
-                        CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio)
-                        && $data[$index]['close'] > $data[$index]['ma99']
-                        && $zoneSizePercent >= 0.3
-                    ) {
-                        $tradeSetupDetails = [
-                            'symbol' => $symbol,
-                            'interval' => $interval,
-                            'direction' => 'SHORT',
-                            'tp' => $tp,
-                            'sl' => $sl,
-                            'trigger_price' => $entryPrice,
-                            'opening_rule' => 'immidiate_opening',
-                            'zones' => json_encode([
-                                'top_zone' => $topZone,
-                                'middle_zone' => $middleZone,
-                                'bottom_zone' => $bottomZone
-                            ]),
-                            'fvg' => null,
-                            'current_zone' => $currentZone ? json_encode($currentZone) : null,
-                            'status' => 'WAITING',
-                            'account_id' => $account_id,
-                            'candle_timestamp' => $data[$index]['binance_timestamp'],
-                            'timestamp' => $current_system_time,
-                            'strategy_name' => 'AGGRESSIVE',
-                            'trendline' => null,
-                        ];
-                        DB::table('sd_zones')->where('id', $currentZone->id)->update([
-                            'safe_count' => $currentZone->safe_count + 1,
-                        ]);
-                    }
-                }
-            }
-        }
+        //             $sl = null;
+        //             $tp = null;
+        //             $entryPrice = $data[$index]['close'];
+        //             $zoneTop = $currentZone->top;
+        //             $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
+        //             $zoneBottom = $currentZone->bottom;
+        //             $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
+        //             if ($zoneSizePercent < 1) {
+        //                 $sl = $zoneTop;
+        //             } else {
+        //                 $sl = $zoneMid;
+        //             }
+        //             $sl = $sl * (1 + 0.2 / 100);
+        //             $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('top', '<=', $entryPrice)->orderBy('top', 'DESC')->first();
+
+        //             if (!$nextZone) {
+        //                 $tp = $entryPrice - abs($entryPrice - $sl) * 1;
+        //             } else {
+
+        //                 $tpNextZone = ($nextZone->top + $nextZone->bottom) / 2;
+        //                 $tp = $tpNextZone;
+        //             }
+
+
+        //             // SHORT Entry
+        //             if (
+        //                 CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio)
+        //                 && $data[$index]['close'] > $data[$index]['ma99']
+        //                 && $zoneSizePercent >= 0.3
+        //             ) {
+        //                 $tradeSetupDetails = [
+        //                     'symbol' => $symbol,
+        //                     'interval' => $interval,
+        //                     'direction' => 'SHORT',
+        //                     'tp' => $tp,
+        //                     'sl' => $sl,
+        //                     'trigger_price' => $entryPrice,
+        //                     'opening_rule' => 'immidiate_opening',
+        //                     'zones' => json_encode([
+        //                         'top_zone' => $topZone,
+        //                         'middle_zone' => $middleZone,
+        //                         'bottom_zone' => $bottomZone
+        //                     ]),
+        //                     'fvg' => null,
+        //                     'current_zone' => $currentZone ? json_encode($currentZone) : null,
+        //                     'status' => 'WAITING',
+        //                     'account_id' => $account_id,
+        //                     'candle_timestamp' => $data[$index]['binance_timestamp'],
+        //                     'timestamp' => $current_system_time,
+        //                     'strategy_name' => 'AGGRESSIVE',
+        //                     'trendline' => null,
+        //                 ];
+        //                 DB::table('sd_zones')->where('id', $currentZone->id)->update([
+        //                     'safe_count' => $currentZone->safe_count + 1,
+        //                 ]);
+        //             }
+        //         }
+        //     }
+        // }
 
         // Confirm trade execution if any entry is generated
         if ($tradeSetupDetails) {

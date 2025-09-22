@@ -1465,14 +1465,12 @@ class BinanceController extends Controller
     }
     public function showTrends($market, Request $request)
     {
-        $symbol = 'BTCUSDT';
-        $interval = '15m';
-        $timestamp = null;
+        $symbol = request('symbol', 'BTCUSDT');
+        $interval = request('interval', '15m');
+        $timestamp = request('timestamp', null);
 
         // Get candle data
         $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
-        $data1hRaw = BinanceApiService::getCandleStickDataPast($symbol, '1h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
-        $data4hRaw = BinanceApiService::getCandleStickDataPast($symbol, '4h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
 
         $openingMarkers = [];
         $lines = [];
@@ -1484,6 +1482,8 @@ class BinanceController extends Controller
         $allTradesDB = DB::table('opened_trades')
             ->where('symbol', $symbol)
             ->where('interval', $interval)
+            ->where('timestamp', '=', $timestamp)
+            // ->where('timestamp', '<=', $data[count($data) - 1]['binance_timestamp'])
             ->get();
 
         // Parse trades

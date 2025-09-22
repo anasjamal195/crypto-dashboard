@@ -31,8 +31,12 @@ class TestStrategies extends Command
     {
         $symbol = 'BTCUSDT';
         $interval =  '15m';
-        $timestamp = null;
+        $timestamp = 1745607600000;
+
         $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
+        if (!$timestamp) {
+            $timestamp = $data[0]['binance_timestamp'];
+        }
         $data1hRaw = BinanceApiService::getCandleStickDataPast($symbol, '1h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
         $data4hRaw = BinanceApiService::getCandleStickDataPast($symbol, '4h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
 
@@ -51,7 +55,7 @@ class TestStrategies extends Command
 
         CommonHelpers::flushZones($symbol);
         DB::table('trade_setup_details')->truncate();
-        DB::table('opened_trades')->truncate();
+        DB::table('opened_trades')->where('timestamp',$timestamp)->delete();
 
 
         $this->info('Starting....');
@@ -61,12 +65,12 @@ class TestStrategies extends Command
         $openTrade = null;
         CommonHelpers::flushZones($symbol);
         DB::table('trade_setup_details')->truncate();
+
         foreach ($data as $index => $candle) {
 
             if ($index < 10 || $index > (count($data) - 1)) {
                 continue;
             }
-
 
             if ($openTrade) {
                 $closingPrice = null;
@@ -106,7 +110,7 @@ class TestStrategies extends Command
                     $openTrade['closingTimestamp'] = $data[$index]['binance_timestamp'];
                     $openTrade['profit'] = $profit;
 
-
+                    $openTrade['timestamp'] = $timestamp;
                     $openTrade['zones'] = $openTrade['zones'] ? json_encode($openTrade['zones']) : null;
                     $openTrade['fvg'] = $openTrade['profit'] ? json_encode($openTrade['fvg']) : null;
                     $openTrade['trendline'] = $openTrade['trendline'] ? json_encode($openTrade['trendline']) : null;
@@ -309,6 +313,7 @@ class TestStrategies extends Command
                     $openTrade['interval'] = $interval;
                     $openTrade['closingTimestamp'] = $data[$index]['binance_timestamp'];
                     $openTrade['profit'] = $profit;
+                    $openTrade['timestamp'] = $timestamp;
 
 
                     $openTrade['zones'] = $openTrade['zones'] ? json_encode($openTrade['zones']) : null;
@@ -515,6 +520,7 @@ class TestStrategies extends Command
                     $openTrade['closingTimestamp'] = $data[$index]['binance_timestamp'];
                     $openTrade['profit'] = $profit;
 
+                    $openTrade['timestamp'] = $timestamp;
 
                     $openTrade['zones'] = $openTrade['zones'] ? json_encode($openTrade['zones']) : null;
                     $openTrade['fvg'] = $openTrade['profit'] ? json_encode($openTrade['fvg']) : null;
@@ -719,6 +725,7 @@ class TestStrategies extends Command
                     $openTrade['interval'] = $interval;
                     $openTrade['closingTimestamp'] = $data[$index]['binance_timestamp'];
                     $openTrade['profit'] = $profit;
+                    $openTrade['timestamp'] = $timestamp;
 
 
                     $openTrade['zones'] = $openTrade['zones'] ? json_encode($openTrade['zones']) : null;
