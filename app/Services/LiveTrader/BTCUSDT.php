@@ -7,6 +7,7 @@ use App\Services\BinanceApiService;
 use App\Services\OpeningConditionServiceLive;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BTCUSDT
 {
@@ -67,7 +68,20 @@ class BTCUSDT
 
 
 
+
+        Log::info('BTCUSDT 15m Triggered', [
+            'system_time' => $current_system_time,
+            'candle_time' => $data[$index]['binance_timestamp'],
+        ]);
+
         self::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+
+        $curActivity = self::getCurrentActivity($symbol, self::$interval, $data, $index);
+        Log::info('Activity Recorded', [
+            'current_activity' => $curActivity,
+            'system_time' => $current_system_time,
+            'candle_time' => $data[$index]['binance_timestamp'],
+        ]);
 
 
         $tradeSetupDetails = null;
@@ -107,6 +121,7 @@ class BTCUSDT
 
                     // Search for recent pivot high
                     $recentHighPivot = CommonHelpers::getRecentPivot($data, $index, 'high', 1, 'wick');
+
 
                     if ($recentHighPivot) {
 
@@ -221,6 +236,11 @@ class BTCUSDT
 
             // Opening Handler Logic
             $currentActivity = self::getCurrentActivity($symbol, self::$interval, $data, $index);
+            Log::info('DOUBLE_BREAKOUTS: Activity Recorded', [
+                'current_activity' => $currentActivity,
+                'system_time' => $current_system_time,
+                'candle_time' => $data[$index]['binance_timestamp'],
+            ]);
 
             if ($currentActivity) {
                 $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
@@ -249,7 +269,7 @@ class BTCUSDT
                     if (!isset($tp)) {
                         return null;
                     }
-                    if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio))
+                    if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio)) {
                         $tradeSetupDetails = [
                             'symbol' => $symbol,
                             'interval' => $interval,
@@ -272,6 +292,16 @@ class BTCUSDT
                             'strategy_name' => 'DOUBLE_BREAKOUTS',
                             'trendline' => null,
                         ];
+                    } else {
+                        Log::info('DOUBLE_BREAKOUTS: Skipped Due to ratio', [
+                            'current_activity' => $currentActivity,
+                            'system_time' => $current_system_time,
+                            'candle_time' => $data[$index]['binance_timestamp'],
+                            'breakout_value' => $breakoutValue,
+                            'tp' => $tp,
+                            'sl' => $sl,
+                        ]);
+                    }
                 } else if ($currentActivity->activity === 'high_break_out') {
 
 
@@ -317,7 +347,7 @@ class BTCUSDT
                         return null;
                     }
 
-                    if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio))
+                    if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio)) {
                         $tradeSetupDetails = [
                             'symbol' => $symbol,
                             'interval' => $interval,
@@ -342,6 +372,16 @@ class BTCUSDT
 
 
                         ];
+                    } else {
+                        Log::info('DOUBLE_BREAKOUTS: Skipped Due to ratio', [
+                            'current_activity' => $currentActivity,
+                            'system_time' => $current_system_time,
+                            'candle_time' => $data[$index]['binance_timestamp'],
+                            'breakout_value' => $breakoutValue,
+                            'tp' => $tp,
+                            'sl' => $sl,
+                        ]);
+                    }
                 }
             }
         }

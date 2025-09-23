@@ -39,18 +39,24 @@ class IterateCandles extends Command
             $boundary = CommonHelpers::checkCandleBoundaries();
 
             if ($boundary['1m']) {
+                sleep(10);
                 $this->info('1m candle closed at: ' . now('UTC')->toDateTimeString());
             }
             if ($boundary['3m']) {
+                sleep(10);
+
                 $this->info('3m candle closed at: ' . now('UTC')->toDateTimeString());
             }
 
             if ($boundary['5m']) {
+                sleep(10);
+
                 $this->info('5m candle closed at: ' . now('UTC')->toDateTimeString());
             }
 
             if ($boundary['15m']) {
-                // LOGIC for BTCUSDT handling 
+                sleep(10);
+
                 BTCUSDT::runTrader();
                 $this->info('15m candle closed at: ' . now('UTC')->toDateTimeString());
             }
