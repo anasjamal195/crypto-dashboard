@@ -32,9 +32,9 @@ class TestStrategies extends Command
     {
         $symbol = 'BTCUSDT';
         $interval =  '15m';
-        $timestamp = null;
+        $timestamp = 1746126000000;
 
-        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 2000, $timestamp, 'FUTURE');
+        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
         // if (!$timestamp) {
         //     $timestamp = $data[0]['binance_timestamp'];
         // }
@@ -56,7 +56,7 @@ class TestStrategies extends Command
 
         CommonHelpers::flushZones($symbol);
         DB::table('trade_setup_details')->truncate();
-        DB::table('opened_trades')->where('timestamp', $timestamp)->delete();
+        DB::table('opened_trades')->delete();
 
 
         $this->info('Starting....');
@@ -69,7 +69,7 @@ class TestStrategies extends Command
 
         foreach ($data as $index => $candle) {
 
-            if ($index < 1010 || $index > (count($data) - 1)) {
+            if ($index < 10 || $index > (count($data) - 1)) {
                 continue;
             }
 
@@ -132,11 +132,16 @@ class TestStrategies extends Command
                 'data1hRaw' => $data1hRaw,
                 'data4hRaw' => $data4hRaw,
                 'zoneProcessing' => false,
-
+                'enabledStrategies' => [
+                    'AGGRESSIVE',
+                    'DOUBLE_BREAKOUTS',
+                    // 'TRENDLINE',
+                    'FVG',
+                ]
             ];
 
 
-            
+
 
 
             if (!$tradeSetupDetails)
@@ -259,7 +264,7 @@ class TestStrategies extends Command
                 }
             }
         }
-        $this->info('TRENDLINE Completed');
+        $this->info('Completed');
 
         // $tradeSetupDetails = null;
         // $openTrade = null;

@@ -1023,17 +1023,10 @@ class CommonHelpers
     public static function flushZones($symbol = null)
     {
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-
-        // if ($symbol) {
-        //     DB::table('sd_zones')->where('symbol', $symbol)->delete();
-        //     DB::table('sd_zones_activities')->where('symbol', $symbol)->delete();
-        // } else {
+     
         DB::table('sd_zones')->truncate();
         DB::table('sd_zones_activities')->truncate();
-        // }
-
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+      
     }
 
 
@@ -4190,6 +4183,25 @@ class CommonHelpers
         return $response;
     }
 
+
+
+    public static function minutesUntilNextHour(?array $candle = null): int
+    {
+        if ($candle === null) {
+            // Use system time
+            $time = Carbon::now();
+        } else {
+            // Candle end time is already in milliseconds → convert properly
+            $candleEndTimestamp = $candle['binance_timestamp']
+                + (self::$binanceIntervals[$candle['interval']] * 60 * 1000);
+
+            $time = Carbon::createFromTimestampMs($candleEndTimestamp);
+        }
+
+        $nextHour = $time->copy()->addHour()->startOfHour();
+
+        return $time->diffInMinutes($nextHour);
+    }
     public static function calculateOverlapPercentage($rangeMin, $rangeMax, $zoneMin, $zoneMax)
     {
         // Calculate what percentage of the range overlaps with the zone

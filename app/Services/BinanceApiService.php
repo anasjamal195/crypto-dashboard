@@ -291,7 +291,7 @@ class BinanceApiService
                 $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
 
 
-                $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime) : $response->json();
+                $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime,$symbol,$interval) : $response->json();
 
 
                 // Save cache to next rounded time
@@ -326,7 +326,7 @@ class BinanceApiService
                     $minutesToNextRounded = $intervalToMins - ($now->minute % $intervalToMins);
                     $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
 
-                    $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime) : $response->json();
+                    $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime,$symbol,$interval) : $response->json();
 
 
 
@@ -437,7 +437,7 @@ class BinanceApiService
 
 
 
-            return self::processData($dataRaw, $market);
+            return self::processData($dataRaw, $market,null,$symbol,$interval);
         }
     }
 
@@ -495,7 +495,7 @@ class BinanceApiService
 
             // If successful and valid JSON, return it
             if ($response->successful() && $response->json()) {
-                return $processed ? self::processData($response->json(), $market) : $response->json();
+                return $processed ? self::processData($response->json(), $market,null,$symbol,$interval) : $response->json();
             } else {
                 Log::error('Error Fetching Coin data: ' . $symbol . ' Server Parent ' . json_encode($response?->body()));
             }
@@ -515,7 +515,7 @@ class BinanceApiService
                 $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($currentServerUrl, $params);
 
                 if ($response->successful() && $response->json()) {
-                    return $processed ? self::processData($response->json(), $market) : $response->json();
+                    return $processed ? self::processData($response->json(), $market,null,$symbol,$interval) : $response->json();
                 }
             } catch (\Exception $e) {
                 Log::error("Balancer Server [$serverUrlKey] failed: " . $e->getMessage());
@@ -584,7 +584,7 @@ class BinanceApiService
     }
 
 
-    protected static function processData($data, $market = 'SPOT', $cacheUpto = null)
+    protected static function processData($data, $market = 'SPOT', $cacheUpto = null,$symbol=null,$interval = null)
     {
         // Calculate KDJ (predefined function)
         $KDJ = self::calculateKDJ($data);
@@ -1115,6 +1115,8 @@ class BinanceApiService
                 'timestamp_pst' => $timestamp + (5 * 60 * 60 * 1000),
                 'timestamp' => $timestamp,
                 'timestampReadable' => $timestampReadable,
+                'symbol' => $symbol,
+                'interval' => $interval,
                 'market' => $market,
                 'binance_timestamp' => $timestamp,
                 'open' => $open,
