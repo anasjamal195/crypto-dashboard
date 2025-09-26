@@ -1449,6 +1449,275 @@ class BinanceController extends Controller
                 'green'
             );
         }
+
+
+
+
+
+
+        // Map opened trades
+
+        $openSetups = DB::table('trade_setup_details')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'OPENED')->get();
+
+        foreach ($openSetups as $setup) {
+            $openOrder = DB::table('live_trades_future_results')->where('orderId', $setup->open_order_id)->first();
+
+            $openingTime = Carbon::parse($openOrder->created_at)
+                ->floorMinutes(15)   // snap to lower 15m
+                ->valueOf();         // unix millis
+
+            $zonePlots[] = CommonHelpers::generateTradePlot($openOrder->position, $openingTime, $data[count($data) - 1]['binance_timestamp'], $openOrder->price, $setup->tp, $setup->sl, $openOrder->currentProfit);
+
+
+
+
+
+            $openTrade = [];
+            // Plots
+            $openTrade['zones'] = json_decode($setup->zones, true);
+            $openTrade['fvg'] = json_decode($setup->fvg, true);
+            $openTrade['trendline'] = json_decode($setup->trendline, true);
+
+
+            $topLevel = $openTrade['zones']['top_zone'] ?? null;
+            $bottomLevel = $openTrade['zones']['bottom_zone'] ?? null;
+            $activeLevel = $openTrade['zones']['middle_zone'] ?? null;
+            $fvgZone = $openTrade['fvg'] ?? null;
+            $trendlineSupport = $openTrade['trendline']['support'] ?? null;
+            $trendlineResistance = $openTrade['trendline']['resistance'] ?? null;
+
+            if ($topLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $topLevel['top'],
+                    $topLevel['bottom'],
+                    $topLevel['timestamp_initial'],
+                    $data[count($data) - 1]['binance_timestamp'],
+                    'red',
+                    'binance'
+                );
+            }
+            if ($bottomLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $bottomLevel['top'],
+                    $bottomLevel['bottom'],
+                    $bottomLevel['timestamp_initial'],
+                    $data[count($data) - 1]['binance_timestamp'],
+                    'green',
+                    'binance'
+                );
+            }
+            if ($activeLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $activeLevel['top'],
+                    $activeLevel['bottom'],
+                    $activeLevel['timestamp_initial'],
+                    $data[count($data) - 1]['binance_timestamp'],
+                    'blue',
+                    'binance'
+                );
+            }
+
+            if ($trendlineSupport) {
+                $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
+                $x2 = $data[count($data) - 1]['binance_timestamp'];
+                $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
+                $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, count($data) - 1, $trendlineSupport);
+
+                $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2);
+            }
+            if ($trendlineResistance) {
+                $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
+                $x2 = $data[count($data) - 1]['binance_timestamp'];
+                $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
+                $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, count($data) - 1, $trendlineResistance);
+
+                $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2, 'red');
+            }
+
+            if ($fvgZone) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $fvgZone['top'],
+                    $fvgZone['bottom'],
+                    $fvgZone['timestamp'],
+                    $data[count($data) - 1]['binance_timestamp'],
+                    'orange',
+                    'binance'
+                );
+            }
+        }
+
+
+        // Closed Trades plot
+        $closeSetups = DB::table('trade_setup_details')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'CLOSED')->get();
+
+        foreach ($closeSetups as $setup) {
+            $openOrder = DB::table('live_trades_future_results')->where('orderId', $setup->open_order_id)->first();
+            $closeOrder = DB::table('live_trades_future_results')->where('orderId', $setup->close_order_id)->first();
+            $openingTime = Carbon::parse($openOrder->created_at)
+                ->floorMinutes(15)   // snap to lower 15m
+                ->valueOf();         // unix millis
+
+            $closingTime = Carbon::parse($closeOrder->created_at)
+                ->floorMinutes(15)
+                ->valueOf();
+
+
+            $zonePlots[] = CommonHelpers::generateTradePlot($openOrder->position, $openingTime, $closingTime, $openOrder->price, $setup->tp, $setup->sl, $openOrder->currentProfit);
+
+            $openTrade = [];
+            // Plots
+            $openTrade['zones'] = json_decode($setup->zones, true);
+            $openTrade['fvg'] = json_decode($setup->fvg, true);
+            $openTrade['trendline'] = json_decode($setup->trendline, true);
+
+
+            $topLevel = $openTrade['zones']['top_zone'] ?? null;
+            $bottomLevel = $openTrade['zones']['bottom_zone'] ?? null;
+            $activeLevel = $openTrade['zones']['middle_zone'] ?? null;
+            $fvgZone = $openTrade['fvg'] ?? null;
+            $trendlineSupport = $openTrade['trendline']['support'] ?? null;
+            $trendlineResistance = $openTrade['trendline']['resistance'] ?? null;
+
+            if ($topLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $topLevel['top'],
+                    $topLevel['bottom'],
+                    $topLevel['timestamp_initial'],
+                    $closingTime,
+                    'red',
+                    'binance'
+                );
+            }
+            if ($bottomLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $bottomLevel['top'],
+                    $bottomLevel['bottom'],
+                    $bottomLevel['timestamp_initial'],
+                    $closingTime,
+                    'green',
+                    'binance'
+                );
+            }
+            if ($activeLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $activeLevel['top'],
+                    $activeLevel['bottom'],
+                    $closingTime,
+                    $data[count($data) - 1]['binance_timestamp'],
+                    'blue',
+                    'binance'
+                );
+            }
+
+            $closingIndex = CommonHelpers::findIndexFromTimestamp($data, count($data) - 1, $closingTime);
+            if ($trendlineSupport) {
+                $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
+                $x2 = $data[$closingTime]['binance_timestamp'];
+                $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
+                $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $closingIndex, $trendlineSupport);
+
+                $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2);
+            }
+            if ($trendlineResistance) {
+                $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
+                $x2 = $closingTime;
+                $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
+                $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $closingIndex, $trendlineResistance);
+
+                $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2, 'red');
+            }
+
+            if ($fvgZone) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $fvgZone['top'],
+                    $fvgZone['bottom'],
+                    $fvgZone['timestamp'],
+                    $closingTime,
+                    'orange',
+                    'binance'
+                );
+            }
+        }
+
+        $failedSetups = DB::table('trade_setup_details')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'FAILED')->get();
+        foreach ($failedSetups as $setup) {
+            $labelPlots[] = CommonHelpers::generateLabelPlot($setup->candle_timestamp, 'purple', 'Failed Entry');
+
+            $openTrade = [];
+            // Plots
+            $openTrade['zones'] = json_decode($setup->zones, true);
+            $openTrade['fvg'] = json_decode($setup->fvg, true);
+            $openTrade['trendline'] = json_decode($setup->trendline, true);
+
+            $closingTime = $setup->candle_timestamp;
+            $topLevel = $openTrade['zones']['top_zone'] ?? null;
+            $bottomLevel = $openTrade['zones']['bottom_zone'] ?? null;
+            $activeLevel = $openTrade['zones']['middle_zone'] ?? null;
+            $fvgZone = $openTrade['fvg'] ?? null;
+            $trendlineSupport = $openTrade['trendline']['support'] ?? null;
+            $trendlineResistance = $openTrade['trendline']['resistance'] ?? null;
+
+            if ($topLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $topLevel['top'],
+                    $topLevel['bottom'],
+                    $topLevel['timestamp_initial'],
+                    $closingTime,
+                    'red',
+                    'binance'
+                );
+            }
+            if ($bottomLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $bottomLevel['top'],
+                    $bottomLevel['bottom'],
+                    $bottomLevel['timestamp_initial'],
+                    $closingTime,
+                    'green',
+                    'binance'
+                );
+            }
+            if ($activeLevel) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $activeLevel['top'],
+                    $activeLevel['bottom'],
+                    $closingTime,
+                    $data[count($data) - 1]['binance_timestamp'],
+                    'blue',
+                    'binance'
+                );
+            }
+
+            $closingIndex = CommonHelpers::findIndexFromTimestamp($data, count($data) - 1, $closingTime);
+            if ($trendlineSupport) {
+                $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
+                $x2 = $data[$closingTime]['binance_timestamp'];
+                $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
+                $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $closingIndex, $trendlineSupport);
+
+                $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2);
+            }
+            if ($trendlineResistance) {
+                $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
+                $x2 = $closingTime;
+                $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
+                $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $closingIndex, $trendlineResistance);
+
+                $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2, 'red');
+            }
+
+            if ($fvgZone) {
+                $zonePlots[] = CommonHelpers::generateZonePlot(
+                    $fvgZone['top'],
+                    $fvgZone['bottom'],
+                    $fvgZone['timestamp'],
+                    $closingTime,
+                    'orange',
+                    'binance'
+                );
+            }
+        }
+        // dd($failedSetups);
         return view(
             'live-chart.index',
             [
@@ -1459,7 +1728,8 @@ class BinanceController extends Controller
                 'zonePlots' => $zonePlots,
                 'equationPlots' => $equationPlots,
                 'symbol' => $symbol,
-                'interval' => $interval
+                'interval' => $interval,
+                'failedSetups' => $failedSetups
             ]
         );
     }
