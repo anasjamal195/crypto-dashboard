@@ -1730,7 +1730,7 @@ class BinanceController extends Controller
         $interval = request('interval', '15m');
         $timestamp = request('timestamp', null);
 
-        self::runStrategy($symbol, $interval, $timestamp);
+        // self::runStrategy($symbol, $interval, $timestamp);
 
         // Get candle data
         $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
