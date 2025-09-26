@@ -1610,22 +1610,21 @@ class BinanceController extends Controller
             }
 
             $closingIndex = CommonHelpers::findIndexFromTimestamp($data, count($data) - 1, $closingTime);
-            if ($trendlineSupport) {
-                $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
-                $x2 = $data[$closingTime]['binance_timestamp'];
-                $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
-                $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $closingIndex, $trendlineSupport);
+            // if ($trendlineSupport) {
+            //     $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
+            //     $x2 = $data[$closingIndex]['binance_timestamp'];
+            //     $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
+            //     $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $closingIndex, $trendlineSupport);
+            //     $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2);
+            // }
+            // if ($trendlineResistance) {
+            //     $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
+            //     $x2 = $data[$closingIndex]['binance_timestamp'];
+            //     $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
+            //     $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $closingIndex, $trendlineResistance);
+            //     $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2, 'red');
+            // }
 
-                $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2);
-            }
-            if ($trendlineResistance) {
-                $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
-                $x2 = $closingTime;
-                $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
-                $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $closingIndex, $trendlineResistance);
-
-                $linePlots[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2, 'red');
-            }
 
             if ($fvgZone) {
                 $zonePlots[] = CommonHelpers::generateZonePlot(
@@ -1638,6 +1637,8 @@ class BinanceController extends Controller
                 );
             }
         }
+        // dd($linePlots);
+
 
         $failedSetups = DB::table('trade_setup_details')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'FAILED')->get();
         foreach ($failedSetups as $setup) {
@@ -1717,6 +1718,7 @@ class BinanceController extends Controller
                 );
             }
         }
+
         // dd($failedSetups);
         return view(
             'live-chart.index',
