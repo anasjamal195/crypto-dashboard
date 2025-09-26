@@ -47,7 +47,7 @@ class BTCUSDT
             'TRENDLINE',
             'DOUBLE_BREAKOUTS',
             'FVG',
-            'AGGRESSIVE'
+            // 'AGGRESSIVE'
         ];
 
 

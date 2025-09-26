@@ -18,7 +18,7 @@ class IterateCandles extends Command
     {
 
         $this->info("🚀 IterateCandles started for all intervals in UTC...");
-        CommonHelpers::flushZones();
+        // CommonHelpers::flushZones();
 
         $this->info("🚀 Flushed all zones...");
 
