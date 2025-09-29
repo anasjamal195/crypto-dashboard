@@ -259,7 +259,6 @@ class OrderBlockService
                         'color' => $color,
                     ];
 
-                    $usedObIndex[] = $ob['candidate_index'];
                 }
             }
         }

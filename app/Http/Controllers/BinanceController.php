@@ -1859,9 +1859,9 @@ class BinanceController extends Controller
                         'zoneProcessing' => false,
                         'enabledStrategies' => [
                             // 'AGGRESSIVE',
-                            'DOUBLE_BREAKOUTS',
-                            'TRENDLINE',
-                            'FVG',
+                            // 'DOUBLE_BREAKOUTS',
+                            // 'TRENDLINE',
+                            // 'FVG',
                             'ORDERBLOCK'
                         ]
                     ];
@@ -1899,6 +1899,7 @@ class BinanceController extends Controller
                             ],
                             'fvg' => isset($tradeSetupDetails['fvg']) ? $tradeSetupDetails['fvg'] : null,
                             'trendline' => isset($tradeSetupDetails['trendline']) ? $tradeSetupDetails['trendline'] : null,
+                            'orderblock' => isset($tradeSetupDetails['orderblock']) ? $tradeSetupDetails['orderblock'] : null,
 
                         ];
                     }
@@ -1926,6 +1927,7 @@ class BinanceController extends Controller
                             ],
                             'fvg' => isset($tradeSetupDetails['fvg']) ? $tradeSetupDetails['fvg'] : null,
                             'trendline' => isset($tradeSetupDetails['trendline']) ? $tradeSetupDetails['trendline'] : null,
+                            'orderblock' => isset($tradeSetupDetails['orderblock']) ? $tradeSetupDetails['orderblock'] : null,
 
                         ];
                     }
@@ -1950,6 +1952,8 @@ class BinanceController extends Controller
                         ],
                         'fvg' => isset($tradeSetupDetails['fvg']) ? $tradeSetupDetails['fvg'] : null,
                         'trendline' => isset($tradeSetupDetails['trendline']) ? $tradeSetupDetails['trendline'] : null,
+                        'orderblock' => isset($tradeSetupDetails['orderblock']) ? $tradeSetupDetails['orderblock'] : null,
+
                     ];
                 }
 
@@ -2003,7 +2007,7 @@ class BinanceController extends Controller
         $interval = request('interval', '15m');
         $timestamp = request('timestamp', null);
 
-        // self::runStrategy($symbol, $interval, $timestamp);
+        self::runStrategy($symbol, $interval, $timestamp);
 
         // Get candle data
         $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
@@ -2057,9 +2061,9 @@ class BinanceController extends Controller
                 $bottomLevel = $openTrade['zones']['bottom_zone'] ?? null;
                 $activeLevel = $openTrade['zones']['middle_zone'] ?? null;
                 $fvgZone = $openTrade['fvg'] ?? null;
+                $orderblock = $openTrade['orderblock'] ?? null;
                 $trendlineSupport = $openTrade['trendline']['support'] ?? null;
                 $trendlineResistance = $openTrade['trendline']['resistance'] ?? null;
-                $orderblock = $openTrade['orderblock'] ?? null;
 
                 if ($topLevel) {
                     $trades[] = CommonHelpers::generateZonePlot(
@@ -2095,7 +2099,7 @@ class BinanceController extends Controller
                     $trades[] = CommonHelpers::generateZonePlot(
                         $orderblock['top'],
                         $orderblock['bottom'],
-                        $orderblock['openingTimestamp'],
+                        $orderblock['timestamp_initial'],
                         $data[$index]['binance_timestamp'],
                         $orderblock['color'],
                         'binance'
