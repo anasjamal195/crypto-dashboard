@@ -2,463 +2,314 @@
 
 namespace App\Services;
 
+use App\CommonHelpers;
+
 class OrderBlockService
 {
-    // Configuration constants
-    const MAX_ORDER_BLOCKS = 30;
-    const MAX_ATR_MULT = 3.5;
-    const OVERLAP_THRESHOLD_PERCENTAGE = 0;
-    
-    // Service properties
-    private int $swingLength;
-    private string $obEndMethod;
-    private int $bullishOrderBlocks;
-    private int $bearishOrderBlocks;
-    private bool $combineOBs;
-    
-    // State arrays
-    private array $bullishOrderBlocksList = [];
-    private array $bearishOrderBlocksList = [];
-    private array $swingHistory = [];
-    private float $atr = 0.0;
-    
-    // Swing state tracking
-    private int $swingType = 0; // 0 = high, 1 = low
-    private ?array $topSwing = null;
-    private ?array $bottomSwing = null;
-    
+    protected int $pivotLeft;
+    protected int $pivotRight;
+    protected float $bodyRatioThreshold;
+    protected int $liquiditySweepLookback;
+    protected bool $expandOrderFlow; // include previous candle into zone
+    protected int $maxHistory; // how many candles back to consider for detections
+
+    /**
+     * Constructor: tune parameters here or inject via service container.
+     */
     public function __construct(
-        int $swingLength = 10,
-        string $obEndMethod = 'Wick',
-        string $zoneCount = 'Low',
-        bool $combineOBs = true
+        int $pivotLeft = 3,
+        int $pivotRight = 3,
+        float $bodyRatioThreshold = 0.70,
+        int $liquiditySweepLookback = 10,
+        bool $expandOrderFlow = true,
+        int $maxHistory = 1000
     ) {
-        $this->swingLength = max(3, $swingLength);
-        $this->obEndMethod = in_array($obEndMethod, ['Wick', 'Close']) ? $obEndMethod : 'Wick';
-        $this->combineOBs = $combineOBs;
-        
-        // Set zone counts based on configuration
-        $zoneCounts = [
-            'One' => 1,
-            'Low' => 3,
-            'Medium' => 5,
-            'High' => 10
-        ];
-        
-        $this->bullishOrderBlocks = $zoneCounts[$zoneCount] ?? 3;
-        $this->bearishOrderBlocks = $zoneCounts[$zoneCount] ?? 3;
+        $this->pivotLeft = $pivotLeft;
+        $this->pivotRight = $pivotRight;
+        $this->bodyRatioThreshold = $bodyRatioThreshold;
+        $this->liquiditySweepLookback = $liquiditySweepLookback;
+        $this->expandOrderFlow = $expandOrderFlow;
+        $this->maxHistory = $maxHistory;
     }
-    
+
     /**
-     * Main method to calculate order blocks up to a specific index
-     * Exactly matches Pine Script logic flow
+     * Main entrypoint.
+     *
+     * @param array $data  array of candles (0 .. n-1). Each element must contain:
+     *                     open, high, low, close, body_size, body_min, body_max, upper_wick, lower_wick, binance_timestamp
+     * @param int   $index current index (most recent candle index to use). Must be <= count($data)-1
+     *
+     * @return array list of order blocks (most recent first)
      */
-    public function calculateOrderBlocks(array $data, int $index): array
+    public function findOrderBlocks(array $data, int $index): array
     {
-        // Reset state for fresh calculation
-        $this->resetState();
-        
-        // Calculate ATR for the current period
-        $this->calculateATR($data, $index);
-        
-        // Process each bar up to the current index (matching Pine Script bar processing)
-        for ($i = $this->swingLength; $i <= $index; $i++) {
-            $this->processBar($data, $i);
+        $n = count($data);
+        if ($index < 0 || $index >= $n) {
+            return [];
         }
-        
-        return [
-            'bullish' => array_slice($this->bullishOrderBlocksList, 0, $this->bullishOrderBlocks),
-            'bearish' => array_slice($this->bearishOrderBlocksList, 0, $this->bearishOrderBlocks),
-            'atr' => $this->atr
-        ];
-    }
-    
-    /**
-     * Process a single bar - matches Pine Script findOrderBlocks() exactly
-     */
-    private function processBar(array $data, int $index): void
-    {
-        // Find swing points using exact Pine Script logic
-        [$top, $btm] = $this->findOBSwings($data, $index);
-        
-        // Update top and bottom swing references
-        if ($top !== null) {
-            $this->topSwing = $top;
-        }
-        if ($btm !== null) {
-            $this->bottomSwing = $btm;
-        }
-        
-        // Process bullish order blocks - exact Pine Script logic
-        $this->processBullishOrderBlocks($data, $index);
-        
-        // Process bearish order blocks - exact Pine Script logic  
-        $this->processBearishOrderBlocks($data, $index);
-    }
-    
-    /**
-     * Exact translation of Pine Script findOBSwings function
-     */
-    private function findOBSwings(array $data, int $index): array
-    {
-        $len = $this->swingLength;
-        
-        // Calculate ta.highest and ta.lowest equivalents
-        $upper = $this->getHighest($data, $index, $len);
-        $lower = $this->getLowest($data, $index, $len);
-        
-        $lookbackIndex = $index - $len;
-        if ($lookbackIndex < 0 || !isset($data[$lookbackIndex])) {
-            return [null, null];
-        }
-        
-        // Exact Pine Script swing type logic
-        $prevSwingType = $this->swingType;
-        
-        if ($data[$lookbackIndex]['high'] > $upper) {
-            $this->swingType = 0; // High swing
-        } elseif ($data[$lookbackIndex]['low'] < $lower) {
-            $this->swingType = 1; // Low swing  
-        }
-        // Otherwise swingType remains the same (no else clause in Pine Script)
-        
-        $top = null;
-        $btm = null;
-        
-        // Create new swing high when transitioning to high swing
-        if ($this->swingType == 0 && $prevSwingType != 0) {
-            $top = [
-                'x' => $lookbackIndex,
-                'y' => $data[$lookbackIndex]['high'],
-                'swingVolume' => $data[$lookbackIndex]['volume'],
-                'crossed' => false
-            ];
-        }
-        
-        // Create new swing low when transitioning to low swing
-        if ($this->swingType == 1 && $prevSwingType != 1) {
-            $btm = [
-                'x' => $lookbackIndex,
-                'y' => $data[$lookbackIndex]['low'],  
-                'swingVolume' => $data[$lookbackIndex]['volume'],
-                'crossed' => false
-            ];
-        }
-        
-        return [$top, $btm];
-    }
-    
-    /**
-     * Exact translation of Pine Script bullish order block logic
-     */
-    private function processBullishOrderBlocks(array $data, int $index): void
-    {
-        // Process existing bullish order blocks
-        for ($i = count($this->bullishOrderBlocksList) - 1; $i >= 0; $i--) {
-            $currentOB = &$this->bullishOrderBlocksList[$i];
-            
-            if (!$currentOB['breaker']) {
-                // Check for breaker condition - exact Pine Script logic
-                $testValue = $this->obEndMethod === 'Wick' 
-                    ? $data[$index]['low'] 
-                    : min($data[$index]['open'], $data[$index]['close']);
-                    
-                if ($testValue < $currentOB['bottom']) {
-                    $currentOB['breaker'] = true;
-                    $currentOB['breakTime'] = $data[$index]['timestamp'];
-                    $currentOB['bbVolume'] = $data[$index]['volume'];
-                }
-            } else {
-                // Remove fully invalidated order blocks
-                if ($data[$index]['high'] > $currentOB['top']) {
-                    array_splice($this->bullishOrderBlocksList, $i, 1);
-                }
-            }
-        }
-        
-        // Create new bullish order block - exact Pine Script condition
-        if ($this->topSwing !== null && 
-            $data[$index]['close'] > $this->topSwing['y'] && 
-            !$this->topSwing['crossed']) {
-            
-            $this->topSwing['crossed'] = true;
-            
-            // Exact Pine Script order block creation logic
-            $useBody = false; // Pine Script has this as false
-            $max = $useBody ? max($data[$index - 1]['close'], $data[$index - 1]['open']) : $data[$index - 1]['high'];
-            $min = $useBody ? min($data[$index - 1]['close'], $data[$index - 1]['open']) : $data[$index - 1]['low'];
-            
-            $boxBtm = $max;
-            $boxTop = $min;  
-            $boxLoc = $data[$index - 1]['timestamp'];
-            
-            // Find the actual order block boundaries - exact Pine Script loop
-            for ($i = 1; $i < ($index - $this->topSwing['x']) - 1; $i++) {
-                $checkIndex = $index - 1 - $i;
-                if ($checkIndex < 0 || !isset($data[$checkIndex])) {
+
+        // restrict history window (avoid scanning entire huge array if not needed)
+        $start = max(0, $index - $this->maxHistory);
+
+        // 1) detect pivots (swing highs and swing lows) using left/right params
+        $swingHighs = []; // list of ['idx'=>int,'high'=>float]
+        $swingLows  = []; // list of ['idx'=>int,'low'=>float]
+
+        for ($i = $start + $this->pivotLeft; $i <= $index - $this->pivotRight; $i++) {
+            $isHigh = true;
+            $isLow  = true;
+            $h = $data[$i]['high'];
+            $l = $data[$i]['low'];
+
+            // compare left and right candles
+            for ($j = $i - $this->pivotLeft; $j <= $i + $this->pivotRight; $j++) {
+                if ($j === $i) continue;
+                if (!isset($data[$j])) {
+                    $isHigh = $isLow = false;
                     break;
                 }
-                
-                $currentMin = $useBody ? min($data[$checkIndex]['close'], $data[$checkIndex]['open']) : $data[$checkIndex]['low'];
-                $currentMax = $useBody ? max($data[$checkIndex]['close'], $data[$checkIndex]['open']) : $data[$checkIndex]['high'];
-                
-                if ($currentMin < $boxBtm) {
-                    $boxBtm = $currentMin;
-                    $boxTop = $currentMax;
-                    $boxLoc = $data[$checkIndex]['timestamp'];
-                }
+                if ($h <= $data[$j]['high']) $isHigh = false;
+                if ($l >= $data[$j]['low'])  $isLow = false;
+                if (!$isHigh && !$isLow) break;
             }
-            
-            // Volume calculations - exact Pine Script logic
-            $obVolume = 0;
-            $obLowVolume = 0;
-            $obHighVolume = 0;
-            
-            // volume + volume[1] + volume[2] in Pine Script
-            for ($i = 0; $i <= 2; $i++) {
-                $volIndex = $index - $i;
-                if ($volIndex >= 0 && isset($data[$volIndex])) {
-                    $obVolume += $data[$volIndex]['volume'];
-                    if ($i === 2) {
-                        $obLowVolume = $data[$volIndex]['volume']; // volume[2]
-                    } else {
-                        $obHighVolume += $data[$volIndex]['volume']; // volume + volume[1]
+
+            if ($isHigh) {
+                $swingHighs[] = ['idx' => $i, 'high' => $h];
+            }
+            if ($isLow) {
+                $swingLows[] = ['idx' => $i, 'low' => $l];
+            }
+        }
+
+        // helper: get most recent swing high / low index prior to a given index
+        $lastSwingHighBefore = function (int $idx) use ($swingHighs) {
+            for ($k = count($swingHighs) - 1; $k >= 0; $k--) {
+                if ($swingHighs[$k]['idx'] < $idx) return $swingHighs[$k];
+            }
+            return null;
+        };
+        $lastSwingLowBefore = function (int $idx) use ($swingLows) {
+            for ($k = count($swingLows) - 1; $k >= 0; $k--) {
+                if ($swingLows[$k]['idx'] < $idx) return $swingLows[$k];
+            }
+            return null;
+        };
+
+        $orderBlocks = [];
+
+        // 2) scan every candle k up to $index (use only historical data)
+        //    detect BOS: bullish when close > last swing high's high; bearish when close < last swing low's low
+        for ($k = $start + $this->pivotLeft; $k <= $index; $k++) {
+            // find most recent completed swing high/low strictly before k
+            $lastHigh = $lastSwingHighBefore($k);
+            $lastLow  = $lastSwingLowBefore($k);
+
+            // bullish BOS detection
+            if ($lastHigh !== null) {
+                if ($data[$k]['close'] > $lastHigh['high']) {
+                    // candidate candle: use the swing high candle index as the OB candle (safe practical choice)
+                    $candidateIdx = $lastHigh['idx'];
+
+                    // ensure candidateIdx < k (it will be)
+                    if ($candidateIdx >= $k) continue;
+
+                    // compute body_ratio safely: if size 0 avoid div by zero
+                    $size = max(1e-9, $data[$candidateIdx]['high'] - $data[$candidateIdx]['low']);
+                    $bodySize = isset($data[$candidateIdx]['body_size']) ? $data[$candidateIdx]['body_size'] : abs($data[$candidateIdx]['close'] - $data[$candidateIdx]['open']);
+                    $bodyRatio = $bodySize / $size;
+
+                    // sweep / POI detection:
+                    // check if breakout candle (k) extended beyond prior highs inside lookback
+                    $swept = false;
+                    $lookbackStart = max($start, $k - $this->liquiditySweepLookback);
+                    $maxPriorHigh = -INF;
+                    for ($t = $lookbackStart; $t < $k; $t++) {
+                        if ($data[$t]['high'] > $maxPriorHigh) $maxPriorHigh = $data[$t]['high'];
                     }
+                    if ($data[$k]['high'] > $maxPriorHigh && $data[$k]['high'] > $lastHigh['high']) {
+                        $swept = true;
+                    }
+
+                    // probability label
+                    $prob = ($bodyRatio >= $this->bodyRatioThreshold) ? 'high' : 'low';
+
+                    // build top/bottom index depending on expandOrderFlow
+                    if ($this->expandOrderFlow && ($candidateIdx - 1) >= 0) {
+                        $topIndex = $candidateIdx;            // the OB candle is top (bearish candle before breakout)
+                        $bottomIndex = $candidateIdx - 1;    // include previous candle for OF
+                    } else {
+                        $topIndex = $candidateIdx;
+                        $bottomIndex = $candidateIdx;
+                    }
+
+                    // sanity: avoid duplicates: if OB for same candidate already exists skip
+                    $exists = false;
+                    foreach ($orderBlocks as $ob) {
+                        if ($ob['candidate_index'] === $candidateIdx && $ob['direction'] === 'bullish') {
+                            $exists = true;
+                            break;
+                        }
+                    }
+                    if ($exists) continue;
+
+                    $orderBlocks[] = [
+                        'direction' => 'bullish',
+                        'candidate_index' => $candidateIdx,
+                        'timestamp' => $data[$candidateIdx]['binance_timestamp'] ?? ($data[$candidateIdx]['timestamp'] ?? null),
+                        'top_price' => $data[$candidateIdx]['body_max'],   // upper bound of OB body
+                        'bottom_price' => $data[$candidateIdx]['body_min'], // lower bound of OB body
+                        'prob' => $prob,
+                        'poi' => $swept,
+                        'body_ratio' => round($bodyRatio, 4),
+                        'formed_at_index' => $k,
+                        'mitigated' => false,
+                    ];
                 }
             }
-            
-            // ATR size check - exact Pine Script logic
-            $obSize = abs($boxTop - $boxBtm);
-            if ($obSize <= $this->atr * self::MAX_ATR_MULT) {
-                $newOrderBlock = [
-                    'top' => $boxTop,
-                    'bottom' => $boxBtm,
-                    'obVolume' => $obVolume,
-                    'obType' => 'Bull',
-                    'startTime' => $boxLoc,
-                    'bbVolume' => 0,
-                    'obLowVolume' => $obLowVolume,
-                    'obHighVolume' => $obHighVolume,
-                    'breaker' => false,
-                    'breakTime' => null,
-                    'timeframeStr' => '',
-                    'disabled' => false,
-                    'combinedTimeframesStr' => null,
-                    'combined' => false
-                ];
-                
-                // Add to beginning of array (unshift in Pine Script)
-                array_unshift($this->bullishOrderBlocksList, $newOrderBlock);
-                
-                // Maintain max order blocks limit
-                if (count($this->bullishOrderBlocksList) > self::MAX_ORDER_BLOCKS) {
-                    array_pop($this->bullishOrderBlocksList);
+
+            // bearish BOS detection
+            if ($lastLow !== null) {
+                if ($data[$k]['close'] < $lastLow['low']) {
+                    $candidateIdx = $lastLow['idx'];
+                    if ($candidateIdx >= $k) continue;
+
+                    $size = max(1e-9, $data[$candidateIdx]['high'] - $data[$candidateIdx]['low']);
+                    $bodySize = isset($data[$candidateIdx]['body_size']) ? $data[$candidateIdx]['body_size'] : abs($data[$candidateIdx]['close'] - $data[$candidateIdx]['open']);
+                    $bodyRatio = $bodySize / $size;
+
+                    // sweep detection (lookback)
+                    $swept = false;
+                    $lookbackStart = max($start, $k - $this->liquiditySweepLookback);
+                    $minPriorLow = INF;
+                    for ($t = $lookbackStart; $t < $k; $t++) {
+                        if ($data[$t]['low'] < $minPriorLow) $minPriorLow = $data[$t]['low'];
+                    }
+                    if ($data[$k]['low'] < $minPriorLow && $data[$k]['low'] < $lastLow['low']) {
+                        $swept = true;
+                    }
+
+                    $prob = ($bodyRatio >= $this->bodyRatioThreshold) ? 'high' : 'low';
+
+                    if ($this->expandOrderFlow && ($candidateIdx - 1) >= 0) {
+                        // for bearish OB, top may be previous candle if we include OF - but to keep consistent use candidate as bottom/top
+                        $topIndex = $candidateIdx - 1 >= 0 ? $candidateIdx - 1 : $candidateIdx;
+                        $bottomIndex = $candidateIdx;
+                    } else {
+                        $topIndex = $candidateIdx;
+                        $bottomIndex = $candidateIdx;
+                    }
+
+                    $exists = false;
+                    foreach ($orderBlocks as $ob) {
+                        if ($ob['candidate_index'] === $candidateIdx && $ob['direction'] === 'bearish') {
+                            $exists = true;
+                            break;
+                        }
+                    }
+                    if ($exists) continue;
+
+                    $orderBlocks[] = [
+                        'direction' => 'bearish',
+                        'candidate_index' => $candidateIdx,
+                        'timestamp' => $data[$candidateIdx]['binance_timestamp'] ?? ($data[$candidateIdx]['timestamp'] ?? null),
+                        'top_price' => $data[$candidateIdx]['body_max'],   // upper bound of OB body
+                        'bottom_price' => $data[$candidateIdx]['body_min'], // lower bound of OB body
+                        'prob' => $prob,
+                        'poi' => $swept,
+                        'body_ratio' => round($bodyRatio, 4),
+                        'formed_at_index' => $k,
+                        'mitigated' => false,
+                    ];
                 }
             }
         }
+
+        // 3) Post-process: sort by most recent candidate index descending
+        usort($orderBlocks, function ($a, $b) {
+            return $b['candidate_index'] <=> $a['candidate_index'];
+        });
+
+        // Optionally: limit to last N OBs
+        // return array_slice($orderBlocks, 0, 50);
+
+        return $orderBlocks;
     }
-    
-    /**
-     * Exact translation of Pine Script bearish order block logic
-     */
-    private function processBearishOrderBlocks(array $data, int $index): void
+
+
+
+    public function findRecentOb($data, $index, $isMitigated = true)
     {
-        // Process existing bearish order blocks
-        for ($i = count($this->bearishOrderBlocksList) - 1; $i >= 0; $i--) {
-            $currentOB = &$this->bearishOrderBlocksList[$i];
-            
-            if (!$currentOB['breaker']) {
-                // Check for breaker condition - exact Pine Script logic
-                $testValue = $this->obEndMethod === 'Wick' 
-                    ? $data[$index]['high'] 
-                    : max($data[$index]['open'], $data[$index]['close']);
-                    
-                if ($testValue > $currentOB['top']) {
-                    $currentOB['breaker'] = true;
-                    $currentOB['breakTime'] = $data[$index]['timestamp'];
-                    $currentOB['bbVolume'] = $data[$index]['volume'];
+        $obs = $this->findOrderBlocks($data, $index);
+        foreach ($obs as $i => $ob) {
+            $obs[$i] = $this->checkMitigation($data, $ob, $index);
+        }
+
+        if (!empty($obs)) {
+            foreach ($obs as $ob) {
+                $color = $ob['direction'] === 'bearish' ? 'red' : 'green';
+                if ($ob['mitigated'] == $isMitigated) {
+
+                    return [
+                        'top' => $ob['top_price'],
+                        'bottom' => $ob['bottom_price'],
+                        'timestamp_initial' => $ob['timestamp'],
+                        'timestamp_mitigated' => $isMitigated ? $ob['mitigated_timestamp'] : null,
+                        'index' => $ob['candidate_index'],
+                        'type' => $ob['direction'],
+                        'color' => $color,
+                    ];
+
+                    $usedObIndex[] = $ob['candidate_index'];
+                }
+            }
+        }
+        return null;
+    }
+
+
+
+    /**
+     * Helper to mark OB as mitigated if price closed fully through its body (callable later).
+     * - $currentIndex is up-to (and including) the last candle to check (no future candles).
+     *
+     * @param array $data
+     * @param array $ob
+     * @param int $currentIndex
+     * @return bool true if mitigated (and sets 'mitigated' flag on returned ob)
+     */
+    public function checkMitigation(array $data, array $ob, int $currentIndex): array
+    {
+        $candidateIdx = $ob['candidate_index'];
+        if (!isset($data[$candidateIdx])) return $ob;
+
+        // get body bounds for candidate candle
+        $bodyTop = $data[$candidateIdx]['body_max'] ?? max($data[$candidateIdx]['open'], $data[$candidateIdx]['close']);
+        $bodyBottom = $data[$candidateIdx]['body_min'] ?? min($data[$candidateIdx]['open'], $data[$candidateIdx]['close']);
+
+        // scan from candidateIdx+1 .. currentIndex for a close that fully enters the body (mitigation rule)
+        for ($i = $candidateIdx + 1; $i <= $currentIndex && isset($data[$i]); $i++) {
+            $close = $data[$i]['close'];
+            if ($ob['direction'] === 'bullish') {
+                // mitigated when price closes below or equal to bodyBottom (consumes OB body)
+                if ($close <= $bodyBottom) {
+                    $ob['mitigated'] = true;
+                    $ob['mitigated_at_index'] = $i;
+                    $ob['mitigated_timestamp'] = $data[$i]['binance_timestamp'] ?? ($data[$i]['timestamp'] ?? null);
+                    return $ob;
                 }
             } else {
-                // Remove fully invalidated order blocks
-                if ($data[$index]['low'] < $currentOB['bottom']) {
-                    array_splice($this->bearishOrderBlocksList, $i, 1);
+                // bearish: mitigated when price closes above or equal to bodyTop
+                if ($close >= $bodyTop) {
+                    $ob['mitigated'] = true;
+                    $ob['mitigated_at_index'] = $i;
+                    $ob['mitigated_timestamp'] = $data[$i]['binance_timestamp'] ?? ($data[$i]['timestamp'] ?? null);
+                    return $ob;
                 }
             }
         }
-        
-        // Create new bearish order block - exact Pine Script condition
-        if ($this->bottomSwing !== null && 
-            $data[$index]['close'] < $this->bottomSwing['y'] && 
-            !$this->bottomSwing['crossed']) {
-            
-            $this->bottomSwing['crossed'] = true;
-            
-            // Exact Pine Script order block creation logic  
-            $useBody = false; // Pine Script has this as false
-            $max = $useBody ? max($data[$index - 1]['close'], $data[$index - 1]['open']) : $data[$index - 1]['high'];
-            $min = $useBody ? min($data[$index - 1]['close'], $data[$index - 1]['open']) : $data[$index - 1]['low'];
-            
-            $boxBtm = $min;
-            $boxTop = $max;
-            $boxLoc = $data[$index - 1]['timestamp'];
-            
-            // Find the actual order block boundaries - exact Pine Script loop
-            for ($i = 1; $i < ($index - $this->bottomSwing['x']) - 1; $i++) {
-                $checkIndex = $index - 1 - $i;
-                if ($checkIndex < 0 || !isset($data[$checkIndex])) {
-                    break;
-                }
-                
-                $currentMax = $useBody ? max($data[$checkIndex]['close'], $data[$checkIndex]['open']) : $data[$checkIndex]['high'];
-                $currentMin = $useBody ? min($data[$checkIndex]['close'], $data[$checkIndex]['open']) : $data[$checkIndex]['low'];
-                
-                if ($currentMax > $boxTop) {
-                    $boxTop = $currentMax;
-                    $boxBtm = $currentMin;
-                    $boxLoc = $data[$checkIndex]['timestamp'];
-                }
-            }
-            
-            // Volume calculations - exact Pine Script logic
-            $obVolume = 0;
-            $obLowVolume = 0;
-            $obHighVolume = 0;
-            
-            // volume + volume[1] + volume[2] in Pine Script
-            for ($i = 0; $i <= 2; $i++) {
-                $volIndex = $index - $i;
-                if ($volIndex >= 0 && isset($data[$volIndex])) {
-                    $obVolume += $data[$volIndex]['volume'];
-                    if ($i === 2) {
-                        $obHighVolume = $data[$volIndex]['volume']; // volume[2] for bearish
-                    } else {
-                        $obLowVolume += $data[$volIndex]['volume']; // volume + volume[1] for bearish
-                    }
-                }
-            }
-            
-            // ATR size check - exact Pine Script logic
-            $obSize = abs($boxTop - $boxBtm);
-            if ($obSize <= $this->atr * self::MAX_ATR_MULT) {
-                $newOrderBlock = [
-                    'top' => $boxTop,
-                    'bottom' => $boxBtm,
-                    'obVolume' => $obVolume,
-                    'obType' => 'Bear',
-                    'startTime' => $boxLoc,
-                    'bbVolume' => 0,
-                    'obLowVolume' => $obLowVolume,
-                    'obHighVolume' => $obHighVolume,
-                    'breaker' => false,
-                    'breakTime' => null,
-                    'timeframeStr' => '',
-                    'disabled' => false,
-                    'combinedTimeframesStr' => null,
-                    'combined' => false
-                ];
-                
-                // Add to beginning of array (unshift in Pine Script)
-                array_unshift($this->bearishOrderBlocksList, $newOrderBlock);
-                
-                // Maintain max order blocks limit
-                if (count($this->bearishOrderBlocksList) > self::MAX_ORDER_BLOCKS) {
-                    array_pop($this->bearishOrderBlocksList);
-                }
-            }
-        }
-    }
-    
-    /**
-     * Calculate ATR (Average True Range) - matches Pine Script ta.atr(10)
-     */
-    private function calculateATR(array $data, int $index, int $period = 10): void
-    {
-        if ($index < $period) {
-            $this->atr = 0.0;
-            return;
-        }
-        
-        $trueRanges = [];
-        
-        for ($i = max(1, $index - $period + 1); $i <= $index; $i++) {
-            if (!isset($data[$i]) || !isset($data[$i - 1])) {
-                continue;
-            }
-            
-            $current = $data[$i];
-            $previous = $data[$i - 1];
-            
-            $tr1 = $current['high'] - $current['low'];
-            $tr2 = abs($current['high'] - $previous['close']);
-            $tr3 = abs($current['low'] - $previous['close']);
-            
-            $trueRanges[] = max($tr1, $tr2, $tr3);
-        }
-        
-        $this->atr = count($trueRanges) > 0 ? array_sum($trueRanges) / count($trueRanges) : 0.0;
-    }
-    
-    /**
-     * Get highest high over a period - matches Pine Script ta.highest(len)
-     */
-    private function getHighest(array $data, int $index, int $period): float
-    {
-        $highest = -PHP_FLOAT_MAX;
-        
-        // Pine Script ta.highest looks at current bar + (period-1) previous bars
-        for ($i = $index - $period + 1; $i <= $index; $i++) {
-            if ($i >= 0 && isset($data[$i])) {
-                $highest = max($highest, $data[$i]['high']);
-            }
-        }
-        
-        return $highest === -PHP_FLOAT_MAX ? 0.0 : $highest;
-    }
-    
-    /**
-     * Get lowest low over a period - matches Pine Script ta.lowest(len)
-     */
-    private function getLowest(array $data, int $index, int $period): float
-    {
-        $lowest = PHP_FLOAT_MAX;
-        
-        // Pine Script ta.lowest looks at current bar + (period-1) previous bars
-        for ($i = $index - $period + 1; $i <= $index; $i++) {
-            if ($i >= 0 && isset($data[$i])) {
-                $lowest = min($lowest, $data[$i]['low']);
-            }
-        }
-        
-        return $lowest === PHP_FLOAT_MAX ? 0.0 : $lowest;
-    }
-    
-    /**
-     * Reset service state
-     */
-    private function resetState(): void
-    {
-        $this->bullishOrderBlocksList = [];
-        $this->bearishOrderBlocksList = [];
-        $this->swingHistory = [];
-        $this->swingType = 0;
-        $this->topSwing = null;
-        $this->bottomSwing = null;
-        $this->atr = 0.0;
-    }
-    
-    /**
-     * Get configuration summary
-     */
-    public function getConfiguration(): array
-    {
-        return [
-            'swingLength' => $this->swingLength,
-            'obEndMethod' => $this->obEndMethod,
-            'bullishOrderBlocks' => $this->bullishOrderBlocks,
-            'bearishOrderBlocks' => $this->bearishOrderBlocks,
-            'combineOBs' => $this->combineOBs,
-            'maxATRMult' => self::MAX_ATR_MULT,
-            'maxOrderBlocks' => self::MAX_ORDER_BLOCKS
-        ];
+
+        // not mitigated
+        $ob['mitigated'] = false;
+        return $ob;
     }
 }

@@ -1862,6 +1862,7 @@ class BinanceController extends Controller
                             'DOUBLE_BREAKOUTS',
                             'TRENDLINE',
                             'FVG',
+                            'ORDERBLOCK'
                         ]
                     ];
                     $tradeSetupDetails = BTCUSDT::runTrader($testModeOptions);
@@ -2058,6 +2059,7 @@ class BinanceController extends Controller
                 $fvgZone = $openTrade['fvg'] ?? null;
                 $trendlineSupport = $openTrade['trendline']['support'] ?? null;
                 $trendlineResistance = $openTrade['trendline']['resistance'] ?? null;
+                $orderblock = $openTrade['orderblock'] ?? null;
 
                 if ($topLevel) {
                     $trades[] = CommonHelpers::generateZonePlot(
@@ -2086,6 +2088,16 @@ class BinanceController extends Controller
                         $openTrade['openingTimestamp'],
                         $data[$index]['binance_timestamp'],
                         'blue',
+                        'binance'
+                    );
+                }
+                if ($orderblock) {
+                    $trades[] = CommonHelpers::generateZonePlot(
+                        $orderblock['top'],
+                        $orderblock['bottom'],
+                        $orderblock['openingTimestamp'],
+                        $data[$index]['binance_timestamp'],
+                        $orderblock['color'],
                         'binance'
                     );
                 }

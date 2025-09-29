@@ -5,6 +5,7 @@ namespace App\Services\LiveTrader;
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
 use App\Services\OpeningConditionServiceLive;
+use App\Services\OrderBlockService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -47,6 +48,7 @@ class BTCUSDT
             'TRENDLINE',
             'DOUBLE_BREAKOUTS',
             'FVG',
+            'ORDERBLOCK'
             // 'AGGRESSIVE'
         ];
 
@@ -90,6 +92,114 @@ class BTCUSDT
         $tradeSetupDetails = null;
 
 
+
+        // ORDERBLOCKS ENTRIES SETUP
+        if (!$tradeSetupDetails && in_array('ORDERBLOCK', $enabledStrategies)) {
+
+            $obService = new OrderBlockService(
+                pivotLeft: 7,
+                pivotRight: 7,
+                bodyRatioThreshold: 0.80,
+                liquiditySweepLookback: 30,
+                expandOrderFlow: false,
+                maxHistory: 1000
+            );
+
+            $recentOb = $obService->findRecentOb($data, $index, false);
+
+
+            if ($recentOb) {
+
+                $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
+                $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
+                $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
+                $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'active')->first()), true);
+
+
+                if (
+                    $recentOb['type'] === 'bullish'
+                    && $data[$index]['close'] > $recentOb['top']
+                    && $data[$index]['open'] < $recentOb['top']
+                ) {
+
+                    $sl = null;
+                    $tp = null;
+                    $entryPrice = $data[$index]['close'];
+
+                    $sl = $recentOb['bottom'] * (1 - 0.08 / 100);
+                    $tp = $entryPrice + abs($sl - $entryPrice) * 2;
+
+                    $openingRule = 'immidiate_opening';
+
+
+                    $tradeSetupDetails = [
+                        'symbol' => $symbol,
+                        'interval' => $interval,
+                        'direction' => 'LONG',
+                        'tp' => $tp,
+                        'sl' => $sl,
+                        'trigger_price' => $entryPrice,
+                        'opening_rule' => $openingRule,
+                        'zones' => json_encode([
+                            'top_zone' => $topZone,
+                            'middle_zone' => $middleZone,
+                            'bottom_zone' => $bottomZone
+                        ]),
+                        'fvg' => null,
+                        'current_zone' => $currentZone ? json_encode($currentZone) : null,
+                        'status' => 'WAITING',
+                        'account_id' => $account_id,
+                        'candle_timestamp' => $data[$index]['binance_timestamp'],
+                        'timestamp' => $current_system_time,
+                        'strategy_name' => 'AGGRESSIVE',
+                        'trendline' => null,
+                        'orderblock' => json_encode($recentOb),
+                    ];
+                }
+
+
+                if (
+                    $recentOb['type'] === 'bearish'
+                    && $data[$index]['close'] < $recentOb['bottom']
+                    && $data[$index]['open'] > $recentOb['bottom']
+                ) {
+
+                    $sl = null;
+                    $tp = null;
+                    $entryPrice = $data[$index]['close'];
+
+                    $sl = $recentOb['top'] * (1 + 0.08 / 100);
+                    $tp = $entryPrice - abs($sl - $entryPrice) * 2;
+
+                    $openingRule = 'immidiate_opening';
+
+
+                    $tradeSetupDetails = [
+                        'symbol' => $symbol,
+                        'interval' => $interval,
+                        'direction' => 'SHORT',
+                        'tp' => $tp,
+                        'sl' => $sl,
+                        'trigger_price' => $entryPrice,
+                        'opening_rule' => $openingRule,
+                        'zones' => json_encode([
+                            'top_zone' => $topZone,
+                            'middle_zone' => $middleZone,
+                            'bottom_zone' => $bottomZone
+                        ]),
+                        'fvg' => null,
+                        'current_zone' => $currentZone ? json_encode($currentZone) : null,
+                        'status' => 'WAITING',
+                        'account_id' => $account_id,
+                        'candle_timestamp' => $data[$index]['binance_timestamp'],
+                        'timestamp' => $current_system_time,
+                        'strategy_name' => 'AGGRESSIVE',
+                        'trendline' => null,
+                        'orderblock' => json_encode($recentOb),
+                    ];
+                }
+            }
+        }
         // TRENDLINE ENTRIES SETUP
         if (!$tradeSetupDetails && in_array('TRENDLINE', $enabledStrategies)) {
 
@@ -169,7 +279,9 @@ class BTCUSDT
                             'trendline' => json_encode([
                                 'resistance' => $recentTrendLineResistance,
                                 'support' => $recentTrendLineSupport,
-                            ])
+                            ]),
+                            'orderblock' => null,
+
                         ];
                 }
             }
@@ -233,7 +345,9 @@ class BTCUSDT
                             'trendline' => json_encode([
                                 'resistance' => $recentTrendLineResistance,
                                 'support' => $recentTrendLineSupport,
-                            ])
+                            ]),
+                            'orderblock' => null,
+
                         ];
                 }
             }
@@ -302,6 +416,8 @@ class BTCUSDT
                             'timestamp' => $current_system_time,
                             'strategy_name' => 'DOUBLE_BREAKOUTS',
                             'trendline' => null,
+                            'orderblock' => null,
+
                         ];
                     } else {
                         Log::info('DOUBLE_BREAKOUTS: Skipped Due to ratio', [
@@ -383,6 +499,8 @@ class BTCUSDT
                             'timestamp' => $current_system_time,
                             'strategy_name' => 'DOUBLE_BREAKOUTS',
                             'trendline' => null,
+                            'orderblock' => null,
+
 
 
                         ];
@@ -463,6 +581,8 @@ class BTCUSDT
                                     'timestamp' => $current_system_time,
                                     'strategy_name' => 'FVG',
                                     'trendline' => null,
+                                    'orderblock' => null,
+
 
                                 ];
                         } else if (
@@ -498,6 +618,8 @@ class BTCUSDT
                                     'timestamp' => $current_system_time,
                                     'strategy_name' => 'FVG',
                                     'trendline' => null,
+                                    'orderblock' => null,
+
                                 ];
                         }
                     }
@@ -535,6 +657,8 @@ class BTCUSDT
                                     'timestamp' => $current_system_time,
                                     'strategy_name' => 'FVG',
                                     'trendline' => null,
+                                    'orderblock' => null,
+
                                 ];
                         } else if (
                             (
@@ -570,6 +694,8 @@ class BTCUSDT
                                     'timestamp' => $current_system_time,
                                     'strategy_name' => 'FVG',
                                     'trendline' => null,
+                                    'orderblock' => null,
+
                                 ];
                         }
                     }
@@ -577,7 +703,6 @@ class BTCUSDT
             }
         }
         // AGGRESSIVE ENTRIES SETUP
-
         if (!$tradeSetupDetails && in_array('AGGRESSIVE', $enabledStrategies)) {
 
             $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
@@ -661,6 +786,8 @@ class BTCUSDT
                             'timestamp' => $current_system_time,
                             'strategy_name' => 'AGGRESSIVE',
                             'trendline' => null,
+                            'orderblock' => null,
+
                         ];
                         DB::table('sd_zones')->where('id', $currentZone->id)->update([
                             'safe_count' => $currentZone->safe_count + 1,
@@ -732,6 +859,8 @@ class BTCUSDT
                             'timestamp' => $current_system_time,
                             'strategy_name' => 'AGGRESSIVE',
                             'trendline' => null,
+                            'orderblock' => null,
+
                         ];
                         DB::table('sd_zones')->where('id', $currentZone->id)->update([
                             'safe_count' => $currentZone->safe_count + 1,
@@ -758,6 +887,7 @@ class BTCUSDT
             $tradeSetupDetails['bottom_zone'] = $tradeSetupDetails['zones'] ? json_decode($tradeSetupDetails['zones'], true)['bottom_zone'] : null;
             $tradeSetupDetails['middle_zone'] = $tradeSetupDetails['zones'] ? json_decode($tradeSetupDetails['zones'], true)['middle_zone'] : null;
             $tradeSetupDetails['fvg'] = $tradeSetupDetails['fvg'] ? json_decode($tradeSetupDetails['fvg'], true) : null;
+            $tradeSetupDetails['orderblock'] = $tradeSetupDetails['orderblock'] ? json_decode($tradeSetupDetails['orderblock'], true) : null;
             $tradeSetupDetails['trendline'] = $tradeSetupDetails['trendline'] ? json_decode($tradeSetupDetails['trendline'], true) : null;
             $tradeSetupDetails['current_zone'] = $tradeSetupDetails['current_zone'] ? json_decode($tradeSetupDetails['current_zone'], true) : null;
             $tradeSetupDetails['signal_timestamp'] = $data[$index]['binance_timestamp'];
