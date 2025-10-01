@@ -15,6 +15,7 @@ use App\Services\InternalTrader\ReportServiceSafeModeMacdSwing;
 use App\Services\LiveTrader\BNBUSDT;
 use App\Services\LiveTrader\BTCUSDT;
 use App\Services\LiveTrader\ETHUSDT;
+use App\Services\LiveTrader\HBARUSDT;
 use App\Services\LiveTrader\SOLUSDT;
 use App\Services\MarketTrendService;
 use App\Services\OpeningConditionServiceLive;
@@ -1791,7 +1792,12 @@ class BinanceController extends Controller
                 SOLUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
             } else if ($symbol === 'BNBUSDT') {
                 BNBUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+            } else if ($symbol === 'HBARUSDT') {
+                HBARUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
             }
+
+
+            
             if ($openTrade) {
                 $closingPrice = null;
 
@@ -1889,6 +1895,8 @@ class BinanceController extends Controller
                     $tradeSetupDetails = SOLUSDT::runTrader($testModeOptions);
                 } else if ($symbol === 'BNBUSDT') {
                     $tradeSetupDetails = BNBUSDT::runTrader($testModeOptions);
+                } else if ($symbol === 'HBARUSDT') {
+                    $tradeSetupDetails = HBARUSDT::runTrader($testModeOptions);
                 }
                 // } else {
                 //     $aggressive_waiting_candles--;
@@ -2161,8 +2169,6 @@ class BinanceController extends Controller
     }
     public function showTrends($market, Request $request)
     {
-
-
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '15m');
         $timestamp = request('timestamp', null);

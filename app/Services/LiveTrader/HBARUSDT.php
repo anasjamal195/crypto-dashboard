@@ -107,7 +107,7 @@ class HBARUSDT
 
             $candle4h = $data4h[count($data4h) - 2];
             // Check for SHORT setup (resistance breakout/rejection) with a negative slope
-            if ($recentTrendLineResistance && $recentTrendLineResistance['m'] < 0 && $candle4h['close'] < $candle4h['ema200']) {
+            if ($recentTrendLineResistance && $recentTrendLineResistance['m'] < 0 ) {
 
                 $opening = true;
 
@@ -126,7 +126,7 @@ class HBARUSDT
                     $entryPrice = $data[$index]['close'];
 
                     // Search for recent pivot high for SL
-                    $recentHighPivot = CommonHelpers::getRecentPivot($data, $index, 'high', 3, 'wick');
+                    $recentHighPivot = CommonHelpers::getRecentPivot($data, $index, 'high', 1, 'wick');
 
 
                     if ($recentHighPivot) {
@@ -149,7 +149,7 @@ class HBARUSDT
                     $current_atr = $data[$index]['atr14'];
                     // --- ATR FILTER (Reduced multiplier from 3 to 1.5) ---
                     // We require the SL distance to be at least 1.5 times the current 14-period ATR
-                    $min_sl_distance_atr = $current_atr * 2; // Changed from 3 to 1.5
+                    $min_sl_distance_atr = $current_atr * 1.5; // Changed from 3 to 1.5
                     $sl_price = $sl;
                     $sl_distance = abs($entryPrice - $sl_price);
 
@@ -194,7 +194,7 @@ class HBARUSDT
             }
 
             // Check for LONG setup (support breakout/rejection) with a positive slope
-            if ($recentTrendLineSupport && $recentTrendLineSupport['m'] > 0 && $candle4h['close'] > $candle4h['ema200']) {
+            if ($recentTrendLineSupport && $recentTrendLineSupport['m'] > 0 ) {
 
                 $opening = true;
                 $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineSupport);
@@ -212,7 +212,7 @@ class HBARUSDT
                     $entryPrice = $data[$index]['close'];
 
                     // Search for recent pivot low for SL
-                    $recentLowPivot = CommonHelpers::getRecentPivot($data, $index, 'low', 3, 'wick');
+                    $recentLowPivot = CommonHelpers::getRecentPivot($data, $index, 'low', 1, 'wick');
 
                     if ($recentLowPivot) {
 
@@ -232,7 +232,7 @@ class HBARUSDT
                     $current_atr = $data[$index]['atr14'];
                     // --- ATR FILTER (Reduced multiplier from 3 to 1.5) ---
                     // We require the SL distance to be at least 1.5 times the current 14-period ATR
-                    $min_sl_distance_atr = $current_atr * 2; // Changed from 3 to 1.5
+                    $min_sl_distance_atr = $current_atr * 1.5; // Changed from 3 to 1.5
                     $sl_price = $sl;
                     $sl_distance = abs($entryPrice - $sl_price);
                     $sl_percent_diff = CommonHelpers::getPercentDiff($entryPrice, $sl);
