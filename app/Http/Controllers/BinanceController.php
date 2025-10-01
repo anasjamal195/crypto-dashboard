@@ -12,6 +12,7 @@ use App\Services\IdealTradeService;
 use App\Services\InternalTrader\ReportService;
 use App\Services\InternalTrader\ReportServiceSafeMode;
 use App\Services\InternalTrader\ReportServiceSafeModeMacdSwing;
+use App\Services\LiveTrader\BNBUSDT;
 use App\Services\LiveTrader\BTCUSDT;
 use App\Services\LiveTrader\ETHUSDT;
 use App\Services\LiveTrader\SOLUSDT;
@@ -1788,6 +1789,8 @@ class BinanceController extends Controller
                 ETHUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
             } else if ($symbol === 'SOLUSDT') {
                 SOLUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+            } else if ($symbol === 'BNBUSDT') {
+                BNBUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
             }
             if ($openTrade) {
                 $closingPrice = null;
@@ -1884,6 +1887,8 @@ class BinanceController extends Controller
                     $tradeSetupDetails = ETHUSDT::runTrader($testModeOptions);
                 } else if ($symbol === 'SOLUSDT') {
                     $tradeSetupDetails = SOLUSDT::runTrader($testModeOptions);
+                } else if ($symbol === 'BNBUSDT') {
+                    $tradeSetupDetails = BNBUSDT::runTrader($testModeOptions);
                 }
                 // } else {
                 //     $aggressive_waiting_candles--;

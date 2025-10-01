@@ -10,12 +10,12 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class BNBUSDT
+class HBARUSDT
 {
 
 
     // Control Panel for major params
-    public static $symbol = 'BNBUSDT';
+    public static $symbol = 'HBARUSDT';
     public static $interval = '15m';
     public static $strategy_name = 'ZONES_FVGS_COMBINED';
     public static $minAllowedRatio = 1;
@@ -75,7 +75,7 @@ class BNBUSDT
 
 
 
-        Log::info('BNBUSDT 15m Triggered', [
+        Log::info('HBARUSDT 15m Triggered', [
             'system_time' => $current_system_time,
             'candle_time' => $data[$index]['binance_timestamp'],
         ]);
