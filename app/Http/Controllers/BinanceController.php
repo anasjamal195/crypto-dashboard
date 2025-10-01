@@ -13,6 +13,8 @@ use App\Services\InternalTrader\ReportService;
 use App\Services\InternalTrader\ReportServiceSafeMode;
 use App\Services\InternalTrader\ReportServiceSafeModeMacdSwing;
 use App\Services\LiveTrader\BTCUSDT;
+use App\Services\LiveTrader\ETHUSDT;
+use App\Services\LiveTrader\SOLUSDT;
 use App\Services\MarketTrendService;
 use App\Services\OpeningConditionServiceLive;
 use App\Services\OrderBlockService;
@@ -1742,14 +1744,8 @@ class BinanceController extends Controller
 
 
         // $timestamp = 1746126000000;
-        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 3, $timestamp, 'FUTURE');
-        $timestamp2 = $data[count($data) - 1]['binance_timestamp'] + (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000);
-        $data2 = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 3, $timestamp2, 'FUTURE');
+        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
 
-        // // ==========================================================
-        // dd($data, $data2);
-        // dd("Test");
-        // // ==========================================================
         $data1hRaw = BinanceApiService::getCandleStickDataPast($symbol, '1h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
         $data4hRaw = BinanceApiService::getCandleStickDataPast($symbol, '4h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
 
@@ -1788,6 +1784,10 @@ class BinanceController extends Controller
 
             if ($symbol === 'BTCUSDT') {
                 BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+            } else if ($symbol === 'ETHUSDT') {
+                ETHUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+            } else if ($symbol === 'SOLUSDT') {
+                SOLUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
             }
             if ($openTrade) {
                 $closingPrice = null;
@@ -1880,6 +1880,10 @@ class BinanceController extends Controller
 
                 if ($symbol === 'BTCUSDT') {
                     $tradeSetupDetails = BTCUSDT::runTrader($testModeOptions);
+                } else if ($symbol === 'ETHUSDT') {
+                    $tradeSetupDetails = ETHUSDT::runTrader($testModeOptions);
+                } else if ($symbol === 'SOLUSDT') {
+                    $tradeSetupDetails = SOLUSDT::runTrader($testModeOptions);
                 }
                 // } else {
                 //     $aggressive_waiting_candles--;
