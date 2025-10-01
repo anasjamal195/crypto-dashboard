@@ -37,6 +37,19 @@ class CommonHelpers
         '1w'  => 10080,   // 1 week
         '1M'  => 43200,   // 1 month (approx 30 days)
     ];
+    public static $backtestingTimestamps = [
+
+        '1746126000000',
+        '1740728740000',
+        '1744830000000',
+        '1748504740000',
+        '1732561200000',
+        '1744225200000',
+        '1738136740000',
+        '1722152740000',
+        '1719819940000',
+        '1725176740000',
+    ];
     public static $candleDataKeysCoinReports = [
         // 'volume' => 'Volume',
         // 'volumeMA5' => 'Volume MA 5',
@@ -101,11 +114,16 @@ class CommonHelpers
             'tp' => 'rgba(0, 200, 150, 0.3)',   // teal
             'sl' => 'rgba(255, 0, 0, 0.3)',     // red
         ],
+        'ORDERBLOCK' => [
+            'tp' => 'rgba(255, 215, 0, 0.3)',   // gold
+            'sl' => 'rgba(255, 0, 0, 0.3)',     // red
+        ],
         'DEFAULT' => [
             'tp' => 'rgba(0, 255, 0, 0.3)',     // green (original)
             'sl' => 'rgba(255, 0, 0, 0.3)',     // red (original)
         ],
     ];
+
 
 
     /**
@@ -1023,10 +1041,9 @@ class CommonHelpers
     public static function flushZones($symbol = null)
     {
 
-     
+
         DB::table('sd_zones')->truncate();
         DB::table('sd_zones_activities')->truncate();
-      
     }
 
 
@@ -1270,16 +1287,18 @@ class CommonHelpers
 
         $loopIndex = $index - 1;
         $latestFVG = null;
+        $maxLookback = 50;
+        $startIndex = $index - $maxLookback;
 
-        while ($loopIndex > 10) {
+        while ($loopIndex > $startIndex && $loopIndex > 10) {
             $fvg = null;
 
             // --- Detect Bullish FVG ---
             if (
-                $data[$loopIndex]['per'] > 0
+                // $data[$loopIndex]['per'] > 0
                 // && $data[$loopIndex + 1]['per'] > 0 
                 // &&  $data[$loopIndex - 1]['per'] > 0 
-                && isset($data[$loopIndex - 1], $data[$loopIndex + 1])
+                isset($data[$loopIndex - 1], $data[$loopIndex + 1])
             ) {
                 $gapDistance = CommonHelpers::getPercentDiff(
                     $data[$loopIndex - 1]['high'],
@@ -1295,6 +1314,7 @@ class CommonHelpers
                         'index' => $loopIndex,
                         'distance' => $gapDistance,
                         'top' => $data[$loopIndex + 1]['low'],
+                        'midpoint' => ($data[$loopIndex + 1]['low'] + $data[$loopIndex - 1]['high']) / 2, // New field
                         'bottom' => $data[$loopIndex - 1]['high'],
                         'timestamp' => $data[$loopIndex]['binance_timestamp'],
                         'timestamp_pst' => $data[$loopIndex]['timestamp_pst'],
@@ -1304,10 +1324,10 @@ class CommonHelpers
             }
             // --- Detect Bearish FVG ---
             else if (
-                $data[$loopIndex - 1]['per'] < 0
+                // $data[$loopIndex - 1]['per'] < 0
                 // && $data[$loopIndex + 1]['per'] < 0 
                 // &&  $data[$loopIndex - 1]['per'] < 0 
-                && isset($data[$loopIndex - 1], $data[$loopIndex + 1])
+                isset($data[$loopIndex - 1], $data[$loopIndex + 1])
             ) {
                 $gapDistance = CommonHelpers::getPercentDiff(
                     $data[$loopIndex + 1]['high'],
@@ -1320,6 +1340,7 @@ class CommonHelpers
                         'type' => 'bearish',
                         'index' => $loopIndex,
                         'distance' => $gapDistance,
+                        'midpoint' => ($data[$loopIndex - 1]['low'] + $data[$loopIndex + 1]['high']) / 2, // New field
                         'top' => $data[$loopIndex - 1]['low'],
                         'bottom' => $data[$loopIndex + 1]['high'],
                         'timestamp' => $data[$loopIndex]['binance_timestamp'],
@@ -1347,7 +1368,7 @@ class CommonHelpers
                     // --- Bullish Check ---
                     if ($fvg['type'] === 'bullish') {
                         // invalidation: close below bottom
-                        if (max($data[$i]['close'], $data[$i]['open']) < $bottom) {
+                        if ($data[$i]['low'] < $bottom) {
                             $isInvalidated = true;
                             break;
                         }
@@ -1365,7 +1386,7 @@ class CommonHelpers
                     // --- Bearish Check ---
                     else if ($fvg['type'] === 'bearish') {
                         // invalidation: close above top
-                        if (min($data[$i]['close'], $data[$i]['open']) > $top) {
+                        if ($data[$i]['high'] > $top) {
                             $isInvalidated = true;
                             break;
                         }
@@ -4510,7 +4531,28 @@ class CommonHelpers
         ];
     }
 
-    public static function getRecentPivot($data, $index, $pivotType = 'high', $pivotWidth = 3, $pivotMode = 'wick')
+    public static function mapValueToRange($value, $bottom, $top)
+    {
+        // Null protection
+        if ($value === null || $bottom === null || $top === null) {
+            return null;
+        }
+
+        // If top == bottom, the range size is 0. Handle this case (e.g., price is at 0% or 100%).
+        if ($top == $bottom) {
+            return ($value == $top) ? 100 : 0;
+        }
+
+        // Calculate the percentage position of $value within the range ($bottom to $top)
+        $range = $top - $bottom;
+        $position = $value - $bottom;
+
+        $percentage = ($position / $range) * 100;
+
+        return $percentage;
+    }
+
+    public static function getRecentPivot($data, $index, $pivotType = 'high', $pivotWidth = 3, $pivotMode = 'wick', $thresholdValue = null)
     {
         if ($pivotType === 'high') {
 
@@ -4524,6 +4566,12 @@ class CommonHelpers
 
 
                 if ($pivot === 'high_pivot') {
+
+                    if ($thresholdValue && $data[$loopIndex][$pivotModeName] <= $thresholdValue) {
+                        $loopIndex--;
+                        continue;
+                    }
+
                     return [
                         'index' => $loopIndex,
                         'mode' => $pivotMode,
@@ -4547,6 +4595,11 @@ class CommonHelpers
 
 
                 if ($pivot === 'low_pivot') {
+
+                    if ($thresholdValue && $data[$loopIndex][$pivotModeName] >= $thresholdValue) {
+                        $loopIndex--;
+                        continue;
+                    }
                     return [
                         'index' => $loopIndex,
                         'mode' => $pivotMode,

@@ -48,8 +48,8 @@ class BTCUSDT
             'TRENDLINE',
             'DOUBLE_BREAKOUTS',
             'FVG',
-            'ORDERBLOCK'
-            // 'AGGRESSIVE'
+            'ORDERBLOCK',
+            'AGGRESSIVE'
         ];
 
 
@@ -97,8 +97,8 @@ class BTCUSDT
         if (!$tradeSetupDetails && in_array('ORDERBLOCK', $enabledStrategies)) {
 
             $obService = new OrderBlockService(
-                pivotLeft: 7,
-                pivotRight: 7,
+                pivotLeft: 4,
+                pivotRight: 4,
                 bodyRatioThreshold: 0.80,
                 liquiditySweepLookback: 30,
                 expandOrderFlow: false,
@@ -127,7 +127,7 @@ class BTCUSDT
                     $entryPrice = $data[$index]['close'];
 
                     $sl = $recentOb['bottom'] * (1 - 0.08 / 100);
-                    $tp = $entryPrice + abs($sl - $entryPrice) * 2;
+                    $tp = $entryPrice + abs($sl - $entryPrice) * 5;
 
                     $openingRule = 'immidiate_opening';
 
@@ -151,7 +151,7 @@ class BTCUSDT
                         'account_id' => $account_id,
                         'candle_timestamp' => $data[$index]['binance_timestamp'],
                         'timestamp' => $current_system_time,
-                        'strategy_name' => 'AGGRESSIVE',
+                        'strategy_name' => 'ORDERBLOCK',
                         'trendline' => null,
                         'orderblock' => json_encode($recentOb),
                     ];
@@ -169,7 +169,7 @@ class BTCUSDT
                     $entryPrice = $data[$index]['close'];
 
                     $sl = $recentOb['top'] * (1 + 0.08 / 100);
-                    $tp = $entryPrice - abs($sl - $entryPrice) * 2;
+                    $tp = $entryPrice - abs($sl - $entryPrice) * 5;
 
                     $openingRule = 'immidiate_opening';
 
@@ -193,7 +193,7 @@ class BTCUSDT
                         'account_id' => $account_id,
                         'candle_timestamp' => $data[$index]['binance_timestamp'],
                         'timestamp' => $current_system_time,
-                        'strategy_name' => 'AGGRESSIVE',
+                        'strategy_name' => 'ORDERBLOCK',
                         'trendline' => null,
                         'orderblock' => json_encode($recentOb),
                     ];
@@ -214,17 +214,19 @@ class BTCUSDT
             $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'active')->first()), true);
 
 
+            $data4h = CommonHelpers::filterCandlestickData($data4hRaw, null, $data[$index]['binance_timestamp']);
 
-            if ($recentTrendLineSupport && $recentTrendLineSupport['m'] > 0) {
+            $candle4h = $data4h[count($data4h) - 2];
+            if ($recentTrendLineResistance && $recentTrendLineResistance['m'] < 0 && $candle4h['close'] < $candle4h['ema200']) {
 
                 $opening = true;
 
-                $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineSupport);
+                $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineResistance);
 
                 if (
                     $data[$index]['close'] < $breakoutPrice
                     && $data[$index]['open'] > $breakoutPrice
-                    && CommonHelpers::getPercentDiff($breakoutPrice, $data[$index]['close']) >= 0.05
+                    // && CommonHelpers::getPercentDiff($breakoutPrice, $data[$index]['close']) >= 0.05
 
                 ) {
 
@@ -247,13 +249,28 @@ class BTCUSDT
                     if (
                         CommonHelpers::getPercentDiff($entryPrice, $tp) < 0.5
 
-                        ||
-                        ($recentTrendLineResistance && $recentTrendLineSupport)
+                        // ||
+                        // ($recentTrendLineResistance && $recentTrendLineSupport)
                     ) {
                         $opening = false;
                     }
 
 
+                    $current_atr = $data[$index]['atr14'];
+                    // We require the SL distance to be at least 2 times the current 14-period ATR
+                    // This acts as a buffer against market noise and low-volatility traps.
+                    $min_sl_distance_atr = $current_atr * 2;
+                    // Retrieve the calculated stop-loss price for the current setup (from your existing logic)
+                    $sl_price = $sl; // Assuming '$sl' variable holds the calculated stop-loss price
+
+                    $sl_distance = abs($entryPrice - $sl_price);
+
+                    // --- ATR FILTER FOR SHORT ---
+                    if ($sl_distance < $min_sl_distance_atr) {
+                        // Fail Reason: The trade is too tight (Stop-Loss is too close) relative to current market volatility.
+                        $opening = false;
+                        // Log::info("TRENDLINE: SHORT filtered out due to SL distance ({$sl_distance}) being less than 2x ATR ({$min_sl_distance_atr})");
+                    }
 
                     if ($opening)
                         $tradeSetupDetails = [
@@ -286,15 +303,15 @@ class BTCUSDT
                 }
             }
 
-            if ($recentTrendLineResistance && $recentTrendLineResistance['m'] < 0) {
+            if ($recentTrendLineSupport && $recentTrendLineSupport['m'] > 0 && $candle4h['close'] > $candle4h['ema200']) {
 
                 $opening = true;
-                $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineResistance);
+                $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineSupport);
 
                 if (
                     $data[$index]['close'] > $breakoutPrice
                     && $data[$index]['open'] < $breakoutPrice
-                    && CommonHelpers::getPercentDiff($breakoutPrice, $data[$index]['close']) >= 0.05
+                    // && CommonHelpers::getPercentDiff($breakoutPrice, $data[$index]['close']) >= 0.05
                 ) {
 
 
@@ -314,12 +331,26 @@ class BTCUSDT
 
                     if (
                         CommonHelpers::getPercentDiff($entryPrice, $tp) < 0.5
-                        ||
-                        ($recentTrendLineResistance && $recentTrendLineSupport)
+                        // ||
+                        // ($recentTrendLineResistance && $recentTrendLineSupport)
                     ) {
                         $opening =  false;
                     }
 
+                    $current_atr = $data[$index]['atr14'];
+                    // We require the SL distance to be at least 2 times the current 14-period ATR
+                    // This acts as a buffer against market noise and low-volatility traps.
+                    $min_sl_distance_atr = $current_atr * 2;
+                    // Retrieve the calculated stop-loss price for the current setup (from your existing logic)
+                    $sl_price = $sl; // Assuming '$sl' variable holds the calculated stop-loss price
+                    $sl_distance = abs($entryPrice - $sl_price);
+                    // --- ATR FILTER FOR LONG ---
+                    if ($sl_distance < $min_sl_distance_atr) {
+                        // Fail Reason: The trade is too tight (Stop-Loss is too close) relative to current market volatility.
+                        // This is a sign of a choppy/ranging market or a poorly placed SL.
+                        $opening = false;
+                        // Log::info("TRENDLINE: LONG filtered out due to SL distance ({$sl_distance}) being less than 2x ATR ({$min_sl_distance_atr})");
+                    }
 
                     if ($opening)
                         $tradeSetupDetails = [
@@ -379,21 +410,25 @@ class BTCUSDT
                     $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
                     $zoneBottom = $currentZone->bottom;
                     $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
-                    if ($zoneSizePercent < 1) {
-                        $sl = $zoneTop;
-                    } else {
-                        $sl = $zoneMid;
-                    }
-                    $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('top', '<=', $breakoutValue)->orderBy('top', 'DESC')->first();
-                    $tpNextZone = ($nextZone->top + $nextZone->bottom) / 2;
-                    $tp = $tpNextZone;
 
-                    if (
-                        !isset($tp)
-                        // && CommonHelpers::getPercentDiff($currentZone->bottom, $breakoutValue) < 0.4
-                    ) {
-                        $opening = true;
+                    $recentHigh = CommonHelpers::getRecentPivot($data, $index, 'high', 3, 'wick');
+
+                    $sl = $recentHigh['value'];
+
+                    if (CommonHelpers::mapValueToRange($sl, $zoneBottom, $zoneTop) >= 50) {
+                        $sl = $zoneTop;
                     }
+
+                    $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('top', '<=', $breakoutValue)->orderBy('top', 'DESC')->first();
+
+                    if ($nextZone) {
+                        $tpNextZone = ($nextZone->top + $nextZone->bottom) / 2;
+                        $tp = $tpNextZone;
+                    } else {
+                        $zoneSize = $currentZone->top - $currentZone->bottom;
+                        $tp = $breakoutValue - ($zoneSize * 2); // Target 2x the current zone size below the trigger
+                    }
+
                     if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio) && $opening) {
                         $tradeSetupDetails = [
                             'symbol' => $symbol,
@@ -402,7 +437,7 @@ class BTCUSDT
                             'tp' => $tp,
                             'sl' => $sl,
                             'trigger_price' => $breakoutValue,
-                            'opening_rule' => 'waiting_till_next_touch',
+                            'opening_rule' => 'waiting_till_next_touch_confirm_close',
                             'zones' => json_encode([
                                 'top_zone' => $topZone,
                                 'middle_zone' => $middleZone,
@@ -453,29 +488,28 @@ class BTCUSDT
 
 
 
-                    if ($zoneSizePercent < 1) {
-                        $sl = $zoneBottom;
-                    } else {
-                        $sl = $zoneMid;
-                    }
+                    $recentLow = CommonHelpers::getRecentPivot($data, $index, 'low', 3, 'wick');
 
+                    $sl = $recentLow['value'];
+
+                    if (CommonHelpers::mapValueToRange($sl, $zoneBottom, $zoneTop) <= 50) {
+                        $sl = $zoneBottom;
+                    }
 
                     $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('bottom', '>', $breakoutValue)->orderBy('bottom', 'ASC')->first();
 
 
-                    $tpNextZone = ($nextZone->bottom + $nextZone->top) / 2;
-
-
-                    $tp = $tpNextZone;
-
-
-
-                    if (
-                        !isset($tp)
-                        // || CommonHelpers::getPercentDiff($currentZone->top, $breakoutValue) < 0.4
-                    ) {
-                        $opening = false;
+                    if ($nextZone) {
+                        $tpNextZone = ($nextZone->bottom + $nextZone->top) / 2;
+                        $tp = $tpNextZone;
+                    } else {
+                        // 💡 NEW LOGIC: Blue Sky TP for LONG trades
+                        $zoneSize = $currentZone->top - $currentZone->bottom;
+                        $tp = $breakoutValue + ($zoneSize * 2); // Target 2x the current zone size above the trigger
                     }
+
+
+
 
                     if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio) && $opening) {
                         $tradeSetupDetails = [
@@ -485,7 +519,7 @@ class BTCUSDT
                             'tp' => $tp,
                             'sl' => $sl,
                             'trigger_price' => $breakoutValue,
-                            'opening_rule' => 'waiting_till_next_touch',
+                            'opening_rule' => 'waiting_till_next_touch_confirm_close',
                             'zones' => json_encode([
                                 'top_zone' => $topZone,
                                 'middle_zone' => $middleZone,
@@ -556,8 +590,8 @@ class BTCUSDT
                             && $data[$index]['lower_wick'] > $data[$index]['upper_wick']
                         )) {
                             $entryPrice = $fvg['top'];
-                            $sl = $fvg['bottom'] * (1 - 0.05 / 100);
-                            $tp = $entryPrice + abs($entryPrice - $sl) * 2;
+                            $sl = $fvg['midpoint'] * (1 - 0.09 / 100);
+                            $tp = $entryPrice + abs($entryPrice - $sl) * 1.5;
 
                             if (CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio))
                                 $tradeSetupDetails = [
@@ -594,8 +628,8 @@ class BTCUSDT
                             // LONG OPENING LOGIC
 
                             $entryPrice = $data[$index]['close'];
-                            $sl = $fvg['bottom'] * (1 - 0.2 / 100);
-                            $tp = $entryPrice + abs($entryPrice - $sl) * 2;
+                            $sl = $fvg['midpoint'] * (1 - 0.09 / 100);
+                            $tp = $entryPrice + abs($entryPrice - $sl) * 1.5;
                             if (CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio))
                                 $tradeSetupDetails = [
                                     'symbol' => $symbol,
@@ -702,6 +736,8 @@ class BTCUSDT
                 }
             }
         }
+
+        
         // AGGRESSIVE ENTRIES SETUP
         if (!$tradeSetupDetails && in_array('AGGRESSIVE', $enabledStrategies)) {
 
@@ -1664,8 +1700,8 @@ class BTCUSDT
         if (!$supplyZone) {
             $supplyZone = [
                 'type' => 'supply',
-                'top' =>  $activeZone['top'] * (1 + 0.1 / 100),
-                'bottom' => $activeZone['top'] * (1 + 0.5 / 100),
+                'top' =>  $activeZone['top'] * (1 + 0.5 / 100),
+                'bottom' => $activeZone['top'] * (1 + 0.1 / 100),
                 'timestamp_initial' => $activeZone['timestamp_confirmed'],
                 'timestamp_confirmed' => $activeZone['timestamp_confirmed'],
                 'is_imaginary' => true,

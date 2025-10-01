@@ -29,6 +29,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Response;
 use PDO;
 
 use function PHPSTORM_META\map;
@@ -1740,8 +1741,15 @@ class BinanceController extends Controller
     {
 
 
-        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
+        // $timestamp = 1746126000000;
+        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 3, $timestamp, 'FUTURE');
+        $timestamp2 = $data[count($data) - 1]['binance_timestamp'] + (CommonHelpers::$binanceIntervals[$interval] * 60 * 1000);
+        $data2 = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 3, $timestamp2, 'FUTURE');
 
+        // // ==========================================================
+        // dd($data, $data2);
+        // dd("Test");
+        // // ==========================================================
         $data1hRaw = BinanceApiService::getCandleStickDataPast($symbol, '1h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
         $data4hRaw = BinanceApiService::getCandleStickDataPast($symbol, '4h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
 
@@ -1778,7 +1786,9 @@ class BinanceController extends Controller
                 continue;
             }
 
-            BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+            if ($symbol === 'BTCUSDT') {
+                BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
+            }
             if ($openTrade) {
                 $closingPrice = null;
 
@@ -1829,7 +1839,8 @@ class BinanceController extends Controller
 
                     $openTrade['timestamp'] = $timestamp;
                     $openTrade['zones'] = $openTrade['zones'] ? json_encode($openTrade['zones']) : null;
-                    $openTrade['fvg'] = $openTrade['profit'] ? json_encode($openTrade['fvg']) : null;
+                    $openTrade['fvg'] = $openTrade['fvg'] ? json_encode($openTrade['fvg']) : null;
+                    $openTrade['orderblock'] = $openTrade['orderblock'] ? json_encode($openTrade['orderblock']) : null;
                     $openTrade['trendline'] = $openTrade['trendline'] ? json_encode($openTrade['trendline']) : null;
 
                     DB::table('opened_trades')->insert($openTrade);
@@ -1849,26 +1860,30 @@ class BinanceController extends Controller
             if (!$tradeSetupDetails) {
                 // TESTMODE
 
-                if ($aggressive_waiting_candles == 0) {
 
-                    $testModeOptions = [
-                        'data' => $data,
-                        'index' => $index,
-                        'data1hRaw' => $data1hRaw,
-                        'data4hRaw' => $data4hRaw,
-                        'zoneProcessing' => false,
-                        'enabledStrategies' => [
-                            // 'AGGRESSIVE',
-                            // 'DOUBLE_BREAKOUTS',
-                            // 'TRENDLINE',
-                            // 'FVG',
-                            'ORDERBLOCK'
-                        ]
-                    ];
+                // if ($aggressive_waiting_candles == 0) {
+
+                $testModeOptions = [
+                    'data' => $data,
+                    'index' => $index,
+                    'data1hRaw' => $data1hRaw,
+                    'data4hRaw' => $data4hRaw,
+                    'zoneProcessing' => false,
+                    'enabledStrategies' => [
+                        'AGGRESSIVE',
+                        'DOUBLE_BREAKOUTS', // Finalized with maximum accuracy (70% - 100%) 
+                        'TRENDLINE', // Finalized with maximum accuracy (70% - 100%)
+                        'FVG', // Finalized with maximum accuracy (60% - 100%) - Low Frequency
+                        // 'ORDERBLOCK'
+                    ]
+                ];
+
+                if ($symbol === 'BTCUSDT') {
                     $tradeSetupDetails = BTCUSDT::runTrader($testModeOptions);
-                } else {
-                    $aggressive_waiting_candles--;
                 }
+                // } else {
+                //     $aggressive_waiting_candles--;
+                // }
             }
 
             // LOGIC WHEN ZONE IS ACTIVE
@@ -1912,6 +1927,142 @@ class BinanceController extends Controller
                         $sl = $tradeSetupDetails['sl'];
                         $entryPrice = $tradeSetupDetails['trigger_price'];
 
+                        $openTrade = [
+                            'openingPrice' => $entryPrice,
+                            'tp' => $tp,
+                            'sl' => $sl,
+                            'direction' => 'SHORT',
+                            'strategy_name' => $tradeSetupDetails['strategy_name'],
+
+                            'openingTimestamp' => $data[$index]['binance_timestamp'],
+                            'zones' => [
+                                'top_zone' => $tradeSetupDetails['top_zone'],
+                                'middle_zone' => $tradeSetupDetails['middle_zone'],
+                                'bottom_zone' => $tradeSetupDetails['bottom_zone'],
+                            ],
+                            'fvg' => isset($tradeSetupDetails['fvg']) ? $tradeSetupDetails['fvg'] : null,
+                            'trendline' => isset($tradeSetupDetails['trendline']) ? $tradeSetupDetails['trendline'] : null,
+                            'orderblock' => isset($tradeSetupDetails['orderblock']) ? $tradeSetupDetails['orderblock'] : null,
+
+                        ];
+                    }
+                } else if ($tradeSetupDetails['opening_rule'] === 'waiting_till_next_touch_confirm_close' && $tradeSetupDetails['signal_timestamp'] !== $data[$index]['binance_timestamp']) {
+                    if (
+                        $data[$index]['low'] <= $tradeSetupDetails['trigger_price']
+                        && $data[$index]['close'] > $tradeSetupDetails['trigger_price']
+                        && $tradeSetupDetails['direction'] === 'LONG'
+
+                    ) {
+
+                        $tp = $tradeSetupDetails['tp'];
+                        // $sl = $data[$index]['low'] * (1 - 0.15 / 100);
+                        // $sl = $tradeSetupDetails['sl'];
+
+                        $entryPrice = $data[$index]['close'];
+
+                        $recentLow = CommonHelpers::getRecentPivot($data, $index, 'low', 3, 'wick', $entryPrice * (1 - 0.09 / 100));
+
+                        if ($recentLow) {
+                            $sl = $recentLow['value'];
+                        } else {
+                            continue;
+                        }
+
+                        $currentZone = null;
+                        if (
+                            $sl <= $tradeSetupDetails['top_zone']['top'] && $sl >= $tradeSetupDetails['top_zone']['bottom']
+                        ) {
+                            $currentZone = $tradeSetupDetails['top_zone'];
+                        }
+                        if (
+                            $sl <= $tradeSetupDetails['middle_zone']['top'] && $sl >= $tradeSetupDetails['middle_zone']['bottom']
+                        ) {
+                            $currentZone = $tradeSetupDetails['middle_zone'];
+                        }
+                        if (
+                            $sl <= $tradeSetupDetails['bottom_zone']['top'] && $sl >= $tradeSetupDetails['bottom_zone']['bottom']
+                        ) {
+                            $currentZone = $tradeSetupDetails['bottom_zone'];
+                        }
+
+
+
+                        if (
+                            $currentZone
+                            && CommonHelpers::mapValueToRange($sl, $currentZone['bottom'], $currentZone['top']) <= 60
+                        ) {
+                            $sl = $currentZone['bottom'];
+                        }
+
+
+
+
+
+                        $openTrade = [
+                            'openingPrice' => $entryPrice,
+                            'tp' => $tp,
+                            'sl' => $sl,
+                            'direction' => 'LONG',
+                            'openingTimestamp' => $data[$index]['binance_timestamp'],
+                            'strategy_name' => $tradeSetupDetails['strategy_name'],
+                            'zones' => [
+                                'top_zone' => $tradeSetupDetails['top_zone'],
+                                'middle_zone' => $tradeSetupDetails['middle_zone'],
+                                'bottom_zone' => $tradeSetupDetails['bottom_zone'],
+                            ],
+                            'fvg' => isset($tradeSetupDetails['fvg']) ? $tradeSetupDetails['fvg'] : null,
+                            'trendline' => isset($tradeSetupDetails['trendline']) ? $tradeSetupDetails['trendline'] : null,
+                            'orderblock' => isset($tradeSetupDetails['orderblock']) ? $tradeSetupDetails['orderblock'] : null,
+
+                        ];
+                    }
+                    if (
+                        $data[$index]['high'] >= $tradeSetupDetails['trigger_price']
+                        && $data[$index]['close'] < $tradeSetupDetails['trigger_price']
+                        && $tradeSetupDetails['direction'] === 'SHORT'
+                    ) {
+
+                        $tp = $tradeSetupDetails['tp'];
+                        // $sl = $data[$index]['high'] * (1 + 0.15 / 100);
+                        // $sl = $tradeSetupDetails['sl'];
+                        $entryPrice = $data[$index]['close'];
+
+
+                        $recentHigh = CommonHelpers::getRecentPivot($data, $index, 'high', 3, 'wick', $entryPrice * (1 + 0.09 / 100));
+
+                        if ($recentHigh) {
+                            $sl = $recentHigh['value'];
+                        } else {
+                            continue;
+                        }
+
+                        // CHeck for zone intersection on sl
+
+                        $currentZone = null;
+                        if (
+                            $sl <= $tradeSetupDetails['top_zone']['top'] && $sl >= $tradeSetupDetails['top_zone']['bottom']
+                        ) {
+                            $currentZone = $tradeSetupDetails['top_zone'];
+                        }
+                        if (
+                            $sl <= $tradeSetupDetails['middle_zone']['top'] && $sl >= $tradeSetupDetails['middle_zone']['bottom']
+                        ) {
+                            $currentZone = $tradeSetupDetails['middle_zone'];
+                        }
+                        if (
+                            $sl <= $tradeSetupDetails['bottom_zone']['top'] && $sl >= $tradeSetupDetails['bottom_zone']['bottom']
+                        ) {
+                            $currentZone = $tradeSetupDetails['bottom_zone'];
+                        }
+
+
+
+                        if (
+                            $currentZone
+                            && CommonHelpers::mapValueToRange($sl, $currentZone['bottom'], $currentZone['top']) >= 40
+                        ) {
+                            $sl = $currentZone['top'];
+                        }
                         $openTrade = [
                             'openingPrice' => $entryPrice,
                             'tp' => $tp,
@@ -2006,6 +2157,8 @@ class BinanceController extends Controller
         $symbol = request('symbol', 'BTCUSDT');
         $interval = request('interval', '15m');
         $timestamp = request('timestamp', null);
+        $download = request('download', false);
+
 
         self::runStrategy($symbol, $interval, $timestamp);
 
@@ -2017,7 +2170,7 @@ class BinanceController extends Controller
         $equations = [];
         $trades = [];
         $allTrades = [];
-
+        $tradeDataExport = [];
         $withPlots = request('additionalPlots', 'yes');
 
 
@@ -2030,12 +2183,33 @@ class BinanceController extends Controller
             // ->where('timestamp', '<=', $data[count($data) - 1]['binance_timestamp'])
             ->get();
 
+        foreach ($data as $index => $candle) {
+            $tradeDataExport[$candle['binance_timestamp']] = [
+                'open' => $candle['open'],
+                'high' => $candle['high'],
+                'low' => $candle['low'],
+                'close' => $candle['close'],
+                'action' => null,
+                'direction' => null,
+                'tp' => null,
+                'sl' => null,
+                'entry_price' => null,
+                'strategy_name' => null,
+                'profit' => null,
+            ];
+        }
+
+
+
+
+        // Prepare trades array for exporting
         // Parse trades
         foreach ($allTradesDB as $trade) {
             $openTrade = json_decode(json_encode($trade), true);
             $openTrade['zones'] = json_decode($trade->zones, true);
             $openTrade['fvg'] = json_decode($trade->fvg, true);
             $openTrade['trendline'] = json_decode($trade->trendline, true);
+            $openTrade['orderblock'] = json_decode($trade->orderblock, true);
             $openTrade['profit_percent'] = $openTrade['profit'];
             $allTrades[] = $openTrade;
 
@@ -2055,6 +2229,29 @@ class BinanceController extends Controller
                 $openTrade['profit'],
                 $color
             );
+
+
+            // Opening Details
+            $tradeDataExport[$openTrade['openingTimestamp']]['action'] = 'open';
+            $tradeDataExport[$openTrade['openingTimestamp']]['direction'] = $openTrade['direction'];
+            $tradeDataExport[$openTrade['openingTimestamp']]['tp'] = $openTrade['tp'];
+            $tradeDataExport[$openTrade['openingTimestamp']]['sl'] = $openTrade['sl'];
+            $tradeDataExport[$openTrade['openingTimestamp']]['entry_price'] = $openTrade['openingPrice'];
+            $tradeDataExport[$openTrade['openingTimestamp']]['strategy_name'] = $openTrade['strategy_name'];
+            $tradeDataExport[$openTrade['openingTimestamp']]['profit'] = null;
+
+            // Closing Details
+            $tradeDataExport[$data[$index]['binance_timestamp']]['action'] = 'close';
+            $tradeDataExport[$data[$index]['binance_timestamp']]['direction'] = $openTrade['direction'];
+            $tradeDataExport[$data[$index]['binance_timestamp']]['tp'] = $openTrade['tp'];
+            $tradeDataExport[$data[$index]['binance_timestamp']]['sl'] = $openTrade['sl'];
+            $tradeDataExport[$data[$index]['binance_timestamp']]['entry_price'] = $openTrade['openingPrice'];
+            $tradeDataExport[$data[$index]['binance_timestamp']]['strategy_name'] = $openTrade['strategy_name'];
+            $tradeDataExport[$data[$index]['binance_timestamp']]['profit'] = $openTrade['profit'];
+
+
+
+
 
             if ($withPlots === 'yes') {
                 $topLevel = $openTrade['zones']['top_zone'] ?? null;
@@ -2136,10 +2333,59 @@ class BinanceController extends Controller
             }
         }
 
+
+
+        if ($download) {
+            // Build dynamic filename
+            $fileName = $symbol . '_' . $interval . '_' . now()->format('Ymd_His') . '_backtest.csv';
+
+            // CSV headers
+            $headers = [
+                "Content-type"        => "text/csv",
+                "Content-Disposition" => "attachment; filename={$fileName}",
+                "Pragma"              => "no-cache",
+                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+                "Expires"             => "0"
+            ];
+
+            $columns = ['timestamp', 'open', 'high', 'low', 'close', 'action', 'direction', 'tp', 'sl', 'entry_price', 'strategy_name', 'profit'];
+
+            $callback = function () use ($tradeDataExport, $columns) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, $columns);
+
+                foreach ($tradeDataExport as $timestamp => $row) {
+                    fputcsv($file, [
+                        $timestamp,
+                        $row['open'],
+                        $row['high'],
+                        $row['low'],
+                        $row['close'],
+                        $row['action'],
+                        $row['direction'],
+                        $row['tp'],
+                        $row['sl'],
+                        $row['entry_price'],
+                        $row['strategy_name'],
+                        $row['profit'],
+                    ]);
+                }
+                fclose($file);
+            };
+
+            return Response::stream($callback, 200, $headers);
+        }
+
+
+
+
+
+
+
         /**
          * === Strategy-wise Stats Calculation ===
          */
-        $strategies = ['FVG', 'TRENDLINE', 'DOUBLE_BREAKOUTS', 'AGGRESSIVE'];
+        $strategies = ['FVG', 'TRENDLINE', 'DOUBLE_BREAKOUTS', 'AGGRESSIVE', 'ORDERBLOCK'];
 
         $calculateStats = function ($trades) {
             if (!count($trades)) {
@@ -2184,6 +2430,11 @@ class BinanceController extends Controller
         }
         // Add TOTAL (all trades)
         $strategyStats['TOTAL'] = $calculateStats($allTrades);
+
+
+
+
+
 
         return view('MarketTrends.index', [
             'data' => $data,
