@@ -10,6 +10,9 @@ use App\Services\MailerService;
 use App\Services\OpeningConditionServiceLive;
 use App\Services\SupervisorService;
 use Carbon\Carbon;
+use DateInterval;
+use DatePeriod;
+use DateTime;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +52,31 @@ class CommonHelpers
         '1722152740000',
         '1719819940000',
         '1725176740000',
+    ];
+    public static $months = [
+        'january' => 1,
+        'jan' => 1,
+        'february' => 2,
+        'feb' => 2,
+        'march' => 3,
+        'mar' => 3,
+        'april' => 4,
+        'apr' => 4,
+        'may' => 5,
+        'june' => 6,
+        'jun' => 6,
+        'july' => 7,
+        'jul' => 7,
+        'august' => 8,
+        'aug' => 8,
+        'september' => 9,
+        'sep' => 9,
+        'october' => 10,
+        'oct' => 10,
+        'november' => 11,
+        'nov' => 11,
+        'december' => 12,
+        'dec' => 12,
     ];
     public static $candleDataKeysCoinReports = [
         // 'volume' => 'Volume',
@@ -97,6 +125,7 @@ class CommonHelpers
         'timestampReadable' => 'Time',
 
     ];
+
     public static $tpSlcolors = [
         'FVG' => [
             'tp' => 'rgba(0, 128, 255, 0.3)',   // blue
@@ -138,6 +167,66 @@ class CommonHelpers
     {
         return DB::table('user_meta')->where('user_id', $id)->where('meta_key', $meta_key)->first()->meta_value ?? $default;
     }
+
+    public static function generateCalendar($year, $month = null)
+    {
+        $months = [];
+        $weeks = [];
+
+        // If month not given → generate whole year
+        if ($month === null) {
+            $startDate = new DateTime("$year-01-01 00:00:00");
+            $endDate   = new DateTime("$year-12-31 23:59:59");
+        } else {
+            $startDate = new DateTime("$year-$month-01 00:00:00");
+            $endDate   = (clone $startDate)->modify('last day of this month 23:59:59');
+        }
+
+        // -------- Monthly Calendar --------
+        $interval = new DateInterval('P1M');
+        $period   = new DatePeriod(clone $startDate, $interval, $endDate);
+
+        foreach ($period as $dt) {
+            $monthStart = (clone $dt)->modify('first day of this month 00:00:00');
+            $monthEnd   = (clone $dt)->modify('last day of this month 23:59:59');
+
+            $months[] = [
+                'startTime' => $monthStart->getTimestamp() * 1000,
+                'endTime'   => $monthEnd->getTimestamp() * 1000,
+                'label'     => $monthStart->format('F Y'),
+            ];
+        }
+
+        // -------- Weekly Calendar --------
+        // Start from first Monday of given period
+        $weekStart = clone $startDate;
+        if ($weekStart->format('N') != 1) { // If not Monday, go back to Monday
+            $weekStart->modify('last monday');
+        }
+
+        while ($weekStart <= $endDate) {
+            $weekEnd = (clone $weekStart)->modify('sunday 23:59:59');
+
+            // clip last week if it exceeds endDate
+            if ($weekEnd > $endDate) {
+                $weekEnd = clone $endDate;
+            }
+
+            $weeks[] = [
+                'startTime' => $weekStart->getTimestamp() * 1000,
+                'endTime'   => $weekEnd->getTimestamp() * 1000,
+                'label'     => "Week of " . $weekStart->format('d M Y'),
+            ];
+
+            $weekStart->modify('+1 week');
+        }
+
+        return [
+            'months' => $months,
+            'weeks'  => $weeks,
+        ];
+    }
+
     public static function getIndicatorAverages($symbol, $interval, $market)
     {
         $columns = [
@@ -2574,6 +2663,16 @@ class CommonHelpers
         ];
     }
 
+
+    public static function getIndexDiffFromTimestamps($timestamp1, $timestamp2, $interval, $rounded = true)
+    {
+        if (!($timestamp1 && $timestamp2)) {
+            return false;
+        }
+        $intervalToMins = CommonHelpers::$binanceIntervals[$interval];
+        $diff = abs($timestamp1 - $timestamp2) / (60 * 1000 * $intervalToMins);
+        return $rounded ? intval($diff) : $diff;
+    }
 
     public static function findIndexFromTimestamp($data, $index, $timestamp, $interval = '15m')
     {

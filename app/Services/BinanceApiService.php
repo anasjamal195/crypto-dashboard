@@ -291,7 +291,7 @@ class BinanceApiService
                 $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
 
 
-                $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime,$symbol,$interval) : $response->json();
+                $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime, $symbol, $interval) : $response->json();
 
 
                 // Save cache to next rounded time
@@ -326,7 +326,7 @@ class BinanceApiService
                     $minutesToNextRounded = $intervalToMins - ($now->minute % $intervalToMins);
                     $nextRoundedTime = $now->copy()->addMinutes($minutesToNextRounded)->startOfMinute();
 
-                    $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime,$symbol,$interval) : $response->json();
+                    $result = $processed ? self::processData($response->json(), $market, $nextRoundedTime, $symbol, $interval) : $response->json();
 
 
 
@@ -399,13 +399,62 @@ class BinanceApiService
         return $emptyResult;
     }
 
+    public static function getCandleStickDataExtendedInternal(
+        $symbol = 'BTCUSDT',
+        $interval = '15m',
+        $limit = 100,
+        $timestamp = '',
+        $market = 'SPOT',
+        $processed = true
+    ) {
+        $tableName = strtolower($symbol) . '_candle_data';
+        $data = [];
+        if ($timestamp) {
+            // Case 1: timestamp is provided
+            $data = DB::table($tableName)
+                ->where('interval', $interval)
+                ->where('binance_timestamp', '>=', $timestamp)
+                ->orderBy('binance_timestamp', 'ASC')
+                ->limit($limit)
+                ->get()
+                ->toArray();
+        } else {
+            // Case 2: no timestamp → get last $limit rows, then sort ascending
+            $data = DB::table($tableName)
+                ->where('interval', $interval)
+                ->orderBy('binance_timestamp', 'DESC')
+                ->limit($limit)
+                ->get()
+                ->toArray();
+
+
+            // Reverse array so final result is ascending
+            $data = array_reverse($data);
+        }
+
+
+        $unprocessedData = json_decode(json_encode($data), true);
+        $data = array_map(function ($candle) {
+            return [
+                $candle->binance_timestamp,
+                $candle->open,
+                $candle->high,
+                $candle->low,
+                $candle->close,
+                $candle->volume,
+            ];
+        }, $data);
+
+        return $processed ? self::processData($data, 'FUTURE', null, $symbol, $interval) : $unprocessedData;
+    }
+
 
     public static function getCandleStickDataExtended($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
         $blockSize = 1000;
 
         if ($limit <= $blockSize) {
-            return self::getCandleStickData($symbol, $interval, $limit, $timestamp, $market, true);
+            return self::getCandleStickData($symbol, $interval, $limit, $timestamp, $market, $processed);
         } else {
 
             $intervalToMillis = self::$binanceIntervals[$interval] * 60 * 1000;
@@ -421,15 +470,16 @@ class BinanceApiService
 
             $dataRaw = self::getCandleStickData($symbol, $interval, $blockSize, $timestamp, $market, false);
 
+
+
             $limitLoop = $limit - $blockSize;
 
-            $lastTimestamp = $dataRaw[0][0] - $intervalToMillis;
+            $lastTimestamp = $dataRaw[0]['binance_timestamp'] - $intervalToMillis;
 
             while ($limitLoop > 0) {
                 $limitCurrent = ($limitLoop >= $blockSize) ? $blockSize : ($limitLoop);
                 $data = self::getCandleStickDataPast($symbol, $interval, $limitCurrent, $lastTimestamp, $market, false, false);
-
-                $lastTimestamp =  $data[0][0] - $intervalToMillis;
+                $lastTimestamp =  $data[0]['binance_timestamp'] - $intervalToMillis;
                 $dataRaw = array_merge($data, $dataRaw);
                 $limitLoop -= $limitCurrent;
                 sleep(0.3);
@@ -437,7 +487,18 @@ class BinanceApiService
 
 
 
-            return self::processData($dataRaw, $market,null,$symbol,$interval);
+            $unprocessedData  = array_map(function ($candle) {
+                return [
+                    $candle['binance_timestamp'],
+                    $candle['open'],
+                    $candle['high'],
+                    $candle['low'],
+                    $candle['close'],
+                    $candle['volume'],
+                ];
+            }, $dataRaw);
+
+            return $processed ? self::processData($unprocessedData, $market, null, $symbol, $interval) : $unprocessedData;
         }
     }
 
@@ -495,7 +556,17 @@ class BinanceApiService
 
             // If successful and valid JSON, return it
             if ($response->successful() && $response->json()) {
-                return $processed ? self::processData($response->json(), $market,null,$symbol,$interval) : $response->json();
+                $unProcessesResponse = array_map(function ($candle) {
+                    return [
+                        'binance_timestamp' => $candle[0],
+                        'open' => (float) $candle[1],
+                        'high' => (float) $candle[2],
+                        'low' => (float) $candle[3],
+                        'close' => (float) $candle[4],
+                        'volume' => (float) $candle[5]
+                    ];
+                }, $response->json());
+                return $processed ? self::processData($response->json(), $market, null, $symbol, $interval) : $unProcessesResponse;
             } else {
                 Log::error('Error Fetching Coin data: ' . $symbol . ' Server Parent ' . json_encode($response?->body()));
             }
@@ -515,7 +586,17 @@ class BinanceApiService
                 $response = Http::withOptions(['verify' => !app()->environment('local')])->asForm()->post($currentServerUrl, $params);
 
                 if ($response->successful() && $response->json()) {
-                    return $processed ? self::processData($response->json(), $market,null,$symbol,$interval) : $response->json();
+                    $unProcessesResponse = array_map(function ($candle) {
+                        return [
+                            'binance_timestamp' => $candle[0],
+                            'open' => (float) $candle[1],
+                            'high' => (float) $candle[2],
+                            'low' => (float) $candle[3],
+                            'close' => (float) $candle[4],
+                            'volume' => (float) $candle[5]
+                        ];
+                    }, $response->json());
+                    return $processed ? self::processData($response->json(), $market, null, $symbol, $interval) : $unProcessesResponse;
                 }
             } catch (\Exception $e) {
                 Log::error("Balancer Server [$serverUrlKey] failed: " . $e->getMessage());
@@ -584,7 +665,7 @@ class BinanceApiService
     }
 
 
-    protected static function processData($data, $market = 'SPOT', $cacheUpto = null,$symbol=null,$interval = null)
+    protected static function processData($data, $market = 'SPOT', $cacheUpto = null, $symbol = null, $interval = null)
     {
         // Calculate KDJ (predefined function)
         $KDJ = self::calculateKDJ($data);
