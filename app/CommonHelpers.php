@@ -53,6 +53,21 @@ class CommonHelpers
         '1719819940000',
         '1725176740000',
     ];
+    public static  $monthsFull = [
+        'january',
+        'february',
+        'march',
+        'april',
+        'may',
+        'june',
+        'july',
+        'august',
+        'september',
+        'october',
+        'november',
+        'december',
+    ];
+
     public static $months = [
         'january' => 1,
         'jan' => 1,
@@ -182,6 +197,25 @@ class CommonHelpers
                 ? json_encode($message, JSON_PRETTY_PRINT)
                 : $message) . PHP_EOL;
         }
+    }
+
+    public static function getDataParamsFromMonth($month, $year, $interval)
+    {
+
+        $month = CommonHelpers::$months[$month];
+        $calander = CommonHelpers::generateCalendar($year, $month);
+        $limit = CommonHelpers::getIndexDiffFromTimestamps(
+            $calander['months'][0]['startTime'],
+            $calander['months'][0]['endTime'],
+            $interval
+        ) + 1;
+        $timestamp = $calander['months'][0]['startTime'];
+
+
+        return [
+            'timestamp' => $timestamp,
+            'limit' => $limit
+        ];
     }
 
     public static function generateCalendar($year, $month = null)

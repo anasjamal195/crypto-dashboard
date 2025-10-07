@@ -1769,7 +1769,7 @@ class BinanceController extends Controller
 
         CommonHelpers::flushZones();
         DB::table('trade_setup_details')->truncate();
-        DB::table('opened_trades')->delete();
+        DB::table('opened_trades')->where('month', $month)->where('year', $year)->delete();
 
 
 
@@ -1784,8 +1784,6 @@ class BinanceController extends Controller
                 continue;
             }
 
-
-            CommonHelpers::console_log("Index: " . $index);
             if ($symbol === 'BTCUSDT') {
                 BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
             } else if ($symbol === 'ETHUSDT') {
@@ -2158,27 +2156,199 @@ class BinanceController extends Controller
     }
 
 
-    public static function showAnnualReport(Request $request){
+    public static function showAnnualReport(Request $request)
+    {
+        $year = request('year', null);
+        $symbol = request('symbol', null);
+        $interval = request('interval', null);
 
-        $year = request('year',null);
-        $month = request('month',null);
-        $symbol = request('symbol',null);
-        $interval = request('interval',null);
         $annualReports = [];
+        $statsYearly = [];
 
-
-
-        if($year && $month && $symbol && $interval){
-            $annualReports = DB::table('opened_trades')->where([
+        if ($year && $symbol && $interval) {
+            $yearlyRaw = json_decode(json_encode(DB::table('opened_trades')->where([
                 'symbol' => $symbol,
                 'interval' => $interval,
-                'month' => $month,
                 'year' => $year,
-            ])->get();
+            ])->get()), true);
+
+            foreach ($yearlyRaw as $trade) {
+                foreach (CommonHelpers::$monthsFull as $month) {
+                    if ($trade['month'] === $month) {
+                        $annualReports[$month][] = $trade;
+                        break;
+                    }
+                }
+            }
+
+            // STATISTICAL DETAILS PARSING
+            $monthlyStats = [];
+            $globalAccumulator = [
+                'total_trades' => 0,
+                'total_long' => 0,
+                'total_short' => 0,
+                'total_profitable_trades' => 0,
+                'total_losing_trades' => 0,
+                'total_profit' => 0,
+                'total_loss' => 0,
+                'total_fee' => 0,
+                'net_profit' => 0,
+                'strategy_wise_results' => [],
+            ];
+
+            foreach ($annualReports as $month => $tradesArr) {
+                // Initialize monthly counters
+                $totalTrades = 0;
+                $totalLong = 0;
+                $totalShort = 0;
+                $totalProfitable = 0;
+                $totalLosing = 0;
+                $totalProfit = 0;
+                $totalLoss = 0;
+                $strategyWise = [];
+
+                foreach ($tradesArr as $trade) {
+                    $direction = $trade['direction'] ?? null;
+                    $profit = $trade['profit'] ?? 0;
+                    $strategy = $trade['strategy_name'] ?? 'unknown';
+
+                    // Initialize strategy bucket
+                    if (!isset($strategyWise[$strategy])) {
+                        $strategyWise[$strategy] = [
+                            'total_trades' => 0,
+                            'total_long' => 0,
+                            'total_short' => 0,
+                            'total_profitable_trades' => 0,
+                            'total_losing_trades' => 0,
+                            'total_profit' => 0,
+                            'total_loss' => 0,
+                            'total_fee' => 0,
+                            'net_profit' => 0,
+                            'win_rate' => 0,
+                        ];
+                    }
+
+                    // === GLOBAL LEVEL ===
+                    $totalTrades++;
+                    if ($direction === 'LONG') $totalLong++;
+                    if ($direction === 'SHORT') $totalShort++;
+
+                    if ($profit > 0) {
+                        $totalProfitable++;
+                        $totalProfit += $profit;
+                    } elseif ($profit < 0) {
+                        $totalLosing++;
+                        $totalLoss += abs($profit);
+                    }
+
+                    // === STRATEGY LEVEL ===
+                    $strategyWise[$strategy]['total_trades']++;
+                    if ($direction === 'LONG') $strategyWise[$strategy]['total_long']++;
+                    if ($direction === 'SHORT') $strategyWise[$strategy]['total_short']++;
+
+                    if ($profit > 0) {
+                        $strategyWise[$strategy]['total_profitable_trades']++;
+                        $strategyWise[$strategy]['total_profit'] += $profit;
+                    } elseif ($profit < 0) {
+                        $strategyWise[$strategy]['total_losing_trades']++;
+                        $strategyWise[$strategy]['total_loss'] += abs($profit);
+                    }
+                }
+
+                // Compute monthly totals
+                $totalFee = $totalTrades * 0.15;
+                $netProfit = $totalProfit - $totalLoss - $totalFee;
+                $winRate = $totalTrades > 0 ? round(($totalProfitable / $totalTrades) * 100, 2) : 0;
+
+                // Compute per-strategy
+                foreach ($strategyWise as $strategy => &$s) {
+                    $s['total_fee'] = $s['total_trades'] * 0.15;
+                    $s['net_profit'] = round($s['total_profit'] - $s['total_loss'] - $s['total_fee'], 2);
+                    $s['win_rate'] = $s['total_trades'] > 0
+                        ? round(($s['total_profitable_trades'] / $s['total_trades']) * 100, 2)
+                        : 0;
+                }
+
+                // Store monthly results
+                $monthlyStats[$month] = [
+                    'total_trades' => $totalTrades,
+                    'total_long' => $totalLong,
+                    'total_short' => $totalShort,
+                    'total_profitable_trades' => $totalProfitable,
+                    'total_losing_trades' => $totalLosing,
+                    'total_profit' => round($totalProfit, 2),
+                    'total_loss' => round($totalLoss, 2),
+                    'total_fee' => round($totalFee, 2),
+                    'net_profit' => round($netProfit, 2),
+                    'win_rate' => $winRate,
+                    'strategy_wise_results' => $strategyWise,
+                ];
+
+                // === Accumulate into global totals ===
+                $globalAccumulator['total_trades'] += $totalTrades;
+                $globalAccumulator['total_long'] += $totalLong;
+                $globalAccumulator['total_short'] += $totalShort;
+                $globalAccumulator['total_profitable_trades'] += $totalProfitable;
+                $globalAccumulator['total_losing_trades'] += $totalLosing;
+                $globalAccumulator['total_profit'] += $totalProfit;
+                $globalAccumulator['total_loss'] += $totalLoss;
+                $globalAccumulator['total_fee'] += $totalFee;
+
+                // Merge strategy-wise globally
+                foreach ($strategyWise as $strategy => $s) {
+                    if (!isset($globalAccumulator['strategy_wise_results'][$strategy])) {
+                        $globalAccumulator['strategy_wise_results'][$strategy] = [
+                            'total_trades' => 0,
+                            'total_long' => 0,
+                            'total_short' => 0,
+                            'total_profitable_trades' => 0,
+                            'total_losing_trades' => 0,
+                            'total_profit' => 0,
+                            'total_loss' => 0,
+                            'total_fee' => 0,
+                            'net_profit' => 0,
+                            'win_rate' => 0,
+                        ];
+                    }
+
+                    // Merge numbers
+                    foreach (['total_trades', 'total_long', 'total_short', 'total_profitable_trades', 'total_losing_trades', 'total_profit', 'total_loss', 'total_fee'] as $key) {
+                        $globalAccumulator['strategy_wise_results'][$strategy][$key] += $s[$key];
+                    }
+                }
+            }
+
+            // Compute final global net profit and win rate
+            $globalAccumulator['net_profit'] = round(
+                $globalAccumulator['total_profit'] - $globalAccumulator['total_loss'] - $globalAccumulator['total_fee'],
+                2
+            );
+
+            $globalAccumulator['win_rate'] = $globalAccumulator['total_trades'] > 0
+                ? round(($globalAccumulator['total_profitable_trades'] / $globalAccumulator['total_trades']) * 100, 2)
+                : 0;
+
+            // Compute global strategy-level net profits and win rates
+            foreach ($globalAccumulator['strategy_wise_results'] as $strategy => &$gs) {
+                $gs['net_profit'] = round($gs['total_profit'] - $gs['total_loss'] - $gs['total_fee'], 2);
+                $gs['win_rate'] = $gs['total_trades'] > 0
+                    ? round(($gs['total_profitable_trades'] / $gs['total_trades']) * 100, 2)
+                    : 0;
+            }
+
+            // Combine final response structure
+            $stats = [
+                'global' => $globalAccumulator,
+                'monthly' => $monthlyStats,
+            ];
+        } else {
+            $stats = ['global' => [], 'monthly' => []];
         }
 
-        return view('annual-report',compact('annualReports'));
+        $pageSlug = 'AnnualReport';
+        return view('MarketTrends.annual-report', compact('stats','pageSlug'));
     }
+
     public function showTrends($market, Request $request)
     {
         $symbol = request('symbol', 'BTCUSDT');

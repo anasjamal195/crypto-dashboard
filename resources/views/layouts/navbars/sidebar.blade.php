@@ -134,7 +134,7 @@
                             </li>
                             {{-- FUTURE Child Tab --}}
                             <li
-                                class="{{ $pageSlug == 'CoinReportFUTURE' || $pageSlug == 'MarketTrendsFUTURE' || $pageSlug == 'averageCandlesticksFUTURE'  || $pageSlug == 'ConfirmedTrades' ? 'active' : '' }}">
+                                class="{{ $pageSlug == 'CoinReportFUTURE' || $pageSlug == 'MarketTrendsFUTURE' || $pageSlug == 'averageCandlesticksFUTURE' || $pageSlug == 'ConfirmedTrades' ? 'active' : '' }}">
                                 <a data-toggle="collapse" href="#futureMenu">
                                     <i class="tim-icons icon-spaceship"></i>
                                     <p>{{ __('FUTURE') }}
@@ -150,13 +150,15 @@
                                             </a>
                                         </li>
                                         <li @if ($pageSlug == 'MarketTrendsFUTURE') class="active" @endif>
-                                            <a href="{{ route('marketTrends', 'FUTURE') . '?interval=15m&symbol=BTCUSDT' }}">
+                                            <a
+                                                href="{{ route('marketTrends', 'FUTURE') . '?interval=15m&symbol=BTCUSDT' }}">
                                                 <i class="tim-icons icon-chart-bar-32"></i>
                                                 <p>{{ __('Market Trends') }}</p>
                                             </a>
                                         </li>
-                                        <li @if ($pageSlug == 'AnnualReportsFUTURE') class="active" @endif>
-                                            <a href="{{ route('annualReports') . '?interval=1h&symbol=BTCUSDT' }}">
+                                        <li @if ($pageSlug == 'AnnualReport') class="active" @endif>
+                                            <a
+                                                href="{{ route('annualReports') . '?interval=1h&symbol=BTCUSDT&year=2025' }}">
                                                 <i class="tim-icons icon-chart-bar-32"></i>
                                                 <p>{{ __('Annual Reports') }}</p>
                                             </a>
@@ -174,7 +176,7 @@
                                                 <p>{{ __('Live Trades') }}</p>
                                             </a>
                                         </li>
-                                      
+
                                         <li @if ($pageSlug == 'ConfirmedTrades') class="active" @endif>
                                             <a href="{{ route('coinReport.confirmed_trades', 'Live Trades') }}">
                                                 <i class="tim-icons icon-bell-55"></i>

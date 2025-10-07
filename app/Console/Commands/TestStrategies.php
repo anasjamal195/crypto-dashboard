@@ -38,33 +38,39 @@ class TestStrategies extends Command
 
 
 
+
+
         $symbol = 'BTCUSDT';
         $interval =  '1h';
-        $limit = null;
-        $timestamp = null;
-
-
-        $month = 'september';
         $year = 2025;
+        $months = [
+            'january' ,
+            'february' ,
+            'march' ,
+            'april' ,
+            'may' ,
+            'june' ,
+            'july' ,
+            'august' ,
+            'september' ,
+        ];
 
 
-        if ($month && $year) {
-            $month = CommonHelpers::$months[$month];
-            $calander = CommonHelpers::generateCalendar($year, $month);
-            $limit = CommonHelpers::getIndexDiffFromTimestamps(
-                $calander['months'][0]['startTime'],
-                $calander['months'][0]['endTime'],
-                $interval
-            ) + 1;
-            $timestamp = $calander['months'][0]['startTime'];
+        CommonHelpers::flushZones();
+        DB::table('trade_setup_details')->truncate();
+        DB::table('opened_trades')->delete();
+
+        foreach ($months as $month) {
+            $limit = null;
+            $timestamp = null;
+            if ($month && $year) {
+                $params = CommonHelpers::getDataParamsFromMonth($month, $year, $interval);
+                $limit = $params['limit'];
+                $timestamp = $params['timestamp'];
+            }
+            $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, $limit, $timestamp, 'FUTURE', true);
+            BinanceController::runStrategy($data, $symbol, $interval, $timestamp, $limit, $month, $year);
+            CommonHelpers::console_log($month . ' Completed.');
         }
-
-
-
-        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, $limit, $timestamp, 'FUTURE', true);
-
-        BinanceController::runStrategy($data, $symbol, $interval, $timestamp, $limit,$month,$year);
-
-        dd("Done");
     }
 }
