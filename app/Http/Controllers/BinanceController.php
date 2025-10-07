@@ -2177,8 +2177,6 @@ class BinanceController extends Controller
             ])->get();
         }
 
-
-
         return view('annual-report',compact('annualReports'));
     }
     public function showTrends($market, Request $request)
