@@ -59,7 +59,7 @@ Route::get('/coin-report/{market}', 'App\Http\Controllers\BinanceController@getC
 Route::get('/coin-report-confirmed-trades/{formula}', 'App\Http\Controllers\BinanceController@getCoinReportConfirmedTrades')->name('coinReport.confirmed_trades')->middleware([AnalystRoleRedirect::class]);
 Route::get('/coin-report-details/{market}', 'App\Http\Controllers\BinanceController@getCoinReportDetails')->name('coinReportDetails')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/market-trends/{market}', 'App\Http\Controllers\BinanceController@showTrends')->name('marketTrends')->middleware(['auth', AnalystRoleRedirect::class]);
-Route::get('/annual-report/{market}', 'App\Http\Controllers\BinanceController@showAnnualReport')->name('annualReports')->middleware(['auth', AnalystRoleRedirect::class]);
+Route::get('/annual-report', 'App\Http\Controllers\BinanceController@showAnnualReport')->name('annualReports')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/candle-averages/{market}', 'App\Http\Controllers\BinanceController@showAverages')->name('candle.averages')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::get('/internal-trader-settings', 'App\Http\Controllers\SettingsController@internalTraderSettings')->name('internal.trader.settings')->middleware(['auth', AnalystRoleRedirect::class]);
 Route::put('/internal-trader-settings-update', 'App\Http\Controllers\SettingsController@internalTraderSettingsUpdate')->name('internal.trader.settings.update')->middleware(['auth', AnalystRoleRedirect::class]);
