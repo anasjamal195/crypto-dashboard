@@ -53,6 +53,9 @@ class BTCUSDT
         ];
 
 
+
+
+
         // Check if testmode is enabled for debugging
         if ($testModeOptions) {
             $data = $testModeOptions['data'];
@@ -93,113 +96,6 @@ class BTCUSDT
 
 
 
-        // ORDERBLOCKS ENTRIES SETUP
-        if (!$tradeSetupDetails && in_array('ORDERBLOCK', $enabledStrategies)) {
-
-            $obService = new OrderBlockService(
-                pivotLeft: 4,
-                pivotRight: 4,
-                bodyRatioThreshold: 0.80,
-                liquiditySweepLookback: 30,
-                expandOrderFlow: false,
-                maxHistory: 1000
-            );
-
-            $recentOb = $obService->findRecentOb($data, $index, false);
-
-
-            if ($recentOb) {
-
-                $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
-                $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
-                $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
-                $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'active')->first()), true);
-
-
-                if (
-                    $recentOb['type'] === 'bullish'
-                    && $data[$index]['close'] > $recentOb['top']
-                    && $data[$index]['open'] < $recentOb['top']
-                ) {
-
-                    $sl = null;
-                    $tp = null;
-                    $entryPrice = $data[$index]['close'];
-
-                    $sl = $recentOb['bottom'] * (1 - 0.08 / 100);
-                    $tp = $entryPrice + abs($sl - $entryPrice) * 5;
-
-                    $openingRule = 'immidiate_opening';
-
-
-                    $tradeSetupDetails = [
-                        'symbol' => $symbol,
-                        'interval' => $interval,
-                        'direction' => 'LONG',
-                        'tp' => $tp,
-                        'sl' => $sl,
-                        'trigger_price' => $entryPrice,
-                        'opening_rule' => $openingRule,
-                        'zones' => json_encode([
-                            'top_zone' => $topZone,
-                            'middle_zone' => $middleZone,
-                            'bottom_zone' => $bottomZone
-                        ]),
-                        'fvg' => null,
-                        'current_zone' => $currentZone ? json_encode($currentZone) : null,
-                        'status' => 'WAITING',
-                        'account_id' => $account_id,
-                        'candle_timestamp' => $data[$index]['binance_timestamp'],
-                        'timestamp' => $current_system_time,
-                        'strategy_name' => 'ORDERBLOCK',
-                        'trendline' => null,
-                        'orderblock' => json_encode($recentOb),
-                    ];
-                }
-
-
-                if (
-                    $recentOb['type'] === 'bearish'
-                    && $data[$index]['close'] < $recentOb['bottom']
-                    && $data[$index]['open'] > $recentOb['bottom']
-                ) {
-
-                    $sl = null;
-                    $tp = null;
-                    $entryPrice = $data[$index]['close'];
-
-                    $sl = $recentOb['top'] * (1 + 0.08 / 100);
-                    $tp = $entryPrice - abs($sl - $entryPrice) * 5;
-
-                    $openingRule = 'immidiate_opening';
-
-
-                    $tradeSetupDetails = [
-                        'symbol' => $symbol,
-                        'interval' => $interval,
-                        'direction' => 'SHORT',
-                        'tp' => $tp,
-                        'sl' => $sl,
-                        'trigger_price' => $entryPrice,
-                        'opening_rule' => $openingRule,
-                        'zones' => json_encode([
-                            'top_zone' => $topZone,
-                            'middle_zone' => $middleZone,
-                            'bottom_zone' => $bottomZone
-                        ]),
-                        'fvg' => null,
-                        'current_zone' => $currentZone ? json_encode($currentZone) : null,
-                        'status' => 'WAITING',
-                        'account_id' => $account_id,
-                        'candle_timestamp' => $data[$index]['binance_timestamp'],
-                        'timestamp' => $current_system_time,
-                        'strategy_name' => 'ORDERBLOCK',
-                        'trendline' => null,
-                        'orderblock' => json_encode($recentOb),
-                    ];
-                }
-            }
-        }
         // TRENDLINE ENTRIES SETUP
         if (!$tradeSetupDetails && in_array('TRENDLINE', $enabledStrategies)) {
 
@@ -598,6 +494,15 @@ class BTCUSDT
                         (
                             $data[$index]['open'] < $fvg['top']
                             && $data[$index]['close'] > $fvg['top']
+                            // &&
+                            // !(
+                            //     CommonHelpers::rangesIntersect($data[$index]['body_max'], $data[$index]['high'], $topZone['bottom'], $topZone['top'])
+                            //     ||
+                            //     CommonHelpers::rangesIntersect($data[$index]['body_max'], $data[$index]['high'], $middleZone['bottom'], $middleZone['top'])
+                            //     ||
+                            //     CommonHelpers::rangesIntersect($data[$index]['body_max'], $data[$index]['high'], $bottomZone['bottom'], $bottomZone['top'])
+                            // )
+
                         )
                     ) {
                         // LONG OPENING LOGIC
@@ -635,6 +540,14 @@ class BTCUSDT
                         (
                             $data[$index]['open'] > $fvg['bottom']
                             && $data[$index]['close'] < $fvg['bottom']
+                            // &&
+                            // !(
+                            //     CommonHelpers::rangesIntersect($data[$index]['low'], $data[$index]['body_min'], $topZone['bottom'], $topZone['top'])
+                            //     ||
+                            //     CommonHelpers::rangesIntersect($data[$index]['low'], $data[$index]['body_min'], $middleZone['bottom'], $middleZone['top'])
+                            //     ||
+                            //     CommonHelpers::rangesIntersect($data[$index]['low'], $data[$index]['body_min'], $bottomZone['bottom'], $bottomZone['top'])
+                            // )
                         )
                     ) {
 
@@ -860,34 +773,66 @@ class BTCUSDT
             // && CommonHelpers::getPercentDiff($tradeSetupDetails['trigger_price'], $tradeSetupDetails['sl']) < 1
         ) {
 
-            $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] - abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 0.5;
 
 
-            $tradeSetupDetails['tp'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 1.5;
-
-            // Fetching last pivot high
-
-            $pivotHigh = CommonHelpers::getRecentPivot($data, $index, 'high', 5, 'wick', $tradeSetupDetails['tp']);
+            if ($tradeSetupDetails['direction'] === 'LONG') {
 
 
+                $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] - abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 0.5;
 
-            if ($tradeSetupDetails['strategy_name'] === 'TRENDLINE') {
 
-                if ($tradeSetupDetails['direction'] === 'LONG')
-                    $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] - abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
-                else
-                    $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
-            }
-            if ($pivotHigh) {
-                $tradeSetupDetails['tp'] = $pivotHigh['value'];
-            }
-            if ($tradeSetupDetails['direction'] === 'SHORT') {
-                return null;
+                // $tradeSetupDetails['tp'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 1.5;
+
+                // Fetching last pivot high
+
+                $pivotHigh = CommonHelpers::getRecentPivot($data, $index, 'high', 3, 'wick', $tradeSetupDetails['tp']);
+
+
+
+                if ($tradeSetupDetails['strategy_name'] === 'TRENDLINE') {
+
+                    if ($tradeSetupDetails['direction'] === 'LONG')
+                        $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] - abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
+                    else
+                        $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
+                }
+
+                if ($tradeSetupDetails['strategy_name'] !== 'TRENDLINE') {
+                    if ($pivotHigh) {
+                        $tradeSetupDetails['tp'] = $pivotHigh['value'];
+                    }
+                }
+            } else {
+                $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 0.5;
+
+
+                // $tradeSetupDetails['tp'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 1.5;
+
+                // Fetching last pivot high
+
+                $pivotLow = CommonHelpers::getRecentPivot($data, $index, 'low', 3, 'wick', $tradeSetupDetails['tp']);
+
+
+
+                if ($tradeSetupDetails['strategy_name'] === 'TRENDLINE') {
+
+                    if ($tradeSetupDetails['direction'] === 'LONG')
+                        $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] - abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
+                    else
+                        $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
+                }
+
+                if ($tradeSetupDetails['strategy_name'] !== 'TRENDLINE') {
+
+                    if ($pivotLow) {
+                        $tradeSetupDetails['tp'] = $pivotLow['value'];
+                    }
+                }
             }
             DB::table('trade_setup_details')->insert($tradeSetupDetails);
 
 
-            
+
             // Testing Mode options
 
             $tradeSetupDetails['top_zone'] = $tradeSetupDetails['zones'] ? json_decode($tradeSetupDetails['zones'], true)['top_zone'] : null;

@@ -168,6 +168,22 @@ class CommonHelpers
         return DB::table('user_meta')->where('user_id', $id)->where('meta_key', $meta_key)->first()->meta_value ?? $default;
     }
 
+    public static  function console_log($message, $type = 'info')
+    {
+        // Only log in console context
+        if (php_sapi_name() === 'cli') {
+            $prefix = match ($type) {
+                'error' => "\033[31m[ERROR]\033[0m ", // red
+                'warn', 'warning' => "\033[33m[WARN]\033[0m ", // yellow
+                'success' => "\033[32m[SUCCESS]\033[0m ", // green
+                default => "\033[36m[INFO]\033[0m ", // cyan
+            };
+            echo $prefix . (is_array($message) || is_object($message)
+                ? json_encode($message, JSON_PRETTY_PRINT)
+                : $message) . PHP_EOL;
+        }
+    }
+
     public static function generateCalendar($year, $month = null)
     {
         $months = [];

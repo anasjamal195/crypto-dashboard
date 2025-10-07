@@ -144,15 +144,21 @@
                                 <div class="collapse" id="futureMenu">
                                     <ul class="nav">
                                         <li @if ($pageSlug == 'CoinReportFUTURE') class="active" @endif>
-                                            <a href="{{ route('coinReport', 'FUTURE') . '?interval=15m' }}">
+                                            <a href="{{ route('coinReport', 'FUTURE') . '?interval=1h' }}">
                                                 <i class="tim-icons icon-coins"></i>
                                                 <p>{{ __('Coin Reports') }}</p>
                                             </a>
                                         </li>
                                         <li @if ($pageSlug == 'MarketTrendsFUTURE') class="active" @endif>
-                                            <a href="{{ route('marketTrends', 'FUTURE') . '?interval=15m' }}">
+                                            <a href="{{ route('marketTrends', 'FUTURE') . '?interval=15m&symbol=BTCUSDT' }}">
                                                 <i class="tim-icons icon-chart-bar-32"></i>
                                                 <p>{{ __('Market Trends') }}</p>
+                                            </a>
+                                        </li>
+                                        <li @if ($pageSlug == 'AnnualReportsFUTURE') class="active" @endif>
+                                            <a href="{{ route('annualReports') . '?interval=1h&symbol=BTCUSDT' }}">
+                                                <i class="tim-icons icon-chart-bar-32"></i>
+                                                <p>{{ __('Annual Reports') }}</p>
                                             </a>
                                         </li>
                                         {{-- <li @if ($pageSlug == 'averageCandlesticksFUTURE') class="active" @endif>

@@ -1741,30 +1741,33 @@ class BinanceController extends Controller
         );
     }
 
-    public static function runStrategy($symbol, $interval, $timestamp)
+    public static function runStrategy($data, $symbol, $interval, $timestamp, $limit = 3000, $month = null, $year = null)
     {
 
 
-        // $timestamp = 1746126000000;
-        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
 
-        $data1hRaw = BinanceApiService::getCandleStickDataPast($symbol, '1h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
-        $data4hRaw = BinanceApiService::getCandleStickDataPast($symbol, '4h', 1000, $data[count($data) - 1]['binance_timestamp'], 'FUTURE');
+        $timestampExtended = $timestamp - abs($data[count($data) - 1]['binance_timestamp'] - $data[0]['binance_timestamp']);
 
-        $openingMarkers = [];
-        $lines = [];
-        $equations = [];
-        $trades = [];
+
+        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, ($limit * 2) - 1, $timestampExtended, 'FUTURE');
+
+        $lastTimestamp = $data[count($data) - 1]['binance_timestamp'];
+
+        $intervalToMillis4h = CommonHelpers::$binanceIntervals['4h'] * 60 * 1000;
+        $first4hTimestamp = $lastTimestamp - ($intervalToMillis4h * $limit);
+
+        $data1hRaw = $data;
+        $data4hRaw = BinanceApiService::getCandleStickDataExtended($symbol, '4h', $limit, $first4hTimestamp, 'FUTURE');
+
+
 
         $openTrade = null;
         $tradeCount = 0;
         $minAllowedRatio = 0;
         $tradeSetupDetails = null;
 
-        $allTrades = [];
-        $openingMarkers[] = CommonHelpers::generateLabelPlot($data[10]['binance_timestamp'], 'blue', 'Init');
 
-        CommonHelpers::flushZones($symbol);
+        CommonHelpers::flushZones();
         DB::table('trade_setup_details')->truncate();
         DB::table('opened_trades')->delete();
 
@@ -1772,18 +1775,17 @@ class BinanceController extends Controller
 
         $tradeSetupDetails = null;
         $openTrade = null;
-        $aggressive_waiting_candles = 0;
-        CommonHelpers::flushZones($symbol);
-        DB::table('trade_setup_details')->truncate();
 
 
 
         foreach ($data as $index => $candle) {
 
-            if ($index < 10 || $index > (count($data) - 1)) {
+            if ($index < $limit || $index > (count($data) - 1)) {
                 continue;
             }
 
+
+            CommonHelpers::console_log("Index: " . $index);
             if ($symbol === 'BTCUSDT') {
                 BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
             } else if ($symbol === 'ETHUSDT') {
@@ -1797,7 +1799,7 @@ class BinanceController extends Controller
             }
 
 
-            
+
             if ($openTrade) {
                 $closingPrice = null;
 
@@ -1815,16 +1817,6 @@ class BinanceController extends Controller
                     if ($data[$index]['high'] >  $openTrade['sl']) {
                         $closingPrice = $openTrade['sl'];
                     }
-                }
-
-
-
-                if (
-                    $openTrade['strategy_name'] === 'FVG'
-                    && !$closingPrice
-                    && OpeningConditionServiceLive::getIndexDiffFromTimestamps($openTrade['openingTimestamp'], $data[$index]['binance_timestamp'], '15m') >= 5
-                ) {
-                    $openTrade['sl'] = $openTrade['openingPrice'];
                 }
 
 
@@ -1851,6 +1843,8 @@ class BinanceController extends Controller
                     $openTrade['fvg'] = $openTrade['fvg'] ? json_encode($openTrade['fvg']) : null;
                     $openTrade['orderblock'] = $openTrade['orderblock'] ? json_encode($openTrade['orderblock']) : null;
                     $openTrade['trendline'] = $openTrade['trendline'] ? json_encode($openTrade['trendline']) : null;
+                    $openTrade['month'] = $month;
+                    $openTrade['year'] = $year;
 
                     DB::table('opened_trades')->insert($openTrade);
 
@@ -2140,11 +2134,6 @@ class BinanceController extends Controller
                     if ($skippingConditions) {
                         $openTrade = null;
                         $tradeSetupDetails = null;
-                        if (
-                            $ratio < $minAllowedRatio
-                        )
-                            $openingMarkers[] = CommonHelpers::generateLabelPlot($data[$index]['binance_timestamp'], 'purple', 'Ratio');
-
                         continue;
                     }
                 }
@@ -2161,24 +2150,80 @@ class BinanceController extends Controller
 
 
                 // Recover loop if 8 candles are delayed after initial marking
-                // if (OpeningConditionServiceLive::getIndexDiffFromTimestamps($tradeSetupDetails['candle_timestamp'], $data[$index]['binance_timestamp'], '15m') >= 8) {
+                // if (OpeningConditionServiceLive::getIndexDiffFromTimestamps($tradeSetupDetails['candle_timestamp'], $data[$index]['binance_timestamp'], '1h') >= 8) {
                 //     $tradeSetupDetails = null;
                 // }
             }
         }
     }
+
+
+    public static function showAnnualReport(Request $request){
+
+        $year = request('year',null);
+        $month = request('month',null);
+        $symbol = request('symbol',null);
+        $interval = request('interval',null);
+        $annualReports = [];
+
+
+
+        if($year && $month && $symbol && $interval){
+            $annualReports = DB::table('opened_trades')->where([
+                'symbol' => $symbol,
+                'interval' => $interval,
+                'month' => $month,
+                'year' => $year,
+            ])->get();
+        }
+
+
+
+        return view('annual-report',compact('annualReports'));
+    }
     public function showTrends($market, Request $request)
     {
         $symbol = request('symbol', 'BTCUSDT');
-        $interval = request('interval', '15m');
+        $interval = request('interval', '1h');
         $timestamp = request('timestamp', null);
-        $download = request('download', false);
+        $download = request('download', 'no');
+        $rerun = request('rerun', 'no');
+        $month = request('month', null);
+        $year = request('year', date('Y'));
+        $limit = 1000;
+        $calanderReduced = null;
+        if ($month && $year) {
+            $month = CommonHelpers::$months[$month];
+            $calander = CommonHelpers::generateCalendar($year, $month);
+            $limit = CommonHelpers::getIndexDiffFromTimestamps(
+                $calander['months'][0]['startTime'],
+                $calander['months'][0]['endTime'],
+                $interval
+            ) + 1;
+            $timestamp = $calander['months'][0]['startTime'];
+        }
 
 
-        self::runStrategy($symbol, $interval, $timestamp);
 
         // Get candle data
-        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, 1000, $timestamp, 'FUTURE');
+
+        $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, $limit, $timestamp, 'FUTURE', true);
+
+
+
+
+        if ($month && $year && $rerun === 'yes') {
+            self::runStrategy($data, $symbol, $interval, $timestamp, $limit, $month, $year);
+        }
+
+
+
+
+        // ============================================================
+
+
+
+
 
         $openingMarkers = [];
         $lines = [];
@@ -2199,6 +2244,8 @@ class BinanceController extends Controller
             ->get();
 
         foreach ($data as $index => $candle) {
+
+
             $tradeDataExport[$candle['binance_timestamp']] = [
                 'open' => $candle['open'],
                 'high' => $candle['high'],
@@ -2220,6 +2267,7 @@ class BinanceController extends Controller
         // Prepare trades array for exporting
         // Parse trades
         foreach ($allTradesDB as $trade) {
+            // dd($trade);
             $openTrade = json_decode(json_encode($trade), true);
             $openTrade['zones'] = json_decode($trade->zones, true);
             $openTrade['fvg'] = json_decode($trade->fvg, true);
@@ -2281,7 +2329,7 @@ class BinanceController extends Controller
                     $trades[] = CommonHelpers::generateZonePlot(
                         $topLevel['top'],
                         $topLevel['bottom'],
-                        $openTrade['openingTimestamp'],
+                        $topLevel['timestamp_initial'],
                         $data[$index]['binance_timestamp'],
                         'red',
                         'binance'
@@ -2291,7 +2339,7 @@ class BinanceController extends Controller
                     $trades[] = CommonHelpers::generateZonePlot(
                         $bottomLevel['top'],
                         $bottomLevel['bottom'],
-                        $openTrade['openingTimestamp'],
+                        $bottomLevel['timestamp_initial'],
                         $data[$index]['binance_timestamp'],
                         'green',
                         'binance'
@@ -2301,7 +2349,7 @@ class BinanceController extends Controller
                     $trades[] = CommonHelpers::generateZonePlot(
                         $activeLevel['top'],
                         $activeLevel['bottom'],
-                        $openTrade['openingTimestamp'],
+                        $activeLevel['timestamp_initial'],
                         $data[$index]['binance_timestamp'],
                         'blue',
                         'binance'
@@ -2319,17 +2367,21 @@ class BinanceController extends Controller
                 }
 
                 if ($trendlineSupport) {
-                    $x1 = $data[$trendlineSupport['startIndex']]['binance_timestamp'];
+                    $startIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $trendlineSupport['startTimestamp'], $interval);
+                    $x1 = $trendlineSupport['startTimestamp'];
                     $x2 = $data[$index]['binance_timestamp'];
-                    $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineSupport['startIndex'], $trendlineSupport);
+
+                    $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $startIndex, $trendlineSupport);
                     $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $trendlineSupport);
 
                     $lines[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2);
                 }
                 if ($trendlineResistance) {
-                    $x1 = $data[$trendlineResistance['startIndex']]['binance_timestamp'];
+                    $startIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $trendlineResistance['startTimestamp'], $interval);
+
+                    $x1 = $trendlineResistance['startTimestamp'];
                     $x2 = $data[$index]['binance_timestamp'];
-                    $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $trendlineResistance['startIndex'], $trendlineResistance);
+                    $y1 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $startIndex, $trendlineResistance);
                     $y2 = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $trendlineResistance);
 
                     $lines[] = CommonHelpers::generateLinePlot($x1, $y1, $x2, $y2, 'red');
@@ -2350,7 +2402,7 @@ class BinanceController extends Controller
 
 
 
-        if ($download) {
+        if ($download === 'yes') {
             // Build dynamic filename
             $fileName = $symbol . '_' . $interval . '_' . now()->format('Ymd_His') . '_backtest.csv';
 
