@@ -92,6 +92,7 @@ class BTCUSDT
         ]);
 
 
+
         $tradeSetupDetails = null;
 
 
@@ -118,10 +119,18 @@ class BTCUSDT
                 $opening = true;
 
                 $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineResistance);
+                $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'active')->first()), true);
+                $recentActivity = self::getRecentActivity($symbol, $interval, $data, $index);
+                $breakCondition = $recentActivity ? (
+                    $recentActivity->activity !== 'break_out'
+                ) : true;
+
 
                 if (
                     $data[$index]['close'] < $breakoutPrice
                     && $data[$index]['open'] > $breakoutPrice
+                    && !$currentZone
+                    && $breakCondition
                     // && CommonHelpers::getPercentDiff($breakoutPrice, $data[$index]['close']) >= 0.05
 
                 ) {
@@ -133,7 +142,7 @@ class BTCUSDT
                     $entryPrice = $data[$index]['close'];
 
                     // Search for recent pivot high
-                    $recentHighPivot = CommonHelpers::getRecentPivot($data, $index, 'high', 3, 'wick');
+                    $recentHighPivot = CommonHelpers::getRecentPivot($data, $index, 'high', 2, 'wick');
 
 
                     if ($recentHighPivot) {
@@ -204,9 +213,17 @@ class BTCUSDT
                 $opening = true;
                 $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineSupport);
 
+                $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'active')->first()), true);
+                $recentActivity = self::getRecentActivity($symbol, $interval, $data, $index);
+
+                $breakCondition = $recentActivity ? (
+                    $recentActivity->activity !== 'break_down'
+                ) : true;
                 if (
                     $data[$index]['close'] > $breakoutPrice
                     && $data[$index]['open'] < $breakoutPrice
+                    && !$currentZone
+                    && $breakCondition
                     // && CommonHelpers::getPercentDiff($breakoutPrice, $data[$index]['close']) >= 0.05
                 ) {
 
@@ -326,7 +343,7 @@ class BTCUSDT
                     // }
 
 
-                    $tp = $breakoutValue - abs($breakoutValue - $sl) * 5;
+                    $tp = $breakoutValue - abs($breakoutValue - $sl) * 2;
                     if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio) && $opening) {
                         $tradeSetupDetails = [
                             'symbol' => $symbol,
@@ -407,7 +424,7 @@ class BTCUSDT
                     // }
 
 
-                    $tp = $breakoutValue + abs($breakoutValue - $sl) * 5;
+                    $tp = $breakoutValue + abs($breakoutValue - $sl) * 2;
 
 
 
@@ -609,7 +626,7 @@ class BTCUSDT
                     ]);
                 }
 
-                if ($currentActivity->activity === 'break_out' && $currentZone->safe_count == 0) {
+                if ($currentActivity->activity === 'break_out') {
 
 
                     $sl = null;
@@ -684,7 +701,7 @@ class BTCUSDT
                     }
                 }
 
-                if ($currentActivity->activity === 'break_down' && $currentZone->safe_count == 0) {
+                if ($currentActivity->activity === 'break_down') {
 
 
                     $sl = null;
@@ -772,7 +789,6 @@ class BTCUSDT
             // ($minsTo1h != 45)
             // && CommonHelpers::getPercentDiff($tradeSetupDetails['trigger_price'], $tradeSetupDetails['sl']) < 1
         ) {
-
 
 
             if ($tradeSetupDetails['direction'] === 'LONG') {

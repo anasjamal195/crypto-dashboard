@@ -1746,6 +1746,7 @@ class BinanceController extends Controller
 
 
 
+
         $timestampExtended = $timestamp - abs($data[count($data) - 1]['binance_timestamp'] - $data[0]['binance_timestamp']);
 
 
@@ -1759,7 +1760,10 @@ class BinanceController extends Controller
         $data1hRaw = $data;
         $data4hRaw = BinanceApiService::getCandleStickDataExtended($symbol, '4h', $limit, $first4hTimestamp, 'FUTURE');
 
-
+        $ignoredDays = [
+            'sat',
+            'sun'
+        ];
 
         $openTrade = null;
         $tradeCount = 0;
@@ -1769,7 +1773,7 @@ class BinanceController extends Controller
 
         CommonHelpers::flushZones();
         DB::table('trade_setup_details')->truncate();
-        DB::table('opened_trades')->where('month', $month)->where('year', $year)->delete();
+        DB::table('opened_trades')->where('symbol', $symbol)->where('interval', $interval)->where('month', $month)->where('year', $year)->delete();
 
 
 
@@ -1780,9 +1784,12 @@ class BinanceController extends Controller
 
         foreach ($data as $index => $candle) {
 
+
             if ($index < $limit || $index > (count($data) - 1)) {
                 continue;
             }
+
+
 
             if ($symbol === 'BTCUSDT') {
                 BTCUSDT::updateZonesInDb($data, $index, $data1hRaw, $data4hRaw, $interval, $symbol);
@@ -1817,6 +1824,54 @@ class BinanceController extends Controller
                     }
                 }
 
+
+
+                // Sl Trailing
+                if (!$closingPrice) {
+
+                    if ($openTrade['strategy_name'] === 'AGGRESSIVE') {
+
+
+                        $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'active')->first()), true);
+
+
+                        if ($currentZone) {
+
+                            if ($openTrade['direction'] === 'LONG' && $data[$index - 1]['close'] > ($openTrade['openingPrice'] * (1 + 0.2 / 100))) {
+                                if ($currentZone['bottom'] > ($openTrade['openingPrice'] * (1 + 0.2 / 100)) && $currentZone['bottom'] > $openTrade['sl']) {
+                                    $prevZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('top', '<=', $currentZone['bottom'])->orderBy('top', 'DESC')->first();
+                                    if ($prevZone) {
+                                        $openTrade['sl'] = $prevZone->top * (1 + 0.2 / 100);
+                                    }
+                                }
+                            } else   if ($openTrade['direction'] === 'SHORT' && $data[$index - 1]['close'] < ($openTrade['openingPrice'] * (1 - 0.2 / 100))) {
+                                if ($currentZone['top'] < ($openTrade['openingPrice'] * (1 - 0.2 / 100)) && $currentZone['top'] < $openTrade['sl']) {
+                                    $prevZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('bottom', '>', $currentZone['top'])->orderBy('bottom', 'ASC')->first();
+                                    if ($prevZone) {
+                                        $openTrade['sl'] = $prevZone->bottom * (1 - 0.2 / 100);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // if ($openTrade['strategy_name'] === 'TRENDLINE') {
+                    //     if ($openTrade['direction'] === 'LONG' && $data[$index - 1]['close'] >= ($openTrade['openingPrice'] * (1 + 0.2 / 100))) {
+                    //         $pivot = CommonHelpers::checkPivot($data, $index - 3, 3);
+
+                    //         if ($pivot === 'low_pivot') {
+                    //             $openTrade['sl'] = $openTrade['openingPrice'] * (1 + 0.2 / 100);
+                    //         }
+                    //     }
+                    //     if ($openTrade['direction'] === 'SHORT' && $data[$index - 1]['close'] <= ($openTrade['openingPrice'] * (1 - 0.2 / 100))) {
+                    //         $pivot = CommonHelpers::checkPivot($data, $index - 3, 3);
+
+                    //         if ($pivot === 'high_pivot') {
+                    //             $openTrade['sl'] = $openTrade['openingPrice'] * (1 - 0.2 / 100);
+                    //         }
+                    //     }
+                    // }
+                }
 
                 // Trade Closed final, resetting params and plotting
                 if ($closingPrice) {
@@ -1856,6 +1911,9 @@ class BinanceController extends Controller
 
 
 
+            $day = CommonHelpers::getDayNameFromTimestamp($data[$index]['binance_timestamp'], 'GMT+5');
+
+
 
 
             if (!$tradeSetupDetails) {
@@ -1872,7 +1930,7 @@ class BinanceController extends Controller
                     'zoneProcessing' => false,
                     'enabledStrategies' => [
                         'AGGRESSIVE',
-                        'DOUBLE_BREAKOUTS', // Finalized with maximum accuracy (70% - 100%) 
+                        // 'DOUBLE_BREAKOUTS', // Finalized with maximum accuracy (70% - 100%) 
                         'TRENDLINE', // Finalized with maximum accuracy (70% - 100%)
                         'FVG', // Finalized with maximum accuracy (60% - 100%) - Low Frequency
                         // 'ORDERBLOCK'
@@ -2162,15 +2220,36 @@ class BinanceController extends Controller
         $symbol = request('symbol', null);
         $interval = request('interval', null);
 
+        $overlapping = request('overlapping', null);
+
+        $filteredResponse = null;
+
+
+
         $annualReports = [];
         $statsYearly = [];
 
-        if ($year && $symbol && $interval) {
-            $yearlyRaw = json_decode(json_encode(DB::table('opened_trades')->where([
-                'symbol' => $symbol,
-                'interval' => $interval,
-                'year' => $year,
-            ])->get()), true);
+        if ($year && $interval) {
+
+
+            $yearlyRaw = [];
+
+            if ($symbol) {
+                $yearlyRaw = json_decode(json_encode(DB::table('opened_trades')->where([
+                    'symbol' => $symbol,
+                    'interval' => $interval,
+                    'year' => $year,
+                ])->get()), true);
+            } else {
+                $yearlyRaw = json_decode(json_encode(DB::table('opened_trades')->where([
+                    'interval' => $interval,
+                    'year' => $year,
+                ])->get()), true);
+            }
+            if ($overlapping) {
+                $filteredResponse = CommonHelpers::filterIntervalOverlapping($yearlyRaw);
+                $yearlyRaw = $filteredResponse['filteredTrades'];
+            }
 
             foreach ($yearlyRaw as $trade) {
                 foreach (CommonHelpers::$monthsFull as $month) {
@@ -2181,10 +2260,14 @@ class BinanceController extends Controller
                 }
             }
 
+
+
+
             // STATISTICAL DETAILS PARSING
             $monthlyStats = [];
             $globalAccumulator = [
                 'total_trades' => 0,
+                'monthly_avg' => 0,
                 'total_long' => 0,
                 'total_short' => 0,
                 'total_profitable_trades' => 0,
@@ -2318,6 +2401,8 @@ class BinanceController extends Controller
                 }
             }
 
+
+
             // Compute final global net profit and win rate
             $globalAccumulator['net_profit'] = round(
                 $globalAccumulator['total_profit'] - $globalAccumulator['total_loss'] - $globalAccumulator['total_fee'],
@@ -2327,6 +2412,11 @@ class BinanceController extends Controller
             $globalAccumulator['win_rate'] = $globalAccumulator['total_trades'] > 0
                 ? round(($globalAccumulator['total_profitable_trades'] / $globalAccumulator['total_trades']) * 100, 2)
                 : 0;
+
+
+            if (count($monthlyStats)) {
+                $globalAccumulator['monthly_avg'] = round($globalAccumulator['net_profit'] / count($monthlyStats), 2);
+            }
 
             // Compute global strategy-level net profits and win rates
             foreach ($globalAccumulator['strategy_wise_results'] as $strategy => &$gs) {
@@ -2346,12 +2436,12 @@ class BinanceController extends Controller
         }
 
         $pageSlug = 'AnnualReport';
-        return view('MarketTrends.annual-report', compact('stats','pageSlug'));
+        return view('MarketTrends.annual-report', compact('stats', 'pageSlug', 'filteredResponse'));
     }
 
     public function showTrends($market, Request $request)
     {
-        $symbol = request('symbol', 'BTCUSDT');
+        $symbol = request('symbol', null);
         $interval = request('interval', '1h');
         $timestamp = request('timestamp', null);
         $download = request('download', 'no');
@@ -2404,11 +2494,13 @@ class BinanceController extends Controller
 
 
 
-        $allTradesDB = DB::table('opened_trades')
-            ->where('symbol', $symbol)
-            ->where('interval', $interval)
+        $allTradesDB = DB::table('opened_trades');
+        if ($symbol)
+            $allTradesDB->where('symbol', $symbol);
+
+        $allTradesDB->where('interval', $interval)
             ->where('timestamp', '=', $timestamp)
-            // ->where('timestamp', '<=', $data[count($data) - 1]['binance_timestamp'])
+            ->where('year', $year)
             ->get();
 
         foreach ($data as $index => $candle) {

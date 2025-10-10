@@ -36,41 +36,45 @@ class TestStrategies extends Command
     public function handle()
     {
 
+        $symbols = [
+            'BTCUSDT',
+            'ETHUSDT'
+        ];
 
-
-
-
-        $symbol = 'BTCUSDT';
         $interval =  '1h';
         $year = 2025;
         $months = [
-            'january' ,
-            'february' ,
-            'march' ,
-            'april' ,
-            'may' ,
-            'june' ,
-            'july' ,
-            'august' ,
-            'september' ,
+            'january',
+            'february',
+            'march',
+            'april',
+            'may',
+            'june',
+            'july',
+            'august',
+            'september',
         ];
 
 
-        CommonHelpers::flushZones();
-        DB::table('trade_setup_details')->truncate();
-        DB::table('opened_trades')->delete();
+        foreach ($symbols as $symbol) {
 
-        foreach ($months as $month) {
-            $limit = null;
-            $timestamp = null;
-            if ($month && $year) {
-                $params = CommonHelpers::getDataParamsFromMonth($month, $year, $interval);
-                $limit = $params['limit'];
-                $timestamp = $params['timestamp'];
+            CommonHelpers::console_log("Processing: " . $symbol);
+
+            CommonHelpers::flushZones();
+            DB::table('trade_setup_details')->truncate();
+            DB::table('opened_trades')->where('symbol', $symbol)->where('interval', $interval)->delete();
+            foreach ($months as $month) {
+                $limit = null;
+                $timestamp = null;
+                if ($month && $year) {
+                    $params = CommonHelpers::getDataParamsFromMonth($month, $year, $interval);
+                    $limit = $params['limit'];
+                    $timestamp = $params['timestamp'];
+                }
+                $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, $limit, $timestamp, 'FUTURE', true);
+                BinanceController::runStrategy($data, $symbol, $interval, $timestamp, $limit, $month, $year);
+                CommonHelpers::console_log($month . ' Completed.');
             }
-            $data = BinanceApiService::getCandleStickDataExtended($symbol, $interval, $limit, $timestamp, 'FUTURE', true);
-            BinanceController::runStrategy($data, $symbol, $interval, $timestamp, $limit, $month, $year);
-            CommonHelpers::console_log($month . ' Completed.');
         }
     }
 }

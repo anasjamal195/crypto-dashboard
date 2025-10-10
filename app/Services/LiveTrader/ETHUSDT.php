@@ -16,7 +16,7 @@ class ETHUSDT
 
     // Control Panel for major params
     public static $symbol = 'ETHUSDT';
-    public static $interval = '15m';
+    public static $interval = '1h';
     public static $strategy_name = 'ZONES_FVGS_COMBINED';
     public static $minAllowedRatio = 1;
     public static $account_id = 2;
@@ -53,6 +53,9 @@ class ETHUSDT
         ];
 
 
+
+
+
         // Check if testmode is enabled for debugging
         if ($testModeOptions) {
             $data = $testModeOptions['data'];
@@ -75,7 +78,7 @@ class ETHUSDT
 
 
 
-        Log::info('ETHUSDT 15m Triggered', [
+        Log::info('ETHUSDT 1h Triggered', [
             'system_time' => $current_system_time,
             'candle_time' => $data[$index]['binance_timestamp'],
         ]);
@@ -87,6 +90,7 @@ class ETHUSDT
             'system_time' => $current_system_time,
             'candle_time' => $data[$index]['binance_timestamp'],
         ]);
+
 
 
         $tradeSetupDetails = null;
@@ -115,10 +119,18 @@ class ETHUSDT
                 $opening = true;
 
                 $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineResistance);
+                $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'active')->first()), true);
+                $recentActivity = self::getRecentActivity($symbol, $interval, $data, $index);
+                $breakCondition = $recentActivity ? (
+                    $recentActivity->activity !== 'break_out'
+                ) : true;
+
 
                 if (
                     $data[$index]['close'] < $breakoutPrice
                     && $data[$index]['open'] > $breakoutPrice
+                    && !$currentZone
+                    && $breakCondition
                     // && CommonHelpers::getPercentDiff($breakoutPrice, $data[$index]['close']) >= 0.05
 
                 ) {
@@ -130,7 +142,7 @@ class ETHUSDT
                     $entryPrice = $data[$index]['close'];
 
                     // Search for recent pivot high
-                    $recentHighPivot = CommonHelpers::getRecentPivot($data, $index, 'high', 3, 'wick');
+                    $recentHighPivot = CommonHelpers::getRecentPivot($data, $index, 'high', 2, 'wick');
 
 
                     if ($recentHighPivot) {
@@ -201,9 +213,17 @@ class ETHUSDT
                 $opening = true;
                 $breakoutPrice = CommonHelpers::getBreakoutPriceFromTrendLine($data, $index, $recentTrendLineSupport);
 
+                $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('status', 'active')->first()), true);
+                $recentActivity = self::getRecentActivity($symbol, $interval, $data, $index);
+
+                $breakCondition = $recentActivity ? (
+                    $recentActivity->activity !== 'break_down'
+                ) : true;
                 if (
                     $data[$index]['close'] > $breakoutPrice
                     && $data[$index]['open'] < $breakoutPrice
+                    && !$currentZone
+                    && $breakCondition
                     // && CommonHelpers::getPercentDiff($breakoutPrice, $data[$index]['close']) >= 0.05
                 ) {
 
@@ -276,6 +296,490 @@ class ETHUSDT
                 }
             }
         }
+        // SAFE ENTRIES SETUP
+        if (!$tradeSetupDetails && in_array('DOUBLE_BREAKOUTS', $enabledStrategies)) {
+
+            $opening = true;
+            // Opening Handler Logic
+            $currentActivity = self::getCurrentActivity($symbol, self::$interval, $data, $index);
+            Log::info('DOUBLE_BREAKOUTS: Activity Recorded', [
+                'current_activity' => $currentActivity,
+                'system_time' => $current_system_time,
+                'candle_time' => $data[$index]['binance_timestamp'],
+            ]);
+
+            if ($currentActivity) {
+                $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
+                $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
+                $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
+                $currentZone = DB::table('sd_zones')->where('id', $currentActivity->zone_id)->first();
+
+
+                if ($currentActivity->activity === 'low_break_down') {
+                    $breakoutValue = $currentActivity->value;
+                    $sl = null;
+                    $tp = null;
+                    $zoneTop = $currentZone->top;
+                    $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
+                    $zoneBottom = $currentZone->bottom;
+                    $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
+
+                    $recentHigh = CommonHelpers::getRecentPivot($data, $index, 'high', 3, 'wick');
+
+                    $sl = $recentHigh['value'];
+
+                    if (CommonHelpers::mapValueToRange($sl, $zoneBottom, $zoneTop) >= 50) {
+                        $sl = $zoneTop;
+                    }
+
+                    $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('top', '<=', $breakoutValue)->orderBy('top', 'DESC')->first();
+
+                    // if ($nextZone) {
+                    //     $tpNextZone = ($nextZone->top + $nextZone->bottom) / 2;
+                    //     $tp = $tpNextZone;
+                    // } else {
+                    //     $zoneSize = $currentZone->top - $currentZone->bottom;
+                    //     $tp = $breakoutValue - ($zoneSize * 2); // Target 2x the current zone size below the trigger
+                    // }
+
+
+                    $tp = $breakoutValue - abs($breakoutValue - $sl) * 2;
+                    if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio) && $opening) {
+                        $tradeSetupDetails = [
+                            'symbol' => $symbol,
+                            'interval' => $interval,
+                            'direction' => 'SHORT',
+                            'tp' => $tp,
+                            'sl' => $sl,
+                            'trigger_price' => $breakoutValue,
+                            'opening_rule' => 'waiting_till_next_touch_confirm_close',
+                            'zones' => json_encode([
+                                'top_zone' => $topZone,
+                                'middle_zone' => $middleZone,
+                                'bottom_zone' => $bottomZone
+                            ]),
+                            'fvg' => null,
+                            'current_zone' => json_encode($currentZone),
+                            'status' => 'WAITING',
+                            'account_id' => $account_id,
+                            'candle_timestamp' => $data[$index]['binance_timestamp'],
+                            'timestamp' => $current_system_time,
+                            'strategy_name' => 'DOUBLE_BREAKOUTS',
+                            'trendline' => null,
+                            'orderblock' => null,
+
+                        ];
+                    } else {
+                        Log::info('DOUBLE_BREAKOUTS: Skipped Due to ratio', [
+                            'current_activity' => $currentActivity,
+                            'system_time' => $current_system_time,
+                            'candle_time' => $data[$index]['binance_timestamp'],
+                            'breakout_value' => $breakoutValue,
+                            'tp' => $tp,
+                            'sl' => $sl,
+                        ]);
+                    }
+                } else if ($currentActivity->activity === 'high_break_out') {
+
+
+
+                    $breakoutValue = $currentActivity->value;
+
+
+                    $sl = null;
+                    $tp = null;
+
+
+
+
+
+
+                    $zoneTop = $currentZone->top;
+                    $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
+                    $zoneBottom = $currentZone->bottom;
+
+                    $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
+
+
+
+
+                    $recentLow = CommonHelpers::getRecentPivot($data, $index, 'low', 3, 'wick');
+
+                    $sl = $recentLow['value'];
+
+                    if (CommonHelpers::mapValueToRange($sl, $zoneBottom, $zoneTop) <= 50) {
+                        $sl = $zoneBottom;
+                    }
+
+                    $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('bottom', '>', $breakoutValue)->orderBy('bottom', 'ASC')->first();
+
+
+                    // if ($nextZone) {
+                    //     $tpNextZone = ($nextZone->bottom + $nextZone->top) / 2;
+                    //     $tp = $tpNextZone;
+                    // } else {
+                    //     // 💡 NEW LOGIC: Blue Sky TP for LONG trades
+                    //     $zoneSize = $currentZone->top - $currentZone->bottom;
+                    //     $tp = $breakoutValue + ($zoneSize * 2); // Target 2x the current zone size above the trigger
+                    // }
+
+
+                    $tp = $breakoutValue + abs($breakoutValue - $sl) * 2;
+
+
+
+
+                    if (CommonHelpers::checkRR($breakoutValue, $tp, $sl, self::$minAllowedRatio) && $opening) {
+                        $tradeSetupDetails = [
+                            'symbol' => $symbol,
+                            'interval' => $interval,
+                            'direction' => 'LONG',
+                            'tp' => $tp,
+                            'sl' => $sl,
+                            'trigger_price' => $breakoutValue,
+                            'opening_rule' => 'waiting_till_next_touch_confirm_close',
+                            'zones' => json_encode([
+                                'top_zone' => $topZone,
+                                'middle_zone' => $middleZone,
+                                'bottom_zone' => $bottomZone
+                            ]),
+                            'fvg' => null,
+                            'current_zone' => json_encode($currentZone),
+                            'status' => 'WAITING',
+                            'account_id' => $account_id,
+                            'candle_timestamp' => $data[$index]['binance_timestamp'],
+                            'timestamp' => $current_system_time,
+                            'strategy_name' => 'DOUBLE_BREAKOUTS',
+                            'trendline' => null,
+                            'orderblock' => null,
+
+
+
+                        ];
+                    } else {
+                        Log::info('DOUBLE_BREAKOUTS: Skipped Due to ratio', [
+                            'current_activity' => $currentActivity,
+                            'system_time' => $current_system_time,
+                            'candle_time' => $data[$index]['binance_timestamp'],
+                            'breakout_value' => $breakoutValue,
+                            'tp' => $tp,
+                            'sl' => $sl,
+                        ]);
+                    }
+                }
+            }
+        }
+        // FVG ENTRIES SETUP
+        if (!$tradeSetupDetails && in_array('FVG', $enabledStrategies)) {
+
+            $fvg = CommonHelpers::getLatestFVGatIndex($data, $index, 'body', 0.6, 50);
+            $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
+            $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
+            $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
+            $opening = true;
+
+            if ($fvg) {
+                $rangeIntersectCount = 0;
+
+                $fvgIndex = CommonHelpers::findIndexFromTimestamp($data, $index, $fvg['timestamp']);
+
+                if ($fvgIndex < 0) {
+                    return null;
+                }
+                $fvgCandle = $data[$fvgIndex];
+
+                if (
+                    ($topZone && $bottomZone && $middleZone)
+                ) {
+
+                    if (CommonHelpers::rangesIntersect($fvgCandle['low'], $fvgCandle['high'], $topZone['bottom'], $topZone['top']))
+                        $rangeIntersectCount++;
+                    if (CommonHelpers::rangesIntersect($fvgCandle['low'], $fvgCandle['high'], $middleZone['bottom'], $middleZone['top']))
+                        $rangeIntersectCount++;
+                    if (CommonHelpers::rangesIntersect($fvgCandle['low'], $fvgCandle['high'], $bottomZone['bottom'], $bottomZone['top']))
+                        $rangeIntersectCount++;
+                }
+                if (
+                    ($topZone && $bottomZone && $middleZone)
+                    && CommonHelpers::getPercentDiff($fvg['bottom'], $fvg['top'], true) < 1.5
+                    && $rangeIntersectCount <= 1
+                ) {
+
+
+
+                    if (
+                        (
+                            $data[$index]['open'] < $fvg['top']
+                            && $data[$index]['close'] > $fvg['top']
+                            // &&
+                            // !(
+                            //     CommonHelpers::rangesIntersect($data[$index]['body_max'], $data[$index]['high'], $topZone['bottom'], $topZone['top'])
+                            //     ||
+                            //     CommonHelpers::rangesIntersect($data[$index]['body_max'], $data[$index]['high'], $middleZone['bottom'], $middleZone['top'])
+                            //     ||
+                            //     CommonHelpers::rangesIntersect($data[$index]['body_max'], $data[$index]['high'], $bottomZone['bottom'], $bottomZone['top'])
+                            // )
+
+                        )
+                    ) {
+                        // LONG OPENING LOGIC
+
+                        $entryPrice = $data[$index]['close'];
+                        $sl = $fvg['midpoint'] * (1 - 0.09 / 100);
+                        $tp = $entryPrice + abs($entryPrice - $sl) * 3;
+                        if (CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio))
+                            $tradeSetupDetails = [
+                                'symbol' => $symbol,
+                                'interval' => $interval,
+                                'direction' => 'LONG',
+                                'tp' => $tp,
+                                'sl' => $sl,
+                                'trigger_price' => $entryPrice,
+                                'opening_rule' => 'immidiate_opening',
+                                'zones' => json_encode([
+                                    'top_zone' => $topZone,
+                                    'middle_zone' => $middleZone,
+                                    'bottom_zone' => $bottomZone
+                                ]),
+                                'fvg' => json_encode($fvg),
+                                'current_zone' => null,
+                                'status' => 'WAITING',
+                                'account_id' => $account_id,
+                                'candle_timestamp' => $data[$index]['binance_timestamp'],
+                                'timestamp' => $current_system_time,
+                                'strategy_name' => 'FVG',
+                                'trendline' => null,
+                                'orderblock' => null,
+
+                            ];
+                    }
+                    if (
+                        (
+                            $data[$index]['open'] > $fvg['bottom']
+                            && $data[$index]['close'] < $fvg['bottom']
+                            // &&
+                            // !(
+                            //     CommonHelpers::rangesIntersect($data[$index]['low'], $data[$index]['body_min'], $topZone['bottom'], $topZone['top'])
+                            //     ||
+                            //     CommonHelpers::rangesIntersect($data[$index]['low'], $data[$index]['body_min'], $middleZone['bottom'], $middleZone['top'])
+                            //     ||
+                            //     CommonHelpers::rangesIntersect($data[$index]['low'], $data[$index]['body_min'], $bottomZone['bottom'], $bottomZone['top'])
+                            // )
+                        )
+                    ) {
+
+                        // SHORT OPENING LOGIC
+                        $entryPrice = $data[$index]['close'];
+                        $sl = $fvg['top'] * (1 + 0.05 / 100);
+                        $tp = $entryPrice - abs($entryPrice - $sl) * 3;
+
+                        if (CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio))
+                            $tradeSetupDetails = [
+                                'symbol' => $symbol,
+                                'interval' => $interval,
+                                'direction' => 'SHORT',
+                                'tp' => $tp,
+                                'sl' => $sl,
+                                'trigger_price' => $entryPrice,
+                                'opening_rule' => 'immidiate_opening',
+                                'zones' => json_encode([
+                                    'top_zone' => $topZone,
+                                    'middle_zone' => $middleZone,
+                                    'bottom_zone' => $bottomZone
+                                ]),
+                                'fvg' => json_encode($fvg),
+                                'current_zone' => null,
+                                'status' => 'WAITING',
+                                'account_id' => $account_id,
+                                'candle_timestamp' => $data[$index]['binance_timestamp'],
+                                'timestamp' => $current_system_time,
+                                'strategy_name' => 'FVG',
+                                'trendline' => null,
+                                'orderblock' => null,
+
+                            ];
+                    }
+                }
+            }
+        }
+
+
+        // AGGRESSIVE ENTRIES SETUP
+        if (!$tradeSetupDetails && in_array('AGGRESSIVE', $enabledStrategies)) {
+
+            $topZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'top_zone')->first()), true);
+            $middleZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'middle_zone')->first()), true);
+            $bottomZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('name', 'bottom_zone')->first()), true);
+
+
+            $currentActivity = self::getCurrentActivity($symbol, $interval, $data, $index);
+            $opening = true;
+
+            if ($currentActivity) {
+
+
+                $currentZone = DB::table('sd_zones')->where('id', $currentActivity->zone_id)->first();
+                $prevActivity = self::getRecentActivity($symbol, $interval, $data, $index - 1);
+                if ($prevActivity && $currentActivity->zone_id !== $prevActivity->zone_id) {
+                    DB::table('sd_zones')->where('id', $currentZone->id)->update([
+                        'safe_count' => 0,
+                    ]);
+                }
+
+                if ($currentActivity->activity === 'break_out') {
+
+
+                    $sl = null;
+                    $tp = null;
+                    $entryPrice = $data[$index]['close'];
+                    $zoneTop = $currentZone->top;
+                    $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
+                    $zoneBottom = $currentZone->bottom;
+                    $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
+                    $sl = $zoneBottom;
+
+                    // if ($zoneSizePercent < 1) {
+                    //     $sl = $zoneBottom;
+                    // } else {
+                    //     $sl = $zoneMid;
+                    // }
+                    $sl = $sl * (1 - 0.1 / 100);
+
+                    $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('bottom', '>', $entryPrice)->orderBy('bottom', 'ASC')->first();
+
+                    // if (!$nextZone) {
+                    //     $tp = $entryPrice + abs($entryPrice - $sl) * 1;
+                    // } else {
+                    //     // $tpNextZone = ($nextZone->bottom + $nextZone->top) / 2;
+                    //     $tpNextZone = $nextZone->bottom;
+                    //     $tp = $tpNextZone;
+                    // }
+
+                    $tp = $entryPrice + abs($entryPrice - $sl) * 3;
+
+                    $breakoutDistance = CommonHelpers::getPercentDiff($entryPrice, $currentZone->top, true);
+                    $openingRule = 'immidiate_opening';
+                    if ($breakoutDistance >= 0.2) {
+                        $openingRule = 'waiting_till_next_touch';
+                        $entryPrice = $currentZone->top;
+                    }
+
+                    // LONG Entry
+                    if (
+                        CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio)
+                        && $breakoutDistance  >= 0.1
+                        && $data[$index]['close'] < $data[$index]['ma99']
+                        && $zoneSizePercent >= 0.2
+                    ) {
+                        $tradeSetupDetails = [
+                            'symbol' => $symbol,
+                            'interval' => $interval,
+                            'direction' => 'LONG',
+                            'tp' => $tp,
+                            'sl' => $sl,
+                            'trigger_price' => $entryPrice,
+                            'opening_rule' => $openingRule,
+                            'zones' => json_encode([
+                                'top_zone' => $topZone,
+                                'middle_zone' => $middleZone,
+                                'bottom_zone' => $bottomZone
+                            ]),
+                            'fvg' => null,
+                            'current_zone' => $currentZone ? json_encode($currentZone) : null,
+                            'status' => 'WAITING',
+                            'account_id' => $account_id,
+                            'candle_timestamp' => $data[$index]['binance_timestamp'],
+                            'timestamp' => $current_system_time,
+                            'strategy_name' => 'AGGRESSIVE',
+                            'trendline' => null,
+                            'orderblock' => null,
+
+                        ];
+                        DB::table('sd_zones')->where('id', $currentZone->id)->update([
+                            'safe_count' => $currentZone->safe_count + 1,
+                        ]);
+                    }
+                }
+
+                if ($currentActivity->activity === 'break_down') {
+
+
+                    $sl = null;
+                    $tp = null;
+                    $entryPrice = $data[$index]['close'];
+                    $zoneTop = $currentZone->top;
+                    $zoneMid = ($currentZone->top + $currentZone->bottom) / 2;
+                    $zoneBottom = $currentZone->bottom;
+                    $zoneSizePercent = CommonHelpers::getPercentDiff($currentZone->bottom, $currentZone->top);
+                    $sl = $zoneTop;
+
+                    // if ($zoneSizePercent < 1) {
+                    //     $sl = $zoneTop;
+                    // } else {
+                    //     $sl = $zoneMid;
+                    // }
+                    $sl = $sl * (1 + 0.1 / 100);
+                    $nextZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $interval)->where('top', '<=', $entryPrice)->orderBy('top', 'DESC')->first();
+
+                    // if (!$nextZone) {
+                    //     $tp = $entryPrice - abs($entryPrice - $sl) * 1;
+                    // } else {
+
+                    //     // $tpNextZone = ($nextZone->top + $nextZone->bottom) / 2;
+                    //     $tpNextZone = $nextZone->top;
+                    //     $tp = $tpNextZone;
+                    // }
+
+
+                    $tp = $entryPrice - abs($entryPrice - $sl) * 3;
+
+                    $breakoutDistance = CommonHelpers::getPercentDiff($entryPrice, $currentZone->top, true);
+
+                    $openingRule = 'immidiate_opening';
+
+
+                    if ($breakoutDistance >= 0.2) {
+                        $openingRule = 'waiting_till_next_touch';
+                        $entryPrice = $currentZone->bottom;
+                    }
+                    // SHORT Entry
+                    if (
+                        CommonHelpers::checkRR($entryPrice, $tp, $sl, self::$minAllowedRatio)
+                        && $breakoutDistance >= 0.1
+                        && $data[$index]['close'] > $data[$index]['ma99']
+                        && $zoneSizePercent >= 0.2
+                    ) {
+                        $tradeSetupDetails = [
+                            'symbol' => $symbol,
+                            'interval' => $interval,
+                            'direction' => 'SHORT',
+                            'tp' => $tp,
+                            'sl' => $sl,
+                            'trigger_price' => $entryPrice,
+                            'opening_rule' => $openingRule,
+                            'zones' => json_encode([
+                                'top_zone' => $topZone,
+                                'middle_zone' => $middleZone,
+                                'bottom_zone' => $bottomZone
+                            ]),
+                            'fvg' => null,
+                            'current_zone' => $currentZone ? json_encode($currentZone) : null,
+                            'status' => 'WAITING',
+                            'account_id' => $account_id,
+                            'candle_timestamp' => $data[$index]['binance_timestamp'],
+                            'timestamp' => $current_system_time,
+                            'strategy_name' => 'AGGRESSIVE',
+                            'trendline' => null,
+                            'orderblock' => null,
+
+                        ];
+                        DB::table('sd_zones')->where('id', $currentZone->id)->update([
+                            'safe_count' => $currentZone->safe_count + 1,
+                        ]);
+                    }
+                }
+            }
+        }
 
 
 
@@ -285,7 +789,64 @@ class ETHUSDT
             // ($minsTo1h != 45)
             // && CommonHelpers::getPercentDiff($tradeSetupDetails['trigger_price'], $tradeSetupDetails['sl']) < 1
         ) {
+
+
+            if ($tradeSetupDetails['direction'] === 'LONG') {
+
+
+                $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] - abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 0.5;
+
+
+                // $tradeSetupDetails['tp'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 1.5;
+
+                // Fetching last pivot high
+
+                $pivotHigh = CommonHelpers::getRecentPivot($data, $index, 'high', 3, 'wick', $tradeSetupDetails['tp']);
+
+
+
+                if ($tradeSetupDetails['strategy_name'] === 'TRENDLINE') {
+
+                    if ($tradeSetupDetails['direction'] === 'LONG')
+                        $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] - abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
+                    else
+                        $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
+                }
+
+                if ($tradeSetupDetails['strategy_name'] !== 'TRENDLINE') {
+                    if ($pivotHigh) {
+                        $tradeSetupDetails['tp'] = $pivotHigh['value'];
+                    }
+                }
+            } else {
+                $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 0.5;
+
+
+                // $tradeSetupDetails['tp'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['tp'] - $tradeSetupDetails['trigger_price']) * 1.5;
+
+                // Fetching last pivot high
+
+                $pivotLow = CommonHelpers::getRecentPivot($data, $index, 'low', 3, 'wick', $tradeSetupDetails['tp']);
+
+
+
+                if ($tradeSetupDetails['strategy_name'] === 'TRENDLINE') {
+
+                    if ($tradeSetupDetails['direction'] === 'LONG')
+                        $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] - abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
+                    else
+                        $tradeSetupDetails['sl'] = $tradeSetupDetails['trigger_price'] + abs($tradeSetupDetails['sl'] - $tradeSetupDetails['trigger_price']) * 2;
+                }
+
+                if ($tradeSetupDetails['strategy_name'] !== 'TRENDLINE') {
+
+                    if ($pivotLow) {
+                        $tradeSetupDetails['tp'] = $pivotLow['value'];
+                    }
+                }
+            }
             DB::table('trade_setup_details')->insert($tradeSetupDetails);
+
 
 
             // Testing Mode options
@@ -313,7 +874,7 @@ class ETHUSDT
 
 
         $allLevels = self::findZonesOn1h($dataHigherFilterZoneRaw, $dataHigherRaw, $data[$index], false);
-        $candle15m = $data[$index];
+        $candle1h = $data[$index];
         $currentPrice = $data[$index]['close'];
 
 
@@ -801,6 +1362,9 @@ class ETHUSDT
     public static function getCurrentActivity($symbol, $interval, $data, $index, $activity = null)
     {
 
+        if ($index < 0) {
+            return null;
+        }
         if ($activity) {
             $activity = DB::table('sd_zones_activities')->where('symbol', $symbol)->where('interval', $interval)->where('timestamp', $data[$index]['binance_timestamp'])->where('activity', $activity)->orderBy('timestamp', 'DESC')->first();
             return $activity;
@@ -811,6 +1375,9 @@ class ETHUSDT
     }
     public static function getRecentActivity($symbol, $interval, $data, $index, $activity = null, $exceptions = [])
     {
+        if ($index < 0) {
+            return null;
+        }
         if ($activity) {
             $activity = DB::table('sd_zones_activities')->where('symbol', $symbol)->where('interval', $interval)->where('timestamp', '<=', $data[$index]['binance_timestamp'])->where('activity', $activity)->whereNotIn('activity', $exceptions)->orderBy('timestamp', 'DESC')->first();
             return $activity;
@@ -844,9 +1411,9 @@ class ETHUSDT
 
         return true;
     }
-    public static function getCandle4h($data1hRaw, $candle15m)
+    public static function getCandle4h($data1hRaw, $candle1h)
     {
-        $data = CommonHelpers::filterCandlestickData($data1hRaw, null, $candle15m['binance_timestamp']);
+        $data = CommonHelpers::filterCandlestickData($data1hRaw, null, $candle1h['binance_timestamp']);
         $index = count($data) - 2;
         return $data[$index];
     }
@@ -1133,10 +1700,10 @@ class ETHUSDT
         }
         return $demandZone;
     }
-    public static function findZonesOn1h($data4hRaw, $data1hRaw, $candle15m, $filterOnHigher = true)
+    public static function findZonesOn1h($data4hRaw, $data1hRaw, $candle1h, $filterOnHigher = true)
     {
 
-        $data = CommonHelpers::filterCandlestickData($data1hRaw, null, $candle15m['binance_timestamp']);
+        $data = CommonHelpers::filterCandlestickData($data1hRaw, null, $candle1h['binance_timestamp']);
         $index = count($data) - 2;
 
         // Get All 4h Levels in timestamp ASC order
@@ -1230,7 +1797,7 @@ class ETHUSDT
 
         if ($filterOnHigher) {
 
-            $allLevels4h = self::findZonesOn4h($data4hRaw, $candle15m);
+            $allLevels4h = self::findZonesOn4h($data4hRaw, $candle1h);
             $filteredLevels1h = [];
 
             foreach ($allLevels as $level1h) {
@@ -1259,10 +1826,10 @@ class ETHUSDT
 
         return $filteredLevels1h;
     }
-    public static function findZonesOn4h($data4hRaw, $candle15m)
+    public static function findZonesOn4h($data4hRaw, $candle1h)
     {
 
-        $data = CommonHelpers::filterCandlestickData($data4hRaw, null, $candle15m['binance_timestamp']);
+        $data = CommonHelpers::filterCandlestickData($data4hRaw, null, $candle1h['binance_timestamp']);
         $index = count($data) - 2;
 
         // Get All 4h Levels in timestamp ASC order
@@ -1352,7 +1919,9 @@ class ETHUSDT
                             'm' => $m,
                             'c' => $c,
                             'startIndex' => $lowPivot[0]['index'],
+                            'startTimestamp' => $lowPivot[0]['x'],
                             'endIndex' => $lowPivot[count($lowPivot) - 1]['index'],
+                            'endTimestamp' => $lowPivot[count($lowPivot) - 1]['x'],
                         ];
                         // dd($regression);
                     } else {
@@ -1390,7 +1959,9 @@ class ETHUSDT
                             'm' => $m,
                             'c' => $c,
                             'startIndex' => $highPivot[0]['index'],
+                            'startTimestamp' => $highPivot[0]['x'],
                             'endIndex' => $highPivot[count($highPivot) - 1]['index'],
+                            'endTimestamp' => $highPivot[count($highPivot) - 1]['x'],
                         ];
                         // dd($regression);
                     } else {

@@ -63,6 +63,17 @@
                                         <h6 class="text-muted small">Net Profit</h6><span
                                             class="{{ $stats['global']['net_profit'] >= 0 ? 'text-success' : 'text-danger' }} font-weight-bold">{{ number_format($stats['global']['net_profit'], 2) }}%</span>
                                     </div>
+                                    <div class="col-4 col-md-2 mb-3">
+                                        <h6 class="text-muted small">Monthly Average</h6><span
+                                            class="{{ $stats['global']['monthly_avg'] >= 0 ? 'text-success' : 'text-danger' }} font-weight-bold">{{ number_format($stats['global']['monthly_avg'], 2) }}%</span>
+                                    </div>
+
+                                    @if ($filteredResponse)
+                                        <div class="col-4 col-md-2 mb-3">
+                                            <h6 class="text-muted small">Skipped Trades</h6><span
+                                                class="text-danger font-weight-bold">{{ number_format($filteredResponse['overlapStats']['total_overlaps'], 2) }}</span>
+                                        </div>
+                                    @endif
                                 </div>
 
                                 {{-- Strategy Table Compact --}}
@@ -175,6 +186,14 @@
                                             {{ number_format($m['net_profit'], 2) }}%
                                         </span>
                                     </div>
+                                    @if ($filteredResponse)
+                                        <div class="col-4 col-md-2">
+                                            <small class="text-muted">Overlap Trades</small><br>
+                                            <span class="text-danger font-weight-bold">
+                                                {{ number_format($filteredResponse['overlapStats']['by_month'][$month]['count'], 2) }}
+                                            </span>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
 

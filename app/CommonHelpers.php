@@ -174,6 +174,36 @@ class CommonHelpers
      * Create a new class instance.
      */
     public function __construct() {}
+
+
+    public static function getDayNameFromTimestamp($timestampMs, $timezone = 'GMT+0')
+    {
+        // Convert milliseconds → seconds
+        $timestamp = intval($timestampMs / 1000);
+
+        // Extract numeric offset (handles formats like GMT+5, GMT-3, GMT+05)
+        $offset = str_replace('GMT', '', strtoupper(trim($timezone)));
+
+        // Handle GMT+0 or GMT-0 explicitly
+        if ($offset === '+0' || $offset === '-0' || $offset === '0' || $offset === '') {
+            $tzString = 'Etc/GMT';
+        } else {
+            // Flip sign because of Etc/GMT convention
+            if (strpos($offset, '+') === 0) {
+                $offset = '-' . substr($offset, 1);
+            } elseif (strpos($offset, '-') === 0) {
+                $offset = '+' . substr($offset, 1);
+            }
+            $tzString = 'Etc/GMT' . $offset;
+        }
+
+        // Create Carbon instance
+        $date = Carbon::createFromTimestamp($timestamp, $tzString);
+
+        // Return lowercase 3-letter day name (mon, tue, wed...)
+        return strtolower($date->format('D'));
+    }
+
     public static function getSettingsValue($setting_key, $default)
     {
         return DB::table('trade_settings')->where('settings_key', $setting_key)->first()->settings_value ?? $default;
@@ -5737,5 +5767,63 @@ class CommonHelpers
         }
 
         return $results;
+    }
+
+
+    public static function filterIntervalOverlapping($trades)
+    {
+
+        // Step 1: Sort by openingTimestamp ascending
+        usort($trades, function ($a, $b) {
+            return $a['openingTimestamp'] <=> $b['openingTimestamp'];
+        });
+
+        $filtered = [];
+        $removed = [];
+        $stats = [
+            'total_overlaps' => 0,
+            'by_month' => [] // e.g. [ 'january' => [ 'count' => 3, 'trades' => [ ... ] ] ]
+        ];
+
+        foreach ($trades as $trade) {
+            $isOverlapping = false;
+
+            foreach ($filtered as $existing) {
+                // Check overlap condition:
+                if (
+                    $trade['openingTimestamp'] >= $existing['openingTimestamp'] &&
+                    $trade['openingTimestamp'] <= $existing['closingTimestamp']
+                ) {
+                    // Overlapping trade found
+                    $isOverlapping = true;
+
+                    // Record overlap stats
+                    $month = strtolower($trade['month']);
+                    $stats['total_overlaps']++;
+
+                    if (!isset($stats['by_month'][$month])) {
+                        $stats['by_month'][$month] = [
+                            'count' => 0,
+                            'trades' => []
+                        ];
+                    }
+
+                    $stats['by_month'][$month]['count']++;
+                    $stats['by_month'][$month]['trades'][] = $trade;
+                    $removed[] = $trade;
+                    break;
+                }
+            }
+
+            if (!$isOverlapping) {
+                $filtered[] = $trade;
+            }
+        }
+
+        return [
+            'filteredTrades' => $filtered,
+            'overlapStats' => $stats,
+            'removedTrades' => $removed,
+        ];
     }
 }
