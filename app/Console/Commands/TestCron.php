@@ -42,8 +42,6 @@ class TestCron extends Command
      */
     public function handle()
     {
-        dd("Block");
-
         $trader = 2;
         $symbol = 'BTCUSDT';
 

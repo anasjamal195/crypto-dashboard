@@ -25,7 +25,7 @@ class ExecuteTrade implements ShouldQueue
     // STATIC CONFIGS
     public static $isSpot = false;
     public static $activeExchange = 'binance';
-    public static $buyPrice = 25; // USD
+    public static $buyPrice = 23; // USD
     public static $leverage = 5;
 
     public function __construct($trade)
@@ -62,8 +62,8 @@ class ExecuteTrade implements ShouldQueue
 
             // ========== CHECK EXISTING OPEN ORDER ==========
             $open_order = (self::$isSpot && $tradeType === 'LONG')
-                ? CommonHelpers::checkOpenOrder($symbol, $position, 'SPOT', $tradeAccount)
-                : CommonHelpers::checkOpenOrder($symbol, $position, 'FUTURE', $tradeAccount);
+                ? CommonHelpers::checkOpenOrder(null, $position, 'SPOT', $tradeAccount)
+                : CommonHelpers::checkOpenOrder(null, $position, 'FUTURE', $tradeAccount);
 
             if ($open_order['is_open']) {
                 $failureReasons['opened_order'] = 'Already opened order detected for this symbol and account.';
@@ -138,6 +138,11 @@ class ExecuteTrade implements ShouldQueue
 
                             // Refreshing TP and SL
                             $setup = DB::table('trade_setup_details')->where('id', $setup_id)->first();
+
+
+
+
+
                             if ($setup) {
                                 $sl = $setup->sl;
                                 $tp = $setup->tp;
@@ -155,6 +160,7 @@ class ExecuteTrade implements ShouldQueue
                                 ]);
                                 break;
                             }
+
 
                             $open_order = $open_order['order'];
                             $tableName = $open_order['market'] === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
@@ -181,6 +187,43 @@ class ExecuteTrade implements ShouldQueue
                             ) {
                                 $closingType = 'loss';
                             }
+
+
+
+                            if (!$closingType) {
+                                if ($setup->strategy_name === 'AGGRESSIVE') {
+
+                                    $currentZone = json_decode(json_encode(DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $setup->interval)->where('status', 'active')->first()), true);
+                                    if ($currentZone) {
+                                        if ($setup->direction === 'LONG' && $currentPrice > ($open_order['price'] * (1 + 0.2 / 100))) {
+                                            if ($currentZone['bottom'] > ($open_order['price'] * (1 + 0.2 / 100)) && $currentZone['bottom'] > $sl) {
+                                                $prevZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $setup->interval)->where('top', '<=', $currentZone['bottom'])->orderBy('top', 'DESC')->first();
+                                                if ($prevZone) {
+                                                    $sl = $prevZone->top * (1 + 0.2 / 100);
+                                                    DB::table('trade_setup_details')->where('id', $setup_id)->update([
+                                                        'sl' => $sl
+                                                    ]);
+
+                                                    BinanceApiService::placeTpSlOrders($symbol, $tradeAccount, $tp, $sl, $open_order['orderId'], 0.3);
+                                                }
+                                            }
+                                        } else   if ($setup->direction === 'SHORT' && $currentPrice < ($open_order['price'] * (1 - 0.2 / 100))) {
+                                            if ($currentZone['top'] < ($open_order['price'] * (1 - 0.2 / 100)) && $currentZone['top'] < $sl) {
+                                                $prevZone = DB::table('sd_zones')->where('symbol', $symbol)->where('interval', $setup->interval)->where('bottom', '>', $currentZone['top'])->orderBy('bottom', 'ASC')->first();
+                                                if ($prevZone) {
+                                                    $sl = $prevZone->bottom * (1 - 0.2 / 100);
+                                                    DB::table('trade_setup_details')->where('id', $setup_id)->update([
+                                                        'sl' => $sl
+                                                    ]);
+
+                                                    BinanceApiService::placeTpSlOrders($symbol, $tradeAccount, $tp, $sl, $open_order['orderId'], 0.3);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
 
                             if ($closingType) {
                                 Log::info("[ExecuteTrade] Closing trade triggered", [

@@ -46,9 +46,7 @@ class ETHUSDT
         $index = null;
         $enabledStrategies = [
             'TRENDLINE',
-            'DOUBLE_BREAKOUTS',
             'FVG',
-            'ORDERBLOCK',
             'AGGRESSIVE'
         ];
 
@@ -602,8 +600,6 @@ class ETHUSDT
                 }
             }
         }
-
-
         // AGGRESSIVE ENTRIES SETUP
         if (!$tradeSetupDetails && in_array('AGGRESSIVE', $enabledStrategies)) {
 
@@ -839,12 +835,13 @@ class ETHUSDT
                 }
 
                 if ($tradeSetupDetails['strategy_name'] !== 'TRENDLINE') {
-
                     if ($pivotLow) {
                         $tradeSetupDetails['tp'] = $pivotLow['value'];
                     }
                 }
             }
+
+
             DB::table('trade_setup_details')->insert($tradeSetupDetails);
 
 

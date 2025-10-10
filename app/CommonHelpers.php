@@ -409,13 +409,15 @@ class CommonHelpers
             }
         }
     }
-    public static function checkOpenOrder($symbol, $interval, $market, $trade_acc)
+    public static function checkOpenOrder($symbol = null, $interval, $market, $trade_acc)
     {
 
         $tableName = $market === 'FUTURE' ? 'live_trades_future_results' : 'live_trades_spot_results';
-        $open_orders =  DB::table($tableName)
-            ->where('symbol', $symbol)
-            ->where('position', $interval)
+        $open_orders =  DB::table($tableName);
+        if ($symbol) {
+            $open_orders->where('symbol', $symbol);
+        }
+        $open_orders->where('position', $interval)
             ->where('market', $market)
             ->where('trade_acc', $trade_acc)
             ->where('trade_status', 'open')

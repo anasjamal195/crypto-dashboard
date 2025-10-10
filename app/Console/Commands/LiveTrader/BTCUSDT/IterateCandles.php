@@ -5,6 +5,7 @@ namespace App\Console\Commands\LiveTrader\BTCUSDT;
 use App\CommonHelpers;
 use App\Services\BinanceApiService;
 use App\Services\LiveTrader\BTCUSDT;
+use App\Services\LiveTrader\ETHUSDT;
 use Illuminate\Console\Command;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -38,26 +39,24 @@ class IterateCandles extends Command
         while (true) {
             $boundary = CommonHelpers::checkCandleBoundaries();
 
-            if ($boundary['1m']) {
-                sleep(10);
-                $this->info('1m candle closed at: ' . now('UTC')->toDateTimeString());
-            }
-            if ($boundary['3m']) {
-                sleep(10);
+            // if ($boundary['1m']) {
+            //     sleep(10);
+            //     $this->info('1m candle closed at: ' . now('UTC')->toDateTimeString());
+            // }
+            // if ($boundary['3m']) {
+            //     sleep(10);
 
-                $this->info('3m candle closed at: ' . now('UTC')->toDateTimeString());
-            }
+            //     $this->info('3m candle closed at: ' . now('UTC')->toDateTimeString());
+            // }
 
-            if ($boundary['5m']) {
-                sleep(10);
+            // if ($boundary['5m']) {
+            //     sleep(10);
 
-                $this->info('5m candle closed at: ' . now('UTC')->toDateTimeString());
-            }
+            //     $this->info('5m candle closed at: ' . now('UTC')->toDateTimeString());
+            // }
 
             if ($boundary['15m']) {
-                sleep(10);
 
-                BTCUSDT::runTrader();
                 $this->info('15m candle closed at: ' . now('UTC')->toDateTimeString());
             }
 
@@ -65,9 +64,12 @@ class IterateCandles extends Command
             //     $this->info('30m candle closed at: ' . now('UTC')->toDateTimeString());
             // }
 
-            // if ($boundary['1h']) {
-            //     $this->info('1h candle closed at: ' . now('UTC')->toDateTimeString());
-            // }
+            if ($boundary['1h']) {
+                sleep(10);
+                BTCUSDT::runTrader();
+                ETHUSDT::runTrader();
+                $this->info('1h candle closed at: ' . now('UTC')->toDateTimeString());
+            }
 
             // if ($boundary['4h']) {
             //     $this->info('4h candle closed at: ' . now('UTC')->toDateTimeString());

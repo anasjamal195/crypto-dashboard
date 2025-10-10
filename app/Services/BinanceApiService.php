@@ -2686,58 +2686,6 @@ class BinanceApiService
         $queryString .= '&signature=' . $signature;
 
 
-        if ($openOrder->isDummy) {
-
-            $orderId = random_int(100000, 999999);
-            $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
-            while ($exists) {
-                $orderId = random_int(100000, 999999);
-                $exists = DB::table('live_trades_future_results')->where('orderId', $orderId)->first();
-            }
-            $currentProfit = 0;
-            if ($position === 'BUY') {
-                $currentProfit = (($openOrder->price - $current_price) / $openOrder->price) * 100;
-            } else {
-                $currentProfit = (($current_price - $openOrder->price) / $openOrder->price) * 100;
-            }
-            $data =  [
-                'orderId' => $orderId,
-                'pairId' => $openOrder->pairId,
-                'symbol' => $symbol,
-                'market' => $market,
-                'side' => $position,
-                'amount' => $openOrder->amount,
-                'qty' => $quantity,
-                'position' => $position === 'BUY' ? 'SHORT' : 'LONG',
-                'type' => 'close',
-                'trade_status' => 'close',
-                'leverage' => 0,
-                'price' => $current_price,
-                'currentProfit' => $currentProfit,
-                'isDummy' => $openOrder->isDummy,
-                'trade_acc' => $trader,
-                'formula' => $openOrder->formula,
-                'liqPrice' => 0,
-                'created_at' => Carbon::now('Asia/Karachi'),
-            ];
-
-            DB::table('live_trades_future_results')->insert(
-                $data
-            );
-            DB::table('live_trades_future_results')->where('orderId', $openOrderId)->update([
-                'trade_status' => 'close',
-                'pairId' => $orderId,
-
-            ]);
-            $data['subject'] = 'Type: ' . $data['formula'] . ' ' . $data['type'] . ' ' . $data['position'] . ' ' . $openOrder->formula  . ' :: Account ' . User::find($data['trade_acc'])->name . ' ' . round($data['currentProfit'], 2) . '% ' . ($data['currentProfit'] >= 0 ? '(Profit)' : '(Loss)') . ' Amount: ' . $data['amount'] . '$';
-
-            MailerService::sendFutureTradeDynamicEmail($data);
-            return $data;
-        }
-
-
-
-
 
         $closedInternally = true;
 
@@ -3600,30 +3548,59 @@ class BinanceApiService
     }
 
 
+    public static function forceCancelAllStopOrders($symbol, $account)
+    {
+        $trader = $account;
+
+        $user = User::find($trader);
+        $apiKey = $user->api_key;
+        $secretKey = $user->api_secret;
+
+        $timestamp = round(microtime(true) * 1000);
+        $queryString = "symbol=$symbol&timestamp=$timestamp";
+        $signature = hash_hmac('sha256', $queryString, $secretKey);
+        $queryString .= "&signature=$signature";
+
+        $url = "https://fapi.binance.com/fapi/v1/openOrders?$queryString";
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "X-MBX-APIKEY: $apiKey"
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        $orders = json_decode($response, true);
+
+        if (!is_array($orders)) {
+            return ['error' => true, 'message' => 'Invalid response from Binance', 'raw' => $response];
+        }
+
+
+        $results = [];
+        foreach ($orders as $order) {
+            if (in_array($order['type'], ['STOP_MARKET', 'STOP', 'STOP_LOSS', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT', 'TAKE_PROFIT_MARKET', 'TAKE_PROFIT_LIMIT'])) {
+                $results[] = BinanceApiService::cancelOrder($symbol, $trader, $order['orderId']);
+            }
+        }
+
+        return true;
+    }
     public static function cancelExistingStopOrders($openOrderId)
     {
 
         $openOrder = DB::table('live_trades_future_results')->where('orderId', $openOrderId)->first();
-        $market = 'FUTURE';
-        $position = $openOrder->side == 'BUY' ? 'SELL' : 'BUY';
         $symbol = $openOrder->symbol;
         $trader = $openOrder->trade_acc;
-        $quantity = $openOrder->qty;
-        $current_price = BinanceApiService::getCurrentPrice($symbol, $market);
 
-        $existingStopOrder = self::getTradeOrdersDetails($openOrderId);
+        self::forceCancelAllStopOrders($symbol, $trader);
 
-        if ($existingStopOrder) {
-
-            self::cancelOrder($symbol, $trader, $existingStopOrder->tp_order_id);
-            self::cancelOrder($symbol, $trader, $existingStopOrder->sl_order_id);
-
-
-            // DB::table('trade_orders')->where('id', $existingStopOrder->id)->where('status', 'PENDING')->update([
-            //     'tp_order_id' => null,
-            //     'sl_order_id' => null,
-            // ]);
-        }
+        return true;
     }
 
 

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\LiveTrader;
 
+use App\CommonHelpers;
 use App\Jobs\LiveTrader\ExecuteTrade;
 use App\Services\BinanceApiService;
 use Illuminate\Console\Command;
@@ -111,6 +112,7 @@ class HandleOpenings extends Command
                             continue;
                         }
                     }
+
 
                     // Dispatch trade execution
                     if ($openTrade) {

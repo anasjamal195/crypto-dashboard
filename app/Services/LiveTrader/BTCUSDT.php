@@ -46,9 +46,7 @@ class BTCUSDT
         $index = null;
         $enabledStrategies = [
             'TRENDLINE',
-            'DOUBLE_BREAKOUTS',
             'FVG',
-            'ORDERBLOCK',
             'AGGRESSIVE'
         ];
 
