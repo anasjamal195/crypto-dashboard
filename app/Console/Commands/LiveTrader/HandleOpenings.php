@@ -22,7 +22,7 @@ class HandleOpenings extends Command
             $tradeSetups = DB::table('trade_setup_details')->where('status', 'WAITING')->get();
 
             if ($tradeSetups->isEmpty()) {
-                Log::debug("No WAITING trade setups found. Sleeping...");
+                // Log::debug("No WAITING trade setups found. Sleeping...");
                 sleep(2);
                 continue;
             }

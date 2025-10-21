@@ -25,6 +25,9 @@ Route::name('csrf-free.')->prefix('csrf-free/')->group(function () {
 	Route::get('safe-mode-status/{symbol}/{position}', 'App\Http\Controllers\BinanceController@getSafeModeStatus')->name('safe-mode.status');
 	Route::get('safe-mode-accuracy/{position}/{formula}/{tagName?}', 'App\Http\Controllers\BinanceController@getSafeModeAccuracy')->name('safe-mode.accuracy');
 	Route::get('get-all-symbols', 'App\Http\Controllers\BinanceController@getAllSymbols')->name('symbols.all');
+	Route::get('annual-stats', 'App\Http\Controllers\BinanceController@getAnnualStats')->name('stats.annual');
+	Route::get('monthly-trades', 'App\Http\Controllers\BinanceController@getMonthlyTrades')->name('monthly.trades');
+
 });
 
 
