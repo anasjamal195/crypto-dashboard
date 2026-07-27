@@ -2241,6 +2241,10 @@ class CommonHelpers
         $isProcessed =  false;
         $data = BinanceApiService::getCandleStickData($symbol, $interval, $parentLimit, $timestamp, 'FUTURE', $isProcessed);
 
+        if (empty($data) || !isset($data[0][0])) {
+            return [];
+        }
+
         $intervalToMins = self::$binanceIntervals[$interval];
         $timestamp = $data[0][0] - (60 * $intervalToMins * 1000 * 300);
         $adjustmentCandles =  BinanceApiService::getCandleStickData($symbol, $interval, 300, $timestamp, 'FUTURE', $isProcessed);

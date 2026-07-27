@@ -2,87 +2,64 @@
 
 namespace App\Console\Commands;
 
-use App\Services\InternalTrader\ReportService;
+use App\Services\InternalTrader\ReportServiceImproved;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class GenerateInternalReport extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'app:generate-internal-report';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'This command is used to run intnernal trader.';
+    protected $description = 'Run continuous 1-year backtest (Jul 2025 - Jul 2026).';
 
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 0);
 
+        $startTs = 1751328000000; // July 1, 2025 00:00:00 UTC
+        $candlesInYear = (int)ceil(365 * 24 * 60 / 15); // 35,040 (15m candles in 1 year)
 
-        $reportDetails = [
-            // [
-            //     'formula' => 'Current',
-            //     'timestamp' => null,
-            //     'includeFiltered' => false,
-            // ],
+        ReportServiceImproved::$limit = $candlesInYear;
 
-            // [
-            //     'formula' => 'Testing - Bullish',
-            //     'timestamp' => 1746126000000,
-            //     'includeFiltered' => true,
-            // ],
-            // [
-            //     'formula' => 'All Coins Base   Bearish',
-            //     'timestamp' => 1745607600000,
-            //     'includeFiltered' => true,
-            // ],
-            [
-                'formula' => 'Macd Swings  - Slight Bearish',
-                'timestamp' => 1745607600000,
-                'includeFiltered' => false,
-            ],
-            [
-                'formula' => 'Macd Swings  - Slight Bullish',
-                'timestamp' => 1744830000000,
-                'includeFiltered' => false,
-            ],
-            [
-                'formula' => 'Macd Swings  - Flat',
-                'timestamp' => 1732561200000,
-                'includeFiltered' => false,
-            ],
-            [
-                'formula' => 'Macd Swings  - Mixed',
-                'timestamp' => 1744225200000,
-                'includeFiltered' => false,
-            ],
+        $formulaLabel = 'Improved Strategy v1 - 1 Year (Jul 2025-Jul 2026)';
+        $finalFormula = ReportServiceImproved::generateCoinReport($this, $formulaLabel, $startTs, null, true);
 
-        ];
+        $trades = DB::table('coin_reports')->where('formula', $finalFormula)->orderBy('symbol')->get();
 
+        $this->info(str_repeat('=', 60));
+        $this->info('RESULT: ' . $formulaLabel);
+        $this->info(str_repeat('-', 60));
 
-        foreach ($reportDetails as $details) {
-
-            $formula = $details['formula'] . ' - Base';
-            $timestamp = $details['timestamp'];
-            $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, null, true);
-
-
-            if ($details['includeFiltered']) {
-                $formula = $details['formula'] . ' - Filtered';
-                $backtestFormula = ReportService::generateCoinReport($this, $formula, $timestamp, $backtestFormula, false);
-            }
+        if ($trades->isEmpty()) {
+            $this->warn('No trades generated.');
+            return;
         }
 
+        $wins = $trades->where('profit', '>', 0);
+        $losses = $trades->where('profit', '<=', 0);
+        $total = count($trades);
+        $wr = $total ? round(count($wins) / $total * 100, 1) : 0;
+        $netProfit = round($trades->sum('profit'), 2);
 
-        dd("Done on all trends with all coins");
+        $this->info('Trades: ' . $total . ' | WR: ' . $wr . '% | Net: ' . $netProfit . '%');
+
+        foreach ($trades->groupBy('symbol') as $sym => $st) {
+            $sw = $st->where('profit', '>', 0);
+            $sl = $st->where('profit', '<=', 0);
+            $net = round($st->sum('profit'), 2);
+            $avgW = $sw->count() ? round($sw->avg('profit'), 2) : 0;
+            $avgL = $sl->count() ? round($sl->avg('profit'), 2) : 0;
+            $this->line('  ' . $sym . ': ' . count($st) . ' tr, ' . count($sw) . 'W/' . count($sl) . 'L, net: ' . $net . '% (avgW: ' . $avgW . '%, avgL: ' . $avgL . '%)');
+        }
+
+        $totalWins = count($wins);
+        $totalLosses = count($losses);
+        $avgW = $totalWins ? round($wins->avg('profit'), 2) : 0;
+        $avgL = $totalLosses ? round($losses->avg('profit'), 2) : 0;
+        $pf = ($totalLosses && $losses->sum('profit') != 0) ? round(abs($wins->sum('profit') / $losses->sum('profit')), 2) : '∞';
+        $this->line('  Overall — avgW: ' . $avgW . '%, avgL: ' . $avgL . '%, PF: ' . $pf);
+
+        $this->info(str_repeat('=', 60));
     }
 }

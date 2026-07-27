@@ -13,7 +13,11 @@
     $supportTriggers = [];
     $resistanceTriggers = [];
 
-    $safeModeLogs = DB::table('safe_mode_logs')->where('symbol', $symbol)->where('formula', $formula)->first();
+    try {
+        $safeModeLogs = DB::table('safe_mode_logs')->where('symbol', $symbol)->where('formula', $formula)->first();
+    } catch (\Exception $e) {
+        $safeModeLogs = null;
+    }
 
     $safeModeEnableTimestamps = $safeModeLogs ? json_decode($safeModeLogs->enable_timestamps, true) : [];
     $safeModeDisableTimestamps = $safeModeLogs ? json_decode($safeModeLogs->disable_timestamps, true) : [];
