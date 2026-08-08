@@ -23,7 +23,7 @@ class GenerateInternalReport extends Command
 
         ReportServiceV2::$limit = $candlesInYear;
 
-        $formulaLabel = 'V2 - 1 Year (Jul 2025-Jul 2026)';
+        $formulaLabel = 'V2 - 2 Year (Jul 2024-Jul 2026)';
         $finalFormula = ReportServiceV2::generateCoinReport($this, $formulaLabel, $startTs, null, true);
 
         $trades = DB::table('coin_reports')
