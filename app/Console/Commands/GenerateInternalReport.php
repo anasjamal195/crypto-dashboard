@@ -17,8 +17,8 @@ class GenerateInternalReport extends Command
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
 
-        $startTs = 1751328000000;
-        $candlesInYear = 365 * 24 * 2; // 8760 (1h candles in 1 year)
+        $startTs = 1719792000000;
+        $candlesInYear = 365 * 24 * 2 ; // 8760 (1h candles in 1 year)
         $feePerTrade = 0.10;
 
         ReportServiceV2::$limit = $candlesInYear;
