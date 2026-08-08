@@ -18,7 +18,7 @@ class GenerateInternalReport extends Command
         ini_set('max_execution_time', 0);
 
         $startTs = 1751328000000;
-        $candlesInYear = 365 * 24; // 8760 (1h candles in 1 year)
+        $candlesInYear = 365 * 24 * 2; // 8760 (1h candles in 1 year)
         $feePerTrade = 0.10;
 
         ReportServiceV2::$limit = $candlesInYear;
