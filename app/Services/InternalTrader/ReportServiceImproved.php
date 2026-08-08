@@ -97,11 +97,13 @@ class ReportServiceImproved
     public static $formulaACoins = [
         'BTCUSDT',
         'ETHUSDT',
+        'SOLUSDT'
     ];
 
     public static $formulaBCoins = [
         'BTCUSDT',
         'ETHUSDT',
+        'SOLUSDT'
     ];
 
     public static function generateCoinReport(
@@ -127,33 +129,51 @@ class ReportServiceImproved
         $cmd->info('Processing: 0 %');
         self::addFormulaDetails();
         DB::table('confirmed_trades')->truncate();
+
         foreach ($coins as $index => $coin) {
 
             try {
                 $symbol = $coin;
-                $data = BinanceApiService::getCandleStickDataExtended($symbol, self::$interval, self::$limit, self::$backTestTimeUnix, 'FUTURE');
+                $data = null;
+                $maxRetries = 3;
+
+                for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                    try {
+                        $data = BinanceApiService::getCandleStickDataExtended($symbol, self::$interval, self::$limit, self::$backTestTimeUnix, 'FUTURE');
+                        if (!empty($data) && is_array($data) && !is_null($data[0]['binance_timestamp'] ?? null)) {
+                            break;
+                        }
+                        $cmd->warn("Attempt {$attempt}/{$maxRetries}: Empty data for {$symbol}, retrying...");
+                        CommonHelpers::delayMS(2000);
+                    } catch (\Exception $retryEx) {
+                        if ($attempt === $maxRetries) throw $retryEx;
+                        $cmd->warn("Attempt {$attempt}/{$maxRetries}: API failed for {$symbol} ({$retryEx->getMessage()}), retrying...");
+                        CommonHelpers::delayMS(2000);
+                    }
+                }
 
                 self::$trades = self::processCandles($symbol, $data);
-
-
                 DB::table('coin_reports')->where('symbol', $symbol)->where('interval', self::$interval)->where('formula', self::$formula)->where('market', 'FUTURE')->delete();
-                DB::table('coin_reports')->insert(self::$trades);
+
+                foreach (self::$trades as $trade) {
+                    DB::table('coin_reports')->insert($trade);
+                    CommonHelpers::delayMS(5);
+                }
+
                 $perProgress = (($index + 1) / count($coins)) * 100;
-                $cmd->info('Processing: ' . round($perProgress) . ' %');
+                $cmd->info('Processing: ' . round($perProgress) . ' % (' . count(self::$trades) . ' trades for ' . $symbol . ')');
                 DB::table('formula_details')->where('formula', self::$formula)->update([
                     'progress' => $perProgress,
                 ]);
             } catch (\Exception $e) {
-                $cmd->error('Error Occured: ', $e->getMessage());
-                Log::error("Failed to update coin reports: " . $e->getMessage());
+                $cmd->error('Error Occured for ' . $coin . ': ' . $e->getMessage());
+                Log::error("Failed to update coin reports for {$coin}: " . $e->getMessage());
             }
             CommonHelpers::delayMS(self::$delayMs);
-
         }
 
         $cmd->info('Completed Report for : ' . self::$formula);
         $cmd->info('Total Coins Processed : ' . count($coins));
-
         return self::$formula;
     }
 
@@ -176,23 +196,11 @@ class ReportServiceImproved
         self::$btcBullTrendCached = null;
         self::$btcBearTrendCached = null;
 
-        // Calculate required 4h/1h/BTC data ranges based on full dataset span
-        $dataStartTs = $data[0]['binance_timestamp'];
-        $dataEndTs = $data[count($data) - 1]['binance_timestamp'];
-        $dataDurationMins = ($dataEndTs - $dataStartTs) / (60 * 1000);
+        $lastTs = $data[count($data) - 1]['binance_timestamp'];
 
-        // 4h: cover full range + 50 extra candles for warmup
-        $required4h = (int)ceil($dataDurationMins / (4 * 60)) + 50;
-        $dataStartTs4h = $dataStartTs - (4 * 60 * 60 * 1000 * 50);
-
-        // 1h: cover full range + 200 extra candles for warmup at start
-        $required1h = (int)ceil($dataDurationMins / 60) + 200;
-        $dataStartTs1h = $dataStartTs - (60 * 60 * 1000 * 200);
-
-        // Fetch with automatic pagination (handles >1000 candles internally)
-        $data4hRaw = BinanceApiService::getCandleStickDataExtended($symbol, '4h', max(1000, $required4h), $dataStartTs4h, 'FUTURE', true);
-        $data1hRaw = BinanceApiService::getCandleStickDataExtended($symbol, '1h', max(1000, $required1h), $dataStartTs1h, 'FUTURE', true);
-        self::$btc4hCached = BinanceApiService::getCandleStickDataExtended('BTCUSDT', '4h', max(1000, $required4h), $dataStartTs4h, 'FUTURE', true);
+        $data4hRaw = self::fetchCandlesWithRetry($symbol, '4h', 1000, $lastTs);
+        $data1hRaw = self::fetchCandlesWithRetry($symbol, '1h', 1000, $lastTs);
+        self::$btc4hCached = self::fetchCandlesWithRetry('BTCUSDT', '4h', 100, $lastTs);
 
         foreach ($data as $index => $candle) {
 
@@ -209,7 +217,6 @@ class ReportServiceImproved
             self::setSRLevels($data, $data4hRaw, $index);
 
             $tagName = null;
-
 
             if (self::$open_price == 0) {
                 self::$tradeType = self::handleOpeningConditions($symbol, $data, $index, $tagName);
@@ -378,11 +385,6 @@ class ReportServiceImproved
             return null;
         }
 
-        // Pre-filter: only take LONG in a clear uptrend structure on the 15m chart
-        if ($data[$index]['close'] < $data[$index]['ma25'] || $data[$index]['close'] < $data[$index]['ma14']) {
-            return null;
-        }
-
         if (!self::$isBaseReport) {
             $currentAccuracy = self::parseAccuracy(self::$progressionDetailsLONGMACD, $data[$index]['binance_timestamp'], 6);
             if ($currentAccuracy != -1 && $currentAccuracy < 73) {
@@ -391,11 +393,6 @@ class ReportServiceImproved
         }
 
         $bbAnalysis = CommonHelpers::analyzeBollingerBandSwing($data, $index, 10);
-
-        // Pre-check on 1h trend — cheaper to do early than after full progression
-        if (!self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index, '1h')) {
-            return null;
-        }
 
         $steps = [
             [
@@ -415,19 +412,17 @@ class ReportServiceImproved
             [
                 'condition' => (
                     $bbAnalysis['price_action']['is_near_lower_band']
-                    && $data[$index]['rsi6'] >= 20
-                    && $data[$index]['rsi6'] <= 40
+                    && $data[$index]['rsi6'] >= 25
+                    && $data[$index]['rsi6'] <= 45
                     && $data[$index]['volume'] >= $data[$index]['volumeMA5']
-                    && $data[$index]['histogram'] > 0
                 ),
                 'candlesToCheck' => 20
             ],
             [
                 'condition' => (
                     ($bbAnalysis['price_action']['is_near_lower_band'] || $bbAnalysis['price_action']['crossed_lower_band'])
-                    && $data[$index]['rsi6'] <= 15
-                    && $data[$index]['volume'] >= (2.0 * $data[$index]['volumeMA10'])
-                    && $data[$index]['dif'] > $data[$index]['dea']
+                    && $data[$index]['rsi6'] <= 20
+                    && $data[$index]['volume'] >= (1.5 * $data[$index]['volumeMA10'])
                 ),
                 'candlesToCheck' => 20
             ],
@@ -435,7 +430,6 @@ class ReportServiceImproved
                 'condition' => (
                     $data[$index]['per'] > 0
                     && $data[$index]['low'] < $data[$index]['bb_lower']
-                    && $data[$index]['close'] > $data[$index]['open']
                 ),
                 'candlesToCheck' => 10,
             ],
@@ -466,10 +460,12 @@ class ReportServiceImproved
                 if ($isFinal) {
                     self::confirmOpening($symbol, 'TBD', $data, $index, 'LONG');
 
+                    $allowOnHigherTrend = self::checkTrendOnHigherCandles($symbol, 'LONG', $data, $index, '1h');
+
                     if (
-                        $data[$index]['obv'] > $data[$index - 1]['obv']
+                        $allowOnHigherTrend
+                        && $data[$index]['obv'] > $data[$index - 1]['obv']
                         && $data[$index]['rsi6'] > $data[$index - 1]['rsi6']
-                        && $data[$index]['histogram'] > $data[$index - 1]['histogram']
                     )
                         return 'LONG';
                     else
@@ -964,18 +960,18 @@ class ReportServiceImproved
         $candlesPast = self::getIndexDiffFromTimestamps($data[self::$openingIndex]['binance_timestamp'], $data[$index]['binance_timestamp'], self::$interval);
 
         if (self::$tradeType === 'LONG') {
-            if ($candle['close'] < self::$dynamicSL) {
-                $closingPrice = $candle['close'];
-            } else if ($candle['close'] >= self::$dynamicTP) {
+            if ($candle['close'] >= self::$dynamicTP) {
                 self::$dynamicTP = $candle['close'] * (1 + self::$dynamicTPSLgap / 100);
                 self::$dynamicSL = $candle['close'] * (1 - (self::$dynamicTPSLgap / 2) / 100);
+            } else if ($candle['close'] < self::$dynamicSL) {
+                $closingPrice = self::$dynamicSL;
             }
         } else {
-            if ($candle['close'] > self::$dynamicSL) {
-                $closingPrice = $candle['close'];
-            } else if ($candle['close'] <= self::$dynamicTP) {
+            if ($candle['close'] <= self::$dynamicTP) {
                 self::$dynamicTP = $candle['close'] * (1 - self::$dynamicTPSLgap / 100);
                 self::$dynamicSL = $candle['close'] * (1 + (self::$dynamicTPSLgap / 2) / 100);
+            } else if ($candle['close'] > self::$dynamicSL) {
+                $closingPrice = self::$dynamicSL;
             }
         }
 
@@ -1571,5 +1567,26 @@ class ReportServiceImproved
         self::$dynamicSL = 0;
         self::$formulaType = null;
         self::$currentZoneStatus = null;
+    }
+
+    protected static function fetchCandlesWithRetry($symbol, $interval, $limit, $timestamp, $retries = 3)
+    {
+        for ($attempt = 1; $attempt <= $retries; $attempt++) {
+            try {
+                $result = BinanceApiService::getCandleStickDataPast($symbol, $interval, $limit, $timestamp, 'FUTURE');
+                if (!empty($result) && is_array($result) && !is_null($result[0]['binance_timestamp'] ?? null)) {
+                    return $result;
+                }
+                if ($attempt < $retries) {
+                    CommonHelpers::delayMS(2000 * $attempt);
+                }
+            } catch (\Exception $e) {
+                Log::warning("fetchCandlesWithRetry attempt {$attempt} failed for {$symbol} {$interval}: " . $e->getMessage());
+                if ($attempt < $retries) {
+                    CommonHelpers::delayMS(2000 * $attempt);
+                }
+            }
+        }
+        return [];
     }
 }

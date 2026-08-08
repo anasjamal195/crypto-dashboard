@@ -33,6 +33,7 @@ class BinanceApiService
         '1w'  => 10080,   // 1 week
         '1M'  => 43200,   // 1 month (approx 30 days)
     ];
+    private static $reqId = 0;
 
     /**
      * Initialize or retrieve the HTTP client.
@@ -236,10 +237,16 @@ class BinanceApiService
 
     public static function getCandleStickDataCached($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
+        $rid = ++self::$reqId;
+        $base = ''; // source indicator
+
+        Log::debug("[BINANCE:{$rid}] ENTER " . __FUNCTION__ . " {$symbol} {$interval} limit={$limit} market={$market} ts={$timestamp}");
+
         $responseCacheKey = "binance_candle_{$symbol}_{$interval}_{$market}_{$timestamp}";
 
         // 1. Check and return cached response if available
         if (Cache::has($responseCacheKey)) {
+            Log::debug("[BINANCE:{$rid}] CACHE HIT {$responseCacheKey}");
             return Cache::get($responseCacheKey);
         }
 
@@ -263,6 +270,8 @@ class BinanceApiService
                 config('binance.api.future_base_url') . config('binance.endpoints.klines') :
                 config('binance.api.base_url') . config('binance.endpoints.klines');
 
+            $apiLabel = $market === 'FUTURE' ? 'FAPI' : 'SPOT';
+            Log::debug("[BINANCE:{$rid}] PARENT {$apiLabel} {$base_url} ...");
             $response = Http::withOptions(['verify' => !app()->environment('local'), 'timeout' => 10, 'connect_timeout' => 5])->get($base_url, $params);
 
             $headers = $response->getHeaders();
@@ -274,9 +283,13 @@ class BinanceApiService
 
             if ($response->successful() && $response->json()) {
                 $result = $response->json();
+                $base = 'parent';
+                Log::debug("[BINANCE:{$rid}] PARENT OK status={$response->status()}");
             } else {
-                Log::error('Error Fetching Coin data: ' . $symbol . ' Server Parent ' . json_encode($response?->body()));
+                Log::warning("[BINANCE:{$rid}] PARENT FAIL status={$response->status()} " . json_encode($response?->body()));
             }
+        } else {
+            Log::debug("[BINANCE:{$rid}] PARENT SKIP (weight too low: {$remainingWeight})");
         }
 
         // 2. If parent failed or weight low, try through Evomi proxy
@@ -286,6 +299,8 @@ class BinanceApiService
                 config('binance.api.future_base_url') . config('binance.endpoints.klines') :
                 config('binance.api.base_url') . config('binance.endpoints.klines');
 
+            $apiLabel = $market === 'FUTURE' ? 'FAPI' : 'SPOT';
+            Log::debug("[BINANCE:{$rid}] EVOMI {$apiLabel} via proxy ...");
             try {
                 $response = Http::withOptions([
                     'verify' => !app()->environment('local'),
@@ -296,25 +311,30 @@ class BinanceApiService
 
                 if ($response->successful() && $response->json()) {
                     $result = $response->json();
+                    $base = 'evomi';
+                    Log::debug("[BINANCE:{$rid}] EVOMI OK status={$response->status()}");
                 } else {
-                    Log::error('Error Fetching Coin data via Evomi: ' . $symbol . ' ' . json_encode($response?->body()));
+                    Log::warning("[BINANCE:{$rid}] EVOMI FAIL status={$response->status()} " . json_encode($response?->body()));
                 }
             } catch (\Exception $e) {
-                Log::error("Evomi proxy failed for {$symbol}: " . $e->getMessage());
+                Log::error("[BINANCE:{$rid}] EVOMI EXCEPTION {$e->getMessage()}");
             }
         }
 
         // 3. If Evomi also failed, try SPOT API directly as last resort
         if (!$result) {
             $spot_base_url = config('binance.api.base_url') . config('binance.endpoints.klines');
+            Log::debug("[BINANCE:{$rid}] SPOT_DIRECT {$spot_base_url} ...");
             try {
                 $response = Http::withOptions(['verify' => !app()->environment('local'), 'timeout' => 10, 'connect_timeout' => 5])->get($spot_base_url, $params);
 
                 if ($response->successful() && $response->json()) {
                     $result = $response->json();
+                    $base = 'spot_direct';
+                    Log::debug("[BINANCE:{$rid}] SPOT_DIRECT OK status={$response->status()}");
                 }
             } catch (\Exception $e) {
-                Log::error("SPOT API fallback failed for {$symbol}: " . $e->getMessage());
+                Log::error("[BINANCE:{$rid}] SPOT_DIRECT EXCEPTION {$e->getMessage()}");
             }
         }
 
@@ -329,11 +349,13 @@ class BinanceApiService
 
             Cache::put($responseCacheKey, $processedResult, $nextRoundedTime);
 
+            Log::debug("[BINANCE:{$rid}] EXIT source={$base} candles=" . count($result));
+
             return $processedResult;
         }
 
         // All attempts failed
-        Log::error('Error Fetching Coin data: ' . $symbol . ' - all servers/fallbacks failed');
+        Log::error("[BINANCE:{$rid}] EXIT ALL FAILED {$symbol} {$interval}");
         $emptyResult = [
             'timestamp' => null,
             'timestampReadable' => null,
@@ -437,9 +459,13 @@ class BinanceApiService
 
     public static function getCandleStickDataExtended($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
+        $rid = ++self::$reqId;
+        Log::debug("[BINANCE:{$rid}] ENTER " . __FUNCTION__ . " {$symbol} {$interval} limit={$limit} market={$market} ts={$timestamp}");
+
         $blockSize = 1000;
 
         if ($limit <= $blockSize) {
+            Log::debug("[BINANCE:{$rid}] delegating to getCandleStickData (limit={$limit} <= 1000)");
             return self::getCandleStickData($symbol, $interval, $limit, $timestamp, $market, $processed);
         } else {
 
@@ -457,13 +483,15 @@ class BinanceApiService
             $dataRaw = self::getCandleStickData($symbol, $interval, $blockSize, $timestamp, $market, false);
 
 
-
             $limitLoop = $limit - $blockSize;
+            $loopCount = 0;
 
             $lastTimestamp = $dataRaw[0]['binance_timestamp'] - $intervalToMillis;
 
             while ($limitLoop > 0) {
+                $loopCount++;
                 $limitCurrent = ($limitLoop >= $blockSize) ? $blockSize : ($limitLoop);
+                Log::debug("[BINANCE:{$rid}] EXT loop #{$loopCount} remaining={$limitLoop} fetching={$limitCurrent} from_ts={$lastTimestamp}");
                 $data = self::getCandleStickDataPast($symbol, $interval, $limitCurrent, $lastTimestamp, $market, false, false);
                 $lastTimestamp =  $data[0]['binance_timestamp'] - $intervalToMillis;
                 $dataRaw = array_merge($data, $dataRaw);
@@ -471,6 +499,7 @@ class BinanceApiService
                 sleep(0.3);
             }
 
+            Log::debug("[BINANCE:{$rid}] EXT total_chunks=" . ($loopCount + 1) . " total_candles=" . count($dataRaw));
 
 
             $unprocessedData  = array_map(function ($candle) {
@@ -484,6 +513,7 @@ class BinanceApiService
                 ];
             }, $dataRaw);
 
+            Log::debug("[BINANCE:{$rid}] EXIT source=extended candles=" . count($unprocessedData) . " processed=" . ($processed ? 'true' : 'false'));
             return $processed ? self::processData($unprocessedData, $market, null, $symbol, $interval) : $unprocessedData;
         }
     }
@@ -503,6 +533,11 @@ class BinanceApiService
      */
     public static function getCandleStickData($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $processed = true)
     {
+        $rid = ++self::$reqId;
+        $base = '';
+
+        Log::debug("[BINANCE:{$rid}] ENTER " . __FUNCTION__ . " {$symbol} {$interval} limit={$limit} market={$market} ts={$timestamp}");
+
         $cacheKey = "binance_api_weight_klines";
         $result = null;
 
@@ -523,6 +558,8 @@ class BinanceApiService
                 config('binance.api.future_base_url') . config('binance.endpoints.klines') :
                 config('binance.api.base_url') . config('binance.endpoints.klines');
 
+            $apiLabel = $market === 'FUTURE' ? 'FAPI' : 'SPOT';
+            Log::debug("[BINANCE:{$rid}] PARENT {$apiLabel} {$base_url} ...");
             $response = Http::withOptions(['verify' => !app()->environment('local'), 'timeout' => 10, 'connect_timeout' => 5])->get($base_url, $params);
 
             $headers = $response->getHeaders();
@@ -534,9 +571,13 @@ class BinanceApiService
 
             if ($response->successful() && $response->json()) {
                 $result = $response->json();
+                $base = 'parent';
+                Log::debug("[BINANCE:{$rid}] PARENT OK status={$response->status()} count=" . count($result));
             } else {
-                Log::error('Error Fetching Coin data: ' . $symbol . ' Server Parent ' . json_encode($response?->body()));
+                Log::warning("[BINANCE:{$rid}] PARENT FAIL status={$response->status()} " . json_encode($response?->body()));
             }
+        } else {
+            Log::debug("[BINANCE:{$rid}] PARENT SKIP (weight too low: {$remainingWeight})");
         }
 
         // 2. If parent failed or weight low, try through Evomi proxy
@@ -546,6 +587,8 @@ class BinanceApiService
                 config('binance.api.future_base_url') . config('binance.endpoints.klines') :
                 config('binance.api.base_url') . config('binance.endpoints.klines');
 
+            $apiLabel = $market === 'FUTURE' ? 'FAPI' : 'SPOT';
+            Log::debug("[BINANCE:{$rid}] EVOMI {$apiLabel} via proxy ...");
             try {
                 $response = Http::withOptions([
                     'verify' => !app()->environment('local'),
@@ -556,25 +599,30 @@ class BinanceApiService
 
                 if ($response->successful() && $response->json()) {
                     $result = $response->json();
+                    $base = 'evomi';
+                    Log::debug("[BINANCE:{$rid}] EVOMI OK status={$response->status()} count=" . count($result));
                 } else {
-                    Log::error('Error Fetching Coin data via Evomi: ' . $symbol . ' ' . json_encode($response?->body()));
+                    Log::warning("[BINANCE:{$rid}] EVOMI FAIL status={$response->status()} " . json_encode($response?->body()));
                 }
             } catch (\Exception $e) {
-                Log::error("Evomi proxy failed for {$symbol}: " . $e->getMessage());
+                Log::error("[BINANCE:{$rid}] EVOMI EXCEPTION {$e->getMessage()}");
             }
         }
 
         // 3. If Evomi also failed, try SPOT API directly as last resort
         if (!$result) {
             $spot_base_url = config('binance.api.base_url') . config('binance.endpoints.klines');
+            Log::debug("[BINANCE:{$rid}] SPOT_DIRECT {$spot_base_url} ...");
             try {
                 $response = Http::withOptions(['verify' => !app()->environment('local'), 'timeout' => 10, 'connect_timeout' => 5])->get($spot_base_url, $params);
 
                 if ($response->successful() && $response->json()) {
                     $result = $response->json();
+                    $base = 'spot_direct';
+                    Log::debug("[BINANCE:{$rid}] SPOT_DIRECT OK status={$response->status()} count=" . count($result));
                 }
             } catch (\Exception $e) {
-                Log::error("SPOT API fallback failed for {$symbol}: " . $e->getMessage());
+                Log::error("[BINANCE:{$rid}] SPOT_DIRECT EXCEPTION {$e->getMessage()}");
             }
         }
 
@@ -590,11 +638,13 @@ class BinanceApiService
                     'volume' => (float) $candle[5]
                 ];
             }, $result);
+
+            Log::debug("[BINANCE:{$rid}] EXIT source={$base} candles=" . count($result));
             return $processed ? self::processData($result, $market, null, $symbol, $interval) : $unProcessesResponse;
         }
 
         // All attempts failed
-        Log::error('Error Fetching Coin data: ' . $symbol . ' - all servers/fallbacks failed');
+        Log::error("[BINANCE:{$rid}] EXIT ALL FAILED {$symbol} {$interval}");
         return  [
             'timestamp' => null,
             'timestampReadable' => null,
@@ -1734,7 +1784,8 @@ class BinanceApiService
 
     public static function getCandleStickDataPast($symbol = 'BTCUSDT', $interval = '15m', $limit = 100, $timestamp = '', $market = 'SPOT', $external = false, $processed = true)
     {
-
+        $rid = ++self::$reqId;
+        Log::debug("[BINANCE:{$rid}] ENTER " . __FUNCTION__ . " {$symbol} {$interval} limit={$limit} market={$market} ts={$timestamp}");
 
         $intervalInMins = self::$binanceIntervals[$interval];
 
@@ -1742,6 +1793,7 @@ class BinanceApiService
 
         $data = $external ? self::getCandleStickDataExternal($symbol, $interval, $limit, $revisedTimestamp, $market, $processed) : self::getCandleStickData($symbol, $interval, $limit, $revisedTimestamp, $market, $processed);
 
+        Log::debug("[BINANCE:{$rid}] EXIT candles=" . (is_array($data) ? count($data) : 'null'));
         return $data;
     }
 
