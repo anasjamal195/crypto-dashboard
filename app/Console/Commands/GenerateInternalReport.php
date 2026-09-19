@@ -10,20 +10,20 @@ class GenerateInternalReport extends Command
 {
     protected $signature = 'app:generate-internal-report';
 
-    protected $description = 'Run continuous 1-year backtest (Jul 2025 - Jul 2026).';
+    protected $description = 'Run continuous 1-year backtest (Sep 2025 - Sep 2026).';
 
     public function handle()
     {
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
 
-        $startTs = 1719792000000;
-        $candlesInYear = 365 * 24 * 2 ; // 8760 (1h candles in 1 year)
+        $startTs = 1756684800000; // 2025-09-01 00:00:00 UTC
+        $candlesInYear = 365 * 24 ; // 8760 (1h candles in 1 year)
         $feePerTrade = 0.10;
 
         ReportServiceV2::$limit = $candlesInYear;
 
-        $formulaLabel = 'V2 - 2 Year (Jul 2024-Jul 2026)';
+        $formulaLabel = 'V2 - 1 Year (Sep 2025-Sep 2026)';
         $finalFormula = ReportServiceV2::generateCoinReport($this, $formulaLabel, $startTs, null, true);
 
         $trades = DB::table('coin_reports')
